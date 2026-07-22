@@ -15,7 +15,7 @@ type LabSection = {
   title: string;
   description: string;
   status: "Ready" | "Next" | "Planned";
-  href?: string;
+  href?: "/design-lab/dashboards";
 };
 
 const labSections: LabSection[] = [
@@ -23,13 +23,14 @@ const labSections: LabSection[] = [
     title: "Dashboard Gallery",
     description:
       "Compare complete dashboard concepts and review different visual directions.",
-    status: "Next",
+    status: "Ready",
+    href: "/design-lab/dashboards",
   },
   {
     title: "Component Gallery",
     description:
       "Review cards, buttons, tables, badges, inputs, and other reusable components.",
-    status: "Planned",
+    status: "Next",
   },
   {
     title: "Theme Studio",
@@ -64,7 +65,7 @@ export function DesignLabPage() {
         <div className="mx-auto flex max-w-7xl flex-col gap-6 px-6 py-12 lg:px-8">
           <div className="flex flex-wrap items-center gap-3">
             <Badge variant="secondary">Internal development tool</Badge>
-            <Badge variant="outline">Design Lab v0.1</Badge>
+            <Badge variant="outline">Design Lab v0.2</Badge>
           </div>
 
           <div className="max-w-3xl space-y-4">
@@ -78,15 +79,9 @@ export function DesignLabPage() {
             </p>
           </div>
 
-          <div className="flex flex-wrap gap-3">
-            <Button asChild>
-              <Link to="/">Return to application</Link>
-            </Button>
-
-            <Button variant="outline" disabled>
-              Dashboard Gallery — coming next
-            </Button>
-          </div>
+          <Button asChild className="w-fit">
+            <Link to="/">Return to application</Link>
+          </Button>
         </div>
       </section>
 
@@ -97,8 +92,7 @@ export function DesignLabPage() {
           </h2>
 
           <p className="mt-2 text-muted-foreground">
-            Each workspace will contain live React components, not static
-            images.
+            Each workspace contains live React components, not static images.
           </p>
         </div>
 
@@ -117,6 +111,7 @@ export function DesignLabPage() {
                 </div>
 
                 <CardTitle>{section.title}</CardTitle>
+
                 <CardDescription className="leading-6">
                   {section.description}
                 </CardDescription>
@@ -124,8 +119,8 @@ export function DesignLabPage() {
 
               <CardContent className="flex-1">
                 <div className="rounded-lg border border-dashed bg-muted/40 p-4 text-sm text-muted-foreground">
-                  This section will be developed and reviewed independently
-                  before being approved for the production application.
+                  Review this workspace independently before approving its
+                  components for the production application.
                 </div>
               </CardContent>
 

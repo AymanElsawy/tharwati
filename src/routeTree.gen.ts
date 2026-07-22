@@ -11,6 +11,8 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as DesignLabRouteImport } from './routes/design-lab'
+import { Route as DesignLabIndexRouteImport } from './routes/design-lab.index'
+import { Route as DesignLabDashboardsRouteImport } from './routes/design-lab.dashboards'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -22,31 +24,47 @@ const DesignLabRoute = DesignLabRouteImport.update({
   path: '/design-lab',
   getParentRoute: () => rootRouteImport,
 } as any)
+const DesignLabIndexRoute = DesignLabIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => DesignLabRoute,
+} as any)
+const DesignLabDashboardsRoute = DesignLabDashboardsRouteImport.update({
+  id: '/dashboards',
+  path: '/dashboards',
+  getParentRoute: () => DesignLabRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
-  '/design-lab': typeof DesignLabRoute
+  '/design-lab': typeof DesignLabRouteWithChildren
+  '/design-lab/dashboards': typeof DesignLabDashboardsRoute
+  '/design-lab/': typeof DesignLabIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '/design-lab': typeof DesignLabRoute
+  '/design-lab/dashboards': typeof DesignLabDashboardsRoute
+  '/design-lab': typeof DesignLabIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
-  '/design-lab': typeof DesignLabRoute
+  '/design-lab': typeof DesignLabRouteWithChildren
+  '/design-lab/dashboards': typeof DesignLabDashboardsRoute
+  '/design-lab/': typeof DesignLabIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/design-lab'
+  fullPaths: '/' | '/design-lab' | '/design-lab/dashboards' | '/design-lab/'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/design-lab'
-  id: '__root__' | '/' | '/design-lab'
+  to: '/' | '/design-lab/dashboards' | '/design-lab'
+  id:
+    '__root__' | '/' | '/design-lab' | '/design-lab/dashboards' | '/design-lab/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
-  DesignLabRoute: typeof DesignLabRoute
+  DesignLabRoute: typeof DesignLabRouteWithChildren
 }
 
 declare module '@tanstack/react-router' {
@@ -65,12 +83,40 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DesignLabRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/design-lab/': {
+      id: '/design-lab/'
+      path: '/'
+      fullPath: '/design-lab/'
+      preLoaderRoute: typeof DesignLabIndexRouteImport
+      parentRoute: typeof DesignLabRoute
+    }
+    '/design-lab/dashboards': {
+      id: '/design-lab/dashboards'
+      path: '/dashboards'
+      fullPath: '/design-lab/dashboards'
+      preLoaderRoute: typeof DesignLabDashboardsRouteImport
+      parentRoute: typeof DesignLabRoute
+    }
   }
 }
 
+interface DesignLabRouteChildren {
+  DesignLabDashboardsRoute: typeof DesignLabDashboardsRoute
+  DesignLabIndexRoute: typeof DesignLabIndexRoute
+}
+
+const DesignLabRouteChildren: DesignLabRouteChildren = {
+  DesignLabDashboardsRoute: DesignLabDashboardsRoute,
+  DesignLabIndexRoute: DesignLabIndexRoute,
+}
+
+const DesignLabRouteWithChildren = DesignLabRoute._addFileChildren(
+  DesignLabRouteChildren,
+)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
-  DesignLabRoute: DesignLabRoute,
+  DesignLabRoute: DesignLabRouteWithChildren,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
