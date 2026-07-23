@@ -101,48 +101,76 @@ function ExecutiveDashboard() {
         description="Clean, spacious, and focused on the most important wealth information."
       />
 
-      <Card className="overflow-hidden">
-        <CardContent className="grid gap-8 p-8 lg:grid-cols-[1.4fr_1fr] lg:p-10">
-          <div className="space-y-6">
-            <div>
-              <p className="text-sm font-medium text-muted-foreground">
-                Total net worth
-              </p>
+<Card className="overflow-hidden">
+  <CardContent className="p-0">
+    <div className="grid lg:grid-cols-[1.45fr_0.75fr]">
+      <div className="p-8 lg:p-10">
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div>
+            <p className="text-sm font-medium text-muted-foreground">
+              Total net worth
+            </p>
 
-              <p className="mt-3 text-5xl font-bold tracking-tight">
-                {currencyFormatter.format(186240)}
-              </p>
-
-              <div className="mt-4 flex flex-wrap items-center gap-3">
-                <Badge>+8.4% this year</Badge>
-
-                <span className="text-sm text-muted-foreground">
-                  Updated a few moments ago
-                </span>
-              </div>
-            </div>
-
-            <div className="grid gap-4 sm:grid-cols-3">
-              <Metric
-                label="Assets"
-                value={currencyFormatter.format(192840)}
-              />
-
-              <Metric
-                label="Liabilities"
-                value={currencyFormatter.format(6600)}
-              />
-
-              <Metric
-                label="Monthly growth"
-                value={currencyFormatter.format(3240)}
-              />
-            </div>
+            <p className="mt-3 text-5xl font-bold tracking-tight sm:text-6xl">
+              {currencyFormatter.format(186240)}
+            </p>
           </div>
 
-          <TodayChangeCard />
-        </CardContent>
-      </Card>
+          <Badge variant="secondary">USD</Badge>
+        </div>
+
+        <div className="mt-6 flex flex-wrap items-center gap-x-3 gap-y-2">
+          <span className="text-lg font-semibold text-emerald-600 dark:text-emerald-400">
+            +{currencyFormatter.format(14520)}
+          </span>
+
+          <Badge>+8.4%</Badge>
+
+          <span className="text-sm text-muted-foreground">
+            since the beginning of the year
+          </span>
+        </div>
+
+        <div className="my-8 border-t" />
+
+        <div className="grid gap-6 sm:grid-cols-3">
+          <div>
+            <p className="text-sm text-muted-foreground">Total assets</p>
+            <p className="mt-2 text-xl font-semibold">
+              {currencyFormatter.format(192840)}
+            </p>
+          </div>
+
+          <div>
+            <p className="text-sm text-muted-foreground">
+              Total liabilities
+            </p>
+            <p className="mt-2 text-xl font-semibold">
+              {currencyFormatter.format(6600)}
+            </p>
+          </div>
+
+          <div>
+            <p className="text-sm text-muted-foreground">
+              Monthly growth
+            </p>
+            <p className="mt-2 text-xl font-semibold text-emerald-600 dark:text-emerald-400">
+              +{currencyFormatter.format(3240)}
+            </p>
+          </div>
+        </div>
+
+        <p className="mt-8 text-xs text-muted-foreground">
+          Last updated a few moments ago
+        </p>
+      </div>
+
+      <div className="border-t bg-muted/30 p-6 lg:border-l lg:border-t-0 lg:p-8">
+        <TodayChangeCard />
+      </div>
+    </div>
+  </CardContent>
+</Card>
 
       <div className="grid gap-6 xl:grid-cols-[1.25fr_0.75fr]">
         <PortfolioAllocationCard />

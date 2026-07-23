@@ -13,6 +13,9 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as DesignLabRouteImport } from './routes/design-lab'
 import { Route as DesignLabIndexRouteImport } from './routes/design-lab.index'
 import { Route as DesignLabDashboardsRouteImport } from './routes/design-lab.dashboards'
+import { Route as DesignLabOnboardingRouteImport } from './routes/design-lab.onboarding'
+import { Route as DesignLabOnboardingIndexRouteImport } from './routes/design-lab.onboarding.index'
+import { Route as DesignLabOnboardingGoalRouteImport } from './routes/design-lab.onboarding.goal'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -34,32 +37,75 @@ const DesignLabDashboardsRoute = DesignLabDashboardsRouteImport.update({
   path: '/dashboards',
   getParentRoute: () => DesignLabRoute,
 } as any)
+const DesignLabOnboardingRoute = DesignLabOnboardingRouteImport.update({
+  id: '/onboarding',
+  path: '/onboarding',
+  getParentRoute: () => DesignLabRoute,
+} as any)
+const DesignLabOnboardingIndexRoute =
+  DesignLabOnboardingIndexRouteImport.update({
+    id: '/',
+    path: '/',
+    getParentRoute: () => DesignLabOnboardingRoute,
+  } as any)
+const DesignLabOnboardingGoalRoute = DesignLabOnboardingGoalRouteImport.update({
+  id: '/goal',
+  path: '/goal',
+  getParentRoute: () => DesignLabOnboardingRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/design-lab': typeof DesignLabRouteWithChildren
   '/design-lab/dashboards': typeof DesignLabDashboardsRoute
+  '/design-lab/onboarding': typeof DesignLabOnboardingRouteWithChildren
   '/design-lab/': typeof DesignLabIndexRoute
+  '/design-lab/onboarding/goal': typeof DesignLabOnboardingGoalRoute
+  '/design-lab/onboarding/': typeof DesignLabOnboardingIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/design-lab/dashboards': typeof DesignLabDashboardsRoute
   '/design-lab': typeof DesignLabIndexRoute
+  '/design-lab/onboarding/goal': typeof DesignLabOnboardingGoalRoute
+  '/design-lab/onboarding': typeof DesignLabOnboardingIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/design-lab': typeof DesignLabRouteWithChildren
   '/design-lab/dashboards': typeof DesignLabDashboardsRoute
+  '/design-lab/onboarding': typeof DesignLabOnboardingRouteWithChildren
   '/design-lab/': typeof DesignLabIndexRoute
+  '/design-lab/onboarding/goal': typeof DesignLabOnboardingGoalRoute
+  '/design-lab/onboarding/': typeof DesignLabOnboardingIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/design-lab' | '/design-lab/dashboards' | '/design-lab/'
+  fullPaths:
+    | '/'
+    | '/design-lab'
+    | '/design-lab/dashboards'
+    | '/design-lab/onboarding'
+    | '/design-lab/'
+    | '/design-lab/onboarding/goal'
+    | '/design-lab/onboarding/'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/design-lab/dashboards' | '/design-lab'
+  to:
+    | '/'
+    | '/design-lab/dashboards'
+    | '/design-lab'
+    | '/design-lab/onboarding/goal'
+    | '/design-lab/onboarding'
   id:
-    '__root__' | '/' | '/design-lab' | '/design-lab/dashboards' | '/design-lab/'
+    | '__root__'
+    | '/'
+    | '/design-lab'
+    | '/design-lab/dashboards'
+    | '/design-lab/onboarding'
+    | '/design-lab/'
+    | '/design-lab/onboarding/goal'
+    | '/design-lab/onboarding/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -97,16 +143,52 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DesignLabDashboardsRouteImport
       parentRoute: typeof DesignLabRoute
     }
+    '/design-lab/onboarding': {
+      id: '/design-lab/onboarding'
+      path: '/onboarding'
+      fullPath: '/design-lab/onboarding'
+      preLoaderRoute: typeof DesignLabOnboardingRouteImport
+      parentRoute: typeof DesignLabRoute
+    }
+    '/design-lab/onboarding/': {
+      id: '/design-lab/onboarding/'
+      path: '/'
+      fullPath: '/design-lab/onboarding/'
+      preLoaderRoute: typeof DesignLabOnboardingIndexRouteImport
+      parentRoute: typeof DesignLabOnboardingRoute
+    }
+    '/design-lab/onboarding/goal': {
+      id: '/design-lab/onboarding/goal'
+      path: '/goal'
+      fullPath: '/design-lab/onboarding/goal'
+      preLoaderRoute: typeof DesignLabOnboardingGoalRouteImport
+      parentRoute: typeof DesignLabOnboardingRoute
+    }
   }
 }
 
+interface DesignLabOnboardingRouteChildren {
+  DesignLabOnboardingGoalRoute: typeof DesignLabOnboardingGoalRoute
+  DesignLabOnboardingIndexRoute: typeof DesignLabOnboardingIndexRoute
+}
+
+const DesignLabOnboardingRouteChildren: DesignLabOnboardingRouteChildren = {
+  DesignLabOnboardingGoalRoute: DesignLabOnboardingGoalRoute,
+  DesignLabOnboardingIndexRoute: DesignLabOnboardingIndexRoute,
+}
+
+const DesignLabOnboardingRouteWithChildren =
+  DesignLabOnboardingRoute._addFileChildren(DesignLabOnboardingRouteChildren)
+
 interface DesignLabRouteChildren {
   DesignLabDashboardsRoute: typeof DesignLabDashboardsRoute
+  DesignLabOnboardingRoute: typeof DesignLabOnboardingRouteWithChildren
   DesignLabIndexRoute: typeof DesignLabIndexRoute
 }
 
 const DesignLabRouteChildren: DesignLabRouteChildren = {
   DesignLabDashboardsRoute: DesignLabDashboardsRoute,
+  DesignLabOnboardingRoute: DesignLabOnboardingRouteWithChildren,
   DesignLabIndexRoute: DesignLabIndexRoute,
 }
 

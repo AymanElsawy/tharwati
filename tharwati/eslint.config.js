@@ -6,17 +6,7 @@ import tseslint from 'typescript-eslint'
 import { defineConfig, globalIgnores } from 'eslint/config'
 
 export default defineConfig([
-  globalIgnores([
-    'dist',
-    'tharwati',
-    'src/components/layout',
-    'src/components/theme-provider.tsx',
-    'src/components/ui',
-    'src/features/design-lab',
-    'src/lib/utils.ts',
-    'src/routes',
-    'src/routeTree.gen.ts',
-  ]),
+  globalIgnores(['dist']),
   {
     files: ['**/*.{ts,tsx}'],
     extends: [
