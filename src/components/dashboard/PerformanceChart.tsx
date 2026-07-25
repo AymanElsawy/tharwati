@@ -8,6 +8,7 @@ import {
   XAxis,
   YAxis,
 } from "recharts"
+import { calculateSeriesPerformance } from "./performance-series"
 
 type Period = "1M" | "3M" | "6M" | "1Y" | "2Y" | "3Y" | "ALL"
 
@@ -143,19 +144,7 @@ export default function PerformanceChart() {
   const data = performanceData[selectedPeriod]
 
   const performance = useMemo(() => {
-    const firstValue = data[0]?.value ?? 0
-    const lastValue = data[data.length - 1]?.value ?? 0
-    const difference = lastValue - firstValue
-
-    const percentage =
-      firstValue > 0 ? (difference / firstValue) * 100 : 0
-
-    return {
-      currentValue: lastValue,
-      difference,
-      percentage,
-      isPositive: difference >= 0,
-    }
+    return calculateSeriesPerformance(data.map((point) => point.value))
   }, [data])
 
   return (

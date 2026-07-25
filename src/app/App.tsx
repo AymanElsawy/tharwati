@@ -1,8 +1,9 @@
-import { useEffect, useState } from "react"
+import { useCallback, useEffect, useState } from "react"
 import type { Session } from "@supabase/supabase-js"
 import {
   BrowserRouter,
   Navigate,
+  Outlet,
   Route,
   Routes,
 } from "react-router-dom"
@@ -10,48 +11,118 @@ import {
 import { supabase } from "../lib/supabase"
 import { LoginPage } from "../features/auth/LoginPage"
 import { SignUpPage } from "../features/auth/SignUpPage"
+import { AccountsPage } from "../features/accounts/pages/AccountsPage"
+import { AssetsPage } from "../features/assets/pages/AssetsPage"
+import { HoldingsPage } from "../features/holdings/pages/HoldingsPage"
+import { CashAccountsPage } from "../features/cash-accounts/pages/CashAccountsPage"
+import { ExchangeRatesPage } from "../features/exchange-rates/pages/ExchangeRatesPage"
+import CountryPage from "../features/onboarding/pages/CountryPage"
+import CurrencyPage from "../features/onboarding/pages/CurrencyPage"
+import OnboardingGoalsPage from "../features/onboarding/pages/GoalsPage"
+import ReadyPage from "../features/onboarding/pages/ReadyPage"
+import WelcomePage from "../features/onboarding/pages/WelcomePage"
+import { OnboardingProvider } from "../features/onboarding/context/OnboardingProvider"
+import { getOnboardingCompletion } from "../features/onboarding/repositories/onboarding.repository"
+import { CurrentUserProvider } from "../features/profile/context/CurrentUserProvider"
 import { ProtectedRoute } from "../components/ProtectedRoute"
 import { DashboardLayout } from "../layouts/DashboardLayout"
 import { DashboardPage } from "../pages/DashboardPage"
 import { PortfolioPage } from "../pages/PortfolioPage"
 import { GoalsPage } from "../pages/GoalsPage"
 import { NotFoundPage } from "../pages/NotFoundPage"
+import { useTranslation } from "../i18n/useTranslation"
 
 export default function App() {
+  const { t } = useTranslation()
   const [session, setSession] = useState<Session | null>(null)
+  const [onboardingCompleted, setOnboardingCompleted] = useState<boolean | null>(null)
   const [isLoading, setIsLoading] = useState(true)
+  const [startupError, setStartupError] = useState<string | null>(null)
+
+  const resolveSession = useCallback(async (currentSession: Session | null) => {
+    setSession(currentSession)
+    setStartupError(null)
+
+    if (!currentSession) {
+      setOnboardingCompleted(null)
+      setIsLoading(false)
+      return
+    }
+
+    try {
+      setOnboardingCompleted(await getOnboardingCompletion())
+    } catch (error) {
+      setStartupError(
+        error instanceof Error
+          ? error.message
+          : "We couldn't load your account. Please try again.",
+      )
+    } finally {
+      setIsLoading(false)
+    }
+  }, [])
 
   useEffect(() => {
     async function loadSession() {
-      const {
-        data: { session },
-      } = await supabase.auth.getSession()
+      const { data, error } = await supabase.auth.getSession()
 
-      setSession(session)
-      setIsLoading(false)
+      if (error) {
+        setStartupError(error.message)
+        setIsLoading(false)
+        return
+      }
+
+      await resolveSession(data.session)
     }
 
-    loadSession()
+    void loadSession()
 
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, currentSession) => {
-      setSession(currentSession)
-      setIsLoading(false)
+      setIsLoading(true)
+      void resolveSession(currentSession)
     })
 
     return () => {
       subscription.unsubscribe()
     }
-  }, [])
+  }, [resolveSession])
 
   if (isLoading) {
     return (
       <main className="min-h-screen flex items-center justify-center">
-        <p>Loading...</p>
+        <p>{t("common.loading")}</p>
       </main>
     )
   }
+
+  if (startupError) {
+    return (
+      <main className="flex min-h-screen items-center justify-center bg-[var(--color-background)] px-4">
+        <div className="tharwati-card max-w-md p-8 text-center">
+          <h1 className="text-xl font-semibold text-[var(--color-text)]">
+            We couldn&apos;t load your account
+          </h1>
+          <p className="mt-3 text-sm text-[var(--color-text-secondary)]">
+            {startupError}
+          </p>
+          <button
+            type="button"
+            className="tharwati-button-primary mt-6"
+            onClick={() => {
+              setIsLoading(true)
+              void resolveSession(session)
+            }}
+          >
+            Try again
+          </button>
+        </div>
+      </main>
+    )
+  }
+
+  const authenticatedDestination = onboardingCompleted ? "/dashboard" : "/onboarding"
 
   return (
     <BrowserRouter>
@@ -60,7 +131,7 @@ export default function App() {
           path="/login"
           element={
             session ? (
-              <Navigate to="/dashboard" replace />
+              <Navigate to={authenticatedDestination} replace />
             ) : (
               <LoginPage />
             )
@@ -71,7 +142,7 @@ export default function App() {
           path="/signup"
           element={
             session ? (
-              <Navigate to="/dashboard" replace />
+              <Navigate to={authenticatedDestination} replace />
             ) : (
               <SignUpPage />
             )
@@ -79,13 +150,49 @@ export default function App() {
         />
 
         <Route
+          path="/onboarding"
+          element={
+            session ? (
+              onboardingCompleted ? (
+                <Navigate to="/dashboard" replace />
+              ) : (
+                <OnboardingProvider
+                  onCompleted={() => setOnboardingCompleted(true)}
+                >
+                  <Outlet />
+                </OnboardingProvider>
+              )
+            ) : (
+              <Navigate to="/login" replace />
+            )
+          }
+        >
+          <Route index element={<WelcomePage />} />
+          <Route path="country" element={<CountryPage />} />
+          <Route path="currency" element={<CurrencyPage />} />
+          <Route path="goals" element={<OnboardingGoalsPage />} />
+          <Route path="ready" element={<ReadyPage />} />
+        </Route>
+
+        <Route
           element={
             <ProtectedRoute session={session}>
-              <DashboardLayout />
+              {onboardingCompleted ? (
+                <CurrentUserProvider user={session!.user}>
+                  <DashboardLayout />
+                </CurrentUserProvider>
+              ) : (
+                <Navigate to="/onboarding" replace />
+              )}
             </ProtectedRoute>
           }
         >
           <Route path="/dashboard" element={<DashboardPage />} />
+          <Route path="/accounts" element={<AccountsPage />} />
+          <Route path="/cash" element={<CashAccountsPage />} />
+          <Route path="/exchange-rates" element={<ExchangeRatesPage />} />
+          <Route path="/assets" element={<AssetsPage />} />
+          <Route path="/holdings" element={<HoldingsPage />} />
           <Route path="/portfolio" element={<PortfolioPage />} />
           <Route path="/goals" element={<GoalsPage />} />
         </Route>
@@ -94,7 +201,7 @@ export default function App() {
           path="/"
           element={
             <Navigate
-              to={session ? "/dashboard" : "/login"}
+              to={session ? authenticatedDestination : "/login"}
               replace
             />
           }

@@ -1,9 +1,12 @@
+import { useTranslation } from "../i18n/useTranslation"
+
 export function PortfolioPage() {
+  const { t } = useTranslation()
   return (
     <section>
-      <h2 className="text-3xl font-bold">Portfolio</h2>
+      <h2 className="text-3xl font-bold">{t("pages.portfolio.title")}</h2>
       <p className="mt-2 text-gray-600">
-        Your investments will appear here.
+        {t("pages.portfolio.description")}
       </p>
     </section>
   )

@@ -6,40 +6,76 @@ import {
   PieChart,
   Sun,
   Target,
+  Shapes,
+  Layers3,
+  Banknote,
+  ArrowLeftRight,
+  WalletCards,
   type LucideIcon,
 } from "lucide-react"
 import { NavLink, Outlet, useNavigate } from "react-router-dom"
+import { useEffect, useState } from "react"
+import type { TranslationKey } from "../i18n/en/translations"
+import { LanguageSwitcher } from "../i18n/LanguageSwitcher"
+import { useTranslation } from "../i18n/useTranslation"
 import { signOut } from "../features/auth/auth.service"
+import { AddInvestmentDialog } from "../features/investments/components/AddInvestmentDialog"
+import { AuthenticatedUserHeader } from "../features/profile/components/AuthenticatedUserHeader"
 import {
   useTheme,
   type ThemeMode,
 } from "../contexts/ThemeContext"
 
 type NavigationItem = {
-  label: string
+  labelKey: TranslationKey
   path: string
   icon: LucideIcon
 }
 
 type ThemeOption = {
   value: ThemeMode
-  label: string
+  labelKey: TranslationKey
   icon: LucideIcon
 }
 
 const navigationItems: NavigationItem[] = [
   {
-    label: "Dashboard",
+    labelKey: "navigation.dashboard",
     path: "/dashboard",
     icon: LayoutDashboard,
   },
   {
-    label: "Portfolio",
+    labelKey: "navigation.portfolio",
     path: "/portfolio",
     icon: PieChart,
   },
   {
-    label: "Goals",
+    labelKey: "navigation.accounts",
+    path: "/accounts",
+    icon: WalletCards,
+  },
+  {
+    labelKey: "navigation.cash",
+    path: "/cash",
+    icon: Banknote,
+  },
+  {
+    labelKey: "navigation.exchangeRates",
+    path: "/exchange-rates",
+    icon: ArrowLeftRight,
+  },
+  {
+    labelKey: "navigation.assets",
+    path: "/assets",
+    icon: Shapes,
+  },
+  {
+    labelKey: "navigation.holdings",
+    path: "/holdings",
+    icon: Layers3,
+  },
+  {
+    labelKey: "navigation.goals",
     path: "/goals",
     icon: Target,
   },
@@ -48,17 +84,17 @@ const navigationItems: NavigationItem[] = [
 const themeOptions: ThemeOption[] = [
   {
     value: "light",
-    label: "Light",
+    labelKey: "theme.light",
     icon: Sun,
   },
   {
     value: "dark",
-    label: "Dark",
+    labelKey: "theme.dark",
     icon: Moon,
   },
   {
     value: "colorful",
-    label: "Colorful",
+    labelKey: "theme.colorful",
     icon: Palette,
   },
 ]
@@ -66,6 +102,17 @@ const themeOptions: ThemeOption[] = [
 export function DashboardLayout() {
   const navigate = useNavigate()
   const { theme, setTheme } = useTheme()
+  const { t } = useTranslation()
+  const [isAddInvestmentOpen, setIsAddInvestmentOpen] = useState(false)
+  const [investmentToast, setInvestmentToast] = useState<string | null>(
+    null,
+  )
+
+  useEffect(() => {
+    const open = () => setIsAddInvestmentOpen(true)
+    window.addEventListener("tharwati:add-investment", open)
+    return () => window.removeEventListener("tharwati:add-investment", open)
+  }, [])
 
   async function handleLogout() {
     try {
@@ -78,14 +125,14 @@ export function DashboardLayout() {
 
   return (
     <div className="theme-transition min-h-screen bg-[var(--color-background)]">
-      <aside className="fixed inset-y-0 left-0 z-20 flex w-64 flex-col border-r border-[var(--color-border)] bg-[var(--color-sidebar)] px-5 py-8 shadow-[4px_0_24px_rgba(15,50,35,0.04)]">
+      <aside className="fixed inset-y-0 start-0 z-20 flex w-64 flex-col border-e border-[var(--color-border)] bg-[var(--color-sidebar)] px-5 py-8 shadow-[4px_0_24px_rgba(15,50,35,0.04)]">
         <div>
           <h1 className="text-3xl font-black tracking-tight text-[var(--color-primary)]">
             Tharwati
           </h1>
 
           <p className="mt-2 text-sm font-medium text-[var(--color-text-secondary)]">
-            Build. Grow. Preserve.
+            {t("header.tagline")}
           </p>
         </div>
 
@@ -114,7 +161,7 @@ export function DashboardLayout() {
                       className="shrink-0"
                     />
 
-                    <span>{item.label}</span>
+                    <span>{t(item.labelKey)}</span>
                   </>
                 )}
               </NavLink>
@@ -129,36 +176,39 @@ export function DashboardLayout() {
             className="tharwati-button-secondary flex w-full items-center justify-center gap-2"
           >
             <LogOut size={18} strokeWidth={2} />
-            <span>Logout</span>
+            <span>{t("navigation.logout")}</span>
           </button>
         </div>
       </aside>
 
-      <div className="ml-64 min-h-screen">
+      <div className="ms-64 min-h-screen">
         <header className="sticky top-0 z-10 flex min-h-20 items-center justify-between border-b border-[var(--color-border)] bg-[var(--color-header)] px-10 py-3 backdrop-blur-xl">
-          <div>
-            <h2 className="text-2xl font-bold text-[var(--color-text-primary)]">
-              Dashboard
-            </h2>
+          <AuthenticatedUserHeader />
 
-            <p className="text-sm font-medium text-[var(--color-text-secondary)]">
-              Welcome back to Tharwati
-            </p>
-          </div>
-
-          <div className="flex items-center rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-1.5 shadow-sm">
-            {themeOptions.map((option) => {
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setIsAddInvestmentOpen(true)}
+              className="tharwati-button-primary hidden items-center gap-2 lg:flex"
+            >
+              <Shapes size={17} />
+              {t("investment.primaryAction")}
+            </button>
+            <LanguageSwitcher />
+            <div className="flex items-center rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-1.5 shadow-sm">
+              {themeOptions.map((option) => {
               const Icon = option.icon
               const isSelected = theme === option.value
+              const label = t(option.labelKey)
 
               return (
                 <button
                   key={option.value}
                   type="button"
                   onClick={() => setTheme(option.value)}
-                  aria-label={`Use ${option.label} theme`}
+                  aria-label={t("theme.use", { theme: label })}
                   aria-pressed={isSelected}
-                  title={option.label}
+                  title={label}
                   className={[
                     "flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-semibold transition",
                     isSelected
@@ -167,10 +217,11 @@ export function DashboardLayout() {
                   ].join(" ")}
                 >
                   <Icon size={17} />
-                  <span className="hidden xl:inline">{option.label}</span>
+                  <span className="hidden xl:inline">{label}</span>
                 </button>
               )
-            })}
+              })}
+            </div>
           </div>
         </header>
 
@@ -184,6 +235,35 @@ export function DashboardLayout() {
           <Outlet />
         </main>
       </div>
+      <button
+        type="button"
+        onClick={() => setIsAddInvestmentOpen(true)}
+        className="tharwati-button-primary fixed bottom-6 end-6 z-30 flex items-center gap-2 lg:hidden"
+      >
+        <Shapes size={18} />
+        {t("investment.primaryAction")}
+      </button>
+      <AddInvestmentDialog
+        isOpen={isAddInvestmentOpen}
+        onClose={() => setIsAddInvestmentOpen(false)}
+        onSuccess={(result) => {
+          setInvestmentToast(
+            t("investment.success", {
+              asset: result.asset.name,
+              account: result.account.name,
+            }),
+          )
+          window.setTimeout(() => setInvestmentToast(null), 4000)
+        }}
+      />
+      {investmentToast ? (
+        <div
+          role="status"
+          className="fixed bottom-6 end-6 z-[60] rounded-2xl border border-emerald-200 bg-white px-4 py-3 text-sm font-semibold text-emerald-800 shadow-xl"
+        >
+          {investmentToast}
+        </div>
+      ) : null}
     </div>
   )
 }

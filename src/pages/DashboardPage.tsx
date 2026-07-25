@@ -1,15 +1,9 @@
 import { SummaryCard } from "../components/dashboard/SummaryCard"
 import PerformanceChart from "../components/dashboard/PerformanceChart"
+import { useTranslation } from "../i18n/useTranslation"
+import { NetWorthCard } from "../features/net-worth/components/NetWorthCard"
 
 const summaryCards = [
-  {
-    title: "Net Worth",
-    value: "$128,540",
-    change: "+4.8%",
-    description: "Total value of all your assets",
-    changeType: "positive" as const,
-    variant: "net-worth" as const,
-  },
   {
     title: "Investments",
     value: "$82,350",
@@ -81,23 +75,25 @@ const recentActivities = [
 ]
 
 export function DashboardPage() {
+  const { t } = useTranslation()
   return (
     <section className="space-y-8">
       <div>
         <p className="text-sm font-semibold uppercase tracking-[0.16em] text-[var(--color-primary)]">
-          Financial overview
+          {t("pages.dashboard.eyebrow")}
         </p>
 
         <h1 className="tharwati-page-title mt-2">
-          Your wealth at a glance
+          {t("pages.dashboard.title")}
         </h1>
 
         <p className="tharwati-page-description">
-          Track your net worth, portfolio allocation and financial progress.
+          {t("pages.dashboard.description")}
         </p>
       </div>
 
       <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-4">
+        <NetWorthCard />
         {summaryCards.map((card) => (
           <SummaryCard
             key={card.title}
@@ -205,7 +201,7 @@ export function DashboardPage() {
                   </div>
                 </div>
 
-                <div className="pl-[60px] text-left sm:pl-0 sm:text-right">
+                <div className="ps-[60px] text-start sm:ps-0 sm:text-end">
                   <p
                     className={[
                       "font-bold",
