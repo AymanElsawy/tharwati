@@ -35,6 +35,50 @@ export type UpdateAccountInput = {
 export type AccountDeletionEligibility = {
   accountId: string
   canDelete: boolean
+  hasFinancialHistory: boolean
+}
+
+const immutableCurrencyMessage =
+  "This account already contains financial history. Its currency cannot be changed."
+const immutableOpeningBalanceMessage =
+  "This account already contains financial history. Its opening balance cannot be changed."
+
+type DatabaseError = {
+  code?: string
+  message: string
+}
+
+function throwAccountUpdateError(
+  error: DatabaseError | null,
+  operation: string,
+): void {
+  if (!error) {
+    return
+  }
+
+  if (
+    error.code === "23514" &&
+    error.message.includes(immutableCurrencyMessage)
+  ) {
+    throw new RepositoryError({
+      code: "constraint_violation",
+      message: immutableCurrencyMessage,
+      operation,
+      cause: error,
+    })
+  }
+
+  if (
+    error.code === "23514" &&
+    error.message.includes(immutableOpeningBalanceMessage)
+  ) {
+    throw new RepositoryError({
+      code: "constraint_violation",
+      message: immutableOpeningBalanceMessage,
+      operation,
+      cause: error,
+    })
+  }
 }
 
 export class AccountsRepository {
@@ -127,6 +171,7 @@ export class AccountsRepository {
       .select("*")
       .single()
 
+    throwAccountUpdateError(error, operation)
     return requireQueryData(data, error, operation)
   }
 
@@ -170,10 +215,14 @@ export class AccountsRepository {
       ...holdings.map((holding) => holding.account_id),
       ...entries.map((entry) => entry.account_id),
     ])
+    const accountIdsWithHistory = new Set(
+      entries.map((entry) => entry.account_id),
+    )
 
     return accountIds.map((accountId) => ({
       accountId,
       canDelete: !referencedAccountIds.has(accountId),
+      hasFinancialHistory: accountIdsWithHistory.has(accountId),
     }))
   }
 

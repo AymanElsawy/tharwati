@@ -3,10 +3,10 @@ import { useCallback, useEffect, useRef, useState } from "react"
 import { findCurrency, type CurrencyOption } from "@/features/onboarding/data/currencies"
 import {
   cashAccountsRepository,
+  type CashAccountSummary,
   type SaveCashAccountInput,
 } from "@/features/cash-accounts/repositories/cash-accounts.repository"
 import type { CashAccountFormValues } from "@/features/cash-accounts/types/cash-account-form"
-import type { AccountSummary } from "@/lib/supabase/types"
 import { RepositoryError } from "@/lib/supabase/types"
 
 function normalizeError(error: unknown, operation: string) {
@@ -31,7 +31,7 @@ function toInput(values: CashAccountFormValues): SaveCashAccountInput {
 }
 
 export function useCashAccounts() {
-  const [accounts, setAccounts] = useState<AccountSummary[]>([])
+  const [accounts, setAccounts] = useState<CashAccountSummary[]>([])
   const [baseCurrencyCode, setBaseCurrencyCode] = useState("")
   const [currencyOptions, setCurrencyOptions] = useState<CurrencyOption[]>([])
   const [error, setError] = useState<RepositoryError | null>(null)

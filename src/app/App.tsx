@@ -14,6 +14,7 @@ import { SignUpPage } from "../features/auth/SignUpPage"
 import { AccountsPage } from "../features/accounts/pages/AccountsPage"
 import { AssetsPage } from "../features/assets/pages/AssetsPage"
 import { HoldingsPage } from "../features/holdings/pages/HoldingsPage"
+import { MarketPricesPage } from "../features/market-prices/pages/MarketPricesPage"
 import { CashAccountsPage } from "../features/cash-accounts/pages/CashAccountsPage"
 import { ExchangeRatesPage } from "../features/exchange-rates/pages/ExchangeRatesPage"
 import CountryPage from "../features/onboarding/pages/CountryPage"
@@ -191,6 +192,7 @@ export default function App() {
           <Route path="/accounts" element={<AccountsPage />} />
           <Route path="/cash" element={<CashAccountsPage />} />
           <Route path="/exchange-rates" element={<ExchangeRatesPage />} />
+          <Route path="/market-prices" element={<MarketPricesPage />} />
           <Route path="/assets" element={<AssetsPage />} />
           <Route path="/holdings" element={<HoldingsPage />} />
           <Route path="/portfolio" element={<PortfolioPage />} />

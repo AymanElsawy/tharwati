@@ -13,6 +13,11 @@ export const ar: Record<TranslationKey, string> = {
   "navigation.accounts": "الحسابات",
   "navigation.cash": "النقد",
   "navigation.exchangeRates": "أسعار الصرف",
+  "navigation.marketPrices": "أسعار السوق",
+  "marketPrices.validation.futureDate":
+    "لا يمكن أن يكون تاريخ سعر السوق في المستقبل.",
+  "marketPrices.validation.invalid":
+    "أدخل أصلًا وسعرًا موجبًا وعملة وتاريخ سريان صالحًا.",
   "navigation.assets": "الأصول",
   "navigation.holdings": "الحيازات",
   "navigation.goals": "الأهداف",
@@ -58,8 +63,12 @@ export const ar: Record<TranslationKey, string> = {
   "accounts.form.name": "الاسم",
   "accounts.form.accountType": "نوع الحساب",
   "accounts.form.currency": "العملة",
+  "accounts.form.currencyLocked":
+    "يحتوي هذا الحساب على سجل مالي، لذلك لا يمكن تغيير عملته.",
   "accounts.form.institution": "الجهة المالية",
   "accounts.form.openingBalance": "الرصيد الافتتاحي",
+  "accounts.form.openingBalanceLocked":
+    "يحتوي هذا الحساب على سجل مالي، لذلك لا يمكن تغيير رصيده الافتتاحي.",
   "accounts.form.notes": "ملاحظات",
   "accounts.form.active": "حساب نشط",
   "accounts.form.activeDescription":

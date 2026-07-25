@@ -1,6 +1,7 @@
 import type { TypedSupabaseClient } from "../../lib/supabase/client"
 import type { Decimal, TableRow } from "../../lib/supabase/types"
 import { MarketDataError } from "./errors"
+import { requireAuthenticatedUserId } from "../../lib/supabase/repository"
 import type {
   CurrentMarketPrice,
   MarketAssetReference,
@@ -14,6 +15,33 @@ const supportedTypes = new Set<string>([
   "commodity",
   "cryptocurrency",
 ])
+
+const futureMarketPriceMessage =
+  "Market price date cannot be in the future."
+
+function storageError(
+  error: { code?: string; message: string },
+  assetId?: string,
+): MarketDataError {
+  if (
+    error.code === "23514" &&
+    error.message.includes(futureMarketPriceMessage)
+  ) {
+    return new MarketDataError({
+      code: "future_market_price",
+      message: futureMarketPriceMessage,
+      assetId,
+      cause: error,
+    })
+  }
+
+  return new MarketDataError({
+    code: "storage_error",
+    message: error.message,
+    assetId,
+    cause: error,
+  })
+}
 
 export class MarketDataRepository {
   private readonly client: TypedSupabaseClient
@@ -86,21 +114,12 @@ export class MarketDataRepository {
     assetId: string,
   ): Promise<CurrentMarketPrice | null> {
     const { data, error } = await this.client
-      .from("market_prices")
-      .select("*")
-      .eq("asset_id", assetId)
-      .gt("price", "0")
-      .order("as_of", { ascending: false })
-      .order("id", { ascending: false })
-      .limit(1)
+      .rpc("get_current_market_price", {
+        p_asset_id: assetId,
+      })
       .maybeSingle()
     if (error) {
-      throw new MarketDataError({
-        code: "storage_error",
-        message: error.message,
-        assetId,
-        cause: error,
-      })
+      throw storageError(error, assetId)
     }
     return data ? normalizeStoredPrice(data) : null
   }
@@ -112,14 +131,32 @@ export class MarketDataRepository {
     if (prices.length === 0) return
     const { error } = await this.client.from("market_prices").upsert(
       prices.map((price) => ({
+        user_id: null,
         asset_id: price.assetId,
         provider,
         price: price.price,
         currency_code: price.currencyCode,
         as_of: price.asOf,
       })),
-      { onConflict: "asset_id,provider,as_of" },
+      { onConflict: "user_id,asset_id,provider,as_of" },
     )
+    if (error) {
+      throw storageError(error)
+    }
+  }
+
+  async listManualPrices(): Promise<TableRow<"market_prices">[]> {
+    const userId = await requireAuthenticatedUserId(
+      this.client,
+      "marketData.listManualPrices",
+    )
+    const { data, error } = await this.client
+      .from("market_prices")
+      .select("*")
+      .eq("user_id", userId)
+      .eq("provider", "manual")
+      .order("as_of", { ascending: false })
+      .order("id", { ascending: false })
     if (error) {
       throw new MarketDataError({
         code: "storage_error",
@@ -127,6 +164,71 @@ export class MarketDataRepository {
         cause: error,
       })
     }
+    return data ?? []
+  }
+
+  async createManualPrice(input: ProviderMarketPrice) {
+    const userId = await requireAuthenticatedUserId(
+      this.client,
+      "marketData.createManualPrice",
+    )
+    const { data, error } = await this.client
+      .from("market_prices")
+      .insert({
+        user_id: userId,
+        asset_id: input.assetId,
+        provider: "manual",
+        price: input.price,
+        currency_code: input.currencyCode,
+        as_of: input.asOf,
+      })
+      .select("*")
+      .single()
+    if (error || !data) {
+      if (error) {
+        throw storageError(error, input.assetId)
+      }
+      throw new MarketDataError({
+        code: "storage_error",
+        message: "Manual price was not returned",
+        assetId: input.assetId,
+      })
+    }
+    return data
+  }
+
+  async updateManualPrice(
+    id: string,
+    input: ProviderMarketPrice,
+  ) {
+    const userId = await requireAuthenticatedUserId(
+      this.client,
+      "marketData.updateManualPrice",
+    )
+    const { data, error } = await this.client
+      .from("market_prices")
+      .update({
+        asset_id: input.assetId,
+        price: input.price,
+        currency_code: input.currencyCode,
+        as_of: input.asOf,
+      })
+      .eq("id", id)
+      .eq("user_id", userId)
+      .eq("provider", "manual")
+      .select("*")
+      .single()
+    if (error || !data) {
+      if (error) {
+        throw storageError(error, input.assetId)
+      }
+      throw new MarketDataError({
+        code: "storage_error",
+        message: "Manual price was not returned",
+        assetId: input.assetId,
+      })
+    }
+    return data
   }
 }
 
@@ -142,4 +244,3 @@ function normalizeStoredPrice(
     cachedAt: price.created_at,
   }
 }
-

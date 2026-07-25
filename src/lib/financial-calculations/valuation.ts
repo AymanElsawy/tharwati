@@ -13,6 +13,8 @@ import type {
   HoldingMarketValue,
   HoldingPerformance,
   HoldingValuationInput,
+  GroupedMarketValueInput,
+  GroupedPortfolioAllocation,
   PortfolioAllocation,
   PortfolioMarketValue,
   PortfolioPerformance,
@@ -282,4 +284,76 @@ export function calculatePortfolioAllocation(
     totalMarketValue: portfolio.totalMarketValue,
     allocations,
   }
+}
+
+export function calculateGroupedMarketValueAllocation(
+  inputs: readonly GroupedMarketValueInput[],
+): GroupedPortfolioAllocation {
+  if (inputs.length === 0) {
+    throw new FinancialCalculationError(
+      "empty_portfolio",
+      "Grouped allocation requires at least one value",
+    )
+  }
+  const currencyCode = normalizeCurrency(inputs[0].currencyCode)
+  const grouped = new Map<string, Decimal>()
+  for (const input of inputs) {
+    if (normalizeCurrency(input.currencyCode) !== currencyCode) {
+      throw new FinancialCalculationError(
+        "currency_mismatch",
+        "Grouped allocation requires one common currency",
+      )
+    }
+    const value = normalizeDecimal(input.marketValue)
+    if (!value || compareDecimals(value, "0") === -1) {
+      throw new FinancialCalculationError(
+        "zero_market_value",
+        `Invalid market value for ${input.group}`,
+      )
+    }
+    grouped.set(
+      input.group,
+      requireDecimal(
+        addDecimals(grouped.get(input.group) ?? "0", value),
+        "Unable to group market values",
+      ),
+    )
+  }
+  const positiveGroups = [...grouped.entries()].filter(
+    ([, value]) => compareDecimals(value, "0") === 1,
+  )
+  if (positiveGroups.length === 0) {
+    throw new FinancialCalculationError(
+      "zero_market_value",
+      "Grouped allocation requires positive market value",
+    )
+  }
+  const totalMarketValue = sumDecimals(
+    positiveGroups.map(([, value]) => value),
+  )
+  let allocated: Decimal = "0"
+  const allocations = positiveGroups.map(([group, marketValue], index) => {
+    const allocationPercentage =
+      index === positiveGroups.length - 1
+        ? requireDecimal(
+            subtractDecimals("100", allocated),
+            "Unable to assign allocation residual",
+          )
+        : requireDecimal(
+            multiplyDecimals(
+              requireDecimal(
+                divideDecimals(marketValue, totalMarketValue),
+                "Unable to calculate grouped allocation",
+              ),
+              "100",
+            ),
+            "Unable to calculate grouped allocation",
+          )
+    allocated = requireDecimal(
+      addDecimals(allocated, allocationPercentage),
+      "Unable to calculate grouped allocation",
+    )
+    return { group, marketValue, allocationPercentage }
+  })
+  return { currencyCode, totalMarketValue, allocations }
 }

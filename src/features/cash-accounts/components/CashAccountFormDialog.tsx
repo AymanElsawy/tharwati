@@ -14,6 +14,8 @@ interface CashAccountFormDialogProps {
   defaultValues: CashAccountFormValues
   isOpen: boolean
   isSaving: boolean
+  isCurrencyLocked?: boolean
+  isOpeningBalanceLocked?: boolean
   mode: "create" | "edit"
   onClose: () => void
   onSubmit: (values: CashAccountFormValues) => Promise<void>
@@ -27,6 +29,8 @@ export function CashAccountFormDialog({
   defaultValues,
   isOpen,
   isSaving,
+  isCurrencyLocked = false,
+  isOpeningBalanceLocked = false,
   mode,
   onClose,
   onSubmit,
@@ -106,40 +110,75 @@ export function CashAccountFormDialog({
             )}
           </div>
 
-          <Controller
-            control={control}
-            name="currencyCode"
-            render={({ field }) => (
-              <div>
-                <CurrencySelector
-                  options={currencyOptions}
-                  value={
-                    currencyOptions.find((currency) => currency.code === field.value) ?? null
-                  }
-                  onChange={(currency) => field.onChange(currency?.code ?? "")}
-                />
-                {errors.currencyCode && (
-                  <p className="mt-1.5 text-sm text-red-600">
-                    {errors.currencyCode.message}
-                  </p>
-                )}
+          {isCurrencyLocked ? (
+            <div>
+              <label className="mb-2 block text-sm font-medium">
+                Base currency
+              </label>
+              <input type="hidden" {...register("currencyCode")} />
+              <div
+                className={`${fieldClassName} cursor-not-allowed opacity-60`}
+                aria-readonly="true"
+              >
+                {defaultValues.currencyCode}
               </div>
-            )}
-          />
+              <p className="mt-1.5 text-xs text-[var(--color-text-secondary)]">
+                This account has financial history, so its currency cannot be changed.
+              </p>
+            </div>
+          ) : (
+            <Controller
+              control={control}
+              name="currencyCode"
+              render={({ field }) => (
+                <div>
+                  <CurrencySelector
+                    options={currencyOptions}
+                    value={
+                      currencyOptions.find((currency) => currency.code === field.value) ?? null
+                    }
+                    onChange={(currency) => field.onChange(currency?.code ?? "")}
+                  />
+                  {errors.currencyCode && (
+                    <p className="mt-1.5 text-sm text-red-600">
+                      {errors.currencyCode.message}
+                    </p>
+                  )}
+                </div>
+              )}
+            />
+          )}
 
           <div>
             <label htmlFor={`${formId}-balance`} className="text-sm font-semibold">
               Current Balance
             </label>
-            <input
-              id={`${formId}-balance`}
-              inputMode="decimal"
-              dir="ltr"
-              placeholder="0.00"
-              disabled={disabled}
-              className={fieldClassName}
-              {...register("balance")}
-            />
+            {isOpeningBalanceLocked ? (
+              <>
+                <input type="hidden" {...register("balance")} />
+                <div
+                  id={`${formId}-balance`}
+                  className={`${fieldClassName} cursor-not-allowed opacity-60`}
+                  aria-readonly="true"
+                  dir="ltr"
+                >
+                  {defaultValues.balance}
+                </div>
+                <p className="mt-1.5 text-xs text-[var(--color-text-secondary)]">
+                  This account has financial history, so its opening balance cannot be changed.
+                </p>
+              </>
+            ) : (
+              <input
+                id={`${formId}-balance`}
+                inputMode="decimal"
+                dir="ltr"
+                placeholder="0.00"
+                disabled={disabled}
+                className={fieldClassName}
+                {...register("balance")}
+              />
+            )}
             {errors.balance && (
               <p className="mt-1.5 text-sm text-red-600">{errors.balance.message}</p>
             )}

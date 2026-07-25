@@ -36,14 +36,32 @@ export class NetWorthService {
 
   async calculate(source: NetWorthSourceData): Promise<NetWorthResult> {
     if (source.accounts.length === 0) {
+      const portfolioValue =
+        source.portfolio?.totalMarketValueBase ?? "0"
+      const hasInvestments =
+        (source.portfolio?.holdings.length ?? 0) > 0
+      const hasMissingPortfolioData =
+        source.portfolio !== undefined &&
+        source.portfolio.completenessStatus !== "complete"
       return {
-        status: "empty",
-        totalAssets: "0",
+        status: hasMissingPortfolioData
+          ? "partial"
+          : hasInvestments
+            ? "success"
+            : "empty",
+        totalAssets: portfolioValue,
+        cashAssets: "0",
+        investmentAssets: portfolioValue,
         totalLiabilities: "0",
-        netWorth: "0",
+        netWorth: portfolioValue,
         accountCount: 0,
+        investmentHoldingCount:
+          source.portfolio?.valuedHoldingsCount ?? 0,
         baseCurrency: source.baseCurrency,
-        missingCurrencyPairs: [],
+        missingCurrencyPairs:
+          source.portfolio?.missingExchangeRatePairs ?? [],
+        missingPriceHoldings:
+          source.portfolio?.missingPriceHoldings ?? [],
       }
     }
 
@@ -51,7 +69,7 @@ export class NetWorthService {
     const convertedBalances = await Promise.all(
       source.accounts.map(async (account) => {
         const balanceComparison = compareDecimals(account.balance, "0")
-        if (balanceComparison === null || balanceComparison < 0) {
+        if (balanceComparison === null) {
           throw new Error(`Cash account ${account.accountId} has an invalid balance`)
         }
 
@@ -81,19 +99,7 @@ export class NetWorthService {
       }),
     )
 
-    if (missingCurrencyPairs.length > 0) {
-      return {
-        status: "incomplete",
-        totalAssets: null,
-        totalLiabilities: "0",
-        netWorth: null,
-        accountCount: source.accounts.length,
-        baseCurrency: source.baseCurrency,
-        missingCurrencyPairs,
-      }
-    }
-
-    const totalAssets = convertedBalances.reduce<Decimal>(
+    const totalCash = convertedBalances.reduce<Decimal>(
       (total, balance) =>
         requireDecimal(
           addDecimals(total, balance ?? "0"),
@@ -101,20 +107,50 @@ export class NetWorthService {
         ),
       "0",
     )
+    const portfolioValue =
+      source.portfolio?.totalMarketValueBase ?? "0"
+    const totalAssets = requireDecimal(
+      addDecimals(totalCash, portfolioValue),
+      "Cash and investment values could not be aggregated",
+    )
     const totalLiabilities: Decimal = "0"
     const netWorth = requireDecimal(
       subtractDecimals(totalAssets, totalLiabilities),
       "Net worth could not be calculated",
     )
 
+    const portfolioMissingPairs =
+      source.portfolio?.missingExchangeRatePairs ?? []
+    const allMissingPairs = [
+      ...missingCurrencyPairs,
+      ...portfolioMissingPairs,
+    ].filter(
+      (pair, index, pairs) =>
+        pairs.findIndex(
+          (candidate) =>
+            candidate.sourceCurrencyCode === pair.sourceCurrencyCode &&
+            candidate.destinationCurrencyCode ===
+              pair.destinationCurrencyCode,
+        ) === index,
+    )
+    const missingPriceHoldings =
+      source.portfolio?.missingPriceHoldings ?? []
+    const isPartial =
+      allMissingPairs.length > 0 || missingPriceHoldings.length > 0
+
     return {
-      status: "success",
+      status: isPartial ? "partial" : "success",
       totalAssets,
+      cashAssets: totalCash,
+      investmentAssets: portfolioValue,
       totalLiabilities,
       netWorth,
       accountCount: source.accounts.length,
+      investmentHoldingCount:
+        source.portfolio?.valuedHoldingsCount ?? 0,
       baseCurrency: source.baseCurrency,
-      missingCurrencyPairs: [],
+      missingCurrencyPairs: allMissingPairs,
+      missingPriceHoldings,
     }
   }
 }

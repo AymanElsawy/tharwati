@@ -15,6 +15,7 @@ export {
   calculatePortfolioAllocation,
   calculatePortfolioMarketValue,
   calculatePortfolioPerformance,
+  calculateGroupedMarketValueAllocation,
 } from "./valuation"
 export type {
   CurrencyCostBasis,
@@ -27,6 +28,9 @@ export type {
   PortfolioAllocation,
   PortfolioMarketValue,
   PortfolioPerformance,
+  GroupedMarketValueInput,
+  GroupedMarketValueAllocation,
+  GroupedPortfolioAllocation,
   QuantityValidationOptions,
   QuantityValidationResult,
 } from "./types"

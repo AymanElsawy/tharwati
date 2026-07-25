@@ -5,15 +5,15 @@ import { Button } from "@/components/ui/button"
 import { CashAccountFormDialog } from "@/features/cash-accounts/components/CashAccountFormDialog"
 import { DeleteCashAccountDialog } from "@/features/cash-accounts/components/DeleteCashAccountDialog"
 import { useCashAccounts } from "@/features/cash-accounts/hooks/useCashAccounts"
+import type { CashAccountSummary } from "@/features/cash-accounts/repositories/cash-accounts.repository"
 import {
   cashAccountToFormValues,
   type CashAccountFormValues,
 } from "@/features/cash-accounts/types/cash-account-form"
-import type { AccountSummary } from "@/lib/supabase/types"
 
 type FormState =
   | { mode: "create"; account: null }
-  | { mode: "edit"; account: AccountSummary }
+  | { mode: "edit"; account: CashAccountSummary }
   | null
 
 function formatBalance(value: string, currencyCode: string) {
@@ -38,7 +38,8 @@ export function CashAccountsPage() {
     updateAccount,
   } = useCashAccounts()
   const [formState, setFormState] = useState<FormState>(null)
-  const [deleteTarget, setDeleteTarget] = useState<AccountSummary | null>(null)
+  const [deleteTarget, setDeleteTarget] =
+    useState<CashAccountSummary | null>(null)
 
   const defaultValues = useMemo<CashAccountFormValues>(() => {
     if (formState?.mode === "edit") {
@@ -147,7 +148,7 @@ export function CashAccountsPage() {
                 </span>
               </div>
               <p className="mt-6 text-2xl font-black tracking-tight text-[var(--color-text)]" dir="ltr">
-                {formatBalance(account.opening_balance, account.currency_code)}
+                {formatBalance(account.current_balance, account.currency_code)}
               </p>
               {account.notes && (
                 <p className="mt-3 line-clamp-2 text-sm text-[var(--color-text-secondary)]">{account.notes}</p>
@@ -179,6 +180,16 @@ export function CashAccountsPage() {
         defaultValues={defaultValues}
         isOpen={formState !== null}
         isSaving={isSaving}
+        isCurrencyLocked={
+          formState?.mode === "edit"
+            ? formState.account.has_financial_history
+            : false
+        }
+        isOpeningBalanceLocked={
+          formState?.mode === "edit"
+            ? formState.account.has_financial_history
+            : false
+        }
         mode={formState?.mode ?? "create"}
         onClose={() => !isSaving && setFormState(null)}
         onSubmit={handleSubmit}

@@ -10,6 +10,7 @@ import {
   Layers3,
   Banknote,
   ArrowLeftRight,
+  BadgeDollarSign,
   WalletCards,
   type LucideIcon,
 } from "lucide-react"
@@ -63,6 +64,11 @@ const navigationItems: NavigationItem[] = [
     labelKey: "navigation.exchangeRates",
     path: "/exchange-rates",
     icon: ArrowLeftRight,
+  },
+  {
+    labelKey: "navigation.marketPrices",
+    path: "/market-prices",
+    icon: BadgeDollarSign,
   },
   {
     labelKey: "navigation.assets",

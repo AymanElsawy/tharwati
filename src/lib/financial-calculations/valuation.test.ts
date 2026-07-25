@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest"
 import { addDecimals } from "./decimal"
 import type { HoldingValuationInput } from "./types"
 import {
+  calculateGroupedMarketValueAllocation,
   calculateHoldingMarketValue,
   calculateHoldingPerformance,
   calculatePortfolioAllocation,
@@ -278,5 +279,28 @@ describe("portfolio valuation", () => {
         "0",
       ),
     ).toBe("100")
+  })
+})
+
+describe("grouped market-value allocation", () => {
+  it("groups categories exactly and assigns a 100 percent total", () => {
+    const result = calculateGroupedMarketValueAllocation([
+      { group: "cash", marketValue: "1", currencyCode: "USD" },
+      { group: "stocks", marketValue: "1", currencyCode: "USD" },
+      { group: "stocks", marketValue: "1", currencyCode: "USD" },
+    ])
+
+    expect(result.allocations).toEqual([
+      {
+        group: "cash",
+        marketValue: "1",
+        allocationPercentage: "33.33333333",
+      },
+      {
+        group: "stocks",
+        marketValue: "2",
+        allocationPercentage: "66.66666667",
+      },
+    ])
   })
 })

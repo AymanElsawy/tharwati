@@ -46,6 +46,7 @@ export function AccountsPage() {
     error,
     isLoading,
     isSaving,
+    hasFinancialHistory,
     refreshAccounts,
     updateAccount,
   } = useAccounts()
@@ -220,6 +221,16 @@ export function AccountsPage() {
         defaultValues={formValues}
         isOpen={formDialog !== null}
         isSaving={isSaving}
+        isCurrencyLocked={
+          formDialog?.mode === "edit"
+            ? hasFinancialHistory(formDialog.account.id)
+            : false
+        }
+        isOpeningBalanceLocked={
+          formDialog?.mode === "edit"
+            ? hasFinancialHistory(formDialog.account.id)
+            : false
+        }
         mode={formDialog?.mode ?? "create"}
         onClose={() => {
           if (!isSaving) {

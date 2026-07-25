@@ -8,6 +8,8 @@ type AccountFormDialogProps = {
   defaultValues: AccountFormValues
   isOpen: boolean
   isSaving: boolean
+  isCurrencyLocked?: boolean
+  isOpeningBalanceLocked?: boolean
   mode: "create" | "edit"
   onClose: () => void
   onSubmit: (values: AccountFormValues) => Promise<void>
@@ -17,6 +19,8 @@ export function AccountFormDialog({
   defaultValues,
   isOpen,
   isSaving,
+  isCurrencyLocked = false,
+  isOpeningBalanceLocked = false,
   mode,
   onClose,
   onSubmit,
@@ -81,6 +85,8 @@ export function AccountFormDialog({
             defaultValues={defaultValues}
             formId={formId}
             isSaving={isSaving}
+            isCurrencyLocked={isCurrencyLocked}
+            isOpeningBalanceLocked={isOpeningBalanceLocked}
             onSubmit={handleSubmit}
           />
         </div>

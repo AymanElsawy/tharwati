@@ -11,6 +11,11 @@ export const en = {
   "navigation.accounts": "Accounts",
   "navigation.cash": "Cash",
   "navigation.exchangeRates": "Exchange Rates",
+  "navigation.marketPrices": "Market Prices",
+  "marketPrices.validation.futureDate":
+    "Market price date cannot be in the future.",
+  "marketPrices.validation.invalid":
+    "Enter a valid asset, positive price, currency, and effective date.",
   "navigation.assets": "Assets",
   "navigation.holdings": "Holdings",
   "navigation.goals": "Goals",
@@ -56,8 +61,12 @@ export const en = {
   "accounts.form.name": "Name",
   "accounts.form.accountType": "Account type",
   "accounts.form.currency": "Currency",
+  "accounts.form.currencyLocked":
+    "This account has financial history, so its currency cannot be changed.",
   "accounts.form.institution": "Institution",
   "accounts.form.openingBalance": "Opening balance",
+  "accounts.form.openingBalanceLocked":
+    "This account has financial history, so its opening balance cannot be changed.",
   "accounts.form.notes": "Notes",
   "accounts.form.active": "Active account",
   "accounts.form.activeDescription":

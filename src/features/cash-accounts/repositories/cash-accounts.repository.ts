@@ -1,7 +1,13 @@
 import { accountsRepository } from "@/features/accounts/repositories/accounts.repository"
+import { accountBalancesService } from "@/features/account-balances/services/account-balances.service"
 import { supabase } from "@/lib/supabase"
 import { requireAuthenticatedUserId, requireQueryData } from "@/lib/supabase/repository"
-import type { AccountSummary, Decimal, TableRow } from "@/lib/supabase/types"
+import {
+  RepositoryError,
+  type AccountSummary,
+  type Decimal,
+  type TableRow,
+} from "@/lib/supabase/types"
 
 export interface CashAccountConfiguration {
   baseCurrencyCode: string
@@ -15,8 +21,13 @@ export interface SaveCashAccountInput {
   notes: string | null
 }
 
+export type CashAccountSummary = AccountSummary & {
+  current_balance: Decimal
+  has_financial_history: boolean
+}
+
 export class CashAccountsRepository {
-  async getCashAccounts(): Promise<AccountSummary[]> {
+  async getCashAccounts(): Promise<CashAccountSummary[]> {
     const operation = "cashAccounts.getAll"
     const userId = await requireAuthenticatedUserId(supabase, operation)
     const { data, error } = await supabase
@@ -26,7 +37,41 @@ export class CashAccountsRepository {
       .eq("account_type_code", "cash")
       .order("created_at", { ascending: false })
 
-    return requireQueryData(data, error, operation)
+    const accounts = requireQueryData(data, error, operation)
+    const accountIds = accounts.map((account) => account.id)
+    const [balances, eligibility] = await Promise.all([
+      accountBalancesService.getAccountBalances(accountIds),
+      accountsRepository.getAccountDeletionEligibility(accountIds),
+    ])
+    const currentBalanceByAccount = new Map(
+      balances.map((balance) => [
+        balance.accountId,
+        balance.currentBalance,
+      ]),
+    )
+    const historyByAccount = new Map(
+      eligibility.map((item) => [
+        item.accountId,
+        item.hasFinancialHistory,
+      ]),
+    )
+
+    return accounts.map((account) => {
+      const currentBalance = currentBalanceByAccount.get(account.id)
+      if (currentBalance === undefined) {
+        throw new RepositoryError({
+          code: "database_error",
+          message: `Projected balance is unavailable for account ${account.id}`,
+          operation,
+        })
+      }
+      return {
+        ...account,
+        current_balance: currentBalance,
+        has_financial_history:
+          historyByAccount.get(account.id) ?? false,
+      }
+    })
   }
 
   async getConfiguration(): Promise<CashAccountConfiguration> {

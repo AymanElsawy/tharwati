@@ -113,6 +113,22 @@ export class MarketDataService {
     }
   }
 
+  listManualPrices() {
+    return this.readRepository.listManualPrices()
+  }
+
+  async createManualPrice(input: ProviderMarketPrice) {
+    const asset = await this.readRepository.getAsset(input.assetId)
+    const price = validateProviderPrice(input, asset)
+    return this.readRepository.createManualPrice(price)
+  }
+
+  async updateManualPrice(id: string, input: ProviderMarketPrice) {
+    const asset = await this.readRepository.getAsset(input.assetId)
+    const price = validateProviderPrice(input, asset)
+    return this.readRepository.updateManualPrice(id, price)
+  }
+
   private requireProvider(): MarketDataProvider {
     if (!this.provider || !this.writeRepository) {
       throw new MarketDataError({
@@ -160,4 +176,3 @@ export class MarketDataService {
 }
 
 export const marketDataService = new MarketDataService()
-

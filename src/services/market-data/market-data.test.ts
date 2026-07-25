@@ -9,27 +9,13 @@ function priceReadClient(
   price: unknown,
 ): TypedSupabaseClient {
   const chain = {
-    select: vi.fn(),
-    eq: vi.fn(),
-    gt: vi.fn(),
-    order: vi.fn(),
-    limit: vi.fn(),
     maybeSingle: vi.fn().mockResolvedValue({
       data: price,
       error: null,
     }),
   }
-  for (const method of [
-    "select",
-    "eq",
-    "gt",
-    "order",
-    "limit",
-  ] as const) {
-    chain[method].mockReturnValue(chain)
-  }
   return {
-    from: vi.fn().mockReturnValue(chain),
+    rpc: vi.fn().mockReturnValue(chain),
   } as unknown as TypedSupabaseClient
 }
 
@@ -63,6 +49,13 @@ describe("MarketDataService", () => {
       asOf: "2026-07-24T09:00:00.000Z",
       cachedAt: "2026-07-24T09:01:00.000Z",
     })
+    const client = priceReadClient(cachedPrice)
+    const directService = new MarketDataService({ readClient: client })
+    await directService.getCurrentPrice("asset-id")
+    expect(client.rpc).toHaveBeenCalledWith(
+      "get_current_market_price",
+      { p_asset_id: "asset-id" },
+    )
     expect(fetchCurrentPrices).not.toHaveBeenCalled()
   })
 
@@ -107,4 +100,3 @@ describe("MarketDataService", () => {
     ).resolves.toHaveLength(1)
   })
 })
-

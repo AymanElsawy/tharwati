@@ -14,6 +14,8 @@ type AccountFormProps = {
   defaultValues: AccountFormValues
   formId: string
   isSaving: boolean
+  isCurrencyLocked: boolean
+  isOpeningBalanceLocked: boolean
   onSubmit: (values: AccountFormValues) => Promise<void>
 }
 
@@ -24,6 +26,8 @@ export function AccountForm({
   defaultValues,
   formId,
   isSaving,
+  isCurrencyLocked,
+  isOpeningBalanceLocked,
   onSubmit,
 }: AccountFormProps) {
   const { t } = useTranslation()
@@ -99,18 +103,38 @@ export function AccountForm({
           >
             {t("accounts.form.currency")}
           </label>
-          <select
-            id={`${formId}-currency`}
-            className={fieldClassName}
-            disabled={isDisabled}
-            {...register("currencyCode")}
-          >
-            {currencyOptions.map((option) => (
-              <option key={option.value} value={option.value}>
-                {t(option.labelKey)}
-              </option>
-            ))}
-          </select>
+          {isCurrencyLocked ? (
+            <>
+              <input type="hidden" {...register("currencyCode")} />
+              <div
+                id={`${formId}-currency`}
+                className={`${fieldClassName} cursor-not-allowed opacity-60`}
+                aria-readonly="true"
+              >
+                {t(
+                  currencyOptions.find(
+                    (option) => option.value === defaultValues.currencyCode,
+                  )?.labelKey ?? "accounts.form.currency",
+                )}
+              </div>
+              <p className="mt-1.5 text-xs text-[var(--color-text-secondary)]">
+                {t("accounts.form.currencyLocked")}
+              </p>
+            </>
+          ) : (
+            <select
+              id={`${formId}-currency`}
+              className={fieldClassName}
+              disabled={isDisabled}
+              {...register("currencyCode")}
+            >
+              {currencyOptions.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {t(option.labelKey)}
+                </option>
+              ))}
+            </select>
+          )}
         </div>
       </div>
 
@@ -140,15 +164,32 @@ export function AccountForm({
         >
           {t("accounts.form.openingBalance")}
         </label>
-        <input
-          id={`${formId}-opening-balance`}
-          className={fieldClassName}
-          disabled={isDisabled}
-          inputMode="decimal"
-          dir="ltr"
-          placeholder="0.00"
-          {...register("openingBalance")}
-        />
+        {isOpeningBalanceLocked ? (
+          <>
+            <input type="hidden" {...register("openingBalance")} />
+            <div
+              id={`${formId}-opening-balance`}
+              className={`${fieldClassName} cursor-not-allowed opacity-60`}
+              aria-readonly="true"
+              dir="ltr"
+            >
+              {defaultValues.openingBalance}
+            </div>
+            <p className="mt-1.5 text-xs text-[var(--color-text-secondary)]">
+              {t("accounts.form.openingBalanceLocked")}
+            </p>
+          </>
+        ) : (
+          <input
+            id={`${formId}-opening-balance`}
+            className={fieldClassName}
+            disabled={isDisabled}
+            inputMode="decimal"
+            dir="ltr"
+            placeholder="0.00"
+            {...register("openingBalance")}
+          />
+        )}
         {errors.openingBalance ? (
           <p className="mt-1.5 text-sm text-red-600">
             {errors.openingBalance.message}

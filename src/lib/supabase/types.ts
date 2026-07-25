@@ -86,12 +86,14 @@ type ExchangeRateRow = {
 
 type MarketPriceRow = {
   id: string
+  user_id: string | null
   asset_id: string
   provider: string
   price: Decimal
   currency_code: string
   as_of: string
   created_at: string
+  updated_at: string
 }
 
 type AccountTypeRow = {
@@ -285,12 +287,14 @@ export type Database = {
         MarketPriceRow,
         {
           id?: string
+          user_id?: string | null
           asset_id: string
           provider: string
           price: Decimal
           currency_code: string
           as_of: string
           created_at?: string
+          updated_at?: string
         }
       >
       account_types: TableDefinition<
@@ -501,6 +505,27 @@ export type Database = {
           p_selected_goals: string[]
         }
         Returns: undefined
+      }
+      get_account_balances: {
+        Args: {
+          p_account_ids?: string[] | null
+        }
+        Returns: Array<{
+          account_id: string
+          account_type_code: string
+          account_name: string
+          currency_code: string
+          is_active: boolean
+          opening_balance: Decimal
+          ledger_effect: Decimal
+          current_balance: Decimal
+        }>
+      }
+      get_current_market_price: {
+        Args: {
+          p_asset_id: string
+        }
+        Returns: MarketPriceRow[]
       }
       post_transaction: {
         Args: { transaction_id: string }

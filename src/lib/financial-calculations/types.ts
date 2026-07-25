@@ -105,3 +105,21 @@ export type PortfolioAllocation = {
   totalMarketValue: Decimal
   allocations: HoldingAllocation[]
 }
+
+export type GroupedMarketValueInput = {
+  group: string
+  marketValue: Decimal
+  currencyCode: string
+}
+
+export type GroupedMarketValueAllocation = {
+  group: string
+  marketValue: Decimal
+  allocationPercentage: Decimal
+}
+
+export type GroupedPortfolioAllocation = {
+  currencyCode: string
+  totalMarketValue: Decimal
+  allocations: GroupedMarketValueAllocation[]
+}

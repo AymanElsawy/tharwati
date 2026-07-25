@@ -1,3 +1,6 @@
+import { accountBalancesService } from "@/features/account-balances/services/account-balances.service"
+import type { AccountBalance } from "@/features/account-balances/types/account-balance"
+import type { NetWorthSourceData } from "@/features/net-worth/types/net-worth"
 import {
   supabase,
   type TypedSupabaseClient,
@@ -6,68 +9,34 @@ import {
   requireAuthenticatedUserId,
   requireQueryData,
 } from "@/lib/supabase/repository"
-import type { NetWorthSourceData } from "@/features/net-worth/types/net-worth"
-import { RepositoryError, type Decimal } from "@/lib/supabase/types"
 
-const postgresDecimalPattern = /^-?\d+(?:\.\d+)?$/
-
-function decodePostgresDecimal(
-  value: unknown,
-  field: string,
-  operation: string,
-): Decimal {
-  if (typeof value === "string" && postgresDecimalPattern.test(value)) {
-    return value
-  }
-
-  if (typeof value === "number" && Number.isFinite(value)) {
-    // financial_accounts.opening_balance is numeric(20, 2). Only accept a
-    // PostgREST number when its scaled integer is safe; otherwise conversion
-    // could silently preserve an already-rounded JavaScript value.
-    const scaledValue = value * 100
-    if (
-      Number.isSafeInteger(Math.round(scaledValue)) &&
-      Math.abs(scaledValue - Math.round(scaledValue)) < Number.EPSILON * 100
-    ) {
-      return value.toString()
-    }
-  }
-
-  throw new RepositoryError({
-    code: "database_error",
-    message: `${field} was not returned as a safe PostgreSQL numeric value`,
-    operation,
-  })
+interface WealthCashBalanceReader {
+  getEligibleWealthCashBalances(): Promise<AccountBalance[]>
 }
 
 export class NetWorthRepository {
   private readonly client: TypedSupabaseClient
+  private readonly balances: WealthCashBalanceReader
 
-  constructor(client: TypedSupabaseClient = supabase) {
+  constructor(
+    client: TypedSupabaseClient = supabase,
+    balances: WealthCashBalanceReader = accountBalancesService,
+  ) {
     this.client = client
+    this.balances = balances
   }
 
   async getSourceData(): Promise<NetWorthSourceData> {
     const operation = "netWorth.getSourceData"
     const userId = await requireAuthenticatedUserId(this.client, operation)
-    const [accountsResult, profileResult] = await Promise.all([
-      this.client
-        .from("financial_accounts")
-        .select("id, opening_balance, currency_code")
-        .eq("user_id", userId)
-        .eq("account_type_code", "cash")
-        .eq("is_active", true),
+    const [accounts, profileResult] = await Promise.all([
+      this.balances.getEligibleWealthCashBalances(),
       this.client
         .from("profiles")
         .select("default_currency_code")
         .eq("id", userId)
         .single(),
     ])
-    const accounts = requireQueryData(
-      accountsResult.data,
-      accountsResult.error,
-      operation,
-    )
     const profile = requireQueryData(
       profileResult.data,
       profileResult.error,
@@ -77,13 +46,9 @@ export class NetWorthRepository {
     return {
       baseCurrency: profile.default_currency_code,
       accounts: accounts.map((account) => ({
-        accountId: account.id,
-        balance: decodePostgresDecimal(
-          account.opening_balance,
-          "financial_accounts.opening_balance",
-          operation,
-        ),
-        currencyCode: account.currency_code,
+        accountId: account.accountId,
+        balance: account.currentBalance,
+        currencyCode: account.currencyCode,
       })),
     }
   }

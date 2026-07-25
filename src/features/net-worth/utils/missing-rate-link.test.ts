@@ -6,12 +6,16 @@ describe("getMissingRateLinkState", () => {
   it("prefills the exact missing pair for the exchange-rate page", () => {
     expect(
       getMissingRateLinkState({
-        status: "incomplete",
-        totalAssets: null,
+        status: "partial",
+        totalAssets: "0",
+        cashAssets: "0",
+        investmentAssets: "0",
         totalLiabilities: "0",
-        netWorth: null,
+        netWorth: "0",
         accountCount: 1,
+        investmentHoldingCount: 0,
         baseCurrency: "SAR",
+        missingPriceHoldings: [],
         missingCurrencyPairs: [
           { sourceCurrencyCode: "USD", destinationCurrencyCode: "SAR" },
         ],

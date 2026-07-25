@@ -16,6 +16,7 @@ type UseAccountsResult = {
   isLoading: boolean
   isSaving: boolean
   canDeleteAccount: (accountId: string) => boolean
+  hasFinancialHistory: (accountId: string) => boolean
   refreshAccounts: () => Promise<void>
   createAccount: (values: AccountFormValues) => Promise<AccountSummary>
   updateAccount: (
@@ -59,6 +60,9 @@ export function useAccounts(): UseAccountsResult {
   const [deletableAccountIds, setDeletableAccountIds] = useState<
     ReadonlySet<string>
   >(new Set())
+  const [accountIdsWithHistory, setAccountIdsWithHistory] = useState<
+    ReadonlySet<string>
+  >(new Set())
   const mutationInFlight = useRef(false)
 
   const loadAccounts = useCallback(async (showLoading: boolean) => {
@@ -78,6 +82,13 @@ export function useAccounts(): UseAccountsResult {
         new Set(
           deletionEligibility
             .filter((eligibility) => eligibility.canDelete)
+            .map((eligibility) => eligibility.accountId),
+        ),
+      )
+      setAccountIdsWithHistory(
+        new Set(
+          deletionEligibility
+            .filter((eligibility) => eligibility.hasFinancialHistory)
             .map((eligibility) => eligibility.accountId),
         ),
       )
@@ -220,6 +231,8 @@ export function useAccounts(): UseAccountsResult {
     isSaving,
     canDeleteAccount: (accountId) =>
       deletableAccountIds.has(accountId),
+    hasFinancialHistory: (accountId) =>
+      accountIdsWithHistory.has(accountId),
     refreshAccounts,
     createAccount,
     updateAccount,

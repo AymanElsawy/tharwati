@@ -42,7 +42,7 @@ export function NetWorthCard() {
     )
   }
 
-  if (result.status === "incomplete") {
+  if (result.status === "partial") {
     const pairs = result.missingCurrencyPairs
       .map((pair) => `${pair.sourceCurrencyCode}/${pair.destinationCurrencyCode}`)
       .join(", ")
@@ -54,17 +54,23 @@ export function NetWorthCard() {
           </h2>
           <AlertTriangle className="size-5 text-amber-600" />
         </div>
-        <p className="mt-6 text-xl font-bold text-[var(--color-text)]">Incomplete data</p>
-        <p className="mt-2 text-sm leading-6 text-[var(--color-text-secondary)]">
-          Add a current exchange rate for {pairs} to calculate your complete net worth.
+        <p className="mt-5 text-3xl font-black" dir="ltr">
+          {formatAmount(result.netWorth)} {result.baseCurrency}
         </p>
-        <Link
-          to="/exchange-rates"
-          state={getMissingRateLinkState(result)}
-          className="mt-5 inline-flex rounded-lg bg-[var(--color-primary)] px-4 py-2 text-sm font-semibold text-[var(--color-text-on-primary)]"
-        >
-          Add exchange rate
-        </Link>
+        <p className="mt-2 text-sm leading-6 text-[var(--color-text-secondary)]">
+          Partial valuation. Missing {result.missingPriceHoldings.length} market
+          {result.missingPriceHoldings.length === 1 ? " price" : " prices"}
+          {pairs ? ` and exchange rates for ${pairs}` : ""}.
+        </p>
+        {pairs ? (
+          <Link
+            to="/exchange-rates"
+            state={getMissingRateLinkState(result)}
+            className="mt-5 inline-flex rounded-lg bg-[var(--color-primary)] px-4 py-2 text-sm font-semibold text-[var(--color-text-on-primary)]"
+          >
+            Add exchange rate
+          </Link>
+        ) : null}
       </article>
     )
   }
