@@ -35,7 +35,7 @@ function deriveAssetIdentity(values: AddInvestmentValues) {
       symbol: nullable(symbol),
       exchange: nullable(market),
       scheme: "ticker",
-      namespace: market,
+      namespace: market || "custom",
       value: symbol,
     }
   }
@@ -87,37 +87,24 @@ function deriveAssetIdentity(values: AddInvestmentValues) {
 }
 
 export function buildAddInvestmentArgs(
-  values: AddInvestmentValues,
+  values: AddInvestmentValues
 ): Database["public"]["Functions"]["add_investment"]["Args"] {
   const newAccount = values.accountMode === "new"
   const newAsset = values.assetMode === "new"
   const assetIdentity = deriveAssetIdentity(values)
   return {
     p_account_id: newAccount ? null : values.accountId,
-    p_new_account_type_code: newAccount
-      ? values.newAccountTypeCode
-      : null,
+    p_new_account_type_code: newAccount ? values.newAccountTypeCode : null,
     p_new_account_name: newAccount ? values.newAccountName.trim() : null,
     p_new_account_currency_code: newAccount
       ? values.newAccountCurrencyCode
       : null,
-    p_new_account_institution_name: newAccount
-      ? nullable(values.newAccountInstitutionName)
-      : null,
     p_asset_id: newAsset ? null : values.assetId,
-    p_new_asset_type_code: newAsset
-      ? assetIdentity.assetTypeCode
-      : null,
+    p_new_asset_type_code: newAsset ? assetIdentity.assetTypeCode : null,
     p_new_asset_name: newAsset ? assetIdentity.name : null,
-    p_new_asset_symbol: newAsset
-      ? assetIdentity.symbol
-      : null,
-    p_new_asset_currency_code: newAsset
-      ? values.newAssetCurrencyCode
-      : null,
-    p_new_asset_exchange: newAsset
-      ? assetIdentity.exchange
-      : null,
+    p_new_asset_symbol: newAsset ? assetIdentity.symbol : null,
+    p_new_asset_currency_code: newAsset ? values.newAssetCurrencyCode : null,
+    p_new_asset_exchange: newAsset ? assetIdentity.exchange : null,
     p_identifier_scheme: newAsset ? assetIdentity.scheme : null,
     p_identifier_namespace: newAsset ? assetIdentity.namespace : null,
     p_identifier_value: newAsset ? assetIdentity.value : null,
@@ -131,7 +118,7 @@ export function buildAddInvestmentArgs(
 }
 
 export async function addInvestment(
-  values: AddInvestmentValues,
+  values: AddInvestmentValues
 ): Promise<AddInvestmentResult> {
   const args = buildAddInvestmentArgs(values)
   const result = await investmentsRepository.addInvestment(args)

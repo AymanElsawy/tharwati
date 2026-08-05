@@ -7,7 +7,7 @@ import type { AddInvestmentValues } from "../types/add-investment"
 const nonNegativeDecimal = /^(?:0|\d+)(?:\.\d+)?$/
 
 export function createAddInvestmentSchema(
-  t: Translate,
+  t: Translate
 ): z.ZodType<AddInvestmentValues, AddInvestmentValues> {
   return z
     .object({
@@ -16,7 +16,6 @@ export function createAddInvestmentSchema(
       newAccountTypeCode: z.string(),
       newAccountName: z.string().trim(),
       newAccountCurrencyCode: z.string(),
-      newAccountInstitutionName: z.string().trim(),
       assetMode: z.enum(["existing", "new"]),
       assetId: z.string(),
       newAssetTypeCode: z.string(),
@@ -29,7 +28,7 @@ export function createAddInvestmentSchema(
         .trim()
         .refine(
           (quantity) => validateQuantity(quantity).valid,
-          t("investment.validation.positiveQuantity"),
+          t("investment.validation.positiveQuantity")
         ),
       unit: z.string(),
       unitPrice: z
@@ -78,9 +77,18 @@ export function createAddInvestmentSchema(
       }
       if (
         values.assetMode === "new" &&
-        ["stock", "etf", "bond", "cryptocurrency"].includes(
-          values.newAssetTypeCode,
-        ) &&
+        ["stock", "etf"].includes(values.newAssetTypeCode) &&
+        !values.newAssetSymbol
+      ) {
+        context.addIssue({
+          code: "custom",
+          path: ["newAssetSymbol"],
+          message: t("investment.validation.marketSymbolRequired"),
+        })
+      }
+      if (
+        values.assetMode === "new" &&
+        ["bond", "cryptocurrency"].includes(values.newAssetTypeCode) &&
         (!values.newAssetSymbol || !values.newAssetExchange)
       ) {
         context.addIssue({

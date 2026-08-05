@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
 import type { Session } from "@supabase/supabase-js"
 import {
   BrowserRouter,
@@ -32,6 +32,7 @@ import { PortfolioPage } from "../pages/PortfolioPage"
 import { GoalsPage } from "../pages/GoalsPage"
 import { NotFoundPage } from "../pages/NotFoundPage"
 import { useTranslation } from "../i18n/useTranslation"
+import { canPreserveAuthenticatedTree } from "../features/auth/auth-session-lifecycle"
 
 export default function App() {
   const { t } = useTranslation()
@@ -39,9 +40,11 @@ export default function App() {
   const [onboardingCompleted, setOnboardingCompleted] = useState<boolean | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [startupError, setStartupError] = useState<string | null>(null)
+  const authenticatedUserId = useRef<string | null>(null)
 
   const resolveSession = useCallback(async (currentSession: Session | null) => {
     setSession(currentSession)
+    authenticatedUserId.current = currentSession?.user.id ?? null
     setStartupError(null)
 
     if (!currentSession) {
@@ -81,6 +84,12 @@ export default function App() {
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, currentSession) => {
+      if (
+        canPreserveAuthenticatedTree(authenticatedUserId.current, currentSession)
+      ) {
+        setSession(currentSession)
+        return
+      }
       setIsLoading(true)
       void resolveSession(currentSession)
     })
@@ -214,3 +223,4 @@ export default function App() {
     </BrowserRouter>
   )
 }
+

@@ -5,10 +5,7 @@ import { useForm, useWatch } from "react-hook-form"
 
 import { useTranslation } from "../../../i18n/useTranslation"
 import type { TranslationKey } from "../../../i18n/en/translations"
-import type {
-  AccountSummary,
-  AssetSummary,
-} from "../../../lib/supabase/types"
+import type { AccountSummary, AssetSummary } from "../../../lib/supabase/types"
 import { accountsRepository } from "../../accounts/repositories/accounts.repository"
 import {
   accountTypeOptions,
@@ -16,7 +13,10 @@ import {
 } from "../../accounts/types/account-form"
 import { assetsRepository } from "../../assets/repositories/assets.repository"
 import { useAddInvestment } from "../hooks/useAddInvestment"
+import { useUnsavedChanges } from "@/hooks/useUnsavedChanges"
+import { UnsavedChangesDialog } from "@/components/UnsavedChangesDialog"
 import { createAddInvestmentSchema } from "../schemas/add-investment.schema"
+import { filterInvestmentAssetCatalog } from "../services/investment-asset-catalog"
 import {
   defaultAddInvestmentValues,
   type AddInvestmentResult,
@@ -56,21 +56,18 @@ function unitForAssetType(type: string): string {
   return "units"
 }
 
-export function AddInvestmentDialog({
-  isOpen,
-  onClose,
-  onSuccess,
-}: Props) {
+export function AddInvestmentDialog({ isOpen, onClose, onSuccess }: Props) {
   const { t } = useTranslation()
   const schema = useMemo(() => createAddInvestmentSchema(t), [t])
   const [accounts, setAccounts] = useState<AccountSummary[]>([])
   const [assets, setAssets] = useState<AssetSummary[]>([])
   const [isLoadingOptions, setIsLoadingOptions] = useState(false)
   const [loadError, setLoadError] = useState<string | null>(null)
+  const [assetSearch, setAssetSearch] = useState("")
   const { clearError, error, isSaving, submit } = useAddInvestment()
   const {
     control,
-    formState: { errors },
+    formState: { errors, isDirty },
     handleSubmit,
     register,
     reset,
@@ -79,23 +76,30 @@ export function AddInvestmentDialog({
     resolver: zodResolver(schema),
     defaultValues: defaultAddInvestmentValues,
   })
-  const [
-    accountMode,
-    assetMode,
-    newAssetType,
-    unit,
-  ] = useWatch({
+  const [accountMode, assetMode, assetId, newAssetType, unit] = useWatch({
     control,
-    name: [
-      "accountMode",
-      "assetMode",
-      "newAssetTypeCode",
-      "unit",
-    ],
+    name: ["accountMode", "assetMode", "assetId", "newAssetTypeCode", "unit"],
   })
 
-  const isPreciousMetal =
-    newAssetType === "gold" || newAssetType === "silver"
+  const filteredAssets = useMemo(
+    () => filterInvestmentAssetCatalog(assets, assetSearch),
+    [assetSearch, assets],
+  )
+  const selectedAsset = useMemo(
+    () => assets.find((asset) => asset.id === assetId) ?? null,
+    [assetId, assets],
+  )
+
+  const isPreciousMetal = newAssetType === "gold" || newAssetType === "silver"
+  const isListedEquity = newAssetType === "stock" || newAssetType === "etf"
+  const requiresMarketSymbol = [
+    "stock",
+    "etf",
+    "bond",
+    "cryptocurrency",
+  ].includes(newAssetType)
+  const unsaved = useUnsavedChanges(isOpen && isDirty)
+  const requestClose = () => unsaved.request(onClose)
 
   useEffect(() => {
     if (!isOpen) return
@@ -113,7 +117,7 @@ export function AddInvestmentDialog({
         setLoadError(
           cause instanceof Error
             ? cause.message
-            : t("investment.error.loadOptions"),
+            : t("investment.error.loadOptions")
         )
       } finally {
         setIsLoadingOptions(false)
@@ -164,7 +168,7 @@ export function AddInvestmentDialog({
             type="button"
             aria-label={t("investment.close")}
             disabled={isSaving}
-            onClick={onClose}
+            onClick={requestClose}
             className="rounded-xl p-2"
           >
             <X size={20} />
@@ -203,7 +207,7 @@ export function AddInvestmentDialog({
                   {t(
                     mode === "existing"
                       ? "investment.account.existing"
-                      : "investment.account.new",
+                      : "investment.account.new"
                   )}
                 </label>
               ))}
@@ -268,14 +272,6 @@ export function AddInvestmentDialog({
                     ))}
                   </select>
                 </label>
-                <label className="text-sm font-semibold">
-                  {t("investment.account.institution")}
-                  <input
-                    className={fieldClass}
-                    disabled={isSaving}
-                    {...register("newAccountInstitutionName")}
-                  />
-                </label>
               </div>
             )}
           </fieldset>
@@ -296,12 +292,25 @@ export function AddInvestmentDialog({
                   {t(
                     mode === "existing"
                       ? "investment.asset.existing"
-                      : "investment.asset.new",
+                      : "investment.asset.new"
                   )}
                 </label>
               ))}
             </div>
             {assetMode === "existing" ? (
+              <div className="space-y-3">
+              <label className="block text-sm font-semibold">
+                {t("investment.asset.searchLabel")}
+                <input
+                  type="search"
+                  value={assetSearch}
+                  onChange={(event) => setAssetSearch(event.target.value)}
+                  placeholder={t("investment.asset.searchPlaceholder")}
+                  autoComplete="off"
+                  className={fieldClass}
+                  disabled={isSaving || isLoadingOptions}
+                />
+              </label>
               <label className="block text-sm font-semibold">
                 {t("investment.asset.select")}
                 <select
@@ -310,19 +319,46 @@ export function AddInvestmentDialog({
                   {...register("assetId")}
                 >
                   <option value="">{t("investment.common.choose")}</option>
-                  {assets.map((asset) => (
+                  {filteredAssets.map((asset) => (
                     <option key={asset.id} value={asset.id}>
                       {asset.symbol ? `${asset.symbol} — ` : ""}
                       {asset.name} ({asset.currency_code})
                     </option>
                   ))}
                 </select>
-                <span className="text-red-600">
-                  {errors.assetId?.message}
-                </span>
+                <span className="text-red-600">{errors.assetId?.message}</span>
               </label>
+              {selectedAsset ? (
+                <p className="text-xs text-[var(--color-text-secondary)]">
+                  {t("investment.asset.authoritativeSelection", {
+                    symbol: selectedAsset.symbol ?? selectedAsset.name,
+                    exchange: selectedAsset.exchange ?? "—",
+                    currency: selectedAsset.currency_code,
+                  })}
+                </p>
+              ) : null}
+              {filteredAssets.length === 0 ? (
+                <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-[var(--color-border)] p-3">
+                  <p className="text-sm text-[var(--color-text-secondary)]">
+                    {t("investment.asset.noResults")}
+                  </p>
+                  <button
+                    type="button"
+                    className="tharwati-button-secondary"
+                    onClick={() =>
+                      setValue("assetMode", "new", { shouldDirty: true })
+                    }
+                  >
+                    {t("investment.asset.createCustom")}
+                  </button>
+                </div>
+              ) : null}
+              </div>
             ) : (
               <div className="grid gap-4 sm:grid-cols-2">
+                <p className="text-sm text-[var(--color-text-secondary)] sm:col-span-2">
+                  {t("investment.asset.customDescription")}
+                </p>
                 <label className="text-sm font-semibold">
                   {t("investment.asset.type")}
                   <select
@@ -367,7 +403,11 @@ export function AddInvestmentDialog({
                 {!isPreciousMetal ? (
                   <>
                     <label className="text-sm font-semibold">
-                      {t("investment.asset.symbol")}
+                      {t(
+                        requiresMarketSymbol
+                          ? "investment.asset.symbolRequired"
+                          : "investment.asset.symbol",
+                      )}
                       <input
                         className={fieldClass}
                         dir="ltr"
@@ -379,7 +419,11 @@ export function AddInvestmentDialog({
                       </span>
                     </label>
                     <label className="text-sm font-semibold">
-                      {t("investment.asset.exchange")}
+                      {t(
+                        isListedEquity
+                          ? "investment.asset.exchangeOptional"
+                          : "investment.asset.exchange",
+                      )}
                       <input
                         className={fieldClass}
                         disabled={isSaving}
@@ -414,17 +458,13 @@ export function AddInvestmentDialog({
                   disabled={isSaving}
                   {...register("quantity")}
                 />
-                <span className="text-red-600">
-                  {errors.quantity?.message}
-                </span>
+                <span className="text-red-600">{errors.quantity?.message}</span>
               </label>
               <label className="text-sm font-semibold">
                 {t("investment.unit")}
                 <input
                   className={fieldClass}
-                  value={t(
-                    `investment.unit.${unit}` as TranslationKey,
-                  )}
+                  value={t(`investment.unit.${unit}` as TranslationKey)}
                   disabled
                 />
               </label>
@@ -479,7 +519,7 @@ export function AddInvestmentDialog({
             disabled={isSaving}
             onClick={() => {
               clearError()
-              onClose()
+              requestClose()
             }}
             className="tharwati-button-secondary"
           >
@@ -492,12 +532,15 @@ export function AddInvestmentDialog({
             className="tharwati-button-primary flex items-center gap-2 disabled:opacity-60"
           >
             <Plus size={18} />
-            {isSaving
-              ? t("investment.saving")
-              : t("investment.save")}
+            {isSaving ? t("investment.saving") : t("investment.save")}
           </button>
         </footer>
       </section>
+      <UnsavedChangesDialog
+        open={unsaved.confirmationOpen}
+        onKeepEditing={unsaved.keepEditing}
+        onDiscard={unsaved.discard}
+      />
     </div>
   )
 }

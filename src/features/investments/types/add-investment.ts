@@ -11,7 +11,6 @@ export type AddInvestmentValues = {
   newAccountTypeCode: string
   newAccountName: string
   newAccountCurrencyCode: string
-  newAccountInstitutionName: string
   assetMode: "existing" | "new"
   assetId: string
   newAssetTypeCode: string
@@ -42,7 +41,6 @@ export const defaultAddInvestmentValues: AddInvestmentValues = {
   newAccountTypeCode: "brokerage",
   newAccountName: "",
   newAccountCurrencyCode: "USD",
-  newAccountInstitutionName: "",
   assetMode: "existing",
   assetId: "",
   newAssetTypeCode: "stock",

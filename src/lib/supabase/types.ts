@@ -109,7 +109,6 @@ type FinancialAccountRow = {
   user_id: string
   account_type_code: string
   name: string
-  institution_name: string | null
   currency_code: string
   opening_balance: Decimal
   is_active: boolean
@@ -314,7 +313,6 @@ export type Database = {
           user_id: string
           account_type_code: string
           name: string
-          institution_name?: string | null
           currency_code: string
           opening_balance?: Decimal
           is_active?: boolean
@@ -537,7 +535,6 @@ export type Database = {
           p_new_account_type_code: string | null
           p_new_account_name: string | null
           p_new_account_currency_code: string | null
-          p_new_account_institution_name: string | null
           p_asset_id: string | null
           p_new_asset_type_code: string | null
           p_new_asset_name: string | null

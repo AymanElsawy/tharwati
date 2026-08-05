@@ -79,6 +79,26 @@ describe("buildAddInvestmentArgs", () => {
     expect(result.p_identifier_value).toBe("XAU")
   })
 
+  it("uses the stock symbol as the primary custom identity when exchange is omitted", () => {
+    const result = buildAddInvestmentArgs(
+      values({
+        accountId: "account-id",
+        assetMode: "new",
+        newAssetTypeCode: "stock",
+        newAssetName: "Tesla",
+        newAssetSymbol: " TSLA ",
+        newAssetExchange: "",
+        quantity: "1",
+        unitPrice: "250",
+      }),
+    )
+
+    expect(result.p_new_asset_symbol).toBe("TSLA")
+    expect(result.p_new_asset_exchange).toBeNull()
+    expect(result.p_identifier_value).toBe("TSLA")
+    expect(result.p_identifier_namespace).toBe("custom")
+  })
+
   it("preserves selected EGP currencies in the RPC payload", () => {
     const result = buildAddInvestmentArgs(
       values({
