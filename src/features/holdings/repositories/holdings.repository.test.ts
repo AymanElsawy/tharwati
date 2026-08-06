@@ -28,7 +28,6 @@ describe("normalizeHoldingRow", () => {
       account: {
         id: "account-id",
         name: "Saudi",
-        institution_name: null,
         currency_code: "USD",
       },
     })

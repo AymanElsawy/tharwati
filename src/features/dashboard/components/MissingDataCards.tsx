@@ -22,9 +22,9 @@ export function MissingDataCards({
           Action required
         </h2>
       </div>
-      <div className="grid gap-4 md:grid-cols-2">
+      <div className="grid gap-px overflow-hidden rounded-xl border border-amber-200/70 bg-amber-200/70 md:grid-cols-2">
         {missing.priceHoldings.length > 0 ? (
-          <article className="rounded-2xl border border-amber-200 bg-amber-50 p-5 text-amber-950">
+          <article className="bg-amber-50 p-5 text-amber-950">
             <h3 className="font-bold">Missing market prices</h3>
             <p className="mt-2 text-sm">
               {missing.priceHoldings
@@ -40,7 +40,7 @@ export function MissingDataCards({
           </article>
         ) : null}
         {missing.exchangeRatePairs.length > 0 ? (
-          <article className="rounded-2xl border border-amber-200 bg-amber-50 p-5 text-amber-950">
+          <article className="bg-amber-50 p-5 text-amber-950">
             <h3 className="font-bold">Missing exchange rates</h3>
             <p className="mt-2 text-sm">
               {missing.exchangeRatePairs

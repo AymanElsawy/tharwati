@@ -16,6 +16,12 @@ const supportedTypes = new Set<string>([
   "cryptocurrency",
 ])
 
+export function isMarketPriceSupportedAssetType(
+  assetTypeCode: string,
+): boolean {
+  return supportedTypes.has(assetTypeCode)
+}
+
 const futureMarketPriceMessage =
   "Market price date cannot be in the future."
 

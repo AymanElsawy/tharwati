@@ -42,7 +42,6 @@ function holdingView(
       account: {
         id: `account-${id}`,
         name: values.accountName ?? id,
-        institution_name: null,
         currency_code: "USD",
       },
     },

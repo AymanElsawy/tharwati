@@ -13,9 +13,9 @@ export function PortfolioAllocationCard({
   allocation: DashboardAllocation[]
 }) {
   return (
-    <article className="tharwati-card p-6">
-      <h2 className="text-xl font-bold">Portfolio Allocation</h2>
-      <p className="mt-1 text-sm text-[var(--color-text-secondary)]">
+    <article className="tharwati-surface px-6 py-7">
+      <h2 className="tharwati-section-title">Portfolio Allocation</h2>
+      <p className="tharwati-section-description">
         Current base-currency market values
       </p>
       {allocation.length === 0 ? (
@@ -35,9 +35,9 @@ export function PortfolioAllocationCard({
                   %
                 </span>
               </div>
-              <div className="h-2.5 overflow-hidden rounded-full bg-[var(--color-surface-muted)]">
+              <div className="tharwati-chart-track">
                 <div
-                  className="h-full rounded-full bg-[var(--color-primary)]"
+                  className="tharwati-chart-fill"
                   style={{ width: `${item.percentage}%` }}
                 />
               </div>

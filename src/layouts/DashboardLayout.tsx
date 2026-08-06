@@ -131,7 +131,7 @@ export function DashboardLayout() {
 
   return (
     <div className="theme-transition min-h-screen bg-[var(--color-background)]">
-      <aside className="fixed inset-y-0 start-0 z-20 flex w-64 flex-col border-e border-[var(--color-border)] bg-[var(--color-sidebar)] px-5 py-8 shadow-[4px_0_24px_rgba(15,50,35,0.04)]">
+      <aside className="fixed inset-y-0 start-0 z-20 flex w-[var(--layout-sidebar-width)] flex-col border-e border-[var(--border-subtle)] bg-[var(--color-sidebar)] px-6 py-9 shadow-[2px_0_20px_rgba(15,23,42,0.025)]">
         <div>
           <h1 className="text-3xl font-black tracking-tight text-[var(--color-primary)]">
             Tharwati
@@ -187,21 +187,21 @@ export function DashboardLayout() {
         </div>
       </aside>
 
-      <div className="ms-64 min-h-screen">
-        <header className="sticky top-0 z-10 flex min-h-20 items-center justify-between border-b border-[var(--color-border)] bg-[var(--color-header)] px-10 py-3 backdrop-blur-xl">
+      <div className="ms-[var(--layout-sidebar-width)] min-h-screen">
+        <header className="sticky top-0 z-10 flex min-h-11 items-center justify-between border-b border-[var(--border-subtle)] bg-[var(--color-header)] px-[var(--space-page-inline)] py-1 backdrop-blur-xl">
           <AuthenticatedUserHeader />
 
           <div className="flex items-center gap-2">
             <button
               type="button"
               onClick={() => setIsAddInvestmentOpen(true)}
-              className="tharwati-button-primary hidden items-center gap-2 lg:flex"
+              className="tharwati-button-primary hidden !min-h-9 items-center gap-2 !rounded-xl !px-3 !py-1.5 text-sm lg:flex"
             >
               <Shapes size={17} />
               {t("investment.primaryAction")}
             </button>
             <LanguageSwitcher />
-            <div className="flex items-center rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-1.5 shadow-sm">
+            <div className="flex items-center rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-1">
               {themeOptions.map((option) => {
               const Icon = option.icon
               const isSelected = theme === option.value
@@ -216,7 +216,7 @@ export function DashboardLayout() {
                   aria-pressed={isSelected}
                   title={label}
                   className={[
-                    "flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-semibold transition",
+                    "flex items-center gap-2 rounded-lg px-2.5 py-1.5 text-sm font-semibold transition",
                     isSelected
                       ? "bg-[var(--color-primary)] text-[var(--color-text-on-primary)] shadow-sm"
                       : "text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text-primary)]",
@@ -231,14 +231,10 @@ export function DashboardLayout() {
           </div>
         </header>
 
-        <main
-          className="min-h-[calc(100vh-5rem)] p-10"
-          style={{
-            background:
-              "linear-gradient(135deg, var(--page-gradient-start), var(--page-gradient-middle), var(--page-gradient-end))",
-          }}
-        >
-          <Outlet />
+        <main className="min-h-[calc(100vh-2.75rem)] bg-[var(--color-background)] px-[var(--space-page-inline)] py-[var(--space-page-block)]">
+          <div className="tharwati-content-frame">
+            <Outlet />
+          </div>
         </main>
       </div>
       <button

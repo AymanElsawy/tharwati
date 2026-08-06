@@ -1,7 +1,10 @@
+import { Dialog } from "@base-ui/react/dialog"
 import { X } from "lucide-react"
-import { useTranslation } from "../../../i18n/useTranslation"
+import { useMemo, useState } from "react"
 
-import type { AccountFormValues } from "../types/account-form"
+import { Button } from "@/components/ui/button"
+import { useTranslation } from "@/i18n/useTranslation"
+import { accountTypeOptions, type AccountFormValues } from "../types/account-form"
 import { AccountForm } from "./AccountForm"
 
 type AccountFormDialogProps = {
@@ -13,6 +16,7 @@ type AccountFormDialogProps = {
   mode: "create" | "edit"
   onClose: () => void
   onSubmit: (values: AccountFormValues) => Promise<void>
+  onDirtyChange: (dirty: boolean) => void
 }
 
 export function AccountFormDialog({
@@ -24,96 +28,112 @@ export function AccountFormDialog({
   mode,
   onClose,
   onSubmit,
+  onDirtyChange,
 }: AccountFormDialogProps) {
   const { t } = useTranslation()
-  if (!isOpen) {
-    return null
-  }
-
   const formId = `${mode}-account-form`
-  const title =
-    mode === "create"
-      ? t("accounts.form.createTitle")
-      : t("accounts.form.editTitle")
+  const [creationStep, setCreationStep] = useState<"type" | "form">("type")
+  const [selectedType, setSelectedType] = useState<AccountFormValues["accountTypeCode"] | null>(null)
 
-  async function handleSubmit(values: AccountFormValues) {
-    await onSubmit(values)
-    onClose()
-  }
+  const effectiveDefaults = useMemo(
+    () => selectedType ? { ...defaultValues, accountTypeCode: selectedType } : defaultValues,
+    [defaultValues, selectedType],
+  )
+  const choosingType = mode === "create" && creationStep === "type"
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/55 p-4 backdrop-blur-sm"
-      role="presentation"
-      onMouseDown={(event) => {
-        if (event.currentTarget === event.target && !isSaving) {
-          onClose()
-        }
+    <Dialog.Root
+      open={isOpen}
+      onOpenChange={(open) => {
+        if (!open && !isSaving) onClose()
       }}
     >
-      <section
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby={`${formId}-title`}
-        className="max-h-[90vh] w-full max-w-xl overflow-y-auto rounded-3xl border border-[var(--color-border)] bg-[var(--color-background)] shadow-2xl"
-      >
-        <header className="sticky top-0 flex items-center justify-between border-b border-[var(--color-border)] bg-[var(--color-background)] px-6 py-5">
-          <div>
-            <h2
-              id={`${formId}-title`}
-              className="text-xl font-bold text-[var(--color-text-primary)]"
+      <Dialog.Portal>
+        <Dialog.Backdrop
+          className="bg-black/60"
+          style={{ position: "fixed", inset: 0, zIndex: 70 }}
+        />
+        <Dialog.Popup
+          className="flex-col overflow-hidden rounded-2xl border border-[var(--border-subtle)] bg-[var(--color-background)] outline-none"
+          style={{
+            position: "fixed",
+            top: "50%",
+            left: "50%",
+            transform: "translate(-50%, -50%)",
+            display: "flex",
+            width: "min(48rem, calc(100vw - 2rem))",
+            maxHeight: "calc(100dvh - 2rem)",
+            zIndex: 80,
+          }}
+        >
+          <header className="flex shrink-0 items-start justify-between gap-5 border-b border-[var(--border-subtle)] px-5 py-4 sm:px-7 sm:py-5">
+            <div className="min-w-0">
+              <Dialog.Title className="font-heading text-xl font-semibold">
+                {t(
+                  mode === "create"
+                    ? choosingType ? "accounts.form.chooseTypeTitle" : "accounts.form.createTitle"
+                    : "accounts.form.editTitle",
+                )}
+              </Dialog.Title>
+              <Dialog.Description className="mt-1 max-w-xl text-sm leading-6 text-muted-foreground">
+                {t(choosingType ? "accounts.form.chooseTypeDescription" : "accounts.form.description")}
+              </Dialog.Description>
+            </div>
+            <Dialog.Close
+              disabled={isSaving}
+              render={<Button variant="ghost" size="icon" className="shrink-0" />}
             >
-              {title}
-            </h2>
-            <p className="mt-1 text-sm text-[var(--color-text-secondary)]">
-              {t("accounts.form.description")}
-            </p>
+              <X size={18} />
+              <span className="sr-only">{t("accounts.form.close")}</span>
+            </Dialog.Close>
+          </header>
+
+          <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 py-5 sm:px-7 sm:py-6">
+            {choosingType ? (
+              <fieldset>
+                <legend className="sr-only">{t("accounts.form.chooseTypeTitle")}</legend>
+                <div className="grid gap-3 sm:grid-cols-2" role="radiogroup">
+                  {accountTypeOptions.map((option) => {
+                    const selected = selectedType === option.value
+                    return <button key={option.value} type="button" role="radio" aria-checked={selected} onClick={() => setSelectedType(option.value)} className={`min-h-16 rounded-xl border px-4 py-3 text-start text-sm font-semibold outline-none transition focus-visible:ring-2 focus-visible:ring-[var(--color-primary)] ${selected ? "border-[var(--color-primary)] bg-[var(--color-primary-soft)] text-[var(--color-primary)]" : "border-[var(--color-border)] bg-[var(--color-surface)] text-[var(--color-text-primary)] hover:border-[var(--color-primary)]"}`}>
+                      {t(option.creationLabelKey)}
+                    </button>
+                  })}
+                </div>
+              </fieldset>
+            ) : <AccountForm
+              defaultValues={effectiveDefaults}
+              formId={formId}
+              isSaving={isSaving}
+              isCurrencyLocked={isCurrencyLocked}
+              isOpeningBalanceLocked={isOpeningBalanceLocked}
+              onSubmit={onSubmit}
+              onDirtyChange={onDirtyChange}
+              showAccountTypeField={mode === "edit"}
+            />}
           </div>
-          <button
-            type="button"
-            aria-label={t("accounts.form.close")}
-            disabled={isSaving}
-            onClick={onClose}
-            className="rounded-xl p-2 text-[var(--color-text-secondary)] transition hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text-primary)] disabled:opacity-50"
-          >
-            <X size={20} />
-          </button>
-        </header>
 
-        <div className="px-6 py-6">
-          <AccountForm
-            defaultValues={defaultValues}
-            formId={formId}
-            isSaving={isSaving}
-            isCurrencyLocked={isCurrencyLocked}
-            isOpeningBalanceLocked={isOpeningBalanceLocked}
-            onSubmit={handleSubmit}
-          />
-        </div>
-
-        <footer className="sticky bottom-0 flex justify-end gap-3 border-t border-[var(--color-border)] bg-[var(--color-background)] px-6 py-4">
-          <button
-            type="button"
-            disabled={isSaving}
-            onClick={onClose}
-            className="tharwati-button-secondary"
-          >
-            {t("common.cancel")}
-          </button>
-          <button
-            type="submit"
-            form={formId}
-            disabled={isSaving}
-            className="tharwati-button-primary disabled:cursor-not-allowed disabled:opacity-60"
-          >
-            {isSaving
-              ? t("accounts.form.saving")
-              : mode === "create"
-                ? t("accounts.actions.create")
-                : t("accounts.form.saveChanges")}
-          </button>
-        </footer>
-      </section>
-    </div>
+          <footer className="flex shrink-0 flex-col-reverse gap-2 border-t border-[var(--border-subtle)] bg-background px-5 py-4 sm:flex-row sm:justify-end sm:px-7">
+            <Button
+              type="button"
+              variant="outline"
+              disabled={isSaving}
+              onClick={onClose}
+            >
+              {t("common.cancel")}
+            </Button>
+            {choosingType ? <Button type="button" disabled={selectedType === null} onClick={() => setCreationStep("form")}>
+              {t("common.continue")}
+            </Button> : <Button type="submit" form={formId} disabled={isSaving}>
+              {isSaving
+                ? t("accounts.form.saving")
+                : mode === "create"
+                  ? t("accounts.actions.create")
+                  : t("accounts.form.saveChanges")}
+            </Button>}
+          </footer>
+        </Dialog.Popup>
+      </Dialog.Portal>
+    </Dialog.Root>
   )
 }

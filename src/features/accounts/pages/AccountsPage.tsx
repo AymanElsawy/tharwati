@@ -1,271 +1,366 @@
-import { AlertCircle, Plus, RefreshCw, WalletCards } from "lucide-react"
-import { useEffect, useMemo, useState } from "react"
+import { AlertTriangle } from "lucide-react"
+import { useMemo, useState } from "react"
 
-import type { AccountSummary } from "../../../lib/supabase/types"
-import { useTranslation } from "../../../i18n/useTranslation"
-import { AccountFormDialog } from "../components/AccountFormDialog"
-import { AccountList } from "../components/AccountList"
-import { AccountToast } from "../components/AccountToast"
-import { ArchiveAccountDialog } from "../components/ArchiveAccountDialog"
-import { DeleteAccountDialog } from "../components/DeleteAccountDialog"
-import { EmptyAccountsState } from "../components/EmptyAccountsState"
-import { useAccounts } from "../hooks/useAccounts"
+import { UnsavedChangesDialog } from "@/components/UnsavedChangesDialog"
+import { AccountActiveFilters } from "@/features/accounts/components/AccountActiveFilters"
+import { AccountActivity } from "@/features/accounts/components/AccountActivity"
+import { AccountDataQuality } from "@/features/accounts/components/AccountDataQuality"
+import {
+  AccountDetailPanel,
+  AccountEvidencePanels,
+} from "@/features/accounts/components/AccountDetailPanel"
+import { AccountDetailErrorBoundary } from "@/features/accounts/components/AccountDetailErrorBoundary"
+import { AccountEvidenceRelationships } from "@/features/accounts/components/AccountEvidenceRelationships"
+import { AccountFilterBar } from "@/features/accounts/components/AccountFilterBar"
+import { AccountFormDialog } from "@/features/accounts/components/AccountFormDialog"
+import { AccountHealth } from "@/features/accounts/components/AccountHealth"
+import { AccountInventory } from "@/features/accounts/components/AccountInventory"
+import { AccountRelationshipsSummary } from "@/features/accounts/components/AccountRelationshipsSummary"
+import { AccountTypeNavigator } from "@/features/accounts/components/AccountTypeNavigator"
+import { AccountWorkspaceHeader } from "@/features/accounts/components/AccountWorkspaceHeader"
+import {
+  AccountWorkspaceEmpty,
+  AccountWorkspaceError,
+  AccountWorkspaceSkeleton,
+} from "@/features/accounts/components/AccountWorkspaceStates"
+import { ArchiveAccountDialog } from "@/features/accounts/components/ArchiveAccountDialog"
+import { DeleteAccountDialog } from "@/features/accounts/components/DeleteAccountDialog"
+import { useAccountsWorkspace } from "@/features/accounts/hooks/useAccountsWorkspace"
 import {
   accountToFormValues,
   emptyAccountFormValues,
   type AccountFormValues,
-} from "../types/account-form"
-
-type FormDialogState =
-  | { mode: "create"; account: null }
-  | { mode: "edit"; account: AccountSummary }
-  | null
-
-function AccountsLoadingState() {
-  return (
-    <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
-      {Array.from({ length: 3 }, (_, index) => (
-        <div
-          key={index}
-          className="h-64 animate-pulse rounded-3xl border border-[var(--color-border)] bg-[var(--color-surface)]"
-        />
-      ))}
-    </div>
-  )
-}
+} from "@/features/accounts/types/account-form"
+import { useUnsavedChanges } from "@/hooks/useUnsavedChanges"
+import { useTranslation } from "@/i18n/useTranslation"
+import type { AccountSummary } from "@/lib/supabase/types"
 
 export function AccountsPage() {
   const { t } = useTranslation()
-  const {
-    accounts,
-    archiveAccount,
-    canDeleteAccount,
-    clearError,
-    createAccount,
-    deleteAccount,
-    error,
-    isLoading,
-    isSaving,
-    hasFinancialHistory,
-    refreshAccounts,
-    updateAccount,
-  } = useAccounts()
-  const [formDialog, setFormDialog] = useState<FormDialogState>(null)
-  const [archiveTarget, setArchiveTarget] =
-    useState<AccountSummary | null>(null)
-  const [deleteTarget, setDeleteTarget] =
-    useState<AccountSummary | null>(null)
-  const [toastMessage, setToastMessage] = useState<string | null>(null)
-
-  useEffect(() => {
-    if (!toastMessage) {
-      return
-    }
-
-    const timeoutId = window.setTimeout(() => {
-      setToastMessage(null)
-    }, 4000)
-
-    return () => window.clearTimeout(timeoutId)
-  }, [toastMessage])
-
-  const formValues = useMemo(() => {
-    if (formDialog?.mode === "edit") {
-      return accountToFormValues(formDialog.account)
-    }
-
-    return emptyAccountFormValues
-  }, [formDialog])
-
-  async function handleFormSubmit(values: AccountFormValues) {
-    if (formDialog?.mode === "edit") {
-      await updateAccount(formDialog.account.id, values)
-      setToastMessage(t("accounts.toast.updated"))
-      return
-    }
-
-    await createAccount(values)
-    setToastMessage(t("accounts.toast.created"))
-  }
-
-  async function handleArchiveConfirm() {
-    if (!archiveTarget) {
-      return
-    }
-
-    try {
-      await archiveAccount(archiveTarget.id)
-      setArchiveTarget(null)
-      setToastMessage(t("accounts.toast.archived"))
-    } catch {
-      // The hook exposes the typed repository error in the page error state.
-    }
-  }
-
-  async function handleDeleteConfirm() {
-    if (!deleteTarget) {
-      return
-    }
-
-    try {
-      await deleteAccount(deleteTarget.id)
-      setDeleteTarget(null)
-      setToastMessage(t("accounts.toast.deleted"))
-    } catch {
-      // The hook exposes the typed repository error in the page error state.
-    }
-  }
-
-  const hasInitialError = Boolean(error && accounts.length === 0)
-
+  const workspace = useAccountsWorkspace()
+  const { snapshot } = workspace
+  const [form, setForm] = useState<{
+    mode: "create" | "edit"
+    account: AccountSummary | null
+  } | null>(null)
+  const [confirm, setConfirm] = useState<{
+    mode: "archive" | "delete"
+    account: AccountSummary
+  } | null>(null)
+  const [formDirty, setFormDirty] = useState(false)
+  const unsaved = useUnsavedChanges(formDirty)
+  const defaults = useMemo<AccountFormValues>(
+    () =>
+      form?.account
+        ? accountToFormValues(form.account)
+        : emptyAccountFormValues,
+    [form]
+  )
+  const closeForm = () =>
+    unsaved.request(() => {
+      setForm(null)
+      setFormDirty(false)
+    })
+  if (workspace.isLoading && snapshot === null)
+    return <AccountWorkspaceSkeleton />
+  if (snapshot === null)
+    return (
+      <AccountWorkspaceError
+        error={workspace.error ?? new Error(t("accounts.error.unexpected"))}
+        onRetry={() => void workspace.refresh()}
+      />
+    )
+  const eligibility = snapshot.deletionEligibility.find(
+    (entry) => entry.accountId === workspace.selectedAccountId
+  )
+  const history = eligibility?.hasFinancialHistory ?? false
+  const relationship = snapshot.analysis.relationships.find(
+    (entry) => entry.id === workspace.selectedRelationship
+  )
+  const filtered = Boolean(
+    workspace.accountType ||
+    workspace.filters.search ||
+    workspace.filters.currency ||
+    workspace.filters.lifecycle !== "active"
+  )
+  const hasAnalytical = Boolean(
+    workspace.selectedHealthFactor ||
+    workspace.selectedIssue ||
+    workspace.selectedRelationship
+  )
+  const holding =
+    snapshot.holdingsEvidence.find(
+      (item) => item.holdingId === workspace.selectedHoldingId
+    ) ?? null
+  const asset =
+    snapshot.assetsEvidence.find(
+      (item) => item.assetId === workspace.selectedAssetId
+    ) ?? null
+  const activityItem =
+    snapshot.activity.find(
+      (item) => item.transactionId === workspace.selectedActivityId
+    ) ?? null
+  const activityTypes = [
+    ...new Set(snapshot.activity.map((item) => item.type)),
+  ].sort()
   return (
-    <section className="mx-auto max-w-7xl">
-      <header className="mb-8 flex flex-col justify-between gap-5 sm:flex-row sm:items-end">
-        <div>
-          <div className="flex items-center gap-3 text-[var(--color-primary)]">
-            <WalletCards size={26} />
-            <span className="text-sm font-bold uppercase tracking-[0.18em]">
-              {t("accounts.page.eyebrow")}
-            </span>
-          </div>
-          <h1 className="mt-3 text-3xl font-black tracking-tight text-[var(--color-text-primary)]">
-            {t("accounts.page.title")}
-          </h1>
-          <p className="mt-2 max-w-2xl text-[var(--color-text-secondary)]">
-            {t("accounts.page.description")}
-          </p>
-        </div>
-
-        <button
-          type="button"
-          onClick={() => {
-            clearError()
-            setFormDialog({ mode: "create", account: null })
-          }}
-          className="tharwati-button-primary flex items-center justify-center gap-2"
-        >
-          <Plus size={18} />
-          {t("accounts.actions.create")}
-        </button>
-      </header>
-
-      {error && !hasInitialError ? (
+    <div className="pb-12">
+      <span role="status" aria-live="polite" className="sr-only">
+        {workspace.announcement}
+      </span>
+      {workspace.error ? (
         <div
           role="alert"
-          className="mb-6 flex items-start gap-3 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-red-800"
+          className="mb-5 flex items-center justify-between gap-4 border-y border-amber-600/35 py-3 text-sm text-amber-800 dark:text-amber-300"
         >
-          <AlertCircle size={20} className="mt-0.5 shrink-0" />
-          <div className="min-w-0 flex-1">
-            <p className="font-semibold">
-              {t("accounts.error.actionTitle")}
-            </p>
-            <p className="mt-0.5 text-sm">{error.message}</p>
-          </div>
+          <span className="inline-flex items-center gap-2">
+            <AlertTriangle size={16} />
+            {t("accounts.workspace.refreshFailed")}
+          </span>
           <button
-            type="button"
-            onClick={clearError}
-            className="text-sm font-semibold underline"
+            onClick={() => void workspace.refresh()}
+            className="font-semibold underline focus-visible:ring-2"
           >
-            {t("common.dismiss")}
-          </button>
-        </div>
-      ) : null}
-
-      {isLoading ? <AccountsLoadingState /> : null}
-
-      {!isLoading && hasInitialError ? (
-        <div
-          role="alert"
-          className="flex min-h-80 flex-col items-center justify-center rounded-3xl border border-red-200 bg-red-50 p-8 text-center"
-        >
-          <AlertCircle size={34} className="text-red-600" />
-          <h2 className="mt-4 text-xl font-bold text-red-900">
-            {t("accounts.error.loadTitle")}
-          </h2>
-          <p className="mt-2 max-w-md text-sm text-red-700">
-            {error?.message}
-          </p>
-          <button
-            type="button"
-            onClick={() => void refreshAccounts()}
-            className="mt-5 flex items-center gap-2 rounded-xl bg-red-700 px-4 py-2.5 text-sm font-semibold text-white"
-          >
-            <RefreshCw size={16} />
             {t("accounts.actions.tryAgain")}
           </button>
         </div>
       ) : null}
-
-      {!isLoading && !hasInitialError && accounts.length === 0 ? (
-        <EmptyAccountsState
-          onCreate={() =>
-            setFormDialog({ mode: "create", account: null })
+      <div
+        aria-busy={workspace.isRefreshing}
+        className={`transition-opacity motion-reduce:transition-none ${workspace.isRefreshing ? "opacity-60" : "opacity-100"}`}
+      >
+        <AccountWorkspaceHeader
+          snapshot={snapshot}
+          isRefreshing={workspace.isRefreshing}
+          onScopeChange={(scope) =>
+            unsaved.request(() => workspace.setScope(scope))
           }
+          onAdd={() => setForm({ mode: "create", account: null })}
         />
-      ) : null}
-
-      {!isLoading && accounts.length > 0 ? (
-        <AccountList
-          accounts={accounts}
-          canDeleteAccount={canDeleteAccount}
-          onArchive={setArchiveTarget}
-          onDelete={setDeleteTarget}
-          onEdit={(account) => {
-            clearError()
-            setFormDialog({ mode: "edit", account })
+        <AccountTypeNavigator
+          options={snapshot.accountTypes}
+          selected={workspace.accountType}
+          total={snapshot.accountCount}
+          onSelect={workspace.setAccountType}
+        />
+        <AccountFilterBar
+          filters={workspace.filters}
+          currencies={snapshot.currencies}
+          resultCount={workspace.items.length}
+          onChange={workspace.updateFilter}
+        />
+        <AccountActiveFilters
+          filters={workspace.filters}
+          accountType={workspace.accountType}
+          healthFactor={workspace.selectedHealthFactor}
+          issue={workspace.selectedIssue}
+          relationshipLabel={
+            relationship
+              ? relationship.kind === "account_type"
+                ? relationship.label
+                : t(`accounts.relationships.${relationship.kind}`)
+              : null
+          }
+          onChange={workspace.updateFilter}
+          onClearType={() => workspace.setAccountType(null)}
+          onClearHealth={() => workspace.selectHealthFactor(null)}
+          onClearIssue={() => workspace.selectIssue(null)}
+          onClearRelationship={() => workspace.setSelectedRelationship(null)}
+          onClear={() => {
+            workspace.clearFilters()
+            workspace.clearAnalyticalFilters()
+          }}
+        />
+        {workspace.accountScopeId ? (
+          <button
+            onClick={() =>
+              unsaved.request(() => workspace.openAccountWorkspace(null))
+            }
+            className="text-primary mt-4 text-sm font-semibold focus-visible:ring-2"
+          >
+            {t("accounts.detail.restoreAll")}
+          </button>
+        ) : null}
+        {workspace.items.length ? (
+          <AccountInventory
+            items={workspace.items}
+            selectedId={workspace.selectedAccountId}
+            sort={workspace.filters.sort}
+            direction={workspace.filters.direction}
+            onSort={workspace.toggleSort}
+            onSelect={workspace.selectAccount}
+          />
+        ) : (
+          <AccountWorkspaceEmpty
+            filtered={filtered || hasAnalytical || snapshot.items.length > 0}
+            onClear={() => {
+              workspace.setAccountType(null)
+              workspace.clearFilters()
+              workspace.clearAnalyticalFilters()
+            }}
+          />
+        )}
+        <AccountHealth
+          analysis={snapshot.analysis}
+          selected={workspace.selectedHealthFactor}
+          onSelect={workspace.selectHealthFactor}
+        />
+        <AccountDataQuality
+          analysis={snapshot.analysis}
+          items={snapshot.items}
+          selected={workspace.selectedIssue}
+          onSelect={workspace.selectIssue}
+        />
+        <AccountRelationshipsSummary
+          analysis={snapshot.analysis}
+          selected={workspace.selectedRelationship}
+          onSelect={workspace.setSelectedRelationship}
+        />
+        <AccountEvidenceRelationships detail={workspace.detail} />
+        <AccountActivity
+          activity={workspace.activity}
+          filters={workspace.activityFilters}
+          types={activityTypes}
+          error={snapshot.activityError}
+          onFilter={workspace.setActivityFilters}
+          onOpen={workspace.setSelectedActivityId}
+        />
+      </div>
+      <AccountDetailErrorBoundary
+        resetKey={`${snapshot.updatedAt}:${workspace.selectedAccountId ?? "none"}`}
+        fallback={(detailError) => (
+          <div
+            role="alert"
+            className="bg-background fixed end-5 bottom-5 z-[85] max-w-md rounded-xl border border-red-500/30 p-4 text-sm text-red-700 dark:text-red-300"
+          >
+            <strong className="block">
+              {t("accounts.detail.renderError")}
+            </strong>
+            <span className="mt-1 block text-xs">{detailError.message}</span>
+            <button
+              type="button"
+              className="mt-3 font-semibold underline"
+              onClick={() => workspace.setDetailOpen(false)}
+            >
+              {t("common.close")}
+            </button>
+          </div>
+        )}
+      >
+        <AccountDetailPanel
+          detail={workspace.detail}
+          open={workspace.detailOpen}
+          canDelete={eligibility?.canDelete ?? false}
+          onOpenChange={workspace.setDetailOpen}
+          onScope={(id) =>
+            unsaved.request(() => workspace.openAccountWorkspace(id))
+          }
+          onHolding={workspace.setSelectedHoldingId}
+          onAsset={workspace.setSelectedAssetId}
+          onActivity={workspace.setSelectedActivityId}
+          onQuality={() => {
+            workspace.setDetailOpen(false)
+            document.getElementById("account-quality-title")?.focus()
+          }}
+          onEdit={() => {
+            if (workspace.detail) {
+              workspace.setDetailOpen(false)
+              setForm({ mode: "edit", account: workspace.detail.item.account })
+            }
+          }}
+          onArchive={() => {
+            if (workspace.detail) {
+              workspace.setDetailOpen(false)
+              setConfirm({
+                mode: "archive",
+                account: workspace.detail.item.account,
+              })
+            }
+          }}
+          onDelete={() => {
+            if (workspace.detail && eligibility?.canDelete) {
+              workspace.setDetailOpen(false)
+              setConfirm({
+                mode: "delete",
+                account: workspace.detail.item.account,
+              })
+            }
+          }}
+        />
+      </AccountDetailErrorBoundary>
+      <AccountEvidencePanels
+        holding={holding}
+        asset={asset}
+        activity={activityItem}
+        onCloseHolding={() => workspace.setSelectedHoldingId(null)}
+        onCloseAsset={() => workspace.setSelectedAssetId(null)}
+        onCloseActivity={() => workspace.setSelectedActivityId(null)}
+      />
+      {form ? (
+        <AccountFormDialog
+          defaultValues={defaults}
+          isOpen
+          isSaving={workspace.isSaving}
+          isCurrencyLocked={form.mode === "edit" && history}
+          isOpeningBalanceLocked={form.mode === "edit" && history}
+          mode={form.mode}
+          onDirtyChange={setFormDirty}
+          onClose={closeForm}
+          onSubmit={async (values) => {
+            if (form.mode === "edit" && form.account)
+              await workspace.updateAccount(form.account.id, values)
+            else await workspace.createAccount(values)
+            setFormDirty(false)
+            setForm(null)
           }}
         />
       ) : null}
-
-      <AccountFormDialog
-        defaultValues={formValues}
-        isOpen={formDialog !== null}
-        isSaving={isSaving}
-        isCurrencyLocked={
-          formDialog?.mode === "edit"
-            ? hasFinancialHistory(formDialog.account.id)
-            : false
-        }
-        isOpeningBalanceLocked={
-          formDialog?.mode === "edit"
-            ? hasFinancialHistory(formDialog.account.id)
-            : false
-        }
-        mode={formDialog?.mode ?? "create"}
-        onClose={() => {
-          if (!isSaving) {
-            setFormDialog(null)
-          }
-        }}
-        onSubmit={handleFormSubmit}
-      />
-
       <ArchiveAccountDialog
-        account={archiveTarget}
-        isSaving={isSaving}
-        onCancel={() => {
-          if (!isSaving) {
-            setArchiveTarget(null)
+        account={confirm?.mode === "archive" ? confirm.account : null}
+        isSaving={workspace.isSaving}
+        onCancel={() => setConfirm(null)}
+        onConfirm={async () => {
+          if (confirm) {
+            workspace.updateFilter("lifecycle", "all")
+            await workspace.archiveAccount(confirm.account.id)
+            setConfirm(null)
           }
         }}
-        onConfirm={handleArchiveConfirm}
       />
-
       <DeleteAccountDialog
-        account={deleteTarget}
-        isSaving={isSaving}
-        onCancel={() => {
-          if (!isSaving) {
-            setDeleteTarget(null)
+        account={confirm?.mode === "delete" ? confirm.account : null}
+        isSaving={workspace.isSaving}
+        onCancel={() => setConfirm(null)}
+        onConfirm={async () => {
+          if (confirm) {
+            await workspace.deleteAccount(confirm.account.id)
+            setConfirm(null)
+            requestAnimationFrame(() =>
+              document.getElementById("account-inventory-title")?.focus()
+            )
           }
         }}
-        onConfirm={handleDeleteConfirm}
       />
-
-      <AccountToast
-        message={toastMessage}
-        onDismiss={() => setToastMessage(null)}
+      <UnsavedChangesDialog
+        open={unsaved.confirmationOpen}
+        onKeepEditing={unsaved.keepEditing}
+        onDiscard={unsaved.discard}
       />
-    </section>
+      {workspace.mutationError ? (
+        <div
+          role="alert"
+          className="bg-background fixed end-5 bottom-5 z-[80] max-w-sm rounded-xl border border-red-500/30 p-4 text-sm text-red-700 dark:text-red-300"
+        >
+          <button
+            className="float-end ms-4"
+            onClick={workspace.clearMutationError}
+            aria-label={t("common.dismiss")}
+          >
+            ×
+          </button>
+          {workspace.mutationError.message}
+        </div>
+      ) : null}
+    </div>
   )
 }

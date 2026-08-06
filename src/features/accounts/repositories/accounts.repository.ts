@@ -12,12 +12,12 @@ import type {
   Decimal,
   TableUpdate,
 } from "../../../lib/supabase/types"
+import { normalizeDecimal } from "@/lib/financial-calculations/decimal"
 
 export type CreateAccountInput = {
   accountTypeCode: string
   name: string
   currencyCode: string
-  institutionName?: string | null
   openingBalance?: Decimal
   notes?: string | null
 }
@@ -26,7 +26,6 @@ export type UpdateAccountInput = {
   accountTypeCode?: string
   name?: string
   currencyCode?: string
-  institutionName?: string | null
   openingBalance?: Decimal
   notes?: string | null
   isActive?: boolean
@@ -46,6 +45,19 @@ const immutableOpeningBalanceMessage =
 type DatabaseError = {
   code?: string
   message: string
+}
+
+const accountSelect = "id,user_id,account_type_code,name,currency_code,opening_balance::text,notes,is_active,created_at,updated_at" as const
+
+export function requireAccountDecimalText(value: unknown, field: string, operation: string): Decimal {
+  if (typeof value !== "string" || normalizeDecimal(value) === null) {
+    throw new RepositoryError({ code: "database_error", message: `Account field ${field} must be a PostgreSQL decimal string`, operation })
+  }
+  return value
+}
+
+function mapAccountSummary(row: AccountSummary, operation: string): AccountSummary {
+  return { ...row, opening_balance: requireAccountDecimalText(row.opening_balance, "opening_balance", operation) }
 }
 
 function throwAccountUpdateError(
@@ -93,11 +105,11 @@ export class AccountsRepository {
     const userId = await requireAuthenticatedUserId(this.client, operation)
     const { data, error } = await this.client
       .from("financial_accounts")
-      .select("*")
+      .select(accountSelect)
       .eq("user_id", userId)
       .order("created_at", { ascending: false })
 
-    return requireQueryData(data, error, operation)
+    return requireQueryData(data, error, operation).map((row) => mapAccountSummary(row, operation))
   }
 
   async getAccount(id: string): Promise<AccountSummary> {
@@ -105,12 +117,12 @@ export class AccountsRepository {
     const userId = await requireAuthenticatedUserId(this.client, operation)
     const { data, error } = await this.client
       .from("financial_accounts")
-      .select("*")
+      .select(accountSelect)
       .eq("id", id)
       .eq("user_id", userId)
       .single()
 
-    return requireQueryData(data, error, operation)
+    return mapAccountSummary(requireQueryData(data, error, operation), operation)
   }
 
   async createAccount(input: CreateAccountInput): Promise<AccountSummary> {
@@ -123,14 +135,13 @@ export class AccountsRepository {
         account_type_code: input.accountTypeCode,
         name: input.name,
         currency_code: input.currencyCode,
-        institution_name: input.institutionName,
         opening_balance: input.openingBalance,
         notes: input.notes,
       })
-      .select("*")
+      .select(accountSelect)
       .single()
 
-    return requireQueryData(data, error, operation)
+    return mapAccountSummary(requireQueryData(data, error, operation), operation)
   }
 
   async updateAccount(
@@ -150,9 +161,6 @@ export class AccountsRepository {
     if (input.currencyCode !== undefined) {
       update.currency_code = input.currencyCode
     }
-    if (input.institutionName !== undefined) {
-      update.institution_name = input.institutionName
-    }
     if (input.openingBalance !== undefined) {
       update.opening_balance = input.openingBalance
     }
@@ -168,11 +176,11 @@ export class AccountsRepository {
       .update(update)
       .eq("id", id)
       .eq("user_id", userId)
-      .select("*")
+      .select(accountSelect)
       .single()
 
     throwAccountUpdateError(error, operation)
-    return requireQueryData(data, error, operation)
+    return mapAccountSummary(requireQueryData(data, error, operation), operation)
   }
 
   async archiveAccount(id: string): Promise<AccountSummary> {

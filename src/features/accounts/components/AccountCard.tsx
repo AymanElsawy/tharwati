@@ -1,6 +1,5 @@
 import {
   Archive,
-  Building2,
   Pencil,
   Trash2,
   WalletCards,
@@ -38,8 +37,7 @@ export function AccountCard({
               {account.name}
             </h3>
             <p className="mt-1 flex items-center gap-1.5 truncate text-sm text-[var(--color-text-secondary)]">
-              <Building2 size={15} className="shrink-0" />
-              {account.institution_name ?? t("accounts.card.noInstitution")}
+              {getAccountTypeLabel(account.account_type_code, t)}
             </p>
           </div>
         </div>

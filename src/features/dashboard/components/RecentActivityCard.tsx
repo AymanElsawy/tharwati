@@ -6,12 +6,14 @@ export function RecentActivityCard({
   activities: DashboardActivity[]
 }) {
   return (
-    <article className="tharwati-card overflow-hidden">
-      <header className="border-b border-[var(--color-border)] px-6 py-5">
-        <h2 className="text-xl font-bold">Recent Activity</h2>
-        <p className="mt-1 text-sm text-[var(--color-text-secondary)]">
+    <article className="tharwati-list-surface">
+      <header className="flex flex-wrap items-end justify-between gap-4 border-b border-[var(--border-subtle)] px-1 py-5 sm:px-6">
+        <div>
+          <h2 className="tharwati-section-title">Recent Activity</h2>
+          <p className="tharwati-section-description">
           Posted ledger activity and exchange-rate updates
-        </p>
+          </p>
+        </div>
       </header>
       {activities.length === 0 ? (
         <p className="p-8 text-sm text-[var(--color-text-secondary)]">
@@ -22,7 +24,7 @@ export function RecentActivityCard({
           {activities.map((activity) => (
             <li
               key={activity.id}
-              className="border-b border-[var(--color-border)] px-6 py-4 last:border-0"
+              className="tharwati-list-row px-1 py-4 sm:px-6"
             >
               <div className="flex justify-between gap-4">
                 <div>

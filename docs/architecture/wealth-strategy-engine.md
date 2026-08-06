@@ -246,7 +246,6 @@ Minimum Required Fields
 Optional
 
 - Student Name
-- Institution
 - Notes
 
 ---

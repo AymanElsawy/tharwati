@@ -16,6 +16,7 @@ interface Props {
   isSaving: boolean
   onClose: () => void
   onSubmit: (values: ExchangeRateFormValues) => Promise<void>
+  onDirtyChange?: (dirty: boolean) => void
 }
 
 export function ExchangeRateFormDialog({
@@ -26,13 +27,15 @@ export function ExchangeRateFormDialog({
   isSaving,
   onClose,
   onSubmit,
+  onDirtyChange,
 }: Props) {
-  const { control, register, reset, handleSubmit, formState: { errors } } =
+  const { control, register, reset, handleSubmit, formState: { errors, isDirty } } =
     useForm<ExchangeRateFormValues>({
       resolver: zodResolver(exchangeRateSchema),
       defaultValues: values,
     })
   useEffect(() => reset(values), [reset, values])
+  useEffect(() => onDirtyChange?.(isDirty), [isDirty, onDirtyChange])
   if (!isOpen) return null
 
   return (
@@ -40,7 +43,7 @@ export function ExchangeRateFormDialog({
       <section role="dialog" aria-modal="true" className="w-full max-w-lg rounded-3xl bg-[var(--color-background)] p-6 shadow-2xl">
         <h2 className="text-xl font-bold">{mode === "create" ? "Add Exchange Rate" : "Edit Exchange Rate"}</h2>
         <p className="mt-1 text-sm text-[var(--color-text-secondary)]">Store one unit of the From currency expressed in the To currency.</p>
-        <form className="mt-6 space-y-5" onSubmit={handleSubmit(async (data) => { await onSubmit(data); onClose() })}>
+        <form className="mt-6 space-y-5" onSubmit={handleSubmit(onSubmit)}>
           {(["fromCurrencyCode", "toCurrencyCode"] as const).map((name) => (
             <Controller
               key={name}

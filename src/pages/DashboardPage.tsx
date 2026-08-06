@@ -15,9 +15,9 @@ export function DashboardPage() {
   const { dashboard, error, isLoading, refresh } = useDashboard()
 
   return (
-    <section className="space-y-8">
-      <header>
-        <p className="text-sm font-semibold uppercase tracking-[0.16em] text-[var(--color-primary)]">
+    <section className="tharwati-page-stack">
+      <header className="tharwati-page-header">
+        <p className="tharwati-eyebrow">
           {t("pages.dashboard.eyebrow")}
         </p>
         <h1 className="tharwati-page-title mt-2">
@@ -29,18 +29,18 @@ export function DashboardPage() {
       </header>
 
       {isLoading ? (
-        <div className="grid gap-5 md:grid-cols-3">
+        <div className="tharwati-metric-grid">
           {Array.from({ length: 3 }, (_, index) => (
             <div
               key={index}
-              className="h-48 animate-pulse rounded-3xl bg-[var(--color-surface)]"
+              className="h-44 animate-pulse border-e border-[var(--border-quiet)] bg-[var(--color-surface)] last:border-e-0"
             />
           ))}
         </div>
       ) : null}
 
       {!isLoading && error ? (
-        <div role="alert" className="tharwati-card p-8">
+        <div role="alert" className="tharwati-surface p-8">
           <div className="flex items-center gap-3 text-red-700">
             <AlertTriangle className="size-5" />
             <h2 className="font-bold">Dashboard unavailable</h2>
@@ -66,7 +66,7 @@ export function DashboardPage() {
         <>
           <MissingDataCards missing={dashboard.missingData} />
           <DashboardSummary dashboard={dashboard} />
-          <div className="grid gap-6 xl:grid-cols-[1.4fr_1fr]">
+          <div className="grid gap-8 xl:grid-cols-[1.45fr_1fr]">
             <PerformanceCard
               performance={dashboard.performance}
               currency={dashboard.baseCurrency}

@@ -1,6 +1,6 @@
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useEffect, useMemo } from "react"
-import { useForm } from "react-hook-form"
+import { useForm, useWatch } from "react-hook-form"
 
 import { useTranslation } from "../../../i18n/useTranslation"
 import { createAssetSchema } from "../schemas/asset.schema"
@@ -9,12 +9,14 @@ import {
   currencyOptions,
   type AssetFormValues,
 } from "../types/asset-form"
+import { hasMeaningfulAssetChanges } from "../utils/asset-form-state"
 
 type Props = {
   defaultValues: AssetFormValues
   formId: string
   isSaving: boolean
   onSubmit: (values: AssetFormValues) => Promise<void>
+  onDirtyChange?: (dirty: boolean) => void
 }
 
 const fieldClass =
@@ -25,6 +27,7 @@ export function AssetForm({
   formId,
   isSaving,
   onSubmit,
+  onDirtyChange,
 }: Props) {
   const { t } = useTranslation()
   const schema = useMemo(() => createAssetSchema(t), [t])
@@ -33,12 +36,22 @@ export function AssetForm({
     handleSubmit,
     register,
     reset,
+    control,
   } = useForm<AssetFormValues>({
     resolver: zodResolver(schema),
     defaultValues,
   })
 
   useEffect(() => reset(defaultValues), [defaultValues, reset])
+  const watched = useWatch({ control })
+  useEffect(() => {
+    onDirtyChange?.(
+      hasMeaningfulAssetChanges(
+        { ...defaultValues, ...watched } as AssetFormValues,
+        defaultValues,
+      ),
+    )
+  }, [defaultValues, onDirtyChange, watched])
   const disabled = isSaving || isSubmitting
 
   return (

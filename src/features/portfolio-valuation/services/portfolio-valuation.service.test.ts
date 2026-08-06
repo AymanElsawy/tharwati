@@ -33,7 +33,6 @@ function holding(
     account: {
       id: "account-1",
       name: "Brokerage",
-      institution_name: null,
       currency_code: "USD",
     },
     ...overrides,

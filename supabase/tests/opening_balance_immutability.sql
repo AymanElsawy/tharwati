@@ -9,7 +9,6 @@ insert into auth.users (
   role,
   email,
   encrypted_password,
-  confirmed_at,
   raw_app_meta_data,
   raw_user_meta_data,
   created_at,
@@ -23,7 +22,6 @@ values
     'authenticated',
     'opening-balance-a@example.invalid',
     '',
-    now(),
     '{}'::jsonb,
     '{}'::jsonb,
     now(),
@@ -36,7 +34,6 @@ values
     'authenticated',
     'opening-balance-b@example.invalid',
     '',
-    now(),
     '{}'::jsonb,
     '{}'::jsonb,
     now(),
@@ -107,6 +104,10 @@ $test$;
 
 \echo ok 1 - opening balance changes before history exists
 
+-- Fixture setup is administrative; the assertions below exercise account
+-- updates through the authenticated/RLS boundary.
+reset role;
+
 insert into public.financial_transactions (
   id,
   user_id,
@@ -155,6 +156,8 @@ values
     'offset'
   );
 
+set local role authenticated;
+
 select public.post_transaction(
   '33000000-0000-4000-8000-000000000001'
 );
@@ -184,7 +187,6 @@ select public.add_investment(
   p_new_account_type_code => null,
   p_new_account_name => null,
   p_new_account_currency_code => null,
-  p_new_account_institution_name => null,
   p_asset_id => null,
   p_new_asset_type_code => 'stock',
   p_new_asset_name => 'Opening Balance Test Stock',

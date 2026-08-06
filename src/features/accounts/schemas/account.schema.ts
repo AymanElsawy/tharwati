@@ -18,7 +18,6 @@ export function createAccountSchema(
       .trim()
       .min(1, t("accounts.validation.nameRequired")),
     accountTypeCode: z.enum(accountTypeCodes),
-    institutionName: z.string().trim(),
     currencyCode: z.enum(currencyCodes),
     openingBalance: z
       .string()

@@ -8,6 +8,8 @@ import type {
   ManualMarketPriceInput,
 } from "@/features/market-prices/types/manual-market-price"
 import { useTranslation } from "@/i18n/useTranslation"
+import { useUnsavedChanges } from "@/hooks/useUnsavedChanges"
+import { UnsavedChangesDialog } from "@/components/UnsavedChangesDialog"
 
 const positiveDecimal = /^(?:0*[1-9]\d*|0*\d*\.\d*[1-9]\d*)$/
 
@@ -35,6 +37,10 @@ export function MarketPricesPage() {
     () => new Map(assets.map((asset) => [asset.id, asset])),
     [assets],
   )
+  const initialForm = useMemo(() => ({ assetId: editing?.asset_id ?? "", price: editing ? String(editing.price) : "", currencyCode: editing?.currency_code ?? "", asOf: editing ? toDateTimeLocal(new Date(editing.as_of)) : "" }), [editing])
+  const formDirty = isFormOpen && (assetId.trim() !== initialForm.assetId || price.trim() !== initialForm.price || currencyCode.trim().toUpperCase() !== initialForm.currencyCode || (editing !== null && asOf !== initialForm.asOf) || (editing === null && Boolean(assetId || price || currencyCode)))
+  const unsaved = useUnsavedChanges(formDirty)
+  const closeForm = () => unsaved.request(() => setIsFormOpen(false))
 
   function openForm(value: ManualMarketPrice | null) {
     setEditing(value)
@@ -215,7 +221,7 @@ export function MarketPricesPage() {
               ) : null}
             </div>
             <div className="mt-6 flex justify-end gap-3">
-              <Button variant="outline" onClick={() => setIsFormOpen(false)}>
+              <Button variant="outline" onClick={closeForm}>
                 Cancel
               </Button>
               <Button disabled={isSaving} onClick={() => void submit()}>
@@ -225,6 +231,7 @@ export function MarketPricesPage() {
           </section>
         </div>
       ) : null}
+      <UnsavedChangesDialog open={unsaved.confirmationOpen} onKeepEditing={unsaved.keepEditing} onDiscard={unsaved.discard} />
     </section>
   )
 }

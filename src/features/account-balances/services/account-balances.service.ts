@@ -18,6 +18,10 @@ const wealthCashAccountTypes = new Set([
   "deposit",
 ])
 
+export function supportsProjectedWealthCash(accountTypeCode: string): boolean {
+  return wealthCashAccountTypes.has(accountTypeCode)
+}
+
 export class AccountBalancesService {
   private readonly repository: AccountBalanceRepository
 
@@ -46,7 +50,7 @@ export class AccountBalancesService {
     return balances.filter(
       (balance) =>
         balance.isActive &&
-        wealthCashAccountTypes.has(balance.accountTypeCode),
+        supportsProjectedWealthCash(balance.accountTypeCode),
     )
   }
 

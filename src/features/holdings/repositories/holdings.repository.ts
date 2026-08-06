@@ -57,7 +57,6 @@ export class HoldingsRepository {
           account:financial_accounts!holdings_account_id_financial_accounts_fkey(
             id,
             name,
-            institution_name,
             currency_code
           )
         `,

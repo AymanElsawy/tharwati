@@ -3,7 +3,7 @@ import { Link } from "react-router-dom"
 
 export function DashboardEmptyState() {
   return (
-    <div className="tharwati-card flex min-h-80 flex-col items-center justify-center p-8 text-center">
+    <div className="tharwati-feature-surface flex min-h-80 flex-col items-center justify-center p-8 text-center">
       <PlusCircle className="size-10 text-[var(--color-primary)]" />
       <h2 className="mt-5 text-2xl font-bold">
         Start building your financial picture

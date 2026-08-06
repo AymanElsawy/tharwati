@@ -66,16 +66,19 @@ export function DashboardSummary({ dashboard }: Props) {
   ]
 
   return (
-    <div className="grid gap-5 md:grid-cols-3">
+    <section className="tharwati-metric-grid" aria-label="Wealth summary">
       {cards.map((card) => (
-        <article key={card.title} className="tharwati-card p-6">
+        <article key={card.title} className="tharwati-metric-panel">
           <div className="flex items-center justify-between gap-3">
-            <h2 className="font-semibold text-[var(--color-text-secondary)]">
+            <h2 className="tharwati-metric-label">
               {card.title}
             </h2>
-            <card.icon className="size-5 text-[var(--color-primary)]" />
+            <card.icon
+              className="size-4 text-[var(--color-text-muted)]"
+              strokeWidth={1.75}
+            />
           </div>
-          <p className="mt-5 text-3xl font-black" dir="ltr">
+          <p className="tharwati-metric-value" dir="ltr">
             {card.value}
           </p>
           {card.title === "Investments" ? (
@@ -96,6 +99,6 @@ export function DashboardSummary({ dashboard }: Props) {
           </p>
         </article>
       ))}
-    </div>
+    </section>
   )
 }

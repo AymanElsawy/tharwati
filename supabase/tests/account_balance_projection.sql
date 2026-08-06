@@ -63,7 +63,6 @@ from (
   p_new_account_type_code => null,
   p_new_account_name => null,
   p_new_account_currency_code => null,
-  p_new_account_institution_name => null,
   p_asset_id => null,
   p_new_asset_type_code => 'stock',
   p_new_asset_name => 'Projection Test Stock',
@@ -105,7 +104,6 @@ select public.add_investment(
   p_new_account_type_code => null,
   p_new_account_name => null,
   p_new_account_currency_code => null,
-  p_new_account_institution_name => null,
   p_asset_id => (
     select asset_id
     from account_balance_test_context

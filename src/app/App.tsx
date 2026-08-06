@@ -28,6 +28,7 @@ import { CurrentUserProvider } from "../features/profile/context/CurrentUserProv
 import { ProtectedRoute } from "../components/ProtectedRoute"
 import { DashboardLayout } from "../layouts/DashboardLayout"
 import { DashboardPage } from "../pages/DashboardPage"
+import { DesignLabPage } from "../pages/DesignLabPage"
 import { PortfolioPage } from "../pages/PortfolioPage"
 import { GoalsPage } from "../pages/GoalsPage"
 import { NotFoundPage } from "../pages/NotFoundPage"
@@ -206,6 +207,7 @@ export default function App() {
           <Route path="/holdings" element={<HoldingsPage />} />
           <Route path="/portfolio" element={<PortfolioPage />} />
           <Route path="/goals" element={<GoalsPage />} />
+          <Route path="/design-lab" element={<DesignLabPage />} />
         </Route>
 
         <Route
@@ -223,4 +225,3 @@ export default function App() {
     </BrowserRouter>
   )
 }
-

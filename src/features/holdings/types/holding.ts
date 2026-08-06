@@ -16,7 +16,7 @@ export type HoldingDetails = TableRow<"holdings"> & {
   >
   account: Pick<
     AccountSummary,
-    "id" | "name" | "institution_name" | "currency_code"
+    "id" | "name" | "currency_code"
   >
 }
 

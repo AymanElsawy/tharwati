@@ -159,6 +159,39 @@
   --page-gradient-end: #f7e9ff;
 }
 
+:root {
+  --layout-sidebar-width: 17rem;
+  --layout-content-max: 92rem;
+
+  --space-page-inline: clamp(1.25rem, 3vw, 3.5rem);
+  --space-page-block: clamp(2rem, 4vw, 4rem);
+  --space-section: clamp(3.5rem, 6vw, 6.5rem);
+
+  --radius-control: 0.75rem;
+  --radius-surface: 1rem;
+  --radius-feature: 1.25rem;
+
+  --border-subtle: color-mix(
+    in srgb,
+    var(--color-border) 62%,
+    transparent
+  );
+  --border-quiet: color-mix(
+    in srgb,
+    var(--color-border) 38%,
+    transparent
+  );
+
+  --shadow-quiet: 0 1px 2px rgba(15, 23, 42, 0.02);
+  --shadow-feature: 0 12px 36px rgba(15, 23, 42, 0.035);
+
+  --type-eyebrow: 0.6875rem;
+  --type-caption: 0.75rem;
+  --type-body: 0.9375rem;
+  --type-section: clamp(1.35rem, 2vw, 1.75rem);
+  --type-display: clamp(2rem, 3.4vw, 3.25rem);
+}
+
 * {
   box-sizing: border-box;
 }
@@ -301,6 +334,191 @@ select {
   color: var(--color-text-secondary);
   font-size: 1rem;
   line-height: 1.7;
+}
+
+.tharwati-content-frame {
+  width: min(100%, var(--layout-content-max));
+  margin-inline: auto;
+}
+
+.tharwati-page-stack {
+  display: grid;
+  gap: var(--space-section);
+}
+
+.tharwati-page-header {
+  max-width: 46rem;
+}
+
+.tharwati-eyebrow {
+  color: var(--color-primary);
+  font-size: var(--type-eyebrow);
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  line-height: 1.4;
+  text-transform: uppercase;
+}
+
+.tharwati-section-header {
+  margin-bottom: 1.75rem;
+}
+
+.tharwati-section-title {
+  color: var(--color-text-primary);
+  font-size: var(--type-section);
+  font-weight: 800;
+  letter-spacing: -0.035em;
+  line-height: 1.2;
+}
+
+.tharwati-section-description {
+  max-width: 42rem;
+  margin-top: 0.5rem;
+  color: var(--color-text-secondary);
+  font-size: var(--type-body);
+  line-height: 1.65;
+}
+
+.tharwati-surface {
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-surface);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-quiet);
+}
+
+.tharwati-surface-quiet {
+  border-block: 1px solid var(--border-subtle);
+  background: var(--color-surface);
+}
+
+.tharwati-feature-surface {
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-feature);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-feature);
+}
+
+.tharwati-metric-grid {
+  display: grid;
+  overflow: hidden;
+  border-block: 1px solid var(--border-subtle);
+  background: var(--color-surface);
+}
+
+.tharwati-metric-panel {
+  min-width: 0;
+  padding: clamp(1.4rem, 2.5vw, 2.25rem);
+  border-block-end: 1px solid var(--border-quiet);
+}
+
+.tharwati-metric-panel:last-child {
+  border-block-end: 0;
+}
+
+.tharwati-metric-label {
+  color: var(--color-text-secondary);
+  font-size: var(--type-caption);
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.tharwati-metric-value {
+  margin-top: 1rem;
+  color: var(--color-text-primary);
+  font-size: clamp(1.65rem, 2.7vw, 2.5rem);
+  font-weight: 850;
+  letter-spacing: -0.045em;
+  line-height: 1.05;
+}
+
+.tharwati-analytical-surface {
+  border-block: 1px solid var(--border-subtle);
+  background: var(--color-surface);
+}
+
+.tharwati-data-grid {
+  display: grid;
+  gap: 1.5rem;
+}
+
+.tharwati-data-point {
+  padding-inline-start: 1rem;
+  border-inline-start: 1px solid var(--border-subtle);
+}
+
+.tharwati-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--type-body);
+}
+
+.tharwati-table thead {
+  border-block-end: 1px solid var(--border-subtle);
+}
+
+.tharwati-table th {
+  padding: 0.75rem 1rem;
+  color: var(--color-text-muted);
+  font-size: var(--type-caption);
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-align: start;
+  text-transform: uppercase;
+}
+
+.tharwati-table td {
+  padding: 1rem;
+  border-block-end: 1px solid var(--border-quiet);
+}
+
+.tharwati-table tbody tr:last-child td {
+  border-block-end: 0;
+}
+
+.tharwati-chart-track {
+  height: 0.375rem;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--color-surface-muted);
+}
+
+.tharwati-chart-fill {
+  height: 100%;
+  border-radius: inherit;
+  background: var(--color-primary);
+}
+
+.tharwati-list-surface {
+  border-block: 1px solid var(--border-subtle);
+  background: var(--color-surface);
+}
+
+.tharwati-list-row {
+  border-block-end: 1px solid var(--border-quiet);
+}
+
+.tharwati-list-row:last-child {
+  border-block-end: 0;
+}
+
+@media (min-width: 48rem) {
+  .tharwati-metric-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .tharwati-metric-panel {
+    border-block-end: 0;
+    border-inline-end: 1px solid var(--border-quiet);
+  }
+
+  .tharwati-metric-panel:last-child {
+    border-inline-end: 0;
+  }
+
+  .tharwati-data-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
 }
 
 .theme-transition,

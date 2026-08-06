@@ -324,7 +324,7 @@ No dashboard source changes.
 
 ## Exact implementation tasks
 
-1. Create accounts with owner, name, type, currency, institution, lifecycle dates, and archive status.
+1. Create accounts with owner, free-text name, type, currency, lifecycle dates, and archive status.
 2. Add unique `(id, user_id)` for same-user composite FKs.
 3. Create signed transactions with owner, account, type, amount, currency, date, description, and optional transfer group.
 4. Support types such as `opening_balance`, `deposit`, `withdrawal`, `income`, `expense`, `transfer`, `fee`, `interest`, and `adjustment`.
@@ -1553,4 +1553,3 @@ Phase 2 is complete only when:
 - Mock mode remains available until live mode receives explicit approval.
 - Lint, type-check, database tests, application tests, and production build pass.
 - Staging rollout, RLS isolation, backup, and rollback procedures are verified.
-

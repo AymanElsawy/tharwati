@@ -172,7 +172,6 @@ export function useAccounts(): UseAccountsResult {
           accountTypeCode: values.accountTypeCode,
           name: values.name.trim(),
           currencyCode: values.currencyCode,
-          institutionName: nullableText(values.institutionName),
           openingBalance: values.openingBalance.trim(),
           notes: nullableText(values.notes),
         }
@@ -197,7 +196,6 @@ export function useAccounts(): UseAccountsResult {
           accountTypeCode: values.accountTypeCode,
           name: values.name.trim(),
           currencyCode: values.currencyCode,
-          institutionName: nullableText(values.institutionName),
           openingBalance: values.openingBalance.trim(),
           notes: nullableText(values.notes),
           isActive: values.isActive,

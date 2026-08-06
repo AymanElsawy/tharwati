@@ -8,6 +8,8 @@ import { ExchangeRateFormDialog } from "@/features/exchange-rates/components/Exc
 import { useExchangeRates } from "@/features/exchange-rates/hooks/useExchangeRates"
 import { rateToFormValues, type ExchangeRateFormValues } from "@/features/exchange-rates/types/exchange-rate-form"
 import type { StoredExchangeRate } from "@/services/exchange-rates/repository"
+import { useUnsavedChanges } from "@/hooks/useUnsavedChanges"
+import { UnsavedChangesDialog } from "@/components/UnsavedChangesDialog"
 
 type FormState = { mode: "create"; rate: null } | { mode: "edit"; rate: StoredExchangeRate } | null
 type MissingPairState = { sourceCurrencyCode?: string; destinationCurrencyCode?: string }
@@ -18,6 +20,8 @@ export function ExchangeRatesPage() {
   const { rates, currencies, error, isLoading, isSaving, refresh, create, update, remove } = useExchangeRates()
   const [form, setForm] = useState<FormState>(null)
   const [deleteRate, setDeleteRate] = useState<StoredExchangeRate | null>(null)
+  const [formDirty, setFormDirty] = useState(false)
+  const unsaved = useUnsavedChanges(formDirty)
   const values = useMemo<ExchangeRateFormValues>(() => {
     if (form?.mode === "edit") return rateToFormValues(form.rate)
     return {
@@ -54,8 +58,9 @@ export function ExchangeRatesPage() {
         </div>
       )}
       {!isLoading && error && <Button variant="outline" className="mt-4" onClick={() => void refresh()}><RefreshCw /> Try Again</Button>}
-      <ExchangeRateFormDialog currencies={currencies} values={values} mode={form?.mode ?? "create"} isOpen={form !== null} isSaving={isSaving} onClose={() => !isSaving && setForm(null)} onSubmit={(data) => form?.mode === "edit" ? update(form.rate.id, data) : create(data)} />
+      <ExchangeRateFormDialog currencies={currencies} values={values} mode={form?.mode ?? "create"} isOpen={form !== null} isSaving={isSaving} onDirtyChange={setFormDirty} onClose={() => { if (!isSaving) unsaved.request(() => { setForm(null); setFormDirty(false) }) }} onSubmit={async (data) => { if (form?.mode === "edit") await update(form.rate.id, data); else await create(data); setFormDirty(false); setForm(null) }} />
       <DeleteExchangeRateDialog rate={deleteRate} isSaving={isSaving} onCancel={() => setDeleteRate(null)} onConfirm={() => { if (deleteRate) void remove(deleteRate.id).then(() => setDeleteRate(null)) }} />
+      <UnsavedChangesDialog open={unsaved.confirmationOpen} onKeepEditing={unsaved.keepEditing} onDiscard={unsaved.discard} />
     </section>
   )
 }

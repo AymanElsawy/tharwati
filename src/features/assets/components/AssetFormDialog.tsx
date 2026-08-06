@@ -11,6 +11,7 @@ type Props = {
   mode: "create" | "edit"
   onClose: () => void
   onSubmit: (values: AssetFormValues) => Promise<void>
+  onDirtyChange?: (dirty: boolean) => void
 }
 
 export function AssetFormDialog(props: Props) {
@@ -54,10 +55,8 @@ export function AssetFormDialog(props: Props) {
             defaultValues={props.defaultValues}
             formId={formId}
             isSaving={props.isSaving}
-            onSubmit={async (values) => {
-              await props.onSubmit(values)
-              props.onClose()
-            }}
+            onSubmit={props.onSubmit}
+            onDirtyChange={props.onDirtyChange}
           />
         </div>
         <footer className="sticky bottom-0 flex justify-end gap-3 border-t border-[var(--color-border)] bg-[var(--color-background)] px-6 py-4">

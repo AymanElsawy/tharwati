@@ -1,12 +1,14 @@
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useEffect, useMemo } from "react"
-import { useForm } from "react-hook-form"
+import { useForm, useWatch } from "react-hook-form"
 
 import { useTranslation } from "../../../i18n/useTranslation"
 import { createAccountSchema } from "../schemas/account.schema"
+import { hasMeaningfulAccountChanges, mergeWatchedAccountForm } from "../utils/account-form-state"
 import {
   accountTypeOptions,
   currencyOptions,
+  getBalanceLabelKey,
   type AccountFormValues,
 } from "../types/account-form"
 
@@ -16,7 +18,9 @@ type AccountFormProps = {
   isSaving: boolean
   isCurrencyLocked: boolean
   isOpeningBalanceLocked: boolean
+  showAccountTypeField?: boolean
   onSubmit: (values: AccountFormValues) => Promise<void>
+  onDirtyChange: (dirty: boolean) => void
 }
 
 const fieldClassName =
@@ -28,7 +32,9 @@ export function AccountForm({
   isSaving,
   isCurrencyLocked,
   isOpeningBalanceLocked,
+  showAccountTypeField = true,
   onSubmit,
+  onDirtyChange,
 }: AccountFormProps) {
   const { t } = useTranslation()
   const accountSchema = useMemo(() => createAccountSchema(t), [t])
@@ -37,6 +43,7 @@ export function AccountForm({
     handleSubmit,
     register,
     reset,
+    control,
   } = useForm<AccountFormValues>({
     resolver: zodResolver(accountSchema),
     defaultValues,
@@ -44,7 +51,12 @@ export function AccountForm({
 
   useEffect(() => {
     reset(defaultValues)
-  }, [defaultValues, reset])
+    onDirtyChange(false)
+  }, [defaultValues, onDirtyChange, reset])
+
+  const values = useWatch({ control, defaultValue: defaultValues })
+  const accountTypeCode = useWatch({ control, name: "accountTypeCode" })
+  useEffect(() => { onDirtyChange(hasMeaningfulAccountChanges(mergeWatchedAccountForm(values, defaultValues), defaultValues)) }, [defaultValues, onDirtyChange, values])
 
   const isDisabled = isSaving || isSubmitting
 
@@ -74,8 +86,8 @@ export function AccountForm({
         ) : null}
       </div>
 
-      <div className="grid gap-5 sm:grid-cols-2">
-        <div>
+      <div className={`grid gap-5 ${showAccountTypeField ? "sm:grid-cols-2" : ""}`}>
+        {showAccountTypeField ? <div>
           <label
             htmlFor={`${formId}-type`}
             className="text-sm font-semibold text-[var(--color-text-primary)]"
@@ -94,7 +106,7 @@ export function AccountForm({
               </option>
             ))}
           </select>
-        </div>
+        </div> : <input type="hidden" {...register("accountTypeCode")} />}
 
         <div>
           <label
@@ -140,29 +152,10 @@ export function AccountForm({
 
       <div>
         <label
-          htmlFor={`${formId}-institution`}
-          className="text-sm font-semibold text-[var(--color-text-primary)]"
-        >
-          {t("accounts.form.institution")}
-          <span className="ms-1 font-normal text-[var(--color-text-secondary)]">
-            ({t("common.optional")})
-          </span>
-        </label>
-        <input
-          id={`${formId}-institution`}
-          className={fieldClassName}
-          disabled={isDisabled}
-          autoComplete="organization"
-          {...register("institutionName")}
-        />
-      </div>
-
-      <div>
-        <label
           htmlFor={`${formId}-opening-balance`}
           className="text-sm font-semibold text-[var(--color-text-primary)]"
         >
-          {t("accounts.form.openingBalance")}
+          {t(getBalanceLabelKey(accountTypeCode))}
         </label>
         {isOpeningBalanceLocked ? (
           <>

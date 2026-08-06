@@ -27,6 +27,12 @@ export type AssetDeletionEligibility = {
   canDelete: boolean
 }
 
+export type AssetReferenceCount = {
+  assetId: string
+  holdingCount: number
+  transactionEntryCount: number
+}
+
 function escapeLikePattern(value: string): string {
   return value.replace(/[\\%_]/g, "\\$&")
 }
@@ -239,6 +245,54 @@ export class AssetsRepository {
     return assetIds.map((assetId) => ({
       assetId,
       canDelete: ownedIds.has(assetId) && !referencedIds.has(assetId),
+    }))
+  }
+
+  async getAssetReferenceCounts(
+    assetIds: string[],
+  ): Promise<AssetReferenceCount[]> {
+    const operation = "assets.getAssetReferenceCounts"
+    if (assetIds.length === 0) return []
+    const userId = await requireAuthenticatedUserId(this.client, operation)
+    const [holdingsResult, entriesResult] = await Promise.all([
+      this.client
+        .from("holdings")
+        .select("asset_id")
+        .eq("user_id", userId)
+        .in("asset_id", assetIds),
+      this.client
+        .from("transaction_entries")
+        .select("asset_id")
+        .eq("user_id", userId)
+        .in("asset_id", assetIds),
+    ])
+    const holdingCounts = new Map<string, number>()
+    const entryCounts = new Map<string, number>()
+    for (const row of requireQueryData(
+      holdingsResult.data,
+      holdingsResult.error,
+      operation,
+    )) {
+      holdingCounts.set(
+        row.asset_id,
+        (holdingCounts.get(row.asset_id) ?? 0) + 1,
+      )
+    }
+    for (const row of requireQueryData(
+      entriesResult.data,
+      entriesResult.error,
+      operation,
+    )) {
+      if (!row.asset_id) continue
+      entryCounts.set(
+        row.asset_id,
+        (entryCounts.get(row.asset_id) ?? 0) + 1,
+      )
+    }
+    return assetIds.map((assetId) => ({
+      assetId,
+      holdingCount: holdingCounts.get(assetId) ?? 0,
+      transactionEntryCount: entryCounts.get(assetId) ?? 0,
     }))
   }
 

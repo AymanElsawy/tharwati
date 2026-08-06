@@ -6,33 +6,33 @@ export function AuthenticatedUserHeader() {
 
   if (isLoading) {
     return (
-      <div aria-label="Loading user profile" className="flex items-center gap-3">
-        <div className="size-11 animate-pulse rounded-full bg-[var(--color-surface-hover)]" />
+      <div aria-label="Loading user profile" className="flex items-center gap-2">
+        <div className="size-8 animate-pulse rounded-full bg-[var(--color-surface-hover)]" />
         <div>
-          <div className="h-5 w-44 animate-pulse rounded bg-[var(--color-surface-hover)]" />
-          <div className="mt-2 h-3 w-32 animate-pulse rounded bg-[var(--color-surface-hover)]" />
+          <div className="h-4 w-40 animate-pulse rounded bg-[var(--color-surface-hover)]" />
+          <div className="mt-1 h-2.5 w-28 animate-pulse rounded bg-[var(--color-surface-hover)]" />
         </div>
       </div>
     )
   }
 
   return (
-    <section aria-label="Authenticated user" className="flex min-w-0 items-center gap-3.5">
-      <Avatar className="size-11 shadow-sm">
+    <section aria-label="Authenticated user" className="flex min-w-0 items-center gap-2">
+      <Avatar className="size-8">
         {avatar.url && <AvatarImage src={avatar.url} alt="" />}
         <AvatarFallback className="bg-[var(--color-primary-soft)] font-bold text-[var(--color-primary)]">
           {avatar.fallback}
         </AvatarFallback>
       </Avatar>
       <div className="min-w-0">
-        <h2 className="truncate text-lg font-bold text-[var(--color-text)] sm:text-xl">
+        <h2 className="truncate text-sm font-bold leading-tight text-[var(--color-text)]">
           {greeting}
         </h2>
-        <p className="mt-0.5 text-xs text-[var(--color-text-muted)]">Signed in as</p>
-        <p className="truncate text-sm font-medium text-[var(--color-text-secondary)]">
+        <p className="text-[10px] leading-tight text-[var(--color-text-muted)]">Signed in as</p>
+        <p className="truncate text-xs font-medium leading-tight text-[var(--color-text-secondary)]">
           {email || "Authenticated user"}
         </p>
-        <p className="mt-0.5 hidden text-xs text-[var(--color-text-muted)] sm:block">
+        <p className="hidden text-[10px] leading-tight text-[var(--color-text-muted)] sm:block">
           Your personal wealth workspace
         </p>
         {error && <span className="sr-only">Profile details could not be loaded.</span>}

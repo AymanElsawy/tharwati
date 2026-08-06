@@ -4,6 +4,9 @@ import App from "./App"
 import "./index.css"
 import { ThemeProvider } from "./contexts/ThemeContext"
 import { LanguageProvider } from "./i18n/LanguageProvider"
+import { preloadExchangeRates } from "./services/exchangeRateService"
+
+preloadExchangeRates()
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>

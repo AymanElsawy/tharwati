@@ -16,13 +16,13 @@ export function PerformanceCard({
   currency: string
 }) {
   return (
-    <article className="tharwati-card p-6">
-      <h2 className="text-xl font-bold">Portfolio Performance</h2>
-      <p className="mt-1 text-sm text-[var(--color-text-secondary)]">
+    <article className="tharwati-analytical-surface px-1 py-7 sm:px-7">
+      <h2 className="tharwati-section-title">Portfolio Performance</h2>
+      <p className="tharwati-section-description">
         Current unrealized performance; historical series is not yet available.
       </p>
-      <dl className="mt-7 grid gap-5 sm:grid-cols-3">
-        <div>
+      <dl className="tharwati-data-grid mt-8">
+        <div className="tharwati-data-point">
           <dt className="text-xs font-semibold uppercase text-[var(--color-text-muted)]">
             Market value
           </dt>
@@ -30,7 +30,7 @@ export function PerformanceCard({
             {format(performance.marketValueBase, currency)}
           </dd>
         </div>
-        <div>
+        <div className="tharwati-data-point">
           <dt className="text-xs font-semibold uppercase text-[var(--color-text-muted)]">
             Unrealized gain/loss
           </dt>
@@ -38,7 +38,7 @@ export function PerformanceCard({
             {format(performance.unrealizedGainLossBase, currency)}
           </dd>
         </div>
-        <div>
+        <div className="tharwati-data-point">
           <dt className="text-xs font-semibold uppercase text-[var(--color-text-muted)]">
             Unrealized return
           </dt>

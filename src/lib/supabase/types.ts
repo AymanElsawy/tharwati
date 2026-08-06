@@ -198,6 +198,8 @@ type FinancialTransactionRow = {
   posted_at: string | null
   created_at: string
   updated_at: string
+  reverses_transaction_id?: string | null
+  corrects_transaction_id?: string | null
 }
 
 type TransactionEntryRow = {
@@ -253,6 +255,8 @@ export type Database = {
           timezone?: string
           created_at?: string
           updated_at?: string
+          reverses_transaction_id?: string | null
+          corrects_transaction_id?: string | null
         }
       >
       financial_settings: TableDefinition<
@@ -548,6 +552,17 @@ export type Database = {
           p_quantity: Decimal
           p_unit_price: Decimal
           p_fees: Decimal | null
+          p_occurred_at: string
+          p_notes: string | null
+        }
+        Returns: Json
+      }
+      edit_investment: {
+        Args: {
+          p_transaction_id: string
+          p_quantity: Decimal
+          p_unit_price: Decimal
+          p_fees: Decimal
           p_occurred_at: string
           p_notes: string | null
         }

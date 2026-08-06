@@ -2,14 +2,13 @@ import { describe, expect, it, vi } from "vitest"
 
 import type { TypedSupabaseClient } from "../../../lib/supabase/client"
 import { RepositoryError } from "../../../lib/supabase/types"
-import { AccountsRepository } from "./accounts.repository"
+import { AccountsRepository, requireAccountDecimalText } from "./accounts.repository"
 
 const account = {
   id: "account-1",
   user_id: "user-1",
   account_type_code: "cash",
   name: "Renamed account",
-  institution_name: null,
   currency_code: "USD",
   opening_balance: "100",
   notes: "Updated notes",
@@ -46,6 +45,13 @@ function createClient(result: {
 }
 
 describe("AccountsRepository.updateAccount", () => {
+  it("rejects the numeric zero shape returned without a PostgreSQL text cast", () => {
+    expect(() => requireAccountDecimalText(0, "opening_balance", "accounts.createAccount")).toThrowError(expect.objectContaining({ code: "database_error", message: "Account field opening_balance must be a PostgreSQL decimal string" }))
+  })
+
+  it("preserves exact decimal text beyond JavaScript safe integer precision", () => {
+    expect(requireAccountDecimalText("9007199254740993.0000000001", "opening_balance", "accounts.getAccounts")).toBe("9007199254740993.0000000001")
+  })
   it("surfaces the account-currency history rule as a typed business error", async () => {
     const { client } = createClient({
       data: null,

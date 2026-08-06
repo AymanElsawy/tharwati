@@ -3,6 +3,7 @@ import {
   type TypedSupabaseClient,
 } from "../../lib/supabase/client"
 import type { Decimal } from "../../lib/supabase/types"
+import { getCurrencyConversionRate } from "../exchangeRateService"
 import { invertRate, requirePositiveRate } from "./decimal"
 import { ExchangeRateError } from "./errors"
 import {
@@ -140,30 +141,21 @@ export class ExchangeRateService {
       : null
   }
 
-  private async resolve(
-    pair: CurrencyPair,
-    atOrBefore: string,
-  ) {
-    const direct = await this.getLatestDirectRate(pair, atOrBefore)
-    if (direct) return direct
-    const inverse = await this.getLatestInverseRate(pair, atOrBefore)
-    if (inverse) return inverse
-    const normalized = normalizePair(pair)
-    throw new ExchangeRateError({
-      code: "rate_unavailable",
-      message:
-        `No direct or inverse exchange rate is available for ` +
-        `${normalized.sourceCurrencyCode}/${normalized.destinationCurrencyCode}`,
-      pair: normalized,
-    })
-  }
-
   async resolveCurrentRate(
     pair: CurrencyPair,
     resolvedAt = new Date().toISOString(),
   ): Promise<CurrentExchangeRate> {
+    const normalized = normalizePair(pair)
+    const rate = await getCurrencyConversionRate(
+      normalized.sourceCurrencyCode,
+      normalized.destinationCurrencyCode,
+    )
     return {
-      ...(await this.resolve(pair, resolvedAt)),
+      ...normalized,
+      rate: String(rate),
+      direction: "direct",
+      effectiveAt: resolvedAt,
+      source: "ExchangeRate-API",
       usage: "current",
       resolvedAt,
     }
