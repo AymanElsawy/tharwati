@@ -22,10 +22,10 @@ export class InvestmentsRepository {
   ): Promise<AddInvestmentResult> {
     const operation = "investments.addInvestment"
     await requireAuthenticatedUserId(this.client, operation)
-    const { data, error } = await this.client.rpc("add_investment", input)
+    const { data, error } = await this.client.functions.invoke<{ result: AddInvestmentResult }>("investment-fx", { body: { operation: "add", args: input } })
 
     return requireQueryData(
-      data,
+      data?.result ?? null,
       error,
       operation,
     ) as unknown as AddInvestmentResult
@@ -50,8 +50,8 @@ export class InvestmentsRepository {
   ): Promise<EditInvestmentResult> {
     const operation = "investments.editInvestment"
     await requireAuthenticatedUserId(this.client, operation)
-    const { data, error } = await this.client.rpc("edit_investment", input)
-    return requireQueryData(data, error, operation) as unknown as EditInvestmentResult
+    const { data, error } = await this.client.functions.invoke<{ result: EditInvestmentResult }>("investment-fx", { body: { operation: "edit", args: input } })
+    return requireQueryData(data?.result ?? null, error, operation) as unknown as EditInvestmentResult
   }
 }
 

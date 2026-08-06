@@ -105,6 +105,11 @@ export function PortfolioValuePerformance({
               {t("portfolio.value.partial")}
             </p>
           ) : null}
+          {(portfolio.fxRates ?? []).some((rate) => rate.stale) ? (
+            <p className="mt-3 text-sm text-amber-800 dark:text-amber-300">
+              {t("fx.cachedRate")}
+            </p>
+          ) : null}
         </div>
 
         <dl className="grid border-t border-[var(--color-border)]/60 lg:border-s lg:border-t-0">

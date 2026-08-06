@@ -17,6 +17,8 @@ type ResolvedExchangeRate = CurrencyPair & {
 export type CurrentExchangeRate = ResolvedExchangeRate & {
   usage: "current"
   resolvedAt: string
+  fetchedAt?: string
+  stale?: boolean
 }
 
 export type HistoricalExchangeRate = ResolvedExchangeRate & {
@@ -40,4 +42,3 @@ export type ExchangeRateRefreshResult = {
   refreshedAt: string
   insertedOrUpdated: number
 }
-

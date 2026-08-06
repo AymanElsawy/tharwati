@@ -4,6 +4,7 @@ import { Link } from "react-router-dom"
 import { Button } from "@/components/ui/button"
 import { useNetWorth } from "@/features/net-worth/hooks/useNetWorth"
 import { getMissingRateLinkState } from "@/features/net-worth/utils/missing-rate-link"
+import { useTranslation } from "@/i18n/useTranslation"
 
 function formatAmount(value: string) {
   return new Intl.NumberFormat(undefined, {
@@ -13,6 +14,7 @@ function formatAmount(value: string) {
 }
 
 export function NetWorthCard() {
+  const { t } = useTranslation()
   const { error, isLoading, refresh, result } = useNetWorth()
 
   if (isLoading) {
@@ -62,6 +64,7 @@ export function NetWorthCard() {
           {result.missingPriceHoldings.length === 1 ? " price" : " prices"}
           {pairs ? ` and exchange rates for ${pairs}` : ""}.
         </p>
+        {(result.fxRates ?? []).some((rate) => rate.stale) ? <p className="mt-3 text-sm text-amber-800 dark:text-amber-300">{t("fx.cachedRate")}</p> : null}
         {pairs ? (
           <Link
             to="/exchange-rates"
@@ -102,6 +105,7 @@ export function NetWorthCard() {
             Across {result.accountCount} cash {result.accountCount === 1 ? "account" : "accounts"}
           </p>
         )}
+        {(result.fxRates ?? []).some((rate) => rate.stale) ? <p className="mt-3 text-sm text-amber-800 dark:text-amber-300">{t("fx.cachedRate")}</p> : null}
       </div>
     </article>
   )

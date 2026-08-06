@@ -59,6 +59,7 @@ export const ar: Record<TranslationKey, string> = {
   "portfolio.value.coverageCount": "تم تقييم {{valued}} من {{total}} حيازة",
   "portfolio.value.partial":
     "هذا تقييم جزئي. تظهر البيانات الناقصة أدناه.",
+  "fx.cachedRate": "يتم استخدام أحدث سعر صرف محفوظ.",
   "portfolio.empty.title": "ابدأ ببناء محفظتك الاستثمارية",
   "portfolio.empty.description":
     "أضف استثمارك الأول لتتبع قيمة المحفظة وصحتها وأولوياتها.",

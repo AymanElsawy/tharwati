@@ -1,5 +1,5 @@
 import type { WealthInsight } from "@/features/insights/types/wealth-insight"
-import type { PortfolioCompletenessStatus } from "@/features/portfolio-valuation/types/portfolio-valuation"
+import type { FxRateMetadata, PortfolioCompletenessStatus } from "@/features/portfolio-valuation/types/portfolio-valuation"
 import type { Decimal } from "@/lib/supabase/types"
 import type { PortfolioAnalysis } from "@/features/portfolio/types/portfolio-analysis"
 import type { PortfolioEvidence } from "@/features/portfolio/types/portfolio-evidence"
@@ -52,6 +52,7 @@ export interface PortfolioExecutiveViewModel {
     priceCount: number
     exchangeRateCount: number
   }
+  fxRates?: FxRateMetadata[]
   analysis: PortfolioAnalysis
   evidence: PortfolioEvidence
 }

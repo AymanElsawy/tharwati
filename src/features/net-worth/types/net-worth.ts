@@ -1,5 +1,6 @@
 import type { Decimal } from "@/lib/supabase/types"
 import type { PortfolioValuationResult } from "@/features/portfolio-valuation/types/portfolio-valuation"
+import type { FxRateMetadata } from "@/features/portfolio-valuation/types/portfolio-valuation"
 
 export interface CashBalanceInput {
   accountId: string
@@ -27,6 +28,7 @@ interface NetWorthResultBase {
   investmentHoldingCount: number
   missingPriceHoldings: PortfolioValuationResult["missingPriceHoldings"]
   missingCurrencyPairs: MissingCurrencyPair[]
+  fxRates?: FxRateMetadata[]
 }
 
 export interface CompleteNetWorthResult extends NetWorthResultBase {

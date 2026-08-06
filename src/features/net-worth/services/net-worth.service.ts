@@ -19,7 +19,7 @@ interface CurrentRateResolver {
   resolveCurrentRate(pair: {
     sourceCurrencyCode: string
     destinationCurrencyCode: string
-  }): Promise<{ rate: Decimal }>
+  }): Promise<{ rate: Decimal; source?: string | null; effectiveAt?: string; fetchedAt?: string; stale?: boolean }>
 }
 
 function requireDecimal(value: Decimal | null, message: string): Decimal {
@@ -62,10 +62,15 @@ export class NetWorthService {
           source.portfolio?.missingExchangeRatePairs ?? [],
         missingPriceHoldings:
           source.portfolio?.missingPriceHoldings ?? [],
+        fxRates: source.portfolio?.fxRates ?? [],
       }
     }
 
     const missingCurrencyPairs: MissingCurrencyPair[] = []
+    const fxRates = new Map<string, NonNullable<NetWorthResult["fxRates"]>[number]>()
+    for (const rate of source.portfolio?.fxRates ?? []) {
+      fxRates.set(`${rate.sourceCurrencyCode}/${rate.destinationCurrencyCode}`, rate)
+    }
     const convertedBalances = await Promise.all(
       source.accounts.map(async (account) => {
         const balanceComparison = compareDecimals(account.balance, "0")
@@ -82,6 +87,16 @@ export class NetWorthService {
             sourceCurrencyCode: account.currencyCode,
             destinationCurrencyCode: source.baseCurrency,
           })
+          if (resolved.effectiveAt) {
+            fxRates.set(`${account.currencyCode}/${source.baseCurrency}`, {
+              sourceCurrencyCode: account.currencyCode,
+              destinationCurrencyCode: source.baseCurrency,
+              provider: resolved.source ?? null,
+              effectiveAt: resolved.effectiveAt,
+              fetchedAt: resolved.fetchedAt ?? null,
+              stale: resolved.stale ?? false,
+            })
+          }
           return requireDecimal(
             multiplyDecimals(account.balance, resolved.rate),
             `Cash account ${account.accountId} could not be converted`,
@@ -151,6 +166,7 @@ export class NetWorthService {
       baseCurrency: source.baseCurrency,
       missingCurrencyPairs: allMissingPairs,
       missingPriceHoldings,
+      fxRates: [...fxRates.values()],
     }
   }
 }

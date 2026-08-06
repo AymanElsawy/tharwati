@@ -104,6 +104,7 @@ describe("NetWorthService", () => {
       baseCurrency: "SAR",
       missingCurrencyPairs: [],
       missingPriceHoldings: [],
+      fxRates: [],
       investmentHoldingCount: 0,
     })
   })

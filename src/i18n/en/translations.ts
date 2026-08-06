@@ -57,6 +57,7 @@ export const en = {
   "portfolio.value.coverageCount": "{{valued}} of {{total}} holdings valued",
   "portfolio.value.partial":
     "This is a partial valuation. Missing data is disclosed below.",
+  "fx.cachedRate": "Using the latest cached exchange rate.",
   "portfolio.empty.title": "Build your investment portfolio",
   "portfolio.empty.description":
     "Add your first investment to begin tracking portfolio value, health, and priorities.",

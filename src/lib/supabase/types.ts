@@ -80,6 +80,8 @@ type ExchangeRateRow = {
   rate: Decimal
   effective_at: string
   source: string | null
+  provider: string | null
+  fetched_at: string | null
   created_at: string
   updated_at: string
 }
@@ -263,7 +265,7 @@ export type Database = {
         FinancialSettingsRow,
         {
           id?: string
-          user_id: string
+          user_id?: string | null
           reporting_currency_code?: string
           retirement_target_amount?: Decimal | null
           retirement_target_date?: string | null
@@ -282,6 +284,8 @@ export type Database = {
           rate: Decimal
           effective_at: string
           source?: string | null
+          provider?: string | null
+          fetched_at?: string | null
           created_at?: string
           updated_at?: string
         }

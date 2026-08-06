@@ -3,7 +3,7 @@ import {
   type TypedSupabaseClient,
 } from "../../lib/supabase/client"
 import type { Decimal } from "../../lib/supabase/types"
-import { getCurrencyConversionRate } from "../exchangeRateService"
+import { getExchangeRate } from "../exchangeRateService"
 import { invertRate, requirePositiveRate } from "./decimal"
 import { ExchangeRateError } from "./errors"
 import {
@@ -146,18 +146,27 @@ export class ExchangeRateService {
     resolvedAt = new Date().toISOString(),
   ): Promise<CurrentExchangeRate> {
     const normalized = normalizePair(pair)
-    const rate = await getCurrencyConversionRate(
+    const resolved = await getExchangeRate(
       normalized.sourceCurrencyCode,
       normalized.destinationCurrencyCode,
     )
+    if (!resolved) {
+      throw new ExchangeRateError({
+        code: "rate_unavailable",
+        message: `No Frankfurter rate is available for ${normalized.sourceCurrencyCode}/${normalized.destinationCurrencyCode}`,
+        pair: normalized,
+      })
+    }
     return {
       ...normalized,
-      rate: String(rate),
+      rate: String(resolved.rate),
       direction: "direct",
-      effectiveAt: resolvedAt,
-      source: "ExchangeRate-API",
+      effectiveAt: resolved.effectiveAt,
+      source: resolved.provider,
       usage: "current",
       resolvedAt,
+      fetchedAt: resolved.fetchedAt,
+      stale: resolved.stale,
     }
   }
 

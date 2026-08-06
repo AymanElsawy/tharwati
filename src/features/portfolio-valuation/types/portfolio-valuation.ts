@@ -6,6 +6,13 @@ export interface MissingExchangeRatePair {
   destinationCurrencyCode: string
 }
 
+export interface FxRateMetadata extends MissingExchangeRatePair {
+  provider: string | null
+  effectiveAt: string
+  fetchedAt: string | null
+  stale: boolean
+}
+
 export interface PortfolioValuationSource {
   baseCurrency: string
   holdings: HoldingDetails[]
@@ -34,6 +41,7 @@ export interface HoldingValuationResult {
   baseCurrency: string
   missingMarketPrice: boolean
   missingExchangeRate: MissingExchangeRatePair[]
+  fxRates?: FxRateMetadata[]
   stalePrice: boolean | null
 }
 
@@ -57,6 +65,7 @@ export interface PortfolioValuationResult {
     symbol: string | null
   }>
   missingExchangeRatePairs: MissingExchangeRatePair[]
+  fxRates?: FxRateMetadata[]
   completenessStatus: PortfolioCompletenessStatus
 }
 

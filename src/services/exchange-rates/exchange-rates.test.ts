@@ -4,6 +4,11 @@ import type { TypedSupabaseClient } from "../../lib/supabase/client"
 import { invertRate } from "./decimal"
 import { ExchangeRateError } from "./errors"
 import { ExchangeRateService } from "./service"
+import { getExchangeRate } from "../exchangeRateService"
+
+vi.mock("../exchangeRateService", () => ({ getExchangeRate: vi.fn() }))
+
+const mockCurrentRate = vi.mocked(getExchangeRate)
 
 function clientReturning(rows: unknown[]): TypedSupabaseClient {
   const maybeSingle = vi.fn().mockImplementation(async () => ({
@@ -63,6 +68,7 @@ const storedRate = {
 
 describe("ExchangeRateService", () => {
   it("resolves a direct current rate before considering inverse", async () => {
+    mockCurrentRate.mockResolvedValue({ rate: 3.75, provider: "frankfurter", effectiveAt: storedRate.effective_at, fetchedAt: storedRate.created_at, stale: false, unavailable: false })
     const service = new ExchangeRateService(clientReturning([storedRate]))
     await expect(
       service.resolveCurrentRate({
@@ -102,10 +108,9 @@ describe("ExchangeRateService", () => {
     })
   })
 
-  it("uses inverse only when direct is unavailable", async () => {
-    const service = new ExchangeRateService(
-      clientReturning([null, storedRate]),
-    )
+  it("uses the controlled current FX resolver for every pair", async () => {
+    mockCurrentRate.mockResolvedValue({ rate: 0.266666666667, provider: "frankfurter", effectiveAt: storedRate.effective_at, fetchedAt: storedRate.created_at, stale: false, unavailable: false })
+    const service = new ExchangeRateService(clientReturning([]))
     await expect(
       service.resolveCurrentRate({
         sourceCurrencyCode: "SAR",
@@ -113,15 +118,14 @@ describe("ExchangeRateService", () => {
       }),
     ).resolves.toMatchObject({
       rate: "0.266666666667",
-      direction: "inverse",
+      direction: "direct",
       usage: "current",
     })
   })
 
   it("fails clearly when no direct or inverse rate exists", async () => {
-    const service = new ExchangeRateService(
-      clientReturning([null, null]),
-    )
+    mockCurrentRate.mockResolvedValue(null)
+    const service = new ExchangeRateService(clientReturning([]))
     await expect(
       service.resolveCurrentRate({
         sourceCurrencyCode: "USD",

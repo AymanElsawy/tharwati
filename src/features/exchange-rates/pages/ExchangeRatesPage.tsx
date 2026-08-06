@@ -38,7 +38,7 @@ export function ExchangeRatesPage() {
         <div>
           <p className="text-sm font-bold uppercase tracking-[0.16em] text-[var(--color-primary)]">Currency management</p>
           <h1 className="mt-2 text-3xl font-black">Exchange Rates</h1>
-          <p className="mt-2 text-[var(--color-text-secondary)]">Manage current and effective rates used by your financial workspace.</p>
+          <p className="mt-2 text-[var(--color-text-secondary)]">Reviewed manual fallback rates. Frankfurter provider rates are automatic and take precedence.</p>
         </div>
         <Button size="lg" onClick={() => setForm({ mode: "create", rate: null })}><Plus /> Add Exchange Rate</Button>
       </header>

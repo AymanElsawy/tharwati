@@ -53,6 +53,7 @@ interface NetWorthCalculator {
       sourceCurrencyCode: string
       destinationCurrencyCode: string
     }>
+    fxRates?: PortfolioValuationResult["fxRates"]
   }>
 }
 
@@ -214,6 +215,7 @@ export class PortfolioExecutiveService {
             valuedHoldingsCount: 0,
             missingPriceHoldings: [],
             missingExchangeRatePairs: [],
+            fxRates: [],
             completenessStatus: "complete",
           },
         })
@@ -428,6 +430,7 @@ export class PortfolioExecutiveService {
         priceCount: valuation.missingPriceHoldings.length,
         exchangeRateCount: valuation.missingExchangeRatePairs.length,
       },
+      fxRates: netWorth.fxRates,
       analysis: portfolioAnalysisService.build({
         holdings: analysisHoldings,
         baseCurrency: source.baseCurrency,

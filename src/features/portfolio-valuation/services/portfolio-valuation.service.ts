@@ -1,5 +1,6 @@
 import type {
   HoldingValuationResult,
+  FxRateMetadata,
   MissingExchangeRatePair,
   PortfolioValuationResult,
   PortfolioValuationSource,
@@ -79,10 +80,12 @@ export class PortfolioValuationService {
         symbol: holding.symbol,
       }))
     const missingPairs = new Map<string, MissingExchangeRatePair>()
+    const fxRates = new Map<string, FxRateMetadata>()
     for (const holding of holdings) {
       for (const pair of holding.missingExchangeRate) {
         missingPairs.set(pairKey(pair), pair)
       }
+      for (const rate of holding.fxRates ?? []) fxRates.set(pairKey(rate), rate)
     }
     const marketValued = holdings.filter(
       (holding) => holding.marketValueBase !== null,
@@ -146,6 +149,7 @@ export class PortfolioValuationService {
       valuedHoldingsCount: marketValued.length,
       missingPriceHoldings,
       missingExchangeRatePairs: [...missingPairs.values()],
+      fxRates: [...fxRates.values()],
       completenessStatus: hasMissing
         ? marketValued.length > 0
           ? "partial"
@@ -159,6 +163,7 @@ export class PortfolioValuationService {
     baseCurrency: string,
   ): Promise<HoldingValuationResult> {
     const missingExchangeRate: MissingExchangeRatePair[] = []
+    const fxRates: FxRateMetadata[] = []
     let price: CurrentMarketPrice | null = null
     try {
       price = await this.prices.getCurrentPrice(holding.asset.id)
@@ -186,6 +191,7 @@ export class PortfolioValuationService {
       holding.cost_currency_code,
       baseCurrency,
       missingExchangeRate,
+      fxRates,
     )
     let marketValueNative: Decimal | null = null
     let gainNative: Decimal | null = null
@@ -208,12 +214,14 @@ export class PortfolioValuationService {
         price.currencyCode,
         baseCurrency,
         missingExchangeRate,
+        fxRates,
       )
       const nativeUnitPrice = await this.convert(
         price.price,
         price.currencyCode,
         holding.cost_currency_code,
         missingExchangeRate,
+        fxRates,
       )
       if (nativeUnitPrice !== null) {
         const nativeInput = {
@@ -271,6 +279,7 @@ export class PortfolioValuationService {
       baseCurrency,
       missingMarketPrice: price === null,
       missingExchangeRate,
+      fxRates,
       stalePrice: price
         ? this.now().getTime() - new Date(price.asOf).getTime() >
           24 * 60 * 60 * 1000
@@ -283,11 +292,21 @@ export class PortfolioValuationService {
     sourceCurrencyCode: string,
     destinationCurrencyCode: string,
     missing: MissingExchangeRatePair[],
+    fxRates: FxRateMetadata[] = [],
   ): Promise<Decimal | null> {
     if (sourceCurrencyCode === destinationCurrencyCode) return value
     const pair = { sourceCurrencyCode, destinationCurrencyCode }
     try {
       const resolved = await this.rates.resolveCurrentRate(pair)
+      if (!fxRates.some((item) => pairKey(item) === pairKey(pair))) {
+        fxRates.push({
+          ...pair,
+          provider: resolved.source,
+          effectiveAt: resolved.effectiveAt,
+          fetchedAt: resolved.fetchedAt ?? null,
+          stale: resolved.stale ?? false,
+        })
+      }
       return requireDecimal(
         multiplyDecimals(value, resolved.rate),
         `Unable to convert ${pairKey(pair)}`,
