@@ -60,6 +60,9 @@ export const ar: Record<TranslationKey, string> = {
   "portfolio.value.partial":
     "هذا تقييم جزئي. تظهر البيانات الناقصة أدناه.",
   "fx.cachedRate": "يتم استخدام أحدث سعر صرف محفوظ.",
+  "fx.temporaryUnavailable": "سعر الصرف التلقائي غير متاح مؤقتًا.",
+  "fx.retry": "إعادة المحاولة",
+  "fx.unsupportedCurrency": "زوج العملات غير مدعوم.",
   "portfolio.empty.title": "ابدأ ببناء محفظتك الاستثمارية",
   "portfolio.empty.description":
     "أضف استثمارك الأول لتتبع قيمة المحفظة وصحتها وأولوياتها.",

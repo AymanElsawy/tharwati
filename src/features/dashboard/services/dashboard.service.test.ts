@@ -3,7 +3,8 @@ import { describe, expect, it, vi } from "vitest"
 import { DashboardService } from "@/features/dashboard/services/dashboard.service"
 import type { AccountBalance } from "@/features/account-balances/types/account-balance"
 import type { PortfolioValuationResult } from "@/features/portfolio-valuation/types/portfolio-valuation"
-import { netWorthService } from "@/features/net-worth/services/net-worth.service"
+import { NetWorthService, netWorthService } from "@/features/net-worth/services/net-worth.service"
+import { ExchangeRateError } from "@/services/exchange-rates"
 import type { TableRow } from "@/lib/supabase/types"
 
 const cash: AccountBalance = {
@@ -293,5 +294,75 @@ describe("DashboardService", () => {
         destinationCurrencyCode: "USD",
       },
     ])
+  })
+
+  it("clears USD/EGP from dashboard missing data when the current FX response is available", async () => {
+    const fxResponse = {
+      available: true,
+      rate: 49.841,
+      provider: "frankfurter" as const,
+      effectiveAt: "2026-08-06T00:00:00Z",
+      fetchedAt: "2026-08-06T12:00:00Z",
+      stale: false,
+      unavailable: false,
+    }
+    const netWorth = new NetWorthService({
+      resolveCurrentRate: async (pair) => ({
+        ...pair,
+        rate: String(fxResponse.rate),
+        direction: "direct" as const,
+        effectiveAt: fxResponse.effectiveAt,
+        source: fxResponse.provider,
+        usage: "current" as const,
+        resolvedAt: fxResponse.fetchedAt,
+        fetchedAt: fxResponse.fetchedAt,
+        stale: fxResponse.stale,
+      }),
+    })
+    const service = new DashboardService(
+      { getEligibleWealthCashBalances: async () => [cash] },
+      { getSource: async () => ({ baseCurrency: "EGP", holdings: [] }) },
+      {
+        calculate: async () => valuation({
+          baseCurrency: "EGP",
+          missingExchangeRatePairs: [{ sourceCurrencyCode: "USD", destinationCurrencyCode: "EGP" }],
+          fxRates: [{ sourceCurrencyCode: "USD", destinationCurrencyCode: "EGP", provider: fxResponse.provider, effectiveAt: fxResponse.effectiveAt, fetchedAt: fxResponse.fetchedAt, stale: false }],
+        }),
+      },
+      netWorth,
+      { getRecentPostedTransactions: async () => [] },
+      { listRates: async () => [] },
+    )
+
+    await expect(service.load()).resolves.toMatchObject({
+      missingData: { exchangeRatePairs: [] },
+    })
+  })
+
+  it("keeps USD/EGP in dashboard missing data when current FX is unavailable", async () => {
+    const netWorth = new NetWorthService({
+      resolveCurrentRate: async (pair) => {
+        throw new ExchangeRateError({ code: "rate_unavailable", message: "unavailable", pair })
+      },
+    })
+    const service = new DashboardService(
+      { getEligibleWealthCashBalances: async () => [cash] },
+      { getSource: async () => ({ baseCurrency: "EGP", holdings: [] }) },
+      {
+        calculate: async () => valuation({
+          baseCurrency: "EGP",
+          missingExchangeRatePairs: [{ sourceCurrencyCode: "USD", destinationCurrencyCode: "EGP" }],
+        }),
+      },
+      netWorth,
+      { getRecentPostedTransactions: async () => [] },
+      { listRates: async () => [] },
+    )
+
+    await expect(service.load()).resolves.toMatchObject({
+      missingData: {
+        exchangeRatePairs: [{ sourceCurrencyCode: "USD", destinationCurrencyCode: "EGP" }],
+      },
+    })
   })
 })

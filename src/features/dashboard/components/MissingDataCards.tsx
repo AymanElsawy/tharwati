@@ -2,12 +2,23 @@ import { AlertTriangle } from "lucide-react"
 import { Link } from "react-router-dom"
 
 import type { DashboardViewModel } from "@/features/dashboard/types/dashboard"
+import { useTranslation } from "@/i18n/useTranslation"
+import { isFrankfurterSupportedPair } from "@/services/exchange-rates/frankfurter-supported"
 
 export function MissingDataCards({
   missing,
+  onRetry,
 }: {
   missing: DashboardViewModel["missingData"]
+  onRetry: () => void
 }) {
+  const { t } = useTranslation()
+  const automaticPairs = missing.exchangeRatePairs.filter((pair) =>
+    isFrankfurterSupportedPair(pair.sourceCurrencyCode, pair.destinationCurrencyCode),
+  )
+  const unsupportedPairs = missing.exchangeRatePairs.filter((pair) =>
+    !isFrankfurterSupportedPair(pair.sourceCurrencyCode, pair.destinationCurrencyCode),
+  )
   if (
     missing.priceHoldings.length === 0 &&
     missing.exchangeRatePairs.length === 0
@@ -39,23 +50,28 @@ export function MissingDataCards({
             </Link>
           </article>
         ) : null}
-        {missing.exchangeRatePairs.length > 0 ? (
+        {automaticPairs.length > 0 ? (
           <article className="bg-amber-50 p-5 text-amber-950">
-            <h3 className="font-bold">Missing exchange rates</h3>
+            <h3 className="font-bold">{t("fx.temporaryUnavailable")}</h3>
             <p className="mt-2 text-sm">
-              {missing.exchangeRatePairs
+              {automaticPairs
                 .map(
                   (pair) =>
                     `${pair.sourceCurrencyCode}/${pair.destinationCurrencyCode}`,
                 )
                 .join(", ")}
             </p>
-            <Link
-              to="/exchange-rates"
-              className="mt-4 inline-flex font-semibold text-amber-800 underline"
-            >
-              Add exchange rates
-            </Link>
+            <button type="button" onClick={onRetry} className="mt-4 font-semibold text-amber-800 underline">{t("fx.retry")}</button>
+          </article>
+        ) : null}
+        {unsupportedPairs.length > 0 ? (
+          <article className="bg-amber-50 p-5 text-amber-950">
+            <h3 className="font-bold">{t("fx.unsupportedCurrency")}</h3>
+            <p className="mt-2 text-sm">
+              {unsupportedPairs
+                .map((pair) => `${pair.sourceCurrencyCode}/${pair.destinationCurrencyCode}`)
+                .join(", ")}
+            </p>
           </article>
         ) : null}
       </div>

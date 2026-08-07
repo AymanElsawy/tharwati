@@ -58,6 +58,9 @@ export const en = {
   "portfolio.value.partial":
     "This is a partial valuation. Missing data is disclosed below.",
   "fx.cachedRate": "Using the latest cached exchange rate.",
+  "fx.temporaryUnavailable": "Automatic exchange rate temporarily unavailable.",
+  "fx.retry": "Retry",
+  "fx.unsupportedCurrency": "Unsupported currency pair.",
   "portfolio.empty.title": "Build your investment portfolio",
   "portfolio.empty.description":
     "Add your first investment to begin tracking portfolio value, health, and priorities.",

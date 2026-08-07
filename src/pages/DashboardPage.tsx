@@ -64,7 +64,7 @@ export function DashboardPage() {
 
       {!isLoading && !error && dashboard && !dashboard.isEmpty ? (
         <>
-          <MissingDataCards missing={dashboard.missingData} />
+          <MissingDataCards missing={dashboard.missingData} onRetry={() => void refresh()} />
           <DashboardSummary dashboard={dashboard} />
           <div className="grid gap-8 xl:grid-cols-[1.45fr_1fr]">
             <PerformanceCard

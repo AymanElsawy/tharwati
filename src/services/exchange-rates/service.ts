@@ -150,24 +150,36 @@ export class ExchangeRateService {
       normalized.sourceCurrencyCode,
       normalized.destinationCurrencyCode,
     )
-    if (!resolved) {
-      throw new ExchangeRateError({
-        code: "rate_unavailable",
-        message: `No Frankfurter rate is available for ${normalized.sourceCurrencyCode}/${normalized.destinationCurrencyCode}`,
-        pair: normalized,
-      })
+    if (resolved) {
+      return {
+        ...normalized,
+        rate: String(resolved.rate),
+        direction: "direct",
+        effectiveAt: resolved.effectiveAt,
+        source: resolved.provider,
+        usage: "current",
+        resolvedAt,
+        fetchedAt: resolved.fetchedAt,
+        stale: resolved.stale,
+      }
     }
-    return {
-      ...normalized,
-      rate: String(resolved.rate),
-      direction: "direct",
-      effectiveAt: resolved.effectiveAt,
-      source: resolved.provider,
-      usage: "current",
-      resolvedAt,
-      fetchedAt: resolved.fetchedAt,
-      stale: resolved.stale,
+    const fallback =
+      await this.getLatestDirectRate(normalized, resolvedAt) ??
+      await this.getLatestInverseRate(normalized, resolvedAt)
+    if (fallback) {
+      return {
+        ...fallback,
+        usage: "current",
+        resolvedAt,
+        fetchedAt: undefined,
+        stale: false,
+      }
     }
+    throw new ExchangeRateError({
+      code: "rate_unavailable",
+      message: `No provider or manual rate is available for ${normalized.sourceCurrencyCode}/${normalized.destinationCurrencyCode}`,
+      pair: normalized,
+    })
   }
 
   async resolveHistoricalRate(

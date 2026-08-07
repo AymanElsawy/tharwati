@@ -58,8 +58,10 @@ export class NetWorthService {
         investmentHoldingCount:
           source.portfolio?.valuedHoldingsCount ?? 0,
         baseCurrency: source.baseCurrency,
-        missingCurrencyPairs:
+        missingCurrencyPairs: this.excludeResolvedPairs(
           source.portfolio?.missingExchangeRatePairs ?? [],
+          source.portfolio?.fxRates ?? [],
+        ),
         missingPriceHoldings:
           source.portfolio?.missingPriceHoldings ?? [],
         fxRates: source.portfolio?.fxRates ?? [],
@@ -136,10 +138,10 @@ export class NetWorthService {
 
     const portfolioMissingPairs =
       source.portfolio?.missingExchangeRatePairs ?? []
-    const allMissingPairs = [
+    const allMissingPairs = this.excludeResolvedPairs([
       ...missingCurrencyPairs,
       ...portfolioMissingPairs,
-    ].filter(
+    ], [...fxRates.values()]).filter(
       (pair, index, pairs) =>
         pairs.findIndex(
           (candidate) =>
@@ -168,6 +170,18 @@ export class NetWorthService {
       missingPriceHoldings,
       fxRates: [...fxRates.values()],
     }
+  }
+
+  private excludeResolvedPairs<T extends { sourceCurrencyCode: string; destinationCurrencyCode: string }>(
+    missing: T[],
+    resolved: T[],
+  ) {
+    const resolvedKeys = new Set(
+      resolved.map((pair) => `${pair.sourceCurrencyCode}/${pair.destinationCurrencyCode}`),
+    )
+    return missing.filter(
+      (pair) => !resolvedKeys.has(`${pair.sourceCurrencyCode}/${pair.destinationCurrencyCode}`),
+    )
   }
 }
 

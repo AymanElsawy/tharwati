@@ -87,6 +87,7 @@ export class PortfolioValuationService {
       }
       for (const rate of holding.fxRates ?? []) fxRates.set(pairKey(rate), rate)
     }
+    for (const rate of fxRates.values()) missingPairs.delete(pairKey(rate))
     const marketValued = holdings.filter(
       (holding) => holding.marketValueBase !== null,
     )

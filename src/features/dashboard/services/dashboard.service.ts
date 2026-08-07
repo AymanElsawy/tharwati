@@ -203,10 +203,7 @@ export class DashboardService {
         priceHoldings: portfolio.missingPriceHoldings,
         exchangeRatePairs: [
           ...new Map(
-            [
-              ...portfolio.missingExchangeRatePairs,
-              ...netWorth.missingCurrencyPairs,
-            ].map((pair) => [
+            netWorth.missingCurrencyPairs.map((pair) => [
               `${pair.sourceCurrencyCode}/${pair.destinationCurrencyCode}`,
               pair,
             ]),
