@@ -188,6 +188,11 @@ export class DashboardService {
           portfolio.totalUnrealizedReturnPercent,
         holdingsCount: portfolio.valuedHoldingsCount,
         currencyCode: portfolio.baseCurrency,
+        priceSources: portfolio.holdings.flatMap((holding) =>
+          holding.marketPriceSource && holding.marketPriceType && holding.marketPriceFetchedAt
+            ? [{ symbol: holding.symbol, provider: holding.marketPriceSource, priceType: holding.marketPriceType, fetchedAt: holding.marketPriceFetchedAt }]
+            : [],
+        ),
       },
       allocation,
       performance: {

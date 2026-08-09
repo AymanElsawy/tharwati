@@ -45,14 +45,66 @@ type MarketDataServiceOptions = {
   provider?: MarketDataProvider
 }
 
+type EdgeMarketPrice = {
+  assetId: string
+  available: boolean
+  provider: string | null
+  price: number | string | null
+  currencyCode: string | null
+  effectiveAt: string | null
+  fetchedAt: string | null
+  priceType: CurrentMarketPrice["priceType"] | null
+  stale: boolean
+}
+
+export function parseMarketPricesResponse(
+  prices: readonly EdgeMarketPrice[],
+  requestedAssetIds: readonly string[],
+): Map<string, CurrentMarketPrice> {
+  const requested = new Set(requestedAssetIds)
+  const result = new Map<string, CurrentMarketPrice>()
+  for (const item of prices) {
+    const price = item.price === null ? null : String(item.price)
+    const currencyCode = item.currencyCode?.trim().toUpperCase()
+    if (
+      !item.available ||
+      !requested.has(item.assetId) ||
+      !item.provider ||
+      !price ||
+      !positivePricePattern.test(price) ||
+      !currencyCode ||
+      !/^[A-Z]{3}$/.test(currencyCode) ||
+      !item.effectiveAt ||
+      Number.isNaN(Date.parse(item.effectiveAt)) ||
+      !item.fetchedAt ||
+      Number.isNaN(Date.parse(item.fetchedAt)) ||
+      !item.priceType
+    ) continue
+    result.set(item.assetId, {
+      assetId: item.assetId,
+      provider: item.provider,
+      price: price as CurrentMarketPrice["price"],
+      currencyCode,
+      asOf: new Date(item.effectiveAt).toISOString(),
+      cachedAt: new Date(item.fetchedAt).toISOString(),
+      fetchedAt: new Date(item.fetchedAt).toISOString(),
+      priceType: item.priceType,
+      stale: Boolean(item.stale),
+    })
+  }
+  return result
+}
+
 export class MarketDataService {
+  private readonly client: TypedSupabaseClient
   private readonly readRepository: MarketDataRepository
   private readonly writeRepository: MarketDataRepository | null
   private readonly provider: MarketDataProvider | null
 
   constructor(options: MarketDataServiceOptions = {}) {
+    this.client = options.readClient ?? supabase
     this.readRepository = new MarketDataRepository(
-      options.readClient ?? supabase,
+      this.client,
     )
     this.writeRepository = options.writeClient
       ? new MarketDataRepository(options.writeClient)
@@ -67,11 +119,9 @@ export class MarketDataService {
   }
 
   async getCurrentPrice(assetId: string): Promise<CurrentMarketPrice> {
-    const cached = await this.getLatestCachedPrice(assetId)
-    if (cached) return cached
-    if (this.provider && this.writeRepository) {
-      return this.refreshAsset(assetId)
-    }
+    const prices = await this.getCurrentPrices([assetId])
+    const price = prices[0]
+    if (price) return price
     throw new MarketDataError({
       code: "market_price_unavailable",
       message: `No current market price is available for asset ${assetId}`,
@@ -82,11 +132,23 @@ export class MarketDataService {
   async getCurrentPrices(
     assetIds: readonly string[],
   ): Promise<CurrentMarketPrice[]> {
-    return Promise.all(
-      [...new Set(assetIds)].map((assetId) =>
-        this.getCurrentPrice(assetId),
-      ),
-    )
+    const unique = [...new Set(assetIds)]
+    if (unique.length === 0) return []
+    const { data, error } = await this.client.functions.invoke<{ prices: EdgeMarketPrice[] }>("market-prices", {
+      body: { assetIds: unique },
+    })
+    if (error) {
+      throw new MarketDataError({
+        code: "provider_error",
+        message: "Automatic market-price resolution failed",
+        cause: error,
+      })
+    }
+    const parsed = parseMarketPricesResponse(data?.prices ?? [], unique)
+    return unique.flatMap((assetId) => {
+      const price = parsed.get(assetId)
+      return price ? [price] : []
+    })
   }
 
   async refreshAsset(assetId: string): Promise<CurrentMarketPrice> {
@@ -171,6 +233,9 @@ export class MarketDataService {
       ...price,
       provider: provider.name,
       cachedAt: new Date().toISOString(),
+      fetchedAt: new Date().toISOString(),
+      priceType: "realtime",
+      stale: false,
     }))
   }
 }

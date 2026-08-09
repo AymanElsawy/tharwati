@@ -30,6 +30,7 @@ import type { CurrentMarketPrice } from "@/services/market-data/types"
 
 interface PriceReader {
   getCurrentPrice(assetId: string): Promise<CurrentMarketPrice>
+  getCurrentPrices?(assetIds: readonly string[]): Promise<CurrentMarketPrice[]>
 }
 
 interface RateReader {
@@ -66,9 +67,11 @@ export class PortfolioValuationService {
   async calculate(
     source: PortfolioValuationSource,
   ): Promise<PortfolioValuationResult> {
+    const hasBatchPriceReader = Boolean(this.prices.getCurrentPrices)
+    const pricesByAsset = await this.loadPrices(source.holdings.map((holding) => holding.asset.id))
     const holdings = await Promise.all(
       source.holdings.map((holding) =>
-        this.valueHolding(holding, source.baseCurrency),
+        this.valueHolding(holding, source.baseCurrency, pricesByAsset.get(holding.asset.id) ?? null, hasBatchPriceReader),
       ),
     )
     const missingPriceHoldings = holdings
@@ -162,11 +165,13 @@ export class PortfolioValuationService {
   private async valueHolding(
     holding: PortfolioValuationSource["holdings"][number],
     baseCurrency: string,
+    preloadedPrice: CurrentMarketPrice | null,
+    pricesLoaded: boolean,
   ): Promise<HoldingValuationResult> {
     const missingExchangeRate: MissingExchangeRatePair[] = []
     const fxRates: FxRateMetadata[] = []
-    let price: CurrentMarketPrice | null = null
-    try {
+    let price: CurrentMarketPrice | null = preloadedPrice
+    if (!price && !pricesLoaded) try {
       price = await this.prices.getCurrentPrice(holding.asset.id)
     } catch (cause) {
       if (
@@ -271,6 +276,8 @@ export class PortfolioValuationService {
       marketPriceCurrency: price?.currencyCode ?? null,
       marketPriceTimestamp: price?.asOf ?? null,
       marketPriceSource: price?.provider ?? null,
+      marketPriceType: price?.priceType ?? null,
+      marketPriceFetchedAt: price?.fetchedAt ?? null,
       marketValueNative,
       unrealizedGainLossNative: gainNative,
       unrealizedReturnPercent: returnPercent,
@@ -285,6 +292,18 @@ export class PortfolioValuationService {
         ? this.now().getTime() - new Date(price.asOf).getTime() >
           24 * 60 * 60 * 1000
         : null,
+    }
+  }
+
+  private async loadPrices(assetIds: readonly string[]) {
+    if (!this.prices.getCurrentPrices) return new Map<string, CurrentMarketPrice>()
+    try {
+      return new Map((await this.prices.getCurrentPrices(assetIds)).map((price) => [price.assetId, price]))
+    } catch (cause) {
+      if (cause instanceof MarketDataError && (cause.code === "market_price_unavailable" || cause.code === "provider_error")) {
+        return new Map<string, CurrentMarketPrice>()
+      }
+      throw cause
     }
   }
 

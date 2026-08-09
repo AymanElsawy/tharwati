@@ -1,102 +1,56 @@
 import { describe, expect, it, vi } from "vitest"
 
 import type { TypedSupabaseClient } from "../../lib/supabase/client"
-import { MarketDataError } from "./errors"
 import { ManualMarketDataProvider } from "./provider"
-import { MarketDataService } from "./service"
+import { MarketDataService, parseMarketPricesResponse } from "./service"
 
-function priceReadClient(
-  price: unknown,
-): TypedSupabaseClient {
-  const chain = {
-    maybeSingle: vi.fn().mockResolvedValue({
-      data: price,
-      error: null,
-    }),
-  }
+function marketPriceClient(response: unknown): TypedSupabaseClient {
   return {
-    rpc: vi.fn().mockReturnValue(chain),
+    functions: {
+      invoke: vi.fn().mockResolvedValue({ data: response, error: null }),
+    },
   } as unknown as TypedSupabaseClient
 }
 
-const cachedPrice = {
-  id: "price-id",
-  asset_id: "asset-id",
-  provider: "manual",
-  price: 125.5,
-  currency_code: "USD",
-  as_of: "2026-07-24T09:00:00.000Z",
-  created_at: "2026-07-24T09:01:00.000Z",
-}
-
 describe("MarketDataService", () => {
-  it("returns the latest cached price without contacting a provider", async () => {
-    const fetchCurrentPrices = vi.fn()
-    const service = new MarketDataService({
-      readClient: priceReadClient(cachedPrice),
-      writeClient: priceReadClient(null),
-      provider: {
-        name: "test",
-        fetchCurrentPrices,
-      },
+  it("uses the protected market-prices function and preserves Twelve Data provenance", async () => {
+    const client = marketPriceClient({
+      prices: [{
+        assetId: "asset-aapl",
+        available: true,
+        provider: "twelve_data",
+        price: 210.15,
+        currencyCode: "USD",
+        effectiveAt: "2026-08-07T14:30:00.000Z",
+        fetchedAt: "2026-08-07T14:31:00.000Z",
+        priceType: "realtime",
+        stale: false,
+      }],
     })
+    const service = new MarketDataService({ readClient: client })
 
-    await expect(service.getCurrentPrice("asset-id")).resolves.toEqual({
-      assetId: "asset-id",
-      provider: "manual",
-      price: "125.5",
+    await expect(service.getCurrentPrice("asset-aapl")).resolves.toMatchObject({
+      provider: "twelve_data",
+      price: "210.15",
       currencyCode: "USD",
-      asOf: "2026-07-24T09:00:00.000Z",
-      cachedAt: "2026-07-24T09:01:00.000Z",
+      priceType: "realtime",
+      stale: false,
     })
-    const client = priceReadClient(cachedPrice)
-    const directService = new MarketDataService({ readClient: client })
-    await directService.getCurrentPrice("asset-id")
-    expect(client.rpc).toHaveBeenCalledWith(
-      "get_current_market_price",
-      { p_asset_id: "asset-id" },
-    )
-    expect(fetchCurrentPrices).not.toHaveBeenCalled()
+    expect(client.functions.invoke).toHaveBeenCalledWith("market-prices", {
+      body: { assetIds: ["asset-aapl"] },
+    })
   })
 
-  it("returns a typed unavailable error when cache and provider are absent", async () => {
-    const service = new MarketDataService({
-      readClient: priceReadClient(null),
-    })
-    await expect(
-      service.getCurrentPrice("missing-asset"),
-    ).rejects.toMatchObject({
-      code: "market_price_unavailable",
-      assetId: "missing-asset",
-    } satisfies Partial<MarketDataError>)
+  it("rejects malformed or unavailable function results without fabricating a price", () => {
+    const result = parseMarketPricesResponse([
+      { assetId: "asset-aapl", available: true, provider: "twelve_data", price: 0, currencyCode: "USD", effectiveAt: "2026-08-07", fetchedAt: "2026-08-07", priceType: "realtime", stale: false },
+      { assetId: "asset-voo", available: false, provider: null, price: null, currencyCode: null, effectiveAt: null, fetchedAt: null, priceType: null, stale: false },
+    ], ["asset-aapl", "asset-voo"])
+    expect(result.size).toBe(0)
   })
 
-  it("manual provider returns prices only for requested assets", async () => {
-    const provider = new ManualMarketDataProvider([
-      {
-        assetId: "requested",
-        price: "10",
-        currencyCode: "USD",
-        asOf: "2026-07-24T09:00:00.000Z",
-      },
-      {
-        assetId: "other",
-        price: "20",
-        currencyCode: "USD",
-        asOf: "2026-07-24T09:00:00.000Z",
-      },
-    ])
-    await expect(
-      provider.fetchCurrentPrices([
-        {
-          id: "requested",
-          assetTypeCode: "stock",
-          name: "Requested",
-          symbol: "REQ",
-          exchange: "XNAS",
-          currencyCode: "USD",
-        },
-      ]),
-    ).resolves.toHaveLength(1)
+  it("manual provider remains an isolated test fixture", async () => {
+    const provider = new ManualMarketDataProvider([{ assetId: "requested", price: "10", currencyCode: "USD", asOf: "2026-07-24T09:00:00.000Z" }])
+    await expect(provider.fetchCurrentPrices([{ id: "requested", assetTypeCode: "stock", name: "Requested", symbol: "REQ", exchange: "XNAS", currencyCode: "USD" }])).resolves.toHaveLength(1)
   })
 })

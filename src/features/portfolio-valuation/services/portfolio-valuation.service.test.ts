@@ -49,6 +49,9 @@ function price(
     asOf: "2026-07-25T10:00:00.000Z",
     provider: "manual",
     cachedAt: "2026-07-25T10:00:00.000Z",
+    fetchedAt: "2026-07-25T10:00:00.000Z",
+    priceType: "manual",
+    stale: false,
     ...overrides,
   }
 }
@@ -110,6 +113,21 @@ function service(options: {
 }
 
 describe("PortfolioValuationService", () => {
+  it("batches automatic current-price resolution before valuing holdings", async () => {
+    const getCurrentPrices = vi.fn().mockResolvedValue([price({ provider: "twelve_data", priceType: "realtime", fetchedAt: "2026-07-25T10:00:00.000Z" })])
+    const valuation = new PortfolioValuationService({
+      prices: {
+        getCurrentPrice: vi.fn(),
+        getCurrentPrices,
+      },
+      rates: { resolveCurrentRate: vi.fn().mockResolvedValue(rate("USD", "USD", "1")) },
+      now: () => new Date("2026-07-25T12:00:00.000Z"),
+    })
+    const result = await valuation.calculate({ baseCurrency: "USD", holdings: [holding()] })
+    expect(getCurrentPrices).toHaveBeenCalledWith(["asset-1"])
+    expect(result.holdings[0]).toMatchObject({ marketValueBase: "120", marketPriceSource: "twelve_data", marketPriceType: "realtime" })
+  })
+
   it("calculates exact market value and fee-inclusive profitable performance", async () => {
     const result = await service({
       prices: { "asset-1": price() },

@@ -94,6 +94,8 @@ type MarketPriceRow = {
   price: Decimal
   currency_code: string
   as_of: string
+  fetched_at: string
+  price_type: "realtime" | "delayed" | "previous_close" | "stale" | "manual"
   created_at: string
   updated_at: string
 }
@@ -300,6 +302,8 @@ export type Database = {
           price: Decimal
           currency_code: string
           as_of: string
+          fetched_at?: string
+          price_type?: "realtime" | "delayed" | "previous_close" | "stale" | "manual"
           created_at?: string
           updated_at?: string
         }

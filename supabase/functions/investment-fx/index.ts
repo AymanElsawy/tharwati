@@ -2,7 +2,26 @@ import { createClient } from "npm:@supabase/supabase-js@2"
 import { getFrankfurterRate } from "../_shared/frankfurter.ts"
 
 function response(body: unknown, status = 200) {
-  return new Response(JSON.stringify(body), { status, headers: { "Content-Type": "application/json" } })
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: {
+      "Content-Type": "application/json",
+      "Access-Control-Allow-Origin": "*",
+      "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+      "Access-Control-Allow-Methods": "POST, OPTIONS",
+    },
+  })
+}
+
+function preflightResponse() {
+  return new Response(null, {
+    status: 204,
+    headers: {
+      "Access-Control-Allow-Origin": "*",
+      "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+      "Access-Control-Allow-Methods": "POST, OPTIONS",
+    },
+  })
 }
 
 function currency(value: unknown) {
@@ -16,6 +35,7 @@ async function providerRate(from: string, to: string, requestedDate: string) {
 }
 
 Deno.serve(async (request) => {
+  if (request.method === "OPTIONS") return preflightResponse()
   if (request.method !== "POST") return response({ error: "method_not_allowed" }, 405)
   const authorization = request.headers.get("Authorization")
   if (!authorization) return response({ error: "authentication_required" }, 401)

@@ -94,6 +94,19 @@ export function DashboardSummary({ dashboard }: Props) {
               )}
             </p>
           ) : null}
+          {card.title === "Investments" ? (
+            <div className="mt-1 space-y-1">
+              {dashboard.investments.priceSources.map((source) => (
+                <p
+                  key={`${source.symbol}-${source.fetchedAt}`}
+                  className="text-xs text-[var(--color-text-secondary)]"
+                  data-testid="market-price-provenance"
+                >
+                  {source.symbol ?? "Asset"}: {source.provider} · {source.priceType} · {new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeStyle: "short" }).format(new Date(source.fetchedAt))}
+                </p>
+              ))}
+            </div>
+          ) : null}
           <p className="mt-2 text-sm text-[var(--color-text-secondary)]">
             {card.detail}
           </p>

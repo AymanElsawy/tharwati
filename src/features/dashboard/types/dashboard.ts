@@ -41,6 +41,12 @@ export interface DashboardViewModel {
     unrealizedReturnPercent: Decimal | null
     holdingsCount: number
     currencyCode: string
+    priceSources: Array<{
+      symbol: string | null
+      provider: string
+      priceType: string
+      fetchedAt: string
+    }>
   }
   allocation: DashboardAllocation[]
   performance: {

@@ -34,6 +34,8 @@ export interface PortfolioHoldingEvidence {
   priceCurrency: string | null
   priceTimestamp: string | null
   priceSource: string | null
+  priceType?: "realtime" | "delayed" | "previous_close" | "stale" | "manual" | null
+  priceFetchedAt?: string | null
   marketValueBase: Decimal | null
   unrealizedGainLossBase: Decimal | null
   returnPercent: Decimal | null

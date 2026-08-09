@@ -25,6 +25,9 @@ export type ProviderMarketPrice = {
 export type CurrentMarketPrice = ProviderMarketPrice & {
   provider: string
   cachedAt: string
+  fetchedAt: string
+  priceType: "realtime" | "delayed" | "previous_close" | "stale" | "manual"
+  stale: boolean
 }
 
 export type MarketPriceRefreshResult = {
@@ -32,4 +35,3 @@ export type MarketPriceRefreshResult = {
   refreshedAt: string
   prices: CurrentMarketPrice[]
 }
-

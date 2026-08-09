@@ -248,5 +248,8 @@ function normalizeStoredPrice(
     currencyCode: price.currency_code,
     asOf: price.as_of,
     cachedAt: price.created_at,
+    fetchedAt: price.fetched_at ?? price.updated_at,
+    priceType: price.price_type ?? (price.provider === "manual" ? "manual" : "stale"),
+    stale: price.price_type === "stale",
   }
 }

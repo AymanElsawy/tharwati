@@ -32,6 +32,8 @@ export interface HoldingValuationResult {
   marketPriceCurrency: string | null
   marketPriceTimestamp: string | null
   marketPriceSource: string | null
+  marketPriceType?: "realtime" | "delayed" | "previous_close" | "stale" | "manual" | null
+  marketPriceFetchedAt?: string | null
   marketValueNative: Decimal | null
   unrealizedGainLossNative: Decimal | null
   unrealizedReturnPercent: Decimal | null
