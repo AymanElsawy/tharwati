@@ -76,10 +76,14 @@ export function AddInvestmentDialog({ isOpen, onClose, onSuccess }: Props) {
     resolver: zodResolver(schema),
     defaultValues: defaultAddInvestmentValues,
   })
-  const [accountMode, assetMode, assetId, newAssetType, unit] = useWatch({
+  const [fundingMode, accountMode, assetMode, assetId, newAssetType, unit] = useWatch({
     control,
-    name: ["accountMode", "assetMode", "assetId", "newAssetTypeCode", "unit"],
+    name: ["fundingMode", "accountMode", "assetMode", "assetId", "newAssetTypeCode", "unit"],
   })
+  const fundingAccounts = useMemo(
+    () => accounts.filter((account) => ["cash", "bank", "deposit"].includes(account.account_type_code)),
+    [accounts],
+  )
 
   const filteredAssets = useMemo(
     () => filterInvestmentAssetCatalog(assets, assetSearch),
@@ -190,6 +194,30 @@ export function AddInvestmentDialog({ isOpen, onClose, onSuccess }: Props) {
               <span>{error?.message ?? loadError}</span>
             </div>
           )}
+
+          <fieldset className="rounded-2xl border border-[var(--color-border)] p-5">
+            <legend className="px-2 font-bold">{t("investment.funding.section")}</legend>
+            <div className="space-y-3">
+              <label className="flex items-start gap-2">
+                <input type="radio" value="external" disabled={isSaving} {...register("fundingMode")} />
+                <span><strong className="block">{t("investment.funding.external")}</strong><span className="text-sm text-[var(--color-text-secondary)]">{t("investment.funding.externalDescription")}</span></span>
+              </label>
+              <label className="flex items-start gap-2">
+                <input type="radio" value="cash_account" disabled={isSaving} {...register("fundingMode")} />
+                <span><strong className="block">{t("investment.funding.cash")}</strong><span className="text-sm text-[var(--color-text-secondary)]">{t("investment.funding.cashDescription")}</span></span>
+              </label>
+              {fundingMode === "cash_account" ? (
+                <label className="block text-sm font-semibold">
+                  {t("investment.funding.account")}
+                  <select className={fieldClass} disabled={isSaving || isLoadingOptions} {...register("fundingAccountId")}>
+                    <option value="">{t("investment.common.choose")}</option>
+                    {fundingAccounts.map((account) => <option key={account.id} value={account.id}>{account.name} — {account.currency_code}</option>)}
+                  </select>
+                  <span className="text-red-600">{errors.fundingAccountId?.message}</span>
+                </label>
+              ) : null}
+            </div>
+          </fieldset>
 
           <fieldset className="rounded-2xl border border-[var(--color-border)] p-5">
             <legend className="px-2 font-bold">

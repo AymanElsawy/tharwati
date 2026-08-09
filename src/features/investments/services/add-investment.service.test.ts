@@ -13,6 +13,31 @@ function values(
 }
 
 describe("buildAddInvestmentArgs", () => {
+  it("defaults to external funding without a cash account", () => {
+    const result = buildAddInvestmentArgs(values({ accountId: "custody", assetId: "asset", quantity: "1", unitPrice: "100" }))
+
+    expect(result.p_funding_mode).toBe("external")
+    expect(result.p_funding_account_id).toBeNull()
+    expect(result.p_account_id).toBe("custody")
+  })
+
+  it("sends only the explicitly selected cash funding account", () => {
+    const result = buildAddInvestmentArgs(values({
+      fundingMode: "cash_account",
+      fundingAccountId: "cash-account",
+      accountId: "brokerage-custody",
+      assetId: "asset",
+      quantity: "1",
+      unitPrice: "100",
+      fees: "2",
+    }))
+
+    expect(result.p_funding_mode).toBe("cash_account")
+    expect(result.p_funding_account_id).toBe("cash-account")
+    expect(result.p_account_id).toBe("brokerage-custody")
+    expect(result.p_fees).toBe("2")
+  })
+
   it("reuses explicitly selected account and asset IDs", () => {
     const result = buildAddInvestmentArgs(
       values({

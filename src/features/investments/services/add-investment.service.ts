@@ -109,6 +109,9 @@ export function buildAddInvestmentArgs(
     p_identifier_namespace: newAsset ? assetIdentity.namespace : null,
     p_identifier_value: newAsset ? assetIdentity.value : null,
     p_identifier_provider: null,
+    p_funding_mode: values.fundingMode,
+    p_funding_account_id:
+      values.fundingMode === "cash_account" ? values.fundingAccountId : null,
     p_quantity: values.quantity.trim(),
     p_unit_price: values.unitPrice.trim(),
     p_fees: values.fees.trim() || "0",

@@ -557,6 +557,8 @@ export type Database = {
           p_identifier_namespace: string | null
           p_identifier_value: string | null
           p_identifier_provider: string | null
+          p_funding_mode: "external" | "cash_account"
+          p_funding_account_id: string | null
           p_quantity: Decimal
           p_unit_price: Decimal
           p_fees: Decimal | null

@@ -6,6 +6,8 @@ import type {
 } from "../../../lib/supabase/types"
 
 export type AddInvestmentValues = {
+  fundingMode: "external" | "cash_account"
+  fundingAccountId: string
   accountMode: "existing" | "new"
   accountId: string
   newAccountTypeCode: string
@@ -36,6 +38,8 @@ export type AddInvestmentResult = {
 }
 
 export const defaultAddInvestmentValues: AddInvestmentValues = {
+  fundingMode: "external",
+  fundingAccountId: "",
   accountMode: "existing",
   accountId: "",
   newAccountTypeCode: "brokerage",

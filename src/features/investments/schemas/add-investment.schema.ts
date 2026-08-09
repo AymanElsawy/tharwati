@@ -11,6 +11,8 @@ export function createAddInvestmentSchema(
 ): z.ZodType<AddInvestmentValues, AddInvestmentValues> {
   return z
     .object({
+      fundingMode: z.enum(["external", "cash_account"]),
+      fundingAccountId: z.string(),
       accountMode: z.enum(["existing", "new"]),
       accountId: z.string(),
       newAccountTypeCode: z.string(),
@@ -43,6 +45,13 @@ export function createAddInvestmentSchema(
       notes: z.string().trim(),
     })
     .superRefine((values, context) => {
+      if (values.fundingMode === "cash_account" && !values.fundingAccountId) {
+        context.addIssue({
+          code: "custom",
+          path: ["fundingAccountId"],
+          message: t("investment.validation.fundingAccountRequired"),
+        })
+      }
       if (values.accountMode === "existing" && !values.accountId) {
         context.addIssue({
           code: "custom",
