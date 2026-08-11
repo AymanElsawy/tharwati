@@ -18,10 +18,10 @@ export function LanguageSwitcher() {
         language: nextLanguageLabel,
       })}
       title={nextLanguageLabel}
-      className="flex items-center gap-2 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-1.5 text-sm font-semibold text-[var(--color-text-primary)] transition hover:bg-[var(--color-surface-hover)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)]"
+      className="flex size-9 items-center justify-center rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] text-sm font-semibold text-[var(--color-text-primary)] transition hover:bg-[var(--color-surface-hover)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)] sm:size-auto sm:gap-2 sm:px-3 sm:py-1.5"
     >
       <Languages size={17} />
-      <span>{nextLanguageLabel}</span>
+      <span className="hidden sm:inline">{nextLanguageLabel}</span>
     </button>
   )
 }

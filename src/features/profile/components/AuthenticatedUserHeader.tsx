@@ -8,7 +8,7 @@ export function AuthenticatedUserHeader() {
     return (
       <div aria-label="Loading user profile" className="flex items-center gap-2">
         <div className="size-8 animate-pulse rounded-full bg-[var(--color-surface-hover)]" />
-        <div>
+      <div className="hidden sm:block">
           <div className="h-4 w-40 animate-pulse rounded bg-[var(--color-surface-hover)]" />
           <div className="mt-1 h-2.5 w-28 animate-pulse rounded bg-[var(--color-surface-hover)]" />
         </div>
@@ -24,7 +24,7 @@ export function AuthenticatedUserHeader() {
           {avatar.fallback}
         </AvatarFallback>
       </Avatar>
-      <div className="min-w-0">
+      <div className="hidden min-w-0 sm:block">
         <h2 className="truncate text-sm font-bold leading-tight text-[var(--color-text)]">
           {greeting}
         </h2>

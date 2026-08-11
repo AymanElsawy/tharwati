@@ -26,6 +26,7 @@ export const en = {
   "navigation.holdings": "Holdings",
   "navigation.goals": "Goals",
   "navigation.logout": "Logout",
+  "navigation.open": "Open navigation",
   "header.title": "Dashboard",
   "header.welcome": "Welcome back to Tharwati",
   "header.tagline": "Build. Grow. Preserve.",

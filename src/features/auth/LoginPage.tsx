@@ -30,10 +30,10 @@ export function LoginPage() {
   }
 
   return (
-    <main className="min-h-screen flex items-center justify-center">
+    <main className="flex min-h-screen items-center justify-center bg-[var(--color-background)] px-4 py-8 sm:px-6">
       <form
         onSubmit={handleSubmit}
-        className="w-full max-w-sm space-y-4 border p-6 rounded-lg"
+        className="w-full max-w-sm space-y-4 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-5 shadow-sm sm:p-6"
       >
         <h1 className="text-2xl font-bold">Login</h1>
 
@@ -42,7 +42,7 @@ export function LoginPage() {
           placeholder="Email"
           value={email}
           onChange={(event) => setEmail(event.target.value)}
-          className="w-full border rounded px-3 py-2"
+          className="w-full rounded-lg border border-[var(--color-border)] px-3 py-2.5"
           required
         />
 
@@ -51,19 +51,19 @@ export function LoginPage() {
           placeholder="Password"
           value={password}
           onChange={(event) => setPassword(event.target.value)}
-          className="w-full border rounded px-3 py-2"
+          className="w-full rounded-lg border border-[var(--color-border)] px-3 py-2.5"
           required
         />
 
         <button
           type="submit"
           disabled={isLoading}
-          className="w-full bg-black text-white rounded px-3 py-2 disabled:opacity-50"
+          className="w-full rounded-lg bg-[var(--color-primary)] px-3 py-2.5 text-[var(--color-text-on-primary)] disabled:opacity-50"
         >
           {isLoading ? "Logging in..." : "Login"}
         </button>
 
-        {message && <p>{message}</p>}
+        {message && <p className="text-sm text-[var(--color-danger)]">{message}</p>}
 
         <button
           type="button"

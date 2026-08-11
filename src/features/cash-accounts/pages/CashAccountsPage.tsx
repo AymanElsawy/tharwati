@@ -79,7 +79,7 @@ export function CashAccountsPage() {
         <Button
           type="button"
           size="lg"
-          className="h-11 rounded-xl px-5"
+          className="h-11 w-full rounded-xl px-5 sm:w-auto"
           onClick={() => {
             clearError()
             setFormState({ mode: "create", account: null })
@@ -91,13 +91,13 @@ export function CashAccountsPage() {
       </header>
 
       {error && (
-        <div role="alert" className="mb-6 flex items-start gap-3 rounded-2xl border border-red-200 bg-red-50 p-4 text-red-800">
+        <div role="alert" className="mb-6 flex flex-wrap items-start gap-3 rounded-2xl border border-red-200 bg-red-50 p-4 text-red-800">
           <AlertCircle className="mt-0.5 size-5 shrink-0" />
           <div className="flex-1">
             <p className="font-semibold">Cash account action failed</p>
             <p className="mt-1 text-sm">{error.message}</p>
           </div>
-          <button type="button" className="text-sm font-semibold underline" onClick={clearError}>
+          <button type="button" className="ms-auto text-sm font-semibold underline" onClick={clearError}>
             Dismiss
           </button>
         </div>
@@ -153,11 +153,11 @@ export function CashAccountsPage() {
               {account.notes && (
                 <p className="mt-3 line-clamp-2 text-sm text-[var(--color-text-secondary)]">{account.notes}</p>
               )}
-              <div className="mt-6 flex gap-2 border-t border-[var(--color-border)] pt-4">
-                <Button type="button" variant="outline" onClick={() => setFormState({ mode: "edit", account })}>
+              <div className="mt-6 flex flex-wrap gap-2 border-t border-[var(--color-border)] pt-4">
+                <Button type="button" variant="outline" className="flex-1 sm:flex-none" onClick={() => setFormState({ mode: "edit", account })}>
                   <Pencil /> Edit
                 </Button>
-                <Button type="button" variant="ghost" onClick={() => setDeleteTarget(account)}>
+                <Button type="button" variant="ghost" className="flex-1 sm:flex-none" onClick={() => setDeleteTarget(account)}>
                   <Trash2 /> Delete
                 </Button>
               </div>
@@ -169,7 +169,7 @@ export function CashAccountsPage() {
       <button
         type="button"
         aria-label="Add cash account"
-        className="fixed bottom-6 end-6 z-30 flex size-14 items-center justify-center rounded-full bg-[var(--color-primary)] text-[var(--color-text-on-primary)] shadow-xl sm:hidden"
+        className="fixed bottom-4 end-4 z-30 flex size-12 items-center justify-center rounded-full bg-[var(--color-primary)] text-[var(--color-text-on-primary)] shadow-xl sm:hidden"
         onClick={() => setFormState({ mode: "create", account: null })}
       >
         <Plus />

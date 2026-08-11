@@ -68,8 +68,8 @@ export function CashAccountFormDialog({
         aria-labelledby={`${formId}-title`}
         className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-3xl border border-[var(--color-border)] bg-[var(--color-background)] shadow-2xl"
       >
-        <header className="flex items-center justify-between border-b border-[var(--color-border)] px-6 py-5">
-          <div>
+        <header className="flex items-start justify-between gap-3 border-b border-[var(--color-border)] px-4 py-4 sm:px-6 sm:py-5">
+          <div className="min-w-0">
             <h2 id={`${formId}-title`} className="text-xl font-bold text-[var(--color-text)]">
               {mode === "create" ? "Add cash account" : "Edit cash account"}
             </h2>
@@ -90,7 +90,7 @@ export function CashAccountFormDialog({
 
         <form
           id={formId}
-          className="space-y-5 px-6 py-6"
+          className="space-y-5 px-4 py-5 sm:px-6 sm:py-6"
           noValidate
           onSubmit={handleSubmit(submit)}
         >

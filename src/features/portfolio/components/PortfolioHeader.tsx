@@ -41,7 +41,7 @@ export function PortfolioHeader({
       </div>
 
       <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
-        <label className="grid min-w-56 gap-1.5 text-xs font-semibold text-[var(--color-text-secondary)]">
+        <label className="grid w-full min-w-0 gap-1.5 text-xs font-semibold text-[var(--color-text-secondary)] sm:min-w-56">
           {t("portfolio.header.scope")}
           <select
             value={portfolio.activeScopeId ?? ""}
@@ -63,7 +63,7 @@ export function PortfolioHeader({
           onClick={() =>
             window.dispatchEvent(new CustomEvent("tharwati:add-investment"))
           }
-          className="tharwati-button-primary h-10 !min-h-10 gap-2 !rounded-xl !py-2"
+          className="tharwati-button-primary h-10 w-full !min-h-10 gap-2 !rounded-xl !py-2 sm:w-auto"
         >
           <Shapes size={16} aria-hidden="true" />
           {t("investment.primaryAction")}

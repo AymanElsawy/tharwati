@@ -97,7 +97,7 @@ export function MarketPricesPage() {
             Maintain your current manual prices for portfolio valuation.
           </p>
         </div>
-        <Button onClick={() => openForm(null)}>
+        <Button className="w-full sm:w-auto" onClick={() => openForm(null)}>
           <Plus /> Add Market Price
         </Button>
       </header>
@@ -110,8 +110,26 @@ export function MarketPricesPage() {
       {isLoading ? (
         <div className="h-52 animate-pulse rounded-3xl bg-[var(--color-surface)]" />
       ) : (
-        <div className="overflow-x-auto rounded-3xl border border-[var(--color-border)] bg-[var(--color-surface)]">
-          <table className="w-full">
+        <div className="overflow-hidden rounded-3xl border border-[var(--color-border)] bg-[var(--color-surface)]">
+          <div className="divide-y divide-[var(--color-border)] md:hidden">
+            {prices.map((item) => (
+              <article key={item.id} className="p-4">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <h2 className="truncate font-semibold">{assetById.get(item.asset_id)?.name ?? item.asset_id}</h2>
+                    <p className="mt-1 font-mono text-sm text-[var(--color-text-secondary)]" dir="ltr">{item.currency_code} {String(item.price)}</p>
+                  </div>
+                  <Button size="sm" variant="outline" className="shrink-0" onClick={() => openForm(item)}><Pencil /> <span className="sr-only">Edit</span></Button>
+                </div>
+                <dl className="mt-4 grid grid-cols-2 gap-3 text-xs text-[var(--color-text-secondary)]">
+                  <div><dt>Effective date</dt><dd className="mt-1 text-[var(--color-text-primary)]">{new Date(item.as_of).toLocaleString()}</dd></div>
+                  <div><dt>Source</dt><dd className="mt-1 text-[var(--color-text-primary)]">{item.provider}</dd></div>
+                </dl>
+              </article>
+            ))}
+          </div>
+          <div className="hidden overflow-x-auto md:block">
+          <table className="w-full min-w-[680px]">
             <thead>
               <tr className="border-b border-[var(--color-border)] text-start text-sm">
                 <th className="p-4">Asset</th>
@@ -143,6 +161,7 @@ export function MarketPricesPage() {
               ))}
             </tbody>
           </table>
+          </div>
           {prices.length === 0 ? (
             <p className="p-10 text-center text-[var(--color-text-secondary)]">
               No manual market prices yet.
@@ -158,7 +177,7 @@ export function MarketPricesPage() {
 
       {isFormOpen ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 p-4">
-          <section role="dialog" aria-modal="true" className="w-full max-w-lg rounded-3xl bg-[var(--color-surface)] p-6">
+          <section role="dialog" aria-modal="true" className="max-h-[calc(100dvh-2rem)] w-full max-w-lg overflow-y-auto rounded-3xl bg-[var(--color-surface)] p-4 sm:p-6">
             <h2 className="text-xl font-bold">
               {editing ? "Edit Market Price" : "Add Market Price"}
             </h2>
@@ -220,11 +239,11 @@ export function MarketPricesPage() {
                 </p>
               ) : null}
             </div>
-            <div className="mt-6 flex justify-end gap-3">
-              <Button variant="outline" onClick={closeForm}>
+            <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+              <Button variant="outline" className="w-full sm:w-auto" onClick={closeForm}>
                 Cancel
               </Button>
-              <Button disabled={isSaving} onClick={() => void submit()}>
+              <Button className="w-full sm:w-auto" disabled={isSaving} onClick={() => void submit()}>
                 {isSaving ? "Saving…" : "Save Price"}
               </Button>
             </div>

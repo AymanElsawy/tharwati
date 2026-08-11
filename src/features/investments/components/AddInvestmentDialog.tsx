@@ -159,8 +159,8 @@ export function AddInvestmentDialog({ isOpen, onClose, onSuccess }: Props) {
         aria-labelledby="add-investment-title"
         className="max-h-[94vh] w-full max-w-3xl overflow-y-auto rounded-3xl bg-[var(--color-background)] shadow-2xl"
       >
-        <header className="sticky top-0 z-10 flex items-center justify-between border-b border-[var(--color-border)] bg-[var(--color-background)] px-6 py-5">
-          <div>
+        <header className="sticky top-0 z-10 flex items-start justify-between gap-3 border-b border-[var(--color-border)] bg-[var(--color-background)] px-4 py-4 sm:px-6 sm:py-5">
+          <div className="min-w-0">
             <h2 id="add-investment-title" className="text-2xl font-bold">
               {t("investment.title")}
             </h2>
@@ -181,7 +181,7 @@ export function AddInvestmentDialog({ isOpen, onClose, onSuccess }: Props) {
 
         <form
           id="add-investment-form"
-          className="space-y-7 p-6"
+          className="space-y-6 p-4 sm:space-y-7 sm:p-6"
           onSubmit={handleSubmit(save)}
           noValidate
         >
@@ -195,7 +195,7 @@ export function AddInvestmentDialog({ isOpen, onClose, onSuccess }: Props) {
             </div>
           )}
 
-          <fieldset className="rounded-2xl border border-[var(--color-border)] p-5">
+          <fieldset className="rounded-2xl border border-[var(--color-border)] p-4 sm:p-5">
             <legend className="px-2 font-bold">{t("investment.funding.section")}</legend>
             <div className="space-y-3">
               <label className="flex items-start gap-2">
@@ -219,7 +219,7 @@ export function AddInvestmentDialog({ isOpen, onClose, onSuccess }: Props) {
             </div>
           </fieldset>
 
-          <fieldset className="rounded-2xl border border-[var(--color-border)] p-5">
+          <fieldset className="rounded-2xl border border-[var(--color-border)] p-4 sm:p-5">
             <legend className="px-2 font-bold">
               {t("investment.account.section")}
             </legend>
@@ -304,7 +304,7 @@ export function AddInvestmentDialog({ isOpen, onClose, onSuccess }: Props) {
             )}
           </fieldset>
 
-          <fieldset className="rounded-2xl border border-[var(--color-border)] p-5">
+          <fieldset className="rounded-2xl border border-[var(--color-border)] p-4 sm:p-5">
             <legend className="px-2 font-bold">
               {t("investment.asset.section")}
             </legend>
@@ -464,7 +464,7 @@ export function AddInvestmentDialog({ isOpen, onClose, onSuccess }: Props) {
             )}
           </fieldset>
 
-          <fieldset className="rounded-2xl border border-[var(--color-border)] p-5">
+          <fieldset className="rounded-2xl border border-[var(--color-border)] p-4 sm:p-5">
             <legend className="px-2 font-bold">
               {t("investment.details.section")}
             </legend>

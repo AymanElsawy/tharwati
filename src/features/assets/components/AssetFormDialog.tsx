@@ -27,8 +27,8 @@ export function AssetFormDialog(props: Props) {
         aria-labelledby={`${formId}-title`}
         className="max-h-[90vh] w-full max-w-xl overflow-y-auto rounded-3xl border border-[var(--color-border)] bg-[var(--color-background)] shadow-2xl"
       >
-        <header className="sticky top-0 flex items-center justify-between border-b border-[var(--color-border)] bg-[var(--color-background)] px-6 py-5">
-          <div>
+        <header className="sticky top-0 flex items-start justify-between gap-3 border-b border-[var(--color-border)] bg-[var(--color-background)] px-4 py-4 sm:px-6 sm:py-5">
+          <div className="min-w-0">
             <h2 id={`${formId}-title`} className="text-xl font-bold">
               {t(
                 props.mode === "create"
@@ -50,7 +50,7 @@ export function AssetFormDialog(props: Props) {
             <X size={20} />
           </button>
         </header>
-        <div className="px-6 py-6">
+        <div className="px-4 py-5 sm:px-6 sm:py-6">
           <AssetForm
             defaultValues={props.defaultValues}
             formId={formId}
@@ -59,12 +59,12 @@ export function AssetFormDialog(props: Props) {
             onDirtyChange={props.onDirtyChange}
           />
         </div>
-        <footer className="sticky bottom-0 flex justify-end gap-3 border-t border-[var(--color-border)] bg-[var(--color-background)] px-6 py-4">
+        <footer className="sticky bottom-0 flex flex-col-reverse gap-2 border-t border-[var(--color-border)] bg-[var(--color-background)] px-4 py-3 sm:flex-row sm:justify-end sm:px-6 sm:py-4">
           <button
             type="button"
             disabled={props.isSaving}
             onClick={props.onClose}
-            className="tharwati-button-secondary"
+            className="tharwati-button-secondary w-full sm:w-auto"
           >
             {t("common.cancel")}
           </button>
@@ -72,7 +72,7 @@ export function AssetFormDialog(props: Props) {
             type="submit"
             form={formId}
             disabled={props.isSaving}
-            className="tharwati-button-primary disabled:opacity-60"
+            className="tharwati-button-primary w-full disabled:opacity-60 sm:w-auto"
           >
             {props.isSaving
               ? t("assets.form.saving")

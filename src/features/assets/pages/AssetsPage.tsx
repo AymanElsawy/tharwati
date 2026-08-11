@@ -140,7 +140,7 @@ export function AssetsPage() {
       {error ? (
         <div
           role="alert"
-          className="mb-5 flex items-center justify-between gap-4 border-y border-amber-600/35 py-3 text-sm text-amber-800 dark:text-amber-300"
+          className="mb-5 flex flex-wrap items-center justify-between gap-3 border-y border-amber-600/35 py-3 text-sm text-amber-800 dark:text-amber-300"
         >
           <span className="inline-flex items-center gap-2">
             <AlertTriangle size={16} />
@@ -410,7 +410,7 @@ export function AssetsPage() {
         <div
           role="alert"
           aria-live="assertive"
-          className="bg-background fixed end-5 bottom-5 z-[80] max-w-sm rounded-xl border border-red-500/30 p-4 text-sm text-red-700 dark:text-red-300"
+          className="bg-background fixed bottom-4 end-4 z-[80] max-w-[calc(100vw-2rem)] rounded-xl border border-red-500/30 p-4 text-sm text-red-700 dark:text-red-300 sm:bottom-5 sm:end-5"
         >
           <button
             type="button"

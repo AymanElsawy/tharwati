@@ -29,7 +29,7 @@ export function AssetWorkspaceHeader({
         </p>
       </div>
       <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
-        <label className="grid min-w-56 gap-1.5 text-xs font-semibold text-muted-foreground">
+        <label className="grid w-full min-w-0 gap-1.5 text-xs font-semibold text-muted-foreground sm:min-w-56">
           {t("assets.workspace.scope")}
           <select
             value={snapshot.activeScopeId ?? ""}
@@ -46,7 +46,7 @@ export function AssetWorkspaceHeader({
         <button
           type="button"
           onClick={onAdd}
-          className="tharwati-button-primary h-10 !min-h-10 gap-2 !rounded-xl !py-2"
+          className="tharwati-button-primary h-10 w-full !min-h-10 gap-2 !rounded-xl !py-2 sm:w-auto"
         >
           <Plus size={16} aria-hidden="true" />
           {t("assets.workspace.add")}

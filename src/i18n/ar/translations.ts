@@ -28,6 +28,7 @@ export const ar: Record<TranslationKey, string> = {
   "navigation.holdings": "الحيازات",
   "navigation.goals": "الأهداف",
   "navigation.logout": "تسجيل الخروج",
+  "navigation.open": "فتح التنقل",
   "header.title": "لوحة المعلومات",
   "header.welcome": "مرحبًا بعودتك إلى ثروتي",
   "header.tagline": "ابنِ. نمِّ. حافظ.",

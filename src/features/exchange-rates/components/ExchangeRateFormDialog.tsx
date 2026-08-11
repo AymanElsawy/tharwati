@@ -40,7 +40,7 @@ export function ExchangeRateFormDialog({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/55 p-4 backdrop-blur-sm">
-      <section role="dialog" aria-modal="true" className="w-full max-w-lg rounded-3xl bg-[var(--color-background)] p-6 shadow-2xl">
+      <section role="dialog" aria-modal="true" className="max-h-[calc(100dvh-2rem)] w-full max-w-lg overflow-y-auto rounded-3xl bg-[var(--color-background)] p-4 shadow-2xl sm:p-6">
         <h2 className="text-xl font-bold">{mode === "create" ? "Add Exchange Rate" : "Edit Exchange Rate"}</h2>
         <p className="mt-1 text-sm text-[var(--color-text-secondary)]">Store one unit of the From currency expressed in the To currency.</p>
         <form className="mt-6 space-y-5" onSubmit={handleSubmit(onSubmit)}>
@@ -74,9 +74,9 @@ export function ExchangeRateFormDialog({
             <input id="exchange-rate-date" type="datetime-local" className="mt-1.5 h-12 w-full rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] px-4" {...register("effectiveAt")} />
             {errors.effectiveAt && <p className="mt-1 text-sm text-red-600">{errors.effectiveAt.message}</p>}
           </div>
-          <div className="flex justify-end gap-3 pt-3">
-            <Button type="button" variant="outline" disabled={isSaving} onClick={onClose}>Cancel</Button>
-            <Button type="submit" disabled={isSaving}>{isSaving ? "Saving..." : "Save Rate"}</Button>
+          <div className="flex flex-col-reverse gap-3 pt-3 sm:flex-row sm:justify-end">
+            <Button type="button" variant="outline" className="w-full sm:w-auto" disabled={isSaving} onClick={onClose}>Cancel</Button>
+            <Button type="submit" className="w-full sm:w-auto" disabled={isSaving}>{isSaving ? "Saving..." : "Save Rate"}</Button>
           </div>
         </form>
       </section>

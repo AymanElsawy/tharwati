@@ -35,8 +35,8 @@ export function AccountWorkspaceHeader({
           {t("accounts.workspace.description")}
         </p>
       </div>
-      <div className="flex flex-wrap items-end gap-3">
-        <label className="grid min-w-56 gap-1.5 text-xs font-semibold text-muted-foreground">
+      <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end">
+        <label className="grid w-full min-w-0 gap-1.5 text-xs font-semibold text-muted-foreground sm:min-w-56 sm:flex-1">
           {t("accounts.workspace.scope")}
           <select
             value={snapshot.scope}
@@ -50,7 +50,7 @@ export function AccountWorkspaceHeader({
             <option value="wealth_cash">{t("accounts.workspace.scopeCash")}</option>
           </select>
         </label>
-        <Button onClick={onAdd}>
+        <Button onClick={onAdd} className="w-full sm:w-auto">
           <Plus size={16} />
           {t("accounts.actions.add")}
         </Button>

@@ -163,8 +163,8 @@
   --layout-sidebar-width: 17rem;
   --layout-content-max: 92rem;
 
-  --space-page-inline: clamp(1.25rem, 3vw, 3.5rem);
-  --space-page-block: clamp(2rem, 4vw, 4rem);
+  --space-page-inline: clamp(1rem, 3vw, 3.5rem);
+  --space-page-block: clamp(1.5rem, 4vw, 4rem);
   --space-section: clamp(3.5rem, 6vw, 6.5rem);
 
   --radius-control: 0.75rem;
@@ -198,11 +198,13 @@
 
 html {
   min-width: 320px;
+  overflow-x: clip;
   background: var(--color-background);
 }
 
 body {
   min-width: 320px;
+  overflow-x: clip;
   min-height: 100vh;
   margin: 0;
   background: var(--color-background);
@@ -220,6 +222,32 @@ input,
 select,
 textarea {
   font: inherit;
+  max-width: 100%;
+}
+
+#root {
+  min-width: 0;
+}
+
+img,
+picture,
+video,
+canvas,
+svg {
+  max-width: 100%;
+}
+
+h1,
+h2,
+h3,
+h4,
+p,
+dd,
+dt,
+span,
+button,
+label {
+  overflow-wrap: anywhere;
 }
 
 button,
@@ -500,6 +528,21 @@ select {
 
 .tharwati-list-row:last-child {
   border-block-end: 0;
+}
+
+@media (max-width: 39.999rem) {
+  .tharwati-page-title {
+    font-size: 1.875rem;
+  }
+
+  .tharwati-page-description {
+    margin-top: 0.7rem;
+    line-height: 1.55;
+  }
+
+  .tharwati-card {
+    border-radius: 1rem;
+  }
 }
 
 @media (min-width: 48rem) {

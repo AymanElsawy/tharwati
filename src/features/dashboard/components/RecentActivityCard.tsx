@@ -26,8 +26,8 @@ export function RecentActivityCard({
               key={activity.id}
               className="tharwati-list-row px-1 py-4 sm:px-6"
             >
-              <div className="flex justify-between gap-4">
-                <div>
+              <div className="flex items-start justify-between gap-4">
+                <div className="min-w-0">
                   <p className="font-semibold">{activity.title}</p>
                   <p className="mt-1 text-sm text-[var(--color-text-secondary)]">
                     {activity.description}

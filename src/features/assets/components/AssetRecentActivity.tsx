@@ -83,7 +83,7 @@ export function AssetRecentActivity({
               <button
                 type="button"
                 onClick={() => onOpen(item.id)}
-                className="grid w-full grid-cols-[auto_1fr_auto] items-center gap-4 py-4 text-start focus-visible:ring-2"
+                className="grid w-full gap-2 py-4 text-start focus-visible:ring-2 sm:grid-cols-[auto_1fr_auto] sm:items-center sm:gap-4"
               >
                 <time
                   className="text-muted-foreground text-xs"
