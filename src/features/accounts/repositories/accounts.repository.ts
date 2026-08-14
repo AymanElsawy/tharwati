@@ -20,6 +20,13 @@ export type CreateAccountInput = {
   currencyCode: string
   openingBalance?: Decimal
   notes?: string | null
+  bankSubtype?: "debit" | "credit" | null
+  investmentType?: "stock_etf" | "crypto" | "other" | null
+  balanceGrams?: Decimal | null
+  propertyType?: "apartment" | "villa" | "land" | "office" | "other" | null
+  ownershipPercentage?: Decimal | null
+  businessType?: string | null
+  industry?: string | null
 }
 
 export type UpdateAccountInput = {
@@ -29,6 +36,13 @@ export type UpdateAccountInput = {
   openingBalance?: Decimal
   notes?: string | null
   isActive?: boolean
+  bankSubtype?: "debit" | "credit" | null
+  investmentType?: "stock_etf" | "crypto" | "other" | null
+  balanceGrams?: Decimal | null
+  propertyType?: "apartment" | "villa" | "land" | "office" | "other" | null
+  ownershipPercentage?: Decimal | null
+  businessType?: string | null
+  industry?: string | null
 }
 
 export type AccountDeletionEligibility = {
@@ -47,7 +61,7 @@ type DatabaseError = {
   message: string
 }
 
-const accountSelect = "id,user_id,account_type_code,name,currency_code,opening_balance::text,notes,is_active,created_at,updated_at" as const
+const accountSelect = "id,user_id,account_type_code,name,currency_code,opening_balance::text,notes,is_active,bank_subtype,investment_type,balance_grams::text,property_type,ownership_percentage::text,business_type,industry,created_at,updated_at" as const
 
 export function requireAccountDecimalText(value: unknown, field: string, operation: string): Decimal {
   if (typeof value !== "string" || normalizeDecimal(value) === null) {
@@ -56,8 +70,17 @@ export function requireAccountDecimalText(value: unknown, field: string, operati
   return value
 }
 
+function requireNullableAccountDecimalText(value: unknown, field: string, operation: string): Decimal | null {
+  return value === null ? null : requireAccountDecimalText(value, field, operation)
+}
+
 function mapAccountSummary(row: AccountSummary, operation: string): AccountSummary {
-  return { ...row, opening_balance: requireAccountDecimalText(row.opening_balance, "opening_balance", operation) }
+  return {
+    ...row,
+    opening_balance: requireAccountDecimalText(row.opening_balance, "opening_balance", operation),
+    balance_grams: requireNullableAccountDecimalText(row.balance_grams, "balance_grams", operation),
+    ownership_percentage: requireNullableAccountDecimalText(row.ownership_percentage, "ownership_percentage", operation),
+  }
 }
 
 function throwAccountUpdateError(
@@ -137,6 +160,13 @@ export class AccountsRepository {
         currency_code: input.currencyCode,
         opening_balance: input.openingBalance,
         notes: input.notes,
+        bank_subtype: input.bankSubtype,
+        investment_type: input.investmentType,
+        balance_grams: input.balanceGrams,
+        property_type: input.propertyType,
+        ownership_percentage: input.ownershipPercentage,
+        business_type: input.businessType,
+        industry: input.industry,
       })
       .select(accountSelect)
       .single()
@@ -169,6 +199,27 @@ export class AccountsRepository {
     }
     if (input.isActive !== undefined) {
       update.is_active = input.isActive
+    }
+    if (input.bankSubtype !== undefined) {
+      update.bank_subtype = input.bankSubtype
+    }
+    if (input.investmentType !== undefined) {
+      update.investment_type = input.investmentType
+    }
+    if (input.balanceGrams !== undefined) {
+      update.balance_grams = input.balanceGrams
+    }
+    if (input.propertyType !== undefined) {
+      update.property_type = input.propertyType
+    }
+    if (input.ownershipPercentage !== undefined) {
+      update.ownership_percentage = input.ownershipPercentage
+    }
+    if (input.businessType !== undefined) {
+      update.business_type = input.businessType
+    }
+    if (input.industry !== undefined) {
+      update.industry = input.industry
     }
 
     const { data, error } = await this.client

@@ -1,67 +1,71 @@
-import { ArrowUpDown } from "lucide-react"
+import { ArrowUpDown, Archive, ArchiveRestore, Pencil, Trash2 } from "lucide-react"
 
 import { Badge } from "@/components/ui/badge"
-import type {
-  AccountInventoryItem,
-  AccountInventorySort,
-} from "@/features/accounts/types/account-workspace"
+import { Button } from "@/components/ui/button"
 import { getAccountTypeLabel } from "@/features/accounts/types/account-form"
-import { formatPortfolioAmount } from "@/features/portfolio/utils/portfolio-formatters"
+import {
+  formatPortfolioAmount,
+  formatPortfolioDecimal,
+  formatPortfolioPercent,
+} from "@/features/portfolio/utils/portfolio-formatters"
+import type { AccountSummary } from "@/lib/supabase/types"
 import type { TranslationKey } from "@/i18n/en/translations"
 import { useTranslation } from "@/i18n/useTranslation"
 
+export type AccountInventorySort = "name" | "type" | "currency" | "balance" | "status"
+
+export type AccountInventoryItem = {
+  account: AccountSummary
+  currentBalance: string | null
+}
+
 const columns: Array<[AccountInventorySort, TranslationKey]> = [
   ["name", "accounts.table.name"],
-  ["type", "accounts.card.type"],
-  ["currency", "accounts.card.currency"],
-  ["balance", "accounts.workspace.currentBalance"],
-  ["status", "accounts.card.status"],
-  ["activity", "accounts.workspace.lastActivity"],
+  ["type", "accounts.table.type"],
+  ["currency", "accounts.table.currency"],
+  ["balance", "accounts.table.balance"],
+  ["status", "accounts.table.status"],
 ]
+
+function balanceCell(item: AccountInventoryItem, locale: string) {
+  if (item.account.account_type_code === "gold") {
+    return item.account.balance_grams === null
+      ? "—"
+      : `${formatPortfolioDecimal(item.account.balance_grams, locale, 3)} g`
+  }
+  return item.currentBalance === null
+    ? "—"
+    : formatPortfolioAmount(item.currentBalance, item.account.currency_code, locale)
+}
 
 export function AccountInventory({
   items,
-  selectedId,
   sort,
   direction,
   onSort,
-  onSelect,
+  onEdit,
+  onArchive,
+  onDelete,
+  canDelete,
 }: {
   items: AccountInventoryItem[]
-  selectedId: string | null
   sort: AccountInventorySort
   direction: "asc" | "desc"
   onSort: (sort: AccountInventorySort) => void
-  onSelect: (id: string) => void
+  onEdit: (account: AccountSummary) => void
+  onArchive: (account: AccountSummary) => void
+  onDelete: (account: AccountSummary) => void
+  canDelete: (accountId: string) => boolean
 }) {
   const { t, language } = useTranslation()
   const locale = language === "ar" ? "ar-SA" : "en-US"
-  const date = new Intl.DateTimeFormat(locale, { dateStyle: "medium" })
-  const value = (item: AccountInventoryItem) =>
-    item.currentBalance === null
-      ? "—"
-      : formatPortfolioAmount(
-          item.currentBalance,
-          item.account.currency_code,
-          locale
-        )
+
   return (
-    <section aria-labelledby="account-inventory-title" className="mt-10">
-      <header>
-        <p className="tharwati-eyebrow">
-          {t("accounts.workspace.inventoryEyebrow")}
-        </p>
-        <h2
-          id="account-inventory-title"
-          className="tharwati-section-title mt-2"
-        >
-          {t("accounts.workspace.inventoryTitle")}
-        </h2>
-      </header>
-      <div className="mt-5 hidden max-h-[44rem] overflow-auto lg:block">
-        <table className="w-full min-w-[1100px] text-sm">
+    <section aria-labelledby="account-inventory-title" className="mt-8">
+      <div className="mt-2 hidden max-h-[44rem] overflow-auto rounded-2xl border border-[var(--border-subtle)] lg:block">
+        <table className="w-full min-w-[900px] text-sm">
           <thead className="bg-background sticky top-0 z-10">
-            <tr className="border-y border-[var(--border-subtle)]">
+            <tr className="border-b border-[var(--border-subtle)]">
               {columns.map(([id, label]) => (
                 <th
                   key={id}
@@ -73,7 +77,7 @@ export function AccountInventory({
                         : "descending"
                       : "none"
                   }
-                  className="text-muted-foreground px-3 py-3 text-start text-xs font-medium tracking-[0.1em] uppercase"
+                  className="text-muted-foreground px-4 py-3 text-start text-xs font-medium tracking-[0.1em] uppercase"
                 >
                   <button
                     type="button"
@@ -85,8 +89,11 @@ export function AccountInventory({
                   </button>
                 </th>
               ))}
-              <th className="text-muted-foreground px-3 py-3 text-start text-xs tracking-[0.1em] uppercase">
-                {t("accounts.workspace.holdings")}
+              <th className="text-muted-foreground px-4 py-3 text-start text-xs tracking-[0.1em] uppercase">
+                {t("accounts.table.ownership")}
+              </th>
+              <th className="text-muted-foreground px-4 py-3 text-end text-xs tracking-[0.1em] uppercase">
+                {t("accounts.table.actions")}
               </th>
             </tr>
           </thead>
@@ -94,96 +101,101 @@ export function AccountInventory({
             {items.map((item) => (
               <tr
                 key={item.account.id}
-                aria-selected={selectedId === item.account.id}
-                className="hover:bg-muted/30 aria-selected:bg-muted/50 border-b border-[var(--border-subtle)]"
+                className="hover:bg-muted/30 border-b border-[var(--border-subtle)] last:border-b-0"
               >
-                <td className="px-3 py-4">
-                  <button
-                    type="button"
-                    onClick={() => onSelect(item.account.id)}
-                    className="text-start font-medium focus-visible:ring-2"
-                  >
-                    {item.account.name}
-                    <span className="text-muted-foreground mt-1 block text-xs font-normal">
-                      {t("accounts.workspace.userOwned")}
-                    </span>
-                  </button>
-                </td>
-                <td className="px-3 py-4">
+                <td className="px-4 py-4 font-medium">{item.account.name}</td>
+                <td className="px-4 py-4">
                   {getAccountTypeLabel(item.account.account_type_code, t)}
                 </td>
-                <td className="px-3 py-4" dir="ltr">
+                <td className="px-4 py-4" dir="ltr">
                   {item.account.currency_code}
                 </td>
-                <td className="px-3 py-4 tabular-nums" dir="ltr">
-                  {value(item)}
-                  {item.projectedCash !== null ? (
-                    <span className="text-muted-foreground mt-1 block text-xs">
-                      {t("accounts.workspace.projectedCash")}
-                    </span>
-                  ) : null}
+                <td className="px-4 py-4 tabular-nums" dir="ltr">
+                  {balanceCell(item, locale)}
                 </td>
-                <td className="px-3 py-4">
+                <td className="px-4 py-4">
                   <Badge variant={item.account.is_active ? "ghost" : "outline"}>
-                    {t(
-                      item.account.is_active
-                        ? "assets.card.active"
-                        : "assets.card.archived"
-                    )}
+                    {t(item.account.is_active ? "accounts.card.active" : "accounts.card.archived")}
                   </Badge>
                 </td>
-                <td className="text-muted-foreground px-3 py-4 text-xs">
-                  {item.lastActivityAt
-                    ? date.format(new Date(item.lastActivityAt))
-                    : "—"}
+                <td className="px-4 py-4 tabular-nums" dir="ltr">
+                  {item.account.ownership_percentage === null
+                    ? "—"
+                    : formatPortfolioPercent(item.account.ownership_percentage, locale)}
                 </td>
-                <td className="px-3 py-4 tabular-nums">
-                  {item.linkedHoldingsCount}
+                <td className="px-4 py-4">
+                  <div className="flex justify-end gap-1">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      aria-label={t("accounts.table.editLabel", { name: item.account.name })}
+                      onClick={() => onEdit(item.account)}
+                    >
+                      <Pencil size={15} />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      aria-label={t("accounts.table.archiveLabel", { name: item.account.name })}
+                      onClick={() => onArchive(item.account)}
+                    >
+                      {item.account.is_active ? <Archive size={15} /> : <ArchiveRestore size={15} />}
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      disabled={!canDelete(item.account.id)}
+                      aria-label={t("accounts.table.deleteLabel", { name: item.account.name })}
+                      onClick={() => onDelete(item.account)}
+                      className="text-red-600 hover:text-red-700 disabled:text-muted-foreground dark:text-red-400"
+                    >
+                      <Trash2 size={15} />
+                    </Button>
+                  </div>
                 </td>
               </tr>
             ))}
           </tbody>
         </table>
       </div>
-      <div className="mt-5 divide-y divide-[var(--border-subtle)] lg:hidden">
+      <div className="mt-2 divide-y divide-[var(--border-subtle)] rounded-2xl border border-[var(--border-subtle)] lg:hidden">
         {items.map((item) => (
-          <button
-            key={item.account.id}
-            type="button"
-            aria-pressed={selectedId === item.account.id}
-            onClick={() => onSelect(item.account.id)}
-            className="grid w-full grid-cols-[1fr_auto] gap-4 py-5 text-start focus-visible:ring-2"
-          >
-            <span>
-              <strong className="block">{item.account.name}</strong>
-              <span className="text-muted-foreground mt-1 block text-xs">
-                {getAccountTypeLabel(item.account.account_type_code, t)}{" "}
-                · {item.account.currency_code}
+          <div key={item.account.id} className="grid gap-3 px-4 py-4">
+            <div className="flex items-start justify-between gap-3">
+              <span>
+                <strong className="block">{item.account.name}</strong>
+                <span className="text-muted-foreground mt-1 block text-xs">
+                  {getAccountTypeLabel(item.account.account_type_code, t)} · {item.account.currency_code}
+                </span>
               </span>
-              <span className="mt-3 flex gap-2">
-                <Badge variant="outline">
-                  {t("accounts.workspace.userOwned")}
-                </Badge>
-                <Badge variant="ghost">
-                  {t(
-                    item.account.is_active
-                      ? "assets.card.active"
-                      : "assets.card.archived"
-                  )}
-                </Badge>
-              </span>
-            </span>
-            <span className="text-end tabular-nums">
-              <strong className="block" dir="ltr">
-                {value(item)}
+              <Badge variant={item.account.is_active ? "ghost" : "outline"}>
+                {t(item.account.is_active ? "accounts.card.active" : "accounts.card.archived")}
+              </Badge>
+            </div>
+            <div className="flex items-center justify-between">
+              <strong className="tabular-nums" dir="ltr">
+                {balanceCell(item, locale)}
               </strong>
-              <span className="text-muted-foreground mt-1 block text-xs">
-                {t("accounts.workspace.holdingsCount", {
-                  count: item.linkedHoldingsCount,
-                })}
-              </span>
-            </span>
-          </button>
+              <div className="flex gap-1">
+                <Button variant="ghost" size="icon" aria-label={t("accounts.table.editLabel", { name: item.account.name })} onClick={() => onEdit(item.account)}>
+                  <Pencil size={15} />
+                </Button>
+                <Button variant="ghost" size="icon" aria-label={t("accounts.table.archiveLabel", { name: item.account.name })} onClick={() => onArchive(item.account)}>
+                  {item.account.is_active ? <Archive size={15} /> : <ArchiveRestore size={15} />}
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  disabled={!canDelete(item.account.id)}
+                  aria-label={t("accounts.table.deleteLabel", { name: item.account.name })}
+                  onClick={() => onDelete(item.account)}
+                  className="text-red-600 hover:text-red-700 disabled:text-muted-foreground dark:text-red-400"
+                >
+                  <Trash2 size={15} />
+                </Button>
+              </div>
+            </div>
+          </div>
         ))}
       </div>
     </section>

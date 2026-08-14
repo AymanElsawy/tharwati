@@ -5,8 +5,6 @@ export const accountTypeOptions = [
   { value: "cash", labelKey: "accountType.cash", creationLabelKey: "accounts.type.cash" },
   { value: "bank", labelKey: "accountType.bank", creationLabelKey: "accounts.type.bank" },
   { value: "brokerage", labelKey: "accountType.brokerage", creationLabelKey: "accounts.type.brokerage" },
-  { value: "retirement", labelKey: "accountType.retirement", creationLabelKey: "accounts.type.retirement" },
-  { value: "deposit", labelKey: "accountType.deposit", creationLabelKey: "accounts.type.deposit" },
   { value: "gold", labelKey: "accountType.gold", creationLabelKey: "accounts.type.gold" },
   { value: "real_estate", labelKey: "accountType.real_estate", creationLabelKey: "accounts.type.realEstate" },
   { value: "business", labelKey: "accountType.business", creationLabelKey: "accounts.type.business" },
@@ -19,6 +17,25 @@ export const currencyOptions = [
   { value: "EGP", labelKey: "currency.EGP" },
   { value: "EUR", labelKey: "currency.EUR" },
   { value: "GBP", labelKey: "currency.GBP" },
+] as const
+
+export const bankSubtypeOptions = [
+  { value: "debit", labelKey: "accounts.form.bankSubtype.debit" },
+  { value: "credit", labelKey: "accounts.form.bankSubtype.credit" },
+] as const
+
+export const investmentTypeOptions = [
+  { value: "stock_etf", labelKey: "accounts.form.investmentType.stockEtf" },
+  { value: "crypto", labelKey: "accounts.form.investmentType.crypto" },
+  { value: "other", labelKey: "accounts.form.investmentType.other" },
+] as const
+
+export const propertyTypeOptions = [
+  { value: "apartment", labelKey: "accounts.form.propertyType.apartment" },
+  { value: "villa", labelKey: "accounts.form.propertyType.villa" },
+  { value: "land", labelKey: "accounts.form.propertyType.land" },
+  { value: "office", labelKey: "accounts.form.propertyType.office" },
+  { value: "other", labelKey: "accounts.form.propertyType.other" },
 ] as const
 
 export const accountTypeCodes = accountTypeOptions.map(
@@ -35,11 +52,41 @@ export const currencyCodes = currencyOptions.map(
   ...(typeof currencyOptions)[number]["value"][],
 ]
 
+export const bankSubtypeCodes = bankSubtypeOptions.map(
+  (option) => option.value,
+) as [
+  (typeof bankSubtypeOptions)[number]["value"],
+  ...(typeof bankSubtypeOptions)[number]["value"][],
+]
+
+export const investmentTypeCodes = investmentTypeOptions.map(
+  (option) => option.value,
+) as [
+  (typeof investmentTypeOptions)[number]["value"],
+  ...(typeof investmentTypeOptions)[number]["value"][],
+]
+
+export const propertyTypeCodes = propertyTypeOptions.map(
+  (option) => option.value,
+) as [
+  (typeof propertyTypeOptions)[number]["value"],
+  ...(typeof propertyTypeOptions)[number]["value"][],
+]
+
+export type AccountTypeCode = (typeof accountTypeCodes)[number]
+
 export type AccountFormValues = {
   name: string
-  accountTypeCode: (typeof accountTypeCodes)[number]
+  accountTypeCode: AccountTypeCode
   currencyCode: (typeof currencyCodes)[number]
   openingBalance: string
+  bankSubtype: (typeof bankSubtypeCodes)[number] | ""
+  investmentType: (typeof investmentTypeCodes)[number] | ""
+  balanceGrams: string
+  propertyType: (typeof propertyTypeCodes)[number] | ""
+  ownershipPercentage: string
+  businessType: string
+  industry: string
   notes: string
   isActive: boolean
 }
@@ -49,6 +96,13 @@ export const emptyAccountFormValues: AccountFormValues = {
   accountTypeCode: "cash",
   currencyCode: "USD",
   openingBalance: "0",
+  bankSubtype: "",
+  investmentType: "",
+  balanceGrams: "0",
+  propertyType: "",
+  ownershipPercentage: "100",
+  businessType: "",
+  industry: "",
   notes: "",
   isActive: true,
 }
@@ -58,11 +112,16 @@ export function accountToFormValues(
 ): AccountFormValues {
   return {
     name: account.name,
-    accountTypeCode:
-      account.account_type_code as AccountFormValues["accountTypeCode"],
-    currencyCode:
-      account.currency_code as AccountFormValues["currencyCode"],
+    accountTypeCode: account.account_type_code as AccountFormValues["accountTypeCode"],
+    currencyCode: account.currency_code as AccountFormValues["currencyCode"],
     openingBalance: account.opening_balance,
+    bankSubtype: (account.bank_subtype ?? "") as AccountFormValues["bankSubtype"],
+    investmentType: (account.investment_type ?? "") as AccountFormValues["investmentType"],
+    balanceGrams: account.balance_grams ?? "0",
+    propertyType: (account.property_type ?? "") as AccountFormValues["propertyType"],
+    ownershipPercentage: account.ownership_percentage ?? "100",
+    businessType: account.business_type ?? "",
+    industry: account.industry ?? "",
     notes: account.notes ?? "",
     isActive: account.is_active,
   }
@@ -70,13 +129,71 @@ export function accountToFormValues(
 
 export function getBalanceLabelKey(
   code: AccountFormValues["accountTypeCode"],
-): "accounts.form.startingBalance" | "accounts.form.startingCashBalance" | "accounts.form.depositBalance" {
+): "accounts.form.startingBalance" | "accounts.form.startingCashBalance" | "accounts.form.currentValue" {
   if (code === "brokerage") return "accounts.form.startingCashBalance"
-  if (code === "deposit") return "accounts.form.depositBalance"
+  if (code === "real_estate" || code === "business") return "accounts.form.currentValue"
   return "accounts.form.startingBalance"
 }
 
 export function getAccountTypeLabel(code: string, t: Translate): string {
   const option = accountTypeOptions.find((item) => item.value === code)
   return option ? t(option.labelKey) : code.replaceAll("_", " ")
+}
+
+export type AccountTypeSpecificFields = {
+  openingBalance: string | undefined
+  bankSubtype: "debit" | "credit" | null
+  investmentType: "stock_etf" | "crypto" | "other" | null
+  balanceGrams: string | null
+  propertyType: "apartment" | "villa" | "land" | "office" | "other" | null
+  ownershipPercentage: string | null
+  businessType: string | null
+  industry: string | null
+}
+
+export function toAccountTypeSpecificFields(
+  values: AccountFormValues,
+): AccountTypeSpecificFields {
+  const fields: AccountTypeSpecificFields = {
+    openingBalance: undefined,
+    bankSubtype: null,
+    investmentType: null,
+    balanceGrams: null,
+    propertyType: null,
+    ownershipPercentage: null,
+    businessType: null,
+    industry: null,
+  }
+
+  switch (values.accountTypeCode) {
+    case "cash":
+    case "other":
+      fields.openingBalance = values.openingBalance.trim()
+      break
+    case "bank":
+      fields.openingBalance = values.openingBalance.trim()
+      fields.bankSubtype = values.bankSubtype || null
+      break
+    case "brokerage":
+      fields.openingBalance = values.openingBalance.trim()
+      fields.investmentType = values.investmentType || null
+      break
+    case "gold":
+      fields.openingBalance = "0"
+      fields.balanceGrams = values.balanceGrams.trim()
+      break
+    case "real_estate":
+      fields.openingBalance = values.openingBalance.trim()
+      fields.propertyType = values.propertyType || null
+      fields.ownershipPercentage = values.ownershipPercentage.trim()
+      break
+    case "business":
+      fields.openingBalance = values.openingBalance.trim()
+      fields.businessType = values.businessType.trim() || null
+      fields.industry = values.industry.trim() || null
+      fields.ownershipPercentage = values.ownershipPercentage.trim()
+      break
+  }
+
+  return fields
 }

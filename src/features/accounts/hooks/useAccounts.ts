@@ -8,7 +8,7 @@ import {
   type CreateAccountInput,
   type UpdateAccountInput,
 } from "../repositories/accounts.repository"
-import type { AccountFormValues } from "../types/account-form"
+import { toAccountTypeSpecificFields, type AccountFormValues } from "../types/account-form"
 
 type UseAccountsResult = {
   accounts: AccountSummary[]
@@ -172,8 +172,8 @@ export function useAccounts(): UseAccountsResult {
           accountTypeCode: values.accountTypeCode,
           name: values.name.trim(),
           currencyCode: values.currencyCode,
-          openingBalance: values.openingBalance.trim(),
           notes: nullableText(values.notes),
+          ...toAccountTypeSpecificFields(values),
         }
         const createdAccount =
           await accountsRepository.createAccount(input)
@@ -196,9 +196,9 @@ export function useAccounts(): UseAccountsResult {
           accountTypeCode: values.accountTypeCode,
           name: values.name.trim(),
           currencyCode: values.currencyCode,
-          openingBalance: values.openingBalance.trim(),
           notes: nullableText(values.notes),
           isActive: values.isActive,
+          ...toAccountTypeSpecificFields(values),
         }
 
         return accountsRepository.updateAccount(accountId, input)

@@ -81,14 +81,6 @@ describe("AccountBalancesService", () => {
           accountId: "brokerage",
           accountTypeCode: "brokerage",
         }),
-        balance({
-          accountId: "retirement",
-          accountTypeCode: "retirement",
-        }),
-        balance({
-          accountId: "deposit",
-          accountTypeCode: "deposit",
-        }),
         balance({ accountId: "gold", accountTypeCode: "gold" }),
         balance({
           accountId: "real-estate",
@@ -115,8 +107,6 @@ describe("AccountBalancesService", () => {
       "cash",
       "bank",
       "brokerage",
-      "retirement",
-      "deposit",
     ])
   })
 })

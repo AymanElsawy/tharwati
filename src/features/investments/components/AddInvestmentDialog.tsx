@@ -81,7 +81,7 @@ export function AddInvestmentDialog({ isOpen, onClose, onSuccess }: Props) {
     name: ["fundingMode", "accountMode", "assetMode", "assetId", "newAssetTypeCode", "unit"],
   })
   const fundingAccounts = useMemo(
-    () => accounts.filter((account) => ["cash", "bank", "deposit"].includes(account.account_type_code)),
+    () => accounts.filter((account) => ["cash", "bank"].includes(account.account_type_code)),
     [accounts],
   )
 

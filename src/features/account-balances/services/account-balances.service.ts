@@ -14,8 +14,6 @@ const wealthCashAccountTypes = new Set([
   "cash",
   "bank",
   "brokerage",
-  "retirement",
-  "deposit",
 ])
 
 export function supportsProjectedWealthCash(accountTypeCode: string): boolean {

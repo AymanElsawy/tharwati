@@ -117,6 +117,13 @@ type FinancialAccountRow = {
   opening_balance: Decimal
   is_active: boolean
   notes: string | null
+  bank_subtype: "debit" | "credit" | null
+  investment_type: "stock_etf" | "crypto" | "other" | null
+  balance_grams: Decimal | null
+  property_type: "apartment" | "villa" | "land" | "office" | "other" | null
+  ownership_percentage: Decimal | null
+  business_type: string | null
+  industry: string | null
   created_at: string
   updated_at: string
 }
@@ -329,6 +336,13 @@ export type Database = {
           opening_balance?: Decimal
           is_active?: boolean
           notes?: string | null
+          bank_subtype?: "debit" | "credit" | null
+          investment_type?: "stock_etf" | "crypto" | "other" | null
+          balance_grams?: Decimal | null
+          property_type?: "apartment" | "villa" | "land" | "office" | "other" | null
+          ownership_percentage?: Decimal | null
+          business_type?: string | null
+          industry?: string | null
           created_at?: string
           updated_at?: string
         }

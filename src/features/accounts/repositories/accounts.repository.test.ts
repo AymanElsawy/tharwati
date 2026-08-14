@@ -13,6 +13,13 @@ const account = {
   opening_balance: "100",
   notes: "Updated notes",
   is_active: true,
+  bank_subtype: null,
+  investment_type: null,
+  balance_grams: null,
+  property_type: null,
+  ownership_percentage: null,
+  business_type: null,
+  industry: null,
   created_at: "2026-07-26T00:00:00Z",
   updated_at: "2026-07-26T00:00:00Z",
 }
