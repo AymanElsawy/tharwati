@@ -325,6 +325,7 @@ export function AccountForm({
           className="size-4 accent-[var(--color-primary)]"
           disabled={isDisabled}
           {...register("isActive")}
+          
         />
         <span>
           <span className="block text-sm font-semibold text-[var(--color-text-primary)]">
@@ -337,4 +338,5 @@ export function AccountForm({
       </label>
     </form>
   )
+  
 }
