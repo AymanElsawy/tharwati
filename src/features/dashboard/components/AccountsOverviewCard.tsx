@@ -39,19 +39,48 @@ function TypeCard({ overview }: { overview: AccountTypeOverview }) {
           </div>
         </div>
       </div>
-      <div className="space-y-1 border-t border-[var(--border-quiet)] pt-3">
-        {overview.goldGramsTotal !== null ? (
-          <p className="text-lg font-black" dir="ltr">
-            {t("dashboard.accountsOverview.goldGrams", {
-              grams: formatAmount(overview.goldGramsTotal),
-            })}
-          </p>
-        ) : null}
-        {overview.currencyTotals.map((entry) => (
-          <p key={entry.currencyCode} className="text-lg font-black" dir="ltr">
-            {formatAmount(entry.total)} {entry.currencyCode}
-          </p>
-        ))}
+      <div className="divide-y divide-[var(--border-quiet)] border-t border-[var(--border-quiet)]">
+        {overview.metalAccounts
+          ? overview.metalAccounts.map((metalAccount) => (
+              <div key={metalAccount.accountId} className="space-y-1 py-3 first:pt-3">
+                <div className="flex items-center justify-between gap-2">
+                  <p className="text-sm font-semibold text-[var(--color-text-primary)]">
+                    {metalAccount.name}
+                  </p>
+                  <span className="shrink-0 rounded-full bg-[var(--color-surface-muted)] px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-[var(--color-text-secondary)]">
+                    {t(
+                      metalAccount.metalType === "silver"
+                        ? "accounts.form.metalType.silver"
+                        : "accounts.form.metalType.gold",
+                    )}
+                  </span>
+                </div>
+                <p className="text-lg font-black" dir="ltr">
+                  {t("dashboard.accountsOverview.metalUnits", {
+                    units: formatAmount(metalAccount.units),
+                  })}
+                </p>
+                <p className="text-xs text-[var(--color-text-secondary)]" dir="ltr">
+                  {t("dashboard.accountsOverview.costPerUnit", {
+                    price: formatAmount(metalAccount.costPerUnit),
+                    currency: metalAccount.currencyCode,
+                  })}
+                </p>
+                <p className="text-xs text-[var(--color-text-secondary)]" dir="ltr">
+                  {metalAccount.currentPricePerUnit === null
+                    ? t("dashboard.accountsOverview.currentPriceUnavailable")
+                    : t("dashboard.accountsOverview.currentPricePerUnit", {
+                        price: formatAmount(String(metalAccount.currentPricePerUnit)),
+                        currency: metalAccount.currencyCode,
+                      })}
+                </p>
+              </div>
+            ))
+          : overview.currencyTotals.map((entry) => (
+              <p key={entry.currencyCode} className="py-3 text-lg font-black first:pt-3" dir="ltr">
+                {formatAmount(entry.total)} {entry.currencyCode}
+              </p>
+            ))}
       </div>
     </article>
   )

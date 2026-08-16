@@ -40,6 +40,17 @@ export function AccountFormDialog({
   const formId = `${mode}-account-form`
   const [creationStep, setCreationStep] = useState<"type" | "form">("type")
   const [selectedType, setSelectedType] = useState<AccountTypeCode | null>(null)
+  const [sessionId, setSessionId] = useState(0)
+  const [wasOpen, setWasOpen] = useState(isOpen)
+
+  if (isOpen !== wasOpen) {
+    setWasOpen(isOpen)
+    if (isOpen) {
+      setCreationStep("type")
+      setSelectedType(null)
+      setSessionId((id) => id + 1)
+    }
+  }
 
   const effectiveDefaults = useMemo(
     () => selectedType ? { ...defaultValues, accountTypeCode: selectedType } : defaultValues,
@@ -133,6 +144,7 @@ export function AccountFormDialog({
                 </div>
               </fieldset>
             ) : <AccountForm
+              key={sessionId}
               defaultValues={effectiveDefaults}
               formId={formId}
               isSaving={isSaving}
@@ -152,9 +164,9 @@ export function AccountFormDialog({
             >
               {t("common.cancel")}
             </Button>
-            {choosingType ? <Button type="button" disabled={selectedType === null} onClick={() => setCreationStep("form")}>
+            {choosingType ? <Button key="continue" type="button" disabled={selectedType === null} onClick={() => setCreationStep("form")}>
               {t("common.continue")}
-            </Button> : <Button type="submit" form={formId} disabled={isSaving}>
+            </Button> : <Button key="submit" type="submit" form={formId} disabled={isSaving}>
               {isSaving
                 ? t("accounts.form.saving")
                 : mode === "create"

@@ -122,6 +122,10 @@ type FinancialAccountRow = {
   ownership_percentage: Decimal | null
   business_type: string | null
   industry: string | null
+  metal_type: "gold" | "silver" | null
+  purity: string | null
+  purchase_date: string | null
+  cost_per_unit: Decimal | null
   created_at: string
   updated_at: string
 }
@@ -337,6 +341,10 @@ export type Database = {
           ownership_percentage?: Decimal | null
           business_type?: string | null
           industry?: string | null
+          metal_type?: "gold" | "silver" | null
+          purity?: string | null
+          purchase_date?: string | null
+          cost_per_unit?: Decimal | null
           created_at?: string
           updated_at?: string
         }

@@ -9,10 +9,15 @@ import {
   bankSubtypeOptions,
   currencyOptions,
   getBalanceLabelKey,
+  getPurityOptions,
+  getTotalMetalAmount,
   investmentTypeOptions,
+  metalTypeOptions,
   propertyTypeOptions,
   type AccountFormValues,
 } from "../types/account-form"
+import { formatPortfolioAmount } from "../../portfolio/utils/portfolio-formatters"
+import type { TranslationKey } from "../../../i18n/en/translations"
 
 type AccountFormProps = {
   defaultValues: AccountFormValues
@@ -38,10 +43,11 @@ export function AccountForm({
   onSubmit,
   onDirtyChange,
 }: AccountFormProps) {
-  const { t } = useTranslation()
+  const { t, language } = useTranslation()
+  const locale = language === "ar" ? "ar-SA" : "en-US"
   const accountSchema = useMemo(() => createAccountSchema(t), [t])
   const {
-    formState: { errors, isSubmitting },
+    formState: { errors, isSubmitting, isSubmitted },
     handleSubmit,
     register,
     reset,
@@ -50,6 +56,9 @@ export function AccountForm({
     resolver: zodResolver(accountSchema),
     defaultValues,
   })
+
+  const showError = (field: keyof AccountFormValues) =>
+    Boolean(errors[field]) && isSubmitted
 
   useEffect(() => {
     reset(defaultValues)
@@ -62,6 +71,10 @@ export function AccountForm({
   const accountTypeCode = defaultValues.accountTypeCode
   const isDisabled = isSaving || isSubmitting
   const showBalance = accountTypeCode !== "gold"
+  const metalType = (values?.metalType ?? defaultValues.metalType) as AccountFormValues["metalType"]
+  const purityOptions = getPurityOptions(metalType)
+  const totalMetalAmount = getTotalMetalAmount(mergeWatchedAccountForm(values, defaultValues))
+  const currencyCode = values?.currencyCode ?? defaultValues.currencyCode
 
   return (
     <form
@@ -83,7 +96,7 @@ export function AccountForm({
           autoComplete="off"
           {...register("name")}
         />
-        {errors.name ? <p className={errorClassName}>{errors.name.message}</p> : null}
+        {showError("name") ? <p className={errorClassName}>{errors.name?.message}</p> : null}
       </div>
 
       <div>
@@ -142,7 +155,7 @@ export function AccountForm({
               </option>
             ))}
           </select>
-          {errors.bankSubtype ? <p className={errorClassName}>{errors.bankSubtype.message}</p> : null}
+          {showError("bankSubtype") ? <p className={errorClassName}>{errors.bankSubtype?.message}</p> : null}
         </div>
       ) : null}
 
@@ -164,7 +177,7 @@ export function AccountForm({
               </option>
             ))}
           </select>
-          {errors.investmentType ? <p className={errorClassName}>{errors.investmentType.message}</p> : null}
+          {showError("investmentType") ? <p className={errorClassName}>{errors.investmentType?.message}</p> : null}
         </div>
       ) : null}
 
@@ -186,7 +199,7 @@ export function AccountForm({
               </option>
             ))}
           </select>
-          {errors.propertyType ? <p className={errorClassName}>{errors.propertyType.message}</p> : null}
+          {showError("propertyType") ? <p className={errorClassName}>{errors.propertyType?.message}</p> : null}
         </div>
       ) : null}
 
@@ -203,7 +216,7 @@ export function AccountForm({
               autoComplete="off"
               {...register("businessType")}
             />
-            {errors.businessType ? <p className={errorClassName}>{errors.businessType.message}</p> : null}
+            {showError("businessType") ? <p className={errorClassName}>{errors.businessType?.message}</p> : null}
           </div>
           <div>
             <label htmlFor={`${formId}-industry`} className={labelClassName}>
@@ -216,7 +229,7 @@ export function AccountForm({
               autoComplete="off"
               {...register("industry")}
             />
-            {errors.industry ? <p className={errorClassName}>{errors.industry.message}</p> : null}
+            {showError("industry") ? <p className={errorClassName}>{errors.industry?.message}</p> : null}
           </div>
         </div>
       ) : null}
@@ -240,31 +253,117 @@ export function AccountForm({
               %
             </span>
           </div>
-          {errors.ownershipPercentage ? <p className={errorClassName}>{errors.ownershipPercentage.message}</p> : null}
+          {showError("ownershipPercentage") ? <p className={errorClassName}>{errors.ownershipPercentage?.message}</p> : null}
         </div>
       ) : null}
 
       {accountTypeCode === "gold" ? (
-        <div>
-          <label htmlFor={`${formId}-balance-grams`} className={labelClassName}>
-            {t("accounts.form.balanceGrams")}
-          </label>
-          <div className="relative mt-1.5">
-            <input
-              id={`${formId}-balance-grams`}
-              className={`${fieldClassName} mt-0 pe-9`}
+        <>
+          <div>
+            <label htmlFor={`${formId}-metal-type`} className={labelClassName}>
+              {t("accounts.form.metalType.label")}
+            </label>
+            <select
+              id={`${formId}-metal-type`}
+              className={fieldClassName}
               disabled={isDisabled}
-              inputMode="decimal"
-              dir="ltr"
-              placeholder="0.000"
-              {...register("balanceGrams")}
-            />
-            <span className="text-muted-foreground pointer-events-none absolute end-3.5 top-1/2 -translate-y-1/2 text-sm">
-              g
-            </span>
+              {...register("metalType")}
+            >
+              <option value="">{t("accounts.form.selectPlaceholder")}</option>
+              {metalTypeOptions.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {t(option.labelKey)}
+                </option>
+              ))}
+            </select>
+            {showError("metalType") ? <p className={errorClassName}>{errors.metalType?.message}</p> : null}
           </div>
-          {errors.balanceGrams ? <p className={errorClassName}>{errors.balanceGrams.message}</p> : null}
-        </div>
+
+          <div>
+            <label htmlFor={`${formId}-purity`} className={labelClassName}>
+              {t("accounts.form.purity.label")}
+            </label>
+            <select
+              id={`${formId}-purity`}
+              className={fieldClassName}
+              disabled={isDisabled || !metalType}
+              {...register("purity")}
+            >
+              <option value="">{t("accounts.form.selectPlaceholder")}</option>
+              {purityOptions.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label ?? t(option.labelKey as TranslationKey)}
+                </option>
+              ))}
+            </select>
+            {showError("purity") ? <p className={errorClassName}>{errors.purity?.message}</p> : null}
+          </div>
+
+          <div>
+            <label htmlFor={`${formId}-purchase-date`} className={labelClassName}>
+              {t("accounts.form.purchaseDate")}
+            </label>
+            <input
+              id={`${formId}-purchase-date`}
+              type="date"
+              className={fieldClassName}
+              disabled={isDisabled}
+              dir="ltr"
+              {...register("purchaseDate")}
+            />
+            {showError("purchaseDate") ? <p className={errorClassName}>{errors.purchaseDate?.message}</p> : null}
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label htmlFor={`${formId}-balance-grams`} className={labelClassName}>
+                {t("accounts.form.balanceGrams")}
+              </label>
+              <div className="relative mt-1.5">
+                <input
+                  id={`${formId}-balance-grams`}
+                  className={`${fieldClassName} mt-0 pe-9`}
+                  disabled={isDisabled}
+                  inputMode="decimal"
+                  dir="ltr"
+                  placeholder="0.000"
+                  {...register("balanceGrams")}
+                />
+                <span className="text-muted-foreground pointer-events-none absolute end-3.5 top-1/2 -translate-y-1/2 text-sm">
+                  g
+                </span>
+              </div>
+              {showError("balanceGrams") ? <p className={errorClassName}>{errors.balanceGrams?.message}</p> : null}
+            </div>
+
+            <div>
+              <label htmlFor={`${formId}-cost-per-unit`} className={labelClassName}>
+                {t("accounts.form.costPerUnit")}
+              </label>
+              <input
+                id={`${formId}-cost-per-unit`}
+                className={`${fieldClassName} mt-1.5`}
+                disabled={isDisabled}
+                inputMode="decimal"
+                dir="ltr"
+                placeholder="0.00"
+                {...register("costPerUnit")}
+              />
+              {showError("costPerUnit") ? <p className={errorClassName}>{errors.costPerUnit?.message}</p> : null}
+            </div>
+          </div>
+
+          <div>
+            <span className={labelClassName}>{t("accounts.form.totalAmount")}</span>
+            <div
+              className={`${fieldClassName} cursor-not-allowed opacity-60`}
+              aria-readonly="true"
+              dir="ltr"
+            >
+              {formatPortfolioAmount(totalMetalAmount, currencyCode, locale)}
+            </div>
+          </div>
+        </>
       ) : null}
 
       {showBalance ? (
@@ -298,7 +397,7 @@ export function AccountForm({
               {...register("openingBalance")}
             />
           )}
-          {errors.openingBalance ? <p className={errorClassName}>{errors.openingBalance.message}</p> : null}
+          {showError("openingBalance") ? <p className={errorClassName}>{errors.openingBalance?.message}</p> : null}
         </div>
       ) : null}
 

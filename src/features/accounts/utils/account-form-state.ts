@@ -10,6 +10,9 @@ export function normalizeAccountForm(values: AccountFormValues): AccountFormValu
     ownershipPercentage: values.ownershipPercentage.trim(),
     businessType: values.businessType.trim(),
     industry: values.industry.trim(),
+    purity: values.purity.trim(),
+    purchaseDate: values.purchaseDate.trim(),
+    costPerUnit: values.costPerUnit.trim(),
     notes: values.notes.trim(),
   }
 }

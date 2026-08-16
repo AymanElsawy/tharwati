@@ -5,10 +5,9 @@ import type { AccountTypeCode } from "@/features/accounts/types/account-form"
 import { getCurrentUserBaseCurrency } from "@/features/profile/repositories/profile.repository"
 import { RepositoryError } from "@/lib/supabase/types"
 import { convertCurrency } from "@/services/exchangeRateService"
-import { getMetalPricePerGram } from "@/services/metalPriceService"
 
-// Types converted into the net worth total today. Brokerage, business, and
-// other are not yet supported and are reported back as `skippedTypes`.
+// Types converted into the net worth total today. Gold/silver, brokerage,
+// business, and other are not included and are reported back as `skippedTypes`.
 const convertibleCurrencyTypes = new Set<AccountTypeCode>(["cash", "bank", "real_estate"])
 
 export type NetWorthResult = {
@@ -46,20 +45,6 @@ export function useNetWorth() {
 
       for (const account of activeAccounts) {
         const typeCode = account.account_type_code as AccountTypeCode
-
-        if (typeCode === "gold") {
-          const grams = Number(account.balance_grams ?? "0")
-          if (grams > 0) {
-            const pricePerGram = await getMetalPricePerGram("XAU", baseCurrencyCode)
-            if (pricePerGram === null) {
-              unavailablePairs.add(`XAU/${baseCurrencyCode}`)
-            } else {
-              total += grams * pricePerGram
-              accountCount += 1
-            }
-          }
-          continue
-        }
 
         if (!convertibleCurrencyTypes.has(typeCode)) {
           skippedTypes.add(typeCode)

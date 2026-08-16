@@ -27,6 +27,10 @@ export type CreateAccountInput = {
   ownershipPercentage?: Decimal | null
   businessType?: string | null
   industry?: string | null
+  metalType?: "gold" | "silver" | null
+  purity?: string | null
+  purchaseDate?: string | null
+  costPerUnit?: Decimal | null
 }
 
 export type UpdateAccountInput = {
@@ -43,6 +47,10 @@ export type UpdateAccountInput = {
   ownershipPercentage?: Decimal | null
   businessType?: string | null
   industry?: string | null
+  metalType?: "gold" | "silver" | null
+  purity?: string | null
+  purchaseDate?: string | null
+  costPerUnit?: Decimal | null
 }
 
 export type AccountDeletionEligibility = {
@@ -61,7 +69,7 @@ type DatabaseError = {
   message: string
 }
 
-const accountSelect = "id,user_id,account_type_code,name,currency_code,opening_balance::text,notes,is_active,bank_subtype,investment_type,balance_grams::text,property_type,ownership_percentage::text,business_type,industry,created_at,updated_at" as const
+const accountSelect = "id,user_id,account_type_code,name,currency_code,opening_balance::text,notes,is_active,bank_subtype,investment_type,balance_grams::text,property_type,ownership_percentage::text,business_type,industry,metal_type,purity,purchase_date,cost_per_unit::text,created_at,updated_at" as const
 
 export function requireAccountDecimalText(value: unknown, field: string, operation: string): Decimal {
   if (typeof value !== "string" || normalizeDecimal(value) === null) {
@@ -80,6 +88,7 @@ function mapAccountSummary(row: AccountSummary, operation: string): AccountSumma
     opening_balance: requireAccountDecimalText(row.opening_balance, "opening_balance", operation),
     balance_grams: requireNullableAccountDecimalText(row.balance_grams, "balance_grams", operation),
     ownership_percentage: requireNullableAccountDecimalText(row.ownership_percentage, "ownership_percentage", operation),
+    cost_per_unit: requireNullableAccountDecimalText(row.cost_per_unit, "cost_per_unit", operation),
   }
 }
 
@@ -167,6 +176,10 @@ export class AccountsRepository {
         ownership_percentage: input.ownershipPercentage,
         business_type: input.businessType,
         industry: input.industry,
+        metal_type: input.metalType,
+        purity: input.purity,
+        purchase_date: input.purchaseDate,
+        cost_per_unit: input.costPerUnit,
       })
       .select(accountSelect)
       .single()
@@ -220,6 +233,18 @@ export class AccountsRepository {
     }
     if (input.industry !== undefined) {
       update.industry = input.industry
+    }
+    if (input.metalType !== undefined) {
+      update.metal_type = input.metalType
+    }
+    if (input.purity !== undefined) {
+      update.purity = input.purity
+    }
+    if (input.purchaseDate !== undefined) {
+      update.purchase_date = input.purchaseDate
+    }
+    if (input.costPerUnit !== undefined) {
+      update.cost_per_unit = input.costPerUnit
     }
 
     const { data, error } = await this.client

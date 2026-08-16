@@ -2,7 +2,7 @@ import { ArrowUpDown, Archive, ArchiveRestore, Pencil, Trash2 } from "lucide-rea
 
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { getAccountTypeLabel } from "@/features/accounts/types/account-form"
+import { getAccountTypeLabel, metalTypeOptions } from "@/features/accounts/types/account-form"
 import {
   formatPortfolioAmount,
   formatPortfolioDecimal,
@@ -26,6 +26,14 @@ const columns: Array<[AccountInventorySort, TranslationKey]> = [
   ["balance", "accounts.table.balance"],
   ["status", "accounts.table.status"],
 ]
+
+function typeLabel(account: AccountSummary, t: ReturnType<typeof useTranslation>["t"]) {
+  if (account.account_type_code === "gold" && account.metal_type) {
+    const option = metalTypeOptions.find((item) => item.value === account.metal_type)
+    if (option) return t(option.labelKey)
+  }
+  return getAccountTypeLabel(account.account_type_code, t)
+}
 
 function balanceCell(item: AccountInventoryItem, locale: string) {
   if (item.account.account_type_code === "gold") {
@@ -105,7 +113,7 @@ export function AccountInventory({
               >
                 <td className="px-4 py-4 font-medium">{item.account.name}</td>
                 <td className="px-4 py-4">
-                  {getAccountTypeLabel(item.account.account_type_code, t)}
+                  {typeLabel(item.account, t)}
                 </td>
                 <td className="px-4 py-4" dir="ltr">
                   {item.account.currency_code}
@@ -165,7 +173,7 @@ export function AccountInventory({
               <span>
                 <strong className="block">{item.account.name}</strong>
                 <span className="text-muted-foreground mt-1 block text-xs">
-                  {getAccountTypeLabel(item.account.account_type_code, t)} · {item.account.currency_code}
+                  {typeLabel(item.account, t)} · {item.account.currency_code}
                 </span>
               </span>
               <Badge variant={item.account.is_active ? "ghost" : "outline"}>

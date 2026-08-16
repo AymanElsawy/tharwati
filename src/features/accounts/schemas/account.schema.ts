@@ -5,8 +5,11 @@ import {
   accountTypeCodes,
   bankSubtypeCodes,
   currencyCodes,
+  getPurityOptions,
   investmentTypeCodes,
+  metalTypeCodes,
   propertyTypeCodes,
+  purityCodes,
   type AccountFormValues,
 } from "../types/account-form"
 
@@ -33,6 +36,10 @@ export function createAccountSchema(
       ownershipPercentage: z.string().trim(),
       businessType: z.string().trim(),
       industry: z.string().trim(),
+      metalType: z.union([z.enum(metalTypeCodes), z.literal("")]),
+      purity: z.union([z.enum(purityCodes), z.literal("")]),
+      purchaseDate: z.string().trim(),
+      costPerUnit: z.string().trim(),
       notes: z.string().trim(),
       isActive: z.boolean(),
     })
@@ -79,6 +86,22 @@ export function createAccountSchema(
             ctx.addIssue({ code: "custom", path: ["balanceGrams"], message: t("accounts.validation.balanceGramsRequired") })
           } else if (!gramsPattern.test(values.balanceGrams)) {
             ctx.addIssue({ code: "custom", path: ["balanceGrams"], message: t("accounts.validation.balanceGramsInvalid") })
+          }
+          if (!values.metalType) {
+            ctx.addIssue({ code: "custom", path: ["metalType"], message: t("accounts.validation.metalTypeRequired") })
+          }
+          if (!values.purity) {
+            ctx.addIssue({ code: "custom", path: ["purity"], message: t("accounts.validation.purityRequired") })
+          } else if (values.metalType && !getPurityOptions(values.metalType).some((option) => option.value === values.purity)) {
+            ctx.addIssue({ code: "custom", path: ["purity"], message: t("accounts.validation.purityRequired") })
+          }
+          if (!values.purchaseDate) {
+            ctx.addIssue({ code: "custom", path: ["purchaseDate"], message: t("accounts.validation.purchaseDateRequired") })
+          }
+          if (!values.costPerUnit) {
+            ctx.addIssue({ code: "custom", path: ["costPerUnit"], message: t("accounts.validation.costPerUnitRequired") })
+          } else if (!decimalAmountPattern.test(values.costPerUnit)) {
+            ctx.addIssue({ code: "custom", path: ["costPerUnit"], message: t("accounts.validation.costPerUnitInvalid") })
           }
           break
         }

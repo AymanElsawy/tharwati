@@ -5,17 +5,28 @@ import type { AccountTypeCode } from "@/features/accounts/types/account-form"
 import { addDecimals } from "@/lib/financial-calculations/decimal"
 import type { AccountSummary, Decimal } from "@/lib/supabase/types"
 import { RepositoryError } from "@/lib/supabase/types"
+import { getMetalPricePerGram } from "@/services/metalPriceService"
 
 export type AccountTypeCurrencyTotal = {
   currencyCode: string
   total: Decimal
 }
 
+export type MetalAccountDetail = {
+  accountId: string
+  name: string
+  metalType: "gold" | "silver"
+  units: Decimal
+  costPerUnit: Decimal
+  currencyCode: string
+  currentPricePerUnit: number | null
+}
+
 export type AccountTypeOverview = {
   accountTypeCode: AccountTypeCode
   accountCount: number
   currencyTotals: AccountTypeCurrencyTotal[]
-  goldGramsTotal: Decimal | null
+  metalAccounts: MetalAccountDetail[] | null
 }
 
 const typeOrder: AccountTypeCode[] = [
@@ -28,10 +39,10 @@ const typeOrder: AccountTypeCode[] = [
   "other",
 ]
 
-function groupByType(accounts: AccountSummary[]): AccountTypeOverview[] {
+async function groupByType(accounts: AccountSummary[]): Promise<AccountTypeOverview[]> {
   const groups = new Map<
     AccountTypeCode,
-    { count: number; currencyTotals: Map<string, Decimal>; goldGrams: Decimal | null }
+    { count: number; currencyTotals: Map<string, Decimal>; metalAccounts: MetalAccountDetail[] }
   >()
 
   for (const account of accounts) {
@@ -39,13 +50,20 @@ function groupByType(accounts: AccountSummary[]): AccountTypeOverview[] {
     const group = groups.get(typeCode) ?? {
       count: 0,
       currencyTotals: new Map<string, Decimal>(),
-      goldGrams: null,
+      metalAccounts: [],
     }
     group.count += 1
 
     if (typeCode === "gold") {
-      const grams = account.balance_grams ?? "0"
-      group.goldGrams = addDecimals(group.goldGrams ?? "0", grams) ?? group.goldGrams
+      group.metalAccounts.push({
+        accountId: account.id,
+        name: account.name,
+        metalType: account.metal_type === "silver" ? "silver" : "gold",
+        units: account.balance_grams ?? "0",
+        costPerUnit: account.cost_per_unit ?? "0",
+        currencyCode: account.currency_code,
+        currentPricePerUnit: null,
+      })
     } else {
       const current = group.currencyTotals.get(account.currency_code) ?? "0"
       const next = addDecimals(current, account.opening_balance)
@@ -55,7 +73,7 @@ function groupByType(accounts: AccountSummary[]): AccountTypeOverview[] {
     groups.set(typeCode, group)
   }
 
-  return typeOrder.flatMap((typeCode) => {
+  const overview = typeOrder.flatMap((typeCode) => {
     const group = groups.get(typeCode)
     if (!group) return []
     return [
@@ -65,10 +83,25 @@ function groupByType(accounts: AccountSummary[]): AccountTypeOverview[] {
         currencyTotals: [...group.currencyTotals.entries()]
           .map(([currencyCode, total]) => ({ currencyCode, total }))
           .sort((left, right) => left.currencyCode.localeCompare(right.currencyCode)),
-        goldGramsTotal: group.goldGrams,
+        metalAccounts: typeCode === "gold" ? group.metalAccounts : null,
       },
     ]
   })
+
+  const goldOverview = overview.find((item) => item.accountTypeCode === "gold")
+  if (goldOverview?.metalAccounts) {
+    await Promise.all(
+      goldOverview.metalAccounts.map(async (metalAccount) => {
+        const symbol = metalAccount.metalType === "silver" ? "XAG" : "XAU"
+        metalAccount.currentPricePerUnit = await getMetalPricePerGram(
+          symbol,
+          metalAccount.currencyCode,
+        )
+      }),
+    )
+  }
+
+  return overview
 }
 
 export function useAccountsOverview() {
@@ -80,7 +113,7 @@ export function useAccountsOverview() {
     if (showLoading) setIsLoading(true)
     try {
       const accounts = await accountsRepository.getAccounts()
-      setOverview(groupByType(accounts.filter((account) => account.is_active)))
+      setOverview(await groupByType(accounts.filter((account) => account.is_active)))
       setError(null)
     } catch (cause) {
       setError(

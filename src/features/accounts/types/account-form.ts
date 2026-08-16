@@ -1,5 +1,6 @@
 import type { Translate } from "../../../i18n/context"
 import type { AccountSummary } from "../../../lib/supabase/types"
+import { multiplyDecimals } from "../../../lib/financial-calculations/decimal"
 
 export const accountTypeOptions = [
   { value: "cash", labelKey: "accountType.cash", creationLabelKey: "accounts.type.cash" },
@@ -38,6 +39,33 @@ export const propertyTypeOptions = [
   { value: "other", labelKey: "accounts.form.propertyType.other" },
 ] as const
 
+export const metalTypeOptions = [
+  { value: "gold", labelKey: "accounts.form.metalType.gold" },
+  { value: "silver", labelKey: "accounts.form.metalType.silver" },
+] as const
+
+export const goldPurityOptions = [
+  { value: "24k", label: "24k" },
+  { value: "22k", label: "22k" },
+  { value: "21k", label: "21k" },
+  { value: "18k", label: "18k" },
+  { value: "14k", label: "14k" },
+  { value: "10k", label: "10k" },
+  { value: "9k", label: "9k" },
+] as const
+
+export const silverPurityOptions = [
+  { value: "999", label: "999" },
+  { value: "958", label: "958" },
+  { value: "950", label: "950" },
+  { value: "925", label: "925" },
+  { value: "900", label: "900" },
+  { value: "835", label: "835" },
+  { value: "800", label: "800" },
+] as const
+
+export const purityOtherOption = { value: "other", labelKey: "accounts.form.purity.other" } as const
+
 export const accountTypeCodes = accountTypeOptions.map(
   (option) => option.value,
 ) as [
@@ -73,6 +101,29 @@ export const propertyTypeCodes = propertyTypeOptions.map(
   ...(typeof propertyTypeOptions)[number]["value"][],
 ]
 
+export const metalTypeCodes = metalTypeOptions.map(
+  (option) => option.value,
+) as [
+  (typeof metalTypeOptions)[number]["value"],
+  ...(typeof metalTypeOptions)[number]["value"][],
+]
+
+export const goldPurityCodes = goldPurityOptions.map((option) => option.value)
+export const silverPurityCodes = silverPurityOptions.map((option) => option.value)
+export const purityCodes = [
+  ...goldPurityCodes,
+  ...silverPurityCodes,
+  purityOtherOption.value,
+] as [string, ...string[]]
+
+export function getPurityOptions(
+  metalType: (typeof metalTypeCodes)[number] | "",
+): ReadonlyArray<{ value: string; label?: string; labelKey?: string }> {
+  if (metalType === "gold") return [...goldPurityOptions, purityOtherOption]
+  if (metalType === "silver") return [...silverPurityOptions, purityOtherOption]
+  return []
+}
+
 export type AccountTypeCode = (typeof accountTypeCodes)[number]
 
 export type AccountFormValues = {
@@ -87,6 +138,10 @@ export type AccountFormValues = {
   ownershipPercentage: string
   businessType: string
   industry: string
+  metalType: (typeof metalTypeCodes)[number] | ""
+  purity: string
+  purchaseDate: string
+  costPerUnit: string
   notes: string
   isActive: boolean
 }
@@ -103,6 +158,10 @@ export const emptyAccountFormValues: AccountFormValues = {
   ownershipPercentage: "100",
   businessType: "",
   industry: "",
+  metalType: "",
+  purity: "",
+  purchaseDate: "",
+  costPerUnit: "0",
   notes: "",
   isActive: true,
 }
@@ -122,9 +181,17 @@ export function accountToFormValues(
     ownershipPercentage: account.ownership_percentage ?? "100",
     businessType: account.business_type ?? "",
     industry: account.industry ?? "",
+    metalType: (account.metal_type ?? "") as AccountFormValues["metalType"],
+    purity: account.purity ?? "",
+    purchaseDate: account.purchase_date ?? "",
+    costPerUnit: account.cost_per_unit ?? "0",
     notes: account.notes ?? "",
     isActive: account.is_active,
   }
+}
+
+export function getTotalMetalAmount(values: AccountFormValues): string | null {
+  return multiplyDecimals(values.costPerUnit.trim() || "0", values.balanceGrams.trim() || "0")
 }
 
 export function getBalanceLabelKey(
@@ -149,6 +216,10 @@ export type AccountTypeSpecificFields = {
   ownershipPercentage: string | null
   businessType: string | null
   industry: string | null
+  metalType: "gold" | "silver" | null
+  purity: string | null
+  purchaseDate: string | null
+  costPerUnit: string | null
 }
 
 export function toAccountTypeSpecificFields(
@@ -163,6 +234,10 @@ export function toAccountTypeSpecificFields(
     ownershipPercentage: null,
     businessType: null,
     industry: null,
+    metalType: null,
+    purity: null,
+    purchaseDate: null,
+    costPerUnit: null,
   }
 
   switch (values.accountTypeCode) {
@@ -179,8 +254,12 @@ export function toAccountTypeSpecificFields(
       fields.investmentType = values.investmentType || null
       break
     case "gold":
-      fields.openingBalance = "0"
+      fields.openingBalance = getTotalMetalAmount(values) ?? "0"
       fields.balanceGrams = values.balanceGrams.trim()
+      fields.metalType = values.metalType || null
+      fields.purity = values.purity.trim() || null
+      fields.purchaseDate = values.purchaseDate.trim() || null
+      fields.costPerUnit = values.costPerUnit.trim()
       break
     case "real_estate":
       fields.openingBalance = values.openingBalance.trim()

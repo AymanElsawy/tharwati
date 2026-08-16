@@ -20,6 +20,10 @@ const account = {
   ownership_percentage: null,
   business_type: null,
   industry: null,
+  metal_type: null,
+  purity: null,
+  purchase_date: null,
+  cost_per_unit: null,
   created_at: "2026-07-26T00:00:00Z",
   updated_at: "2026-07-26T00:00:00Z",
 }
