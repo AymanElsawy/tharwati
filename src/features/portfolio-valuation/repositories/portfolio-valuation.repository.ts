@@ -11,6 +11,7 @@ import {
   requireAuthenticatedUserId,
   requireQueryData,
 } from "@/lib/supabase/repository"
+import { RepositoryError } from "@/lib/supabase/types"
 
 interface OpenHoldingsReader {
   getHoldings(): PortfolioValuationSource["holdings"] | Promise<
@@ -42,7 +43,7 @@ export class PortfolioValuationRepository
       this.holdings.getHoldings(),
       this.client
         .from("profiles")
-        .select("default_currency_code")
+        .select("base_currency_code")
         .eq("id", userId)
         .single(),
     ])
@@ -51,8 +52,15 @@ export class PortfolioValuationRepository
       profileResult.error,
       operation,
     )
+    if (profile.base_currency_code === null) {
+      throw new RepositoryError({
+        code: "not_found",
+        message: "The user has not completed onboarding",
+        operation,
+      })
+    }
     return {
-      baseCurrency: profile.default_currency_code,
+      baseCurrency: profile.base_currency_code,
       holdings,
     }
   }

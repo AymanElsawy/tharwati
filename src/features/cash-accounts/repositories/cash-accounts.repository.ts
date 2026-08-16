@@ -80,7 +80,7 @@ export class CashAccountsRepository {
     const [profileResult, currenciesResult] = await Promise.all([
       supabase
         .from("profiles")
-        .select("default_currency_code")
+        .select("base_currency_code")
         .eq("id", userId)
         .single(),
       supabase
@@ -101,8 +101,16 @@ export class CashAccountsRepository {
       operation,
     )
 
+    if (profile.base_currency_code === null) {
+      throw new RepositoryError({
+        code: "not_found",
+        message: "The user has not completed onboarding",
+        operation,
+      })
+    }
+
     return {
-      baseCurrencyCode: profile.default_currency_code,
+      baseCurrencyCode: profile.base_currency_code,
       currencies: availableCurrencies,
     }
   }

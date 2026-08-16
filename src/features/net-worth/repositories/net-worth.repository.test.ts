@@ -26,7 +26,7 @@ function profileClient(): TypedSupabaseClient {
     select: vi.fn(),
     eq: vi.fn(),
     single: vi.fn().mockResolvedValue({
-      data: { default_currency_code: "SAR" },
+      data: { base_currency_code: "SAR" },
       error: null,
     }),
   }

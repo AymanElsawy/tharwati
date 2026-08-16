@@ -9,6 +9,7 @@ import {
   requireAuthenticatedUserId,
   requireQueryData,
 } from "@/lib/supabase/repository"
+import { RepositoryError } from "@/lib/supabase/types"
 
 interface WealthCashBalanceReader {
   getEligibleWealthCashBalances(): Promise<AccountBalance[]>
@@ -33,7 +34,7 @@ export class NetWorthRepository {
       this.balances.getEligibleWealthCashBalances(),
       this.client
         .from("profiles")
-        .select("default_currency_code")
+        .select("base_currency_code")
         .eq("id", userId)
         .single(),
     ])
@@ -43,8 +44,16 @@ export class NetWorthRepository {
       operation,
     )
 
+    if (profile.base_currency_code === null) {
+      throw new RepositoryError({
+        code: "not_found",
+        message: "The user has not completed onboarding",
+        operation,
+      })
+    }
+
     return {
-      baseCurrency: profile.default_currency_code,
+      baseCurrency: profile.base_currency_code,
       accounts: accounts.map((account) => ({
         accountId: account.accountId,
         balance: account.currentBalance,
