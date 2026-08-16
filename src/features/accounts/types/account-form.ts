@@ -114,7 +114,7 @@ export const purityCodes = [
   ...goldPurityCodes,
   ...silverPurityCodes,
   purityOtherOption.value,
-] as [string, ...string[]]
+] as unknown as [string, ...string[]]
 
 export function getPurityOptions(
   metalType: (typeof metalTypeCodes)[number] | "",
