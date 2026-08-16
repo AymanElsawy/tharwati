@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button"
 import { Progress } from "@/components/ui/progress"
 import { CountrySelector } from "@/features/onboarding/components/CountrySelector"
 import { getDefaultCurrencyCode } from "@/features/onboarding/data/country-currency"
-import { findCurrency } from "@/features/onboarding/data/currencies"
+import { supportedCurrencies } from "@/features/onboarding/data/currencies"
 import { useOnboarding } from "@/features/onboarding/hooks/useOnboarding"
 
 export default function CountryPage() {
@@ -49,10 +49,13 @@ export default function CountryPage() {
               value={country}
               onChange={(nextCountry) => {
                 setCountry(nextCountry)
+                const defaultCode = nextCountry
+                  ? getDefaultCurrencyCode(nextCountry.code)
+                  : undefined
                 setCurrency(
-                  nextCountry
-                    ? findCurrency(getDefaultCurrencyCode(nextCountry.code))
-                    : null,
+                  supportedCurrencies.find(
+                    (currency) => currency.code === defaultCode,
+                  ) ?? null,
                 )
               }}
             />

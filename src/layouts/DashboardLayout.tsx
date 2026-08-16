@@ -3,25 +3,17 @@ import {
   LogOut,
   Moon,
   Palette,
-  PieChart,
   Sun,
-  Target,
-  Shapes,
-  Layers3,
-  Banknote,
-  ArrowLeftRight,
-  BadgeDollarSign,
   WalletCards,
   Menu,
   type LucideIcon,
 } from "lucide-react"
 import { NavLink, Outlet, useNavigate } from "react-router-dom"
-import { useEffect, useState } from "react"
+import { useState } from "react"
 import type { TranslationKey } from "../i18n/en/translations"
 import { LanguageSwitcher } from "../i18n/LanguageSwitcher"
 import { useTranslation } from "../i18n/useTranslation"
 import { signOut } from "../features/auth/auth.service"
-import { AddInvestmentDialog } from "../features/investments/components/AddInvestmentDialog"
 import { AuthenticatedUserHeader } from "../features/profile/components/AuthenticatedUserHeader"
 import {
   Sheet,
@@ -54,44 +46,9 @@ const navigationItems: NavigationItem[] = [
     icon: LayoutDashboard,
   },
   {
-    labelKey: "navigation.portfolio",
-    path: "/portfolio",
-    icon: PieChart,
-  },
-  {
     labelKey: "navigation.accounts",
     path: "/accounts",
     icon: WalletCards,
-  },
-  {
-    labelKey: "navigation.cash",
-    path: "/cash",
-    icon: Banknote,
-  },
-  {
-    labelKey: "navigation.exchangeRates",
-    path: "/exchange-rates",
-    icon: ArrowLeftRight,
-  },
-  {
-    labelKey: "navigation.marketPrices",
-    path: "/market-prices",
-    icon: BadgeDollarSign,
-  },
-  {
-    labelKey: "navigation.assets",
-    path: "/assets",
-    icon: Shapes,
-  },
-  {
-    labelKey: "navigation.holdings",
-    path: "/holdings",
-    icon: Layers3,
-  },
-  {
-    labelKey: "navigation.goals",
-    path: "/goals",
-    icon: Target,
   },
 ]
 
@@ -117,17 +74,7 @@ export function DashboardLayout() {
   const navigate = useNavigate()
   const { theme, setTheme } = useTheme()
   const { t } = useTranslation()
-  const [isAddInvestmentOpen, setIsAddInvestmentOpen] = useState(false)
   const [isMobileNavigationOpen, setIsMobileNavigationOpen] = useState(false)
-  const [investmentToast, setInvestmentToast] = useState<string | null>(
-    null,
-  )
-
-  useEffect(() => {
-    const open = () => setIsAddInvestmentOpen(true)
-    window.addEventListener("tharwati:add-investment", open)
-    return () => window.removeEventListener("tharwati:add-investment", open)
-  }, [])
 
   async function handleLogout() {
     try {
@@ -215,14 +162,6 @@ export function DashboardLayout() {
           </div>
 
           <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
-            <button
-              type="button"
-              onClick={() => setIsAddInvestmentOpen(true)}
-              className="tharwati-button-primary hidden !min-h-9 items-center gap-2 !rounded-xl !px-3 !py-1.5 text-sm lg:flex"
-            >
-              <Shapes size={17} />
-              {t("investment.primaryAction")}
-            </button>
             <LanguageSwitcher />
             <div className="flex items-center rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-1">
               {themeOptions.map((option) => {
@@ -261,36 +200,6 @@ export function DashboardLayout() {
         </main>
         </div>
       </Sheet>
-      <button
-        type="button"
-        onClick={() => setIsAddInvestmentOpen(true)}
-        aria-label={t("investment.primaryAction")}
-        title={t("investment.primaryAction")}
-        className="tharwati-button-primary fixed bottom-4 end-4 z-30 flex size-12 items-center justify-center rounded-full !p-0 shadow-lg lg:hidden"
-      >
-        <Shapes size={18} />
-      </button>
-      <AddInvestmentDialog
-        isOpen={isAddInvestmentOpen}
-        onClose={() => setIsAddInvestmentOpen(false)}
-        onSuccess={(result) => {
-          setInvestmentToast(
-            t("investment.success", {
-              asset: result.asset.name,
-              account: result.account.name,
-            }),
-          )
-          window.setTimeout(() => setInvestmentToast(null), 4000)
-        }}
-      />
-      {investmentToast ? (
-        <div
-          role="status"
-          className="fixed bottom-20 end-4 z-[60] max-w-[calc(100vw-2rem)] rounded-2xl border border-emerald-200 bg-white px-4 py-3 text-sm font-semibold text-emerald-800 shadow-xl lg:bottom-6 lg:end-6"
-        >
-          {investmentToast}
-        </div>
-      ) : null}
     </div>
   )
 }

@@ -62,10 +62,10 @@ export function AccountInventory({
 
   return (
     <section aria-labelledby="account-inventory-title" className="mt-8">
-      <div className="mt-2 hidden max-h-[44rem] overflow-auto rounded-2xl border border-[var(--border-subtle)] lg:block">
+      <div className="mt-2 hidden max-h-[44rem] overflow-auto rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-sm lg:block">
         <table className="w-full min-w-[900px] text-sm">
-          <thead className="bg-background sticky top-0 z-10">
-            <tr className="border-b border-[var(--border-subtle)]">
+          <thead className="sticky top-0 z-10 bg-[var(--color-surface-muted)]">
+            <tr className="border-b border-[var(--color-border)]">
               {columns.map(([id, label]) => (
                 <th
                   key={id}
@@ -101,7 +101,7 @@ export function AccountInventory({
             {items.map((item) => (
               <tr
                 key={item.account.id}
-                className="hover:bg-muted/30 border-b border-[var(--border-subtle)] last:border-b-0"
+                className="border-b border-[var(--color-border)] last:border-b-0 hover:bg-[var(--color-surface-hover)]"
               >
                 <td className="px-4 py-4 font-medium">{item.account.name}</td>
                 <td className="px-4 py-4">
@@ -158,7 +158,7 @@ export function AccountInventory({
           </tbody>
         </table>
       </div>
-      <div className="mt-2 divide-y divide-[var(--border-subtle)] rounded-2xl border border-[var(--border-subtle)] lg:hidden">
+      <div className="mt-2 divide-y divide-[var(--color-border)] rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-sm lg:hidden">
         {items.map((item) => (
           <div key={item.account.id} className="grid gap-3 px-4 py-4">
             <div className="flex items-start justify-between gap-3">

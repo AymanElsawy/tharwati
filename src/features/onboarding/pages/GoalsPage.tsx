@@ -1,13 +1,10 @@
 import {
   ArrowLeft,
-  BriefcaseBusiness,
   Car,
   GraduationCap,
-  HeartPulse,
   House,
-  Landmark,
+  MoreHorizontal,
   Plane,
-  Plus,
   type LucideIcon,
 } from "lucide-react"
 import { useNavigate } from "react-router-dom"
@@ -24,14 +21,11 @@ interface GoalOption {
 }
 
 const goalOptions: GoalOption[] = [
-  { id: "retirement", label: "Retirement", icon: Landmark },
-  { id: "emergency_fund", label: "Emergency Fund", icon: HeartPulse },
   { id: "buy_home", label: "Buy a Home", icon: House },
   { id: "buy_car", label: "Buy a Car", icon: Car },
-  { id: "start_business", label: "Start a Business", icon: BriefcaseBusiness },
   { id: "travel", label: "Travel", icon: Plane },
   { id: "education", label: "Education", icon: GraduationCap },
-  { id: "custom_goal", label: "Custom Goal", icon: Plus },
+  { id: "other", label: "Other", icon: MoreHorizontal },
 ]
 
 export default function GoalsPage() {
@@ -78,7 +72,7 @@ export default function GoalsPage() {
             </p>
           </div>
 
-          <div className="mt-8 grid grid-cols-2 gap-3 sm:grid-cols-4 sm:gap-4">
+          <div className="mt-8 grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4">
             {goalOptions.map((goal) => (
               <GoalCard
                 key={goal.id}

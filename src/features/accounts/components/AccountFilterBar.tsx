@@ -23,9 +23,9 @@ export function AccountFilterBar({
 }) {
   const { t } = useTranslation()
   const input =
-    "h-10 rounded-lg border border-[var(--border-subtle)] bg-background px-3 text-sm focus-visible:ring-2"
+    "h-10 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] px-3 text-sm text-[var(--color-text-primary)] outline-none transition focus-visible:border-[var(--color-primary)] focus-visible:ring-2 focus-visible:ring-[var(--color-primary-soft)]"
   return (
-    <div className="mt-6 grid gap-3 border-y border-[var(--border-subtle)] py-4 sm:grid-cols-2 lg:grid-cols-[minmax(14rem,1fr)_repeat(3,auto)_auto]">
+    <div className="mt-6 grid gap-3 py-4 sm:grid-cols-2 lg:grid-cols-[minmax(14rem,1fr)_repeat(3,auto)_auto]">
       <input
         aria-label={t("accounts.filters.search")}
         placeholder={t("accounts.filters.searchPlaceholder")}

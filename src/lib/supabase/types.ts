@@ -49,14 +49,12 @@ type CurrencyRow = {
 
 type ProfileRow = {
   id: string
-  display_name: string | null
   full_name: string | null
   avatar_url: string | null
-  default_currency_code: string
   country_code: string | null
+  base_currency_code: string | null
   selected_goals: string[]
   onboarding_completed: boolean
-  timezone: string
   created_at: string
   updated_at: string
 }
@@ -256,18 +254,14 @@ export type Database = {
         ProfileRow,
         {
           id: string
-          display_name?: string | null
           full_name?: string | null
           avatar_url?: string | null
-          default_currency_code?: string
           country_code?: string | null
+          base_currency_code?: string | null
           selected_goals?: string[]
           onboarding_completed?: boolean
-          timezone?: string
           created_at?: string
           updated_at?: string
-          reverses_transaction_id?: string | null
-          corrects_transaction_id?: string | null
         }
       >
       financial_settings: TableDefinition<

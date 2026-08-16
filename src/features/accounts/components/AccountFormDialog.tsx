@@ -1,19 +1,10 @@
 import { Dialog } from "@base-ui/react/dialog"
-import {
-  Banknote,
-  Briefcase,
-  Building2,
-  Coins,
-  Landmark,
-  LayoutGrid,
-  TrendingUp,
-  X,
-  type LucideIcon,
-} from "lucide-react"
+import { X } from "lucide-react"
 import { useMemo, useState } from "react"
 
 import { Button } from "@/components/ui/button"
 import { useTranslation } from "@/i18n/useTranslation"
+import { accountTypeVisuals } from "../types/account-visuals"
 import {
   accountTypeOptions,
   getAccountTypeLabel,
@@ -32,54 +23,6 @@ type AccountFormDialogProps = {
   onClose: () => void
   onSubmit: (values: AccountFormValues) => Promise<void>
   onDirtyChange: (dirty: boolean) => void
-}
-
-const typeAccents: Record<
-  AccountTypeCode,
-  { icon: LucideIcon; selected: string; idle: string; iconWrap: string }
-> = {
-  cash: {
-    icon: Banknote,
-    selected: "border-emerald-500 bg-emerald-50 text-emerald-900 dark:border-emerald-400 dark:bg-emerald-950/40 dark:text-emerald-100",
-    idle: "border-[var(--color-border)] bg-[var(--color-surface)] text-[var(--color-text-primary)] hover:border-emerald-400",
-    iconWrap: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/60 dark:text-emerald-300",
-  },
-  bank: {
-    icon: Landmark,
-    selected: "border-blue-500 bg-blue-50 text-blue-900 dark:border-blue-400 dark:bg-blue-950/40 dark:text-blue-100",
-    idle: "border-[var(--color-border)] bg-[var(--color-surface)] text-[var(--color-text-primary)] hover:border-blue-400",
-    iconWrap: "bg-blue-100 text-blue-700 dark:bg-blue-900/60 dark:text-blue-300",
-  },
-  brokerage: {
-    icon: TrendingUp,
-    selected: "border-violet-500 bg-violet-50 text-violet-900 dark:border-violet-400 dark:bg-violet-950/40 dark:text-violet-100",
-    idle: "border-[var(--color-border)] bg-[var(--color-surface)] text-[var(--color-text-primary)] hover:border-violet-400",
-    iconWrap: "bg-violet-100 text-violet-700 dark:bg-violet-900/60 dark:text-violet-300",
-  },
-  gold: {
-    icon: Coins,
-    selected: "border-amber-500 bg-amber-50 text-amber-900 dark:border-amber-400 dark:bg-amber-950/40 dark:text-amber-100",
-    idle: "border-[var(--color-border)] bg-[var(--color-surface)] text-[var(--color-text-primary)] hover:border-amber-400",
-    iconWrap: "bg-amber-100 text-amber-700 dark:bg-amber-900/60 dark:text-amber-300",
-  },
-  real_estate: {
-    icon: Building2,
-    selected: "border-teal-500 bg-teal-50 text-teal-900 dark:border-teal-400 dark:bg-teal-950/40 dark:text-teal-100",
-    idle: "border-[var(--color-border)] bg-[var(--color-surface)] text-[var(--color-text-primary)] hover:border-teal-400",
-    iconWrap: "bg-teal-100 text-teal-700 dark:bg-teal-900/60 dark:text-teal-300",
-  },
-  business: {
-    icon: Briefcase,
-    selected: "border-indigo-500 bg-indigo-50 text-indigo-900 dark:border-indigo-400 dark:bg-indigo-950/40 dark:text-indigo-100",
-    idle: "border-[var(--color-border)] bg-[var(--color-surface)] text-[var(--color-text-primary)] hover:border-indigo-400",
-    iconWrap: "bg-indigo-100 text-indigo-700 dark:bg-indigo-900/60 dark:text-indigo-300",
-  },
-  other: {
-    icon: LayoutGrid,
-    selected: "border-slate-500 bg-slate-50 text-slate-900 dark:border-slate-400 dark:bg-slate-800/60 dark:text-slate-100",
-    idle: "border-[var(--color-border)] bg-[var(--color-surface)] text-[var(--color-text-primary)] hover:border-slate-400",
-    iconWrap: "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300",
-  },
 }
 
 export function AccountFormDialog({
@@ -103,7 +46,7 @@ export function AccountFormDialog({
     [defaultValues, selectedType],
   )
   const choosingType = mode === "create" && creationStep === "type"
-  const activeAccent = typeAccents[effectiveDefaults.accountTypeCode]
+  const activeAccent = accountTypeVisuals[effectiveDefaults.accountTypeCode]
 
   return (
     <Dialog.Root
@@ -118,7 +61,7 @@ export function AccountFormDialog({
           style={{ position: "fixed", inset: 0, zIndex: 70 }}
         />
         <Dialog.Popup
-          className="flex-col overflow-hidden rounded-2xl border border-[var(--border-subtle)] bg-[var(--color-background)] outline-none shadow-2xl"
+          className="flex-col overflow-hidden rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] outline-none shadow-2xl"
           style={{
             position: "fixed",
             top: "50%",
@@ -131,7 +74,7 @@ export function AccountFormDialog({
           }}
         >
           <header
-            className={`flex shrink-0 items-start justify-between gap-5 border-b border-[var(--border-subtle)] bg-gradient-to-br from-[var(--color-primary-soft)]/40 via-transparent to-transparent px-5 py-4 sm:px-7 sm:py-5`}
+            className={`flex shrink-0 items-start justify-between gap-5 border-b border-[var(--color-border)] bg-gradient-to-br from-[var(--color-primary-soft)] via-[var(--color-primary-soft)]/30 to-transparent px-5 py-4 sm:px-7 sm:py-5`}
           >
             <div className="min-w-0">
               {!choosingType ? (
@@ -168,7 +111,7 @@ export function AccountFormDialog({
                 <legend className="sr-only">{t("accounts.form.chooseTypeTitle")}</legend>
                 <div className="grid gap-3 sm:grid-cols-2" role="radiogroup">
                   {accountTypeOptions.map((option) => {
-                    const accent = typeAccents[option.value]
+                    const accent = accountTypeVisuals[option.value]
                     const Icon = accent.icon
                     const selected = selectedType === option.value
                     return (
@@ -200,7 +143,7 @@ export function AccountFormDialog({
             />}
           </div>
 
-          <footer className="flex shrink-0 flex-col-reverse gap-2 border-t border-[var(--border-subtle)] bg-background px-5 py-4 sm:flex-row sm:justify-end sm:px-7">
+          <footer className="flex shrink-0 flex-col-reverse gap-2 border-t border-[var(--color-border)] bg-[var(--color-surface-muted)] px-5 py-4 sm:flex-row sm:justify-end sm:px-7">
             <Button
               type="button"
               variant="outline"

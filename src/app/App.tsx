@@ -12,11 +12,6 @@ import { supabase } from "../lib/supabase"
 import { LoginPage } from "../features/auth/LoginPage"
 import { SignUpPage } from "../features/auth/SignUpPage"
 import { AccountsPage } from "../features/accounts/pages/AccountsPage"
-import { AssetsPage } from "../features/assets/pages/AssetsPage"
-import { HoldingsPage } from "../features/holdings/pages/HoldingsPage"
-import { MarketPricesPage } from "../features/market-prices/pages/MarketPricesPage"
-import { CashAccountsPage } from "../features/cash-accounts/pages/CashAccountsPage"
-import { ExchangeRatesPage } from "../features/exchange-rates/pages/ExchangeRatesPage"
 import CountryPage from "../features/onboarding/pages/CountryPage"
 import CurrencyPage from "../features/onboarding/pages/CurrencyPage"
 import OnboardingGoalsPage from "../features/onboarding/pages/GoalsPage"
@@ -29,8 +24,6 @@ import { ProtectedRoute } from "../components/ProtectedRoute"
 import { DashboardLayout } from "../layouts/DashboardLayout"
 import { DashboardPage } from "../pages/DashboardPage"
 import { DesignLabPage } from "../pages/DesignLabPage"
-import { PortfolioPage } from "../pages/PortfolioPage"
-import { GoalsPage } from "../pages/GoalsPage"
 import { NotFoundPage } from "../pages/NotFoundPage"
 import { useTranslation } from "../i18n/useTranslation"
 import { canPreserveAuthenticatedTree } from "../features/auth/auth-session-lifecycle"
@@ -164,15 +157,11 @@ export default function App() {
           path="/onboarding"
           element={
             session ? (
-              onboardingCompleted ? (
-                <Navigate to="/dashboard" replace />
-              ) : (
-                <OnboardingProvider
-                  onCompleted={() => setOnboardingCompleted(true)}
-                >
-                  <Outlet />
-                </OnboardingProvider>
-              )
+              <OnboardingProvider
+                onCompleted={() => setOnboardingCompleted(true)}
+              >
+                <Outlet />
+              </OnboardingProvider>
             ) : (
               <Navigate to="/login" replace />
             )
@@ -200,13 +189,6 @@ export default function App() {
         >
           <Route path="/dashboard" element={<DashboardPage />} />
           <Route path="/accounts" element={<AccountsPage />} />
-          <Route path="/cash" element={<CashAccountsPage />} />
-          <Route path="/exchange-rates" element={<ExchangeRatesPage />} />
-          <Route path="/market-prices" element={<MarketPricesPage />} />
-          <Route path="/assets" element={<AssetsPage />} />
-          <Route path="/holdings" element={<HoldingsPage />} />
-          <Route path="/portfolio" element={<PortfolioPage />} />
-          <Route path="/goals" element={<GoalsPage />} />
           <Route path="/design-lab" element={<DesignLabPage />} />
         </Route>
 

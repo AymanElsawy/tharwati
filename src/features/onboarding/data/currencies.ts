@@ -48,3 +48,10 @@ export const currencies: CurrencyOption[] = currencyCodes
 export function findCurrency(code: string | undefined) {
   return currencies.find((currency) => currency.code === code) ?? null
 }
+
+// The rest of the app (accounts, reports) only supports these currencies today.
+const supportedCurrencyCodes = new Set(["USD", "SAR", "EGP", "EUR", "GBP"])
+
+export const supportedCurrencies: CurrencyOption[] = currencies.filter(
+  (currency) => supportedCurrencyCodes.has(currency.code),
+)

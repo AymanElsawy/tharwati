@@ -241,47 +241,12 @@ export class AccountsRepository {
   async getAccountDeletionEligibility(
     accountIds: string[],
   ): Promise<AccountDeletionEligibility[]> {
-    const operation = "accounts.getAccountDeletionEligibility"
-
-    if (accountIds.length === 0) {
-      return []
-    }
-
-    const userId = await requireAuthenticatedUserId(this.client, operation)
-    const [holdingsResult, entriesResult] = await Promise.all([
-      this.client
-        .from("holdings")
-        .select("account_id")
-        .eq("user_id", userId)
-        .in("account_id", accountIds),
-      this.client
-        .from("transaction_entries")
-        .select("account_id")
-        .eq("user_id", userId)
-        .in("account_id", accountIds),
-    ])
-    const holdings = requireQueryData(
-      holdingsResult.data,
-      holdingsResult.error,
-      operation,
-    )
-    const entries = requireQueryData(
-      entriesResult.data,
-      entriesResult.error,
-      operation,
-    )
-    const referencedAccountIds = new Set([
-      ...holdings.map((holding) => holding.account_id),
-      ...entries.map((entry) => entry.account_id),
-    ])
-    const accountIdsWithHistory = new Set(
-      entries.map((entry) => entry.account_id),
-    )
-
+    // This deployment scopes financial_accounts as a standalone table with no
+    // ledger/holdings schema, so no account can carry financial history yet.
     return accountIds.map((accountId) => ({
       accountId,
-      canDelete: !referencedAccountIds.has(accountId),
-      hasFinancialHistory: accountIdsWithHistory.has(accountId),
+      canDelete: true,
+      hasFinancialHistory: false,
     }))
   }
 

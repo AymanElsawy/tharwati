@@ -39,7 +39,26 @@ export const ar: Record<TranslationKey, string> = {
   "pages.dashboard.eyebrow": "نظرة مالية عامة",
   "pages.dashboard.title": "ثروتك في لمحة",
   "pages.dashboard.description":
-    "تابع صافي ثروتك وتوزيع محفظتك وتقدمك المالي.",
+    "اطّلع على حساباتك وأرصدتك في لمحة واحدة.",
+  "dashboard.accountsOverview.title": "نظرة عامة على الحسابات",
+  "dashboard.accountsOverview.description":
+    "الأرصدة النشطة مجمّعة حسب نوع الحساب",
+  "dashboard.accountsOverview.empty":
+    "أضف حسابًا لعرض الأرصدة مجمّعة حسب النوع.",
+  "dashboard.accountsOverview.accountCount": "{{count}} حسابات",
+  "dashboard.accountsOverview.goldGrams": "{{grams}} جم",
+  "dashboard.netWorth.title": "صافي الثروة",
+  "dashboard.netWorth.accountCount": "عبر {{count}} حسابات",
+  "dashboard.netWorth.empty":
+    "أضف حساب نقد أو بنك أو عقار أو ذهب لعرض صافي ثروتك.",
+  "dashboard.netWorth.noBaseCurrency":
+    "اختر عملة أساسية أثناء التهيئة لعرض صافي ثروتك هنا.",
+  "dashboard.netWorth.completeOnboarding": "أكمل التهيئة",
+  "dashboard.netWorth.unavailable": "صافي الثروة غير متاح مؤقتًا",
+  "dashboard.netWorth.skippedTypes":
+    "أرصدة {{types}} غير مضمّنة بعد.",
+  "dashboard.netWorth.unavailableRates":
+    "أسعار الصرف غير متاحة لـ {{pairs}} — يُعرض إجمالي جزئي.",
   "pages.portfolio.title": "المحفظة",
   "pages.portfolio.description": "ستظهر استثماراتك هنا.",
   "portfolio.header.eyebrow": "المحفظة الاستثمارية",

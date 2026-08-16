@@ -37,7 +37,26 @@ export const en = {
   "pages.dashboard.eyebrow": "Financial overview",
   "pages.dashboard.title": "Your wealth at a glance",
   "pages.dashboard.description":
-    "Track your net worth, portfolio allocation and financial progress.",
+    "See your accounts and balances at a glance.",
+  "dashboard.accountsOverview.title": "Accounts overview",
+  "dashboard.accountsOverview.description":
+    "Active balances grouped by account type",
+  "dashboard.accountsOverview.empty":
+    "Add an account to see balances grouped by type.",
+  "dashboard.accountsOverview.accountCount": "{{count}} accounts",
+  "dashboard.accountsOverview.goldGrams": "{{grams}} g",
+  "dashboard.netWorth.title": "Net worth",
+  "dashboard.netWorth.accountCount": "Across {{count}} accounts",
+  "dashboard.netWorth.empty":
+    "Add a cash, bank, real estate, or gold account to see your net worth.",
+  "dashboard.netWorth.noBaseCurrency":
+    "Choose a base currency in onboarding to see your net worth here.",
+  "dashboard.netWorth.completeOnboarding": "Complete onboarding",
+  "dashboard.netWorth.unavailable": "Net worth is temporarily unavailable",
+  "dashboard.netWorth.skippedTypes":
+    "{{types}} balances aren't included yet.",
+  "dashboard.netWorth.unavailableRates":
+    "Missing live rates for {{pairs}} — showing a partial total.",
   "pages.portfolio.title": "Portfolio",
   "pages.portfolio.description": "Your investments will appear here.",
   "portfolio.header.eyebrow": "Investment portfolio",

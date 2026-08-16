@@ -1,5 +1,5 @@
 import { AlertTriangle, Plus } from "lucide-react"
-import { useEffect, useMemo, useState } from "react"
+import { useMemo, useState } from "react"
 
 import { Button } from "@/components/ui/button"
 import { UnsavedChangesDialog } from "@/components/UnsavedChangesDialog"
@@ -18,8 +18,6 @@ import {
   emptyAccountFormValues,
   type AccountFormValues,
 } from "@/features/accounts/types/account-form"
-import { accountBalancesService } from "@/features/account-balances/services/account-balances.service"
-import type { AccountBalance } from "@/features/account-balances/types/account-balance"
 import { useUnsavedChanges } from "@/hooks/useUnsavedChanges"
 import { useTranslation } from "@/i18n/useTranslation"
 import type { AccountSummary } from "@/lib/supabase/types"
@@ -32,7 +30,6 @@ function compareValues(left: string, right: string, direction: "asc" | "desc") {
 export function AccountsPage() {
   const { t } = useTranslation()
   const accounts = useAccounts()
-  const [balances, setBalances] = useState<AccountBalance[]>([])
   const [form, setForm] = useState<{ mode: "create" | "edit"; account: AccountSummary | null } | null>(null)
   const [confirm, setConfirm] = useState<{ mode: "archive" | "delete"; account: AccountSummary } | null>(null)
   const [formDirty, setFormDirty] = useState(false)
@@ -45,16 +42,6 @@ export function AccountsPage() {
   const [sort, setSort] = useState<AccountInventorySort>("name")
   const [direction, setDirection] = useState<"asc" | "desc">("asc")
   const unsaved = useUnsavedChanges(formDirty)
-
-  useEffect(() => {
-    let cancelled = false
-    void accountBalancesService.getAccountBalances().then((result) => {
-      if (!cancelled) setBalances(result)
-    })
-    return () => {
-      cancelled = true
-    }
-  }, [accounts.accounts])
 
   const defaults = useMemo<AccountFormValues>(
     () => (form?.account ? accountToFormValues(form.account) : emptyAccountFormValues),
@@ -72,11 +59,6 @@ export function AccountsPage() {
     [accounts.accounts],
   )
 
-  const balanceByAccountId = useMemo(
-    () => new Map(balances.map((balance) => [balance.accountId, balance.currentBalance])),
-    [balances],
-  )
-
   const items = useMemo<AccountInventoryItem[]>(() => {
     const filtered = accounts.accounts.filter((account) => {
       if (filters.search && !account.name.toLowerCase().includes(filters.search.toLowerCase())) return false
@@ -89,7 +71,7 @@ export function AccountsPage() {
 
     const withBalance = filtered.map((account) => ({
       account,
-      currentBalance: balanceByAccountId.get(account.id) ?? null,
+      currentBalance: account.account_type_code === "gold" ? null : account.opening_balance,
     }))
 
     return withBalance.sort((left, right) => {
@@ -111,7 +93,7 @@ export function AccountsPage() {
           return 0
       }
     })
-  }, [accounts.accounts, balanceByAccountId, direction, filters, sort])
+  }, [accounts.accounts, direction, filters, sort])
 
   const toggleSort = (nextSort: AccountInventorySort) => {
     if (nextSort === sort) {
@@ -143,7 +125,7 @@ export function AccountsPage() {
 
   return (
     <div className="pb-12">
-      <header className="border-b border-[var(--border-subtle)] pb-7">
+      <header className="pb-7">
         <div className="flex flex-wrap items-end justify-between gap-4">
           <div>
             <p className="tharwati-eyebrow">{t("accounts.page.eyebrow")}</p>

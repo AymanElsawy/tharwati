@@ -4,6 +4,7 @@ import { useNavigate } from "react-router-dom"
 import { Button } from "@/components/ui/button"
 import { Progress } from "@/components/ui/progress"
 import { CurrencySelector } from "@/features/onboarding/components/CurrencySelector"
+import { supportedCurrencies } from "@/features/onboarding/data/currencies"
 import { useOnboarding } from "@/features/onboarding/hooks/useOnboarding"
 
 export default function CurrencyPage() {
@@ -44,7 +45,11 @@ export default function CurrencyPage() {
           </div>
 
           <div className="mt-9">
-            <CurrencySelector value={currency} onChange={setCurrency} />
+            <CurrencySelector
+              value={currency}
+              onChange={setCurrency}
+              options={supportedCurrencies}
+            />
           </div>
 
           <div className="mt-10 flex flex-col-reverse gap-3 sm:flex-row sm:justify-between">

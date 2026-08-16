@@ -159,7 +159,41 @@
   --page-gradient-end: #f7e9ff;
 }
 
+@theme inline {
+  --color-background: var(--color-background);
+  --color-foreground: var(--color-text-primary);
+
+  --color-primary: var(--color-primary);
+  --color-primary-foreground: var(--color-text-on-primary);
+
+  --color-secondary: var(--color-surface-muted);
+  --color-secondary-foreground: var(--color-text-primary);
+
+  --color-muted: var(--color-surface-muted);
+  --color-muted-foreground: var(--color-text-secondary);
+
+  --color-accent: var(--color-surface-hover);
+  --color-accent-foreground: var(--color-text-primary);
+
+  --color-destructive: var(--color-danger);
+  --color-destructive-foreground: #ffffff;
+
+  --color-border: var(--color-border);
+  --color-input: var(--color-surface);
+  --color-ring: var(--color-primary);
+
+  --color-card: var(--color-surface);
+  --color-card-foreground: var(--color-text-primary);
+  --color-popover: var(--color-surface);
+  --color-popover-foreground: var(--color-text-primary);
+}
+
 :root {
+  /* Back-compat aliases for legacy variable names still referenced by some components. */
+  --color-text: var(--color-text-primary);
+  --color-surface-subtle: var(--color-surface-muted);
+  --color-primary-foreground: var(--color-text-on-primary);
+
   --layout-sidebar-width: 17rem;
   --layout-content-max: 92rem;
 
