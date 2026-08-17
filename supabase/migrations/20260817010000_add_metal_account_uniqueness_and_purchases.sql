@@ -1,18 +1,3 @@
-drop index if exists public.financial_accounts_user_name_lower_key;
-
-create unique index financial_accounts_non_metal_user_name_lower_key
-  on public.financial_accounts (user_id, lower(btrim(name)))
-  where account_type_code <> 'gold';
-
-create unique index financial_accounts_user_currency_metal_type_key
-  on public.financial_accounts (user_id, currency_code, metal_type)
-  where account_type_code = 'gold' and metal_type is not null;
-
-alter table public.financial_accounts
-  add constraint financial_accounts_gold_metal_type_required_check check (
-    account_type_code <> 'gold' or metal_type in ('gold', 'silver')
-  );
-
 alter table public.transaction_entries
   add column purity text;
 
