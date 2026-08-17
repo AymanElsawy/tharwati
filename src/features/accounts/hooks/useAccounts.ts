@@ -8,7 +8,10 @@ import {
   type CreateAccountInput,
   type UpdateAccountInput,
 } from "../repositories/accounts.repository"
-import { toAccountTypeSpecificFields, type AccountFormValues } from "../types/account-form"
+import {
+  toAccountTypeSpecificFields,
+  type AccountFormValues,
+} from "../types/account-form"
 
 type UseAccountsResult = {
   accounts: AccountSummary[]
@@ -21,7 +24,7 @@ type UseAccountsResult = {
   createAccount: (values: AccountFormValues) => Promise<AccountSummary>
   updateAccount: (
     accountId: string,
-    values: AccountFormValues,
+    values: AccountFormValues
   ) => Promise<AccountSummary>
   archiveAccount: (accountId: string) => Promise<AccountSummary>
   deleteAccount: (accountId: string) => Promise<void>
@@ -31,7 +34,7 @@ type UseAccountsResult = {
 function normalizeError(
   error: unknown,
   operation: string,
-  unexpectedMessage: string,
+  unexpectedMessage: string
 ): RepositoryError {
   if (error instanceof RepositoryError) {
     return error
@@ -39,8 +42,7 @@ function normalizeError(
 
   return new RepositoryError({
     code: "database_error",
-    message:
-      error instanceof Error ? error.message : unexpectedMessage,
+    message: error instanceof Error ? error.message : unexpectedMessage,
     operation,
     cause: error,
   })
@@ -65,52 +67,55 @@ export function useAccounts(): UseAccountsResult {
   >(new Set())
   const mutationInFlight = useRef(false)
 
-  const loadAccounts = useCallback(async (showLoading: boolean) => {
-    if (showLoading) {
-      setIsLoading(true)
-    }
-
-    try {
-      const nextAccounts = await accountsRepository.getAccounts()
-      const deletionEligibility =
-        await accountsRepository.getAccountDeletionEligibility(
-          nextAccounts.map((account) => account.id),
-        )
-
-      setAccounts(nextAccounts)
-      setDeletableAccountIds(
-        new Set(
-          deletionEligibility
-            .filter((eligibility) => eligibility.canDelete)
-            .map((eligibility) => eligibility.accountId),
-        ),
-      )
-      setAccountIdsWithHistory(
-        new Set(
-          deletionEligibility
-            .filter((eligibility) => eligibility.hasFinancialHistory)
-            .map((eligibility) => eligibility.accountId),
-        ),
-      )
-      setError(null)
-    } catch (loadError) {
-      setError(
-        normalizeError(
-          loadError,
-          "accounts.load",
-          t("accounts.error.unexpected"),
-        ),
-      )
-    } finally {
+  const loadAccounts = useCallback(
+    async (showLoading: boolean) => {
       if (showLoading) {
-        setIsLoading(false)
+        setIsLoading(true)
       }
-    }
-  }, [t])
+
+      try {
+        const nextAccounts = await accountsRepository.getAccounts()
+        const deletionEligibility =
+          await accountsRepository.getAccountDeletionEligibility(
+            nextAccounts.map((account) => account.id)
+          )
+
+        setAccounts(nextAccounts)
+        setDeletableAccountIds(
+          new Set(
+            deletionEligibility
+              .filter((eligibility) => eligibility.canDelete)
+              .map((eligibility) => eligibility.accountId)
+          )
+        )
+        setAccountIdsWithHistory(
+          new Set(
+            deletionEligibility
+              .filter((eligibility) => eligibility.hasFinancialHistory)
+              .map((eligibility) => eligibility.accountId)
+          )
+        )
+        setError(null)
+      } catch (loadError) {
+        setError(
+          normalizeError(
+            loadError,
+            "accounts.load",
+            t("accounts.error.unexpected")
+          )
+        )
+      } finally {
+        if (showLoading) {
+          setIsLoading(false)
+        }
+      }
+    },
+    [t]
+  )
 
   const refreshAccounts = useCallback(
     async () => loadAccounts(true),
-    [loadAccounts],
+    [loadAccounts]
   )
 
   useEffect(() => {
@@ -124,14 +129,13 @@ export function useAccounts(): UseAccountsResult {
   useEffect(() => {
     const refresh = () => void loadAccounts(false)
     window.addEventListener("tharwati:data-changed", refresh)
-    return () =>
-      window.removeEventListener("tharwati:data-changed", refresh)
+    return () => window.removeEventListener("tharwati:data-changed", refresh)
   }, [loadAccounts])
 
   const runMutation = useCallback(
-    async <Result,>(
+    async <Result>(
       operation: string,
-      mutation: () => Promise<Result>,
+      mutation: () => Promise<Result>
     ): Promise<Result> => {
       if (mutationInFlight.current) {
         throw new RepositoryError({
@@ -153,7 +157,7 @@ export function useAccounts(): UseAccountsResult {
         const repositoryError = normalizeError(
           mutationError,
           operation,
-          t("accounts.error.unexpected"),
+          t("accounts.error.unexpected")
         )
         setError(repositoryError)
         throw repositoryError
@@ -162,7 +166,7 @@ export function useAccounts(): UseAccountsResult {
         setIsSaving(false)
       }
     },
-    [loadAccounts, t],
+    [loadAccounts, t]
   )
 
   const createAccount = useCallback(
@@ -170,13 +174,17 @@ export function useAccounts(): UseAccountsResult {
       runMutation("accounts.create", async () => {
         const input: CreateAccountInput = {
           accountTypeCode: values.accountTypeCode,
-          name: values.name.trim(),
+          name:
+            values.accountTypeCode === "gold"
+              ? values.metalType === "silver"
+                ? "Silver"
+                : "Gold"
+              : values.name.trim(),
           currencyCode: values.currencyCode,
           notes: nullableText(values.notes),
           ...toAccountTypeSpecificFields(values),
         }
-        const createdAccount =
-          await accountsRepository.createAccount(input)
+        const createdAccount = await accountsRepository.createAccount(input)
 
         if (!values.isActive) {
           return accountsRepository.updateAccount(createdAccount.id, {
@@ -186,7 +194,7 @@ export function useAccounts(): UseAccountsResult {
 
         return createdAccount
       }),
-    [runMutation],
+    [runMutation]
   )
 
   const updateAccount = useCallback(
@@ -194,7 +202,12 @@ export function useAccounts(): UseAccountsResult {
       runMutation("accounts.update", () => {
         const input: UpdateAccountInput = {
           accountTypeCode: values.accountTypeCode,
-          name: values.name.trim(),
+          name:
+            values.accountTypeCode === "gold"
+              ? values.metalType === "silver"
+                ? "Silver"
+                : "Gold"
+              : values.name.trim(),
           currencyCode: values.currencyCode,
           notes: nullableText(values.notes),
           isActive: values.isActive,
@@ -203,23 +216,23 @@ export function useAccounts(): UseAccountsResult {
 
         return accountsRepository.updateAccount(accountId, input)
       }),
-    [runMutation],
+    [runMutation]
   )
 
   const archiveAccount = useCallback(
     async (accountId: string) =>
       runMutation("accounts.archive", () =>
-        accountsRepository.archiveAccount(accountId),
+        accountsRepository.archiveAccount(accountId)
       ),
-    [runMutation],
+    [runMutation]
   )
 
   const deleteAccount = useCallback(
     async (accountId: string) =>
       runMutation("accounts.delete", () =>
-        accountsRepository.deleteAccount(accountId),
+        accountsRepository.deleteAccount(accountId)
       ),
-    [runMutation],
+    [runMutation]
   )
 
   return {
@@ -227,10 +240,8 @@ export function useAccounts(): UseAccountsResult {
     error,
     isLoading,
     isSaving,
-    canDeleteAccount: (accountId) =>
-      deletableAccountIds.has(accountId),
-    hasFinancialHistory: (accountId) =>
-      accountIdsWithHistory.has(accountId),
+    canDeleteAccount: (accountId) => deletableAccountIds.has(accountId),
+    hasFinancialHistory: (accountId) => accountIdsWithHistory.has(accountId),
     refreshAccounts,
     createAccount,
     updateAccount,

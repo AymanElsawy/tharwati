@@ -36,8 +36,7 @@ export const en = {
   "theme.colorful": "Colorful",
   "pages.dashboard.eyebrow": "Financial overview",
   "pages.dashboard.title": "Your wealth at a glance",
-  "pages.dashboard.description":
-    "See your accounts and balances at a glance.",
+  "pages.dashboard.description": "See your accounts and balances at a glance.",
   "dashboard.accountsOverview.title": "Accounts overview",
   "dashboard.accountsOverview.description":
     "Active balances grouped by account type",
@@ -45,9 +44,12 @@ export const en = {
     "Add an account to see balances grouped by type.",
   "dashboard.accountsOverview.accountCount": "{{count}} accounts",
   "dashboard.accountsOverview.metalUnits": "{{units}} g",
-  "dashboard.accountsOverview.costPerUnit": "Bought at {{price}} {{currency}}/g",
-  "dashboard.accountsOverview.currentPricePerUnit": "Now worth {{price}} {{currency}}/g",
-  "dashboard.accountsOverview.currentPriceUnavailable": "Current price unavailable",
+  "dashboard.accountsOverview.costPerUnit":
+    "Bought at {{price}} {{currency}}/g",
+  "dashboard.accountsOverview.currentPricePerUnit":
+    "Now worth {{price}} {{currency}}/g",
+  "dashboard.accountsOverview.currentPriceUnavailable":
+    "Current price unavailable",
   "dashboard.netWorth.title": "Net worth",
   "dashboard.netWorth.accountCount": "Across {{count}} accounts",
   "dashboard.netWorth.empty":
@@ -56,8 +58,7 @@ export const en = {
     "Choose a base currency in onboarding to see your net worth here.",
   "dashboard.netWorth.completeOnboarding": "Complete onboarding",
   "dashboard.netWorth.unavailable": "Net worth is temporarily unavailable",
-  "dashboard.netWorth.skippedTypes":
-    "{{types}} balances aren't included yet.",
+  "dashboard.netWorth.skippedTypes": "{{types}} balances aren't included yet.",
   "dashboard.netWorth.unavailableRates":
     "Missing live rates for {{pairs}} — showing a partial total.",
   "pages.portfolio.title": "Portfolio",
@@ -113,8 +114,7 @@ export const en = {
   "portfolio.actions.eyebrow": "Next steps",
   "portfolio.actions.title": "Recommended Actions",
   "portfolio.actions.begin": "Begin",
-  "portfolio.actions.empty":
-    "No immediate portfolio actions are recommended.",
+  "portfolio.actions.empty": "No immediate portfolio actions are recommended.",
   "portfolio.error.title": "Portfolio unavailable",
   "portfolio.error.description":
     "We couldn't load your portfolio executive summary.",
@@ -131,8 +131,7 @@ export const en = {
   "portfolio.allocation.title": "Asset Allocation",
   "portfolio.allocation.description":
     "Understand how current market value is distributed across supported asset classes.",
-  "portfolio.allocation.chartLabel":
-    "Interactive portfolio allocation chart",
+  "portfolio.allocation.chartLabel": "Interactive portfolio allocation chart",
   "portfolio.allocation.legend": "Portfolio allocation legend",
   "portfolio.allocation.contributors": "Largest contributors",
   "portfolio.allocation.noContributors":
@@ -143,8 +142,7 @@ export const en = {
   "portfolio.diversification.title": "Diversification Analysis",
   "portfolio.diversification.description":
     "Review portfolio exposure through one analytical dimension at a time.",
-  "portfolio.diversification.dimensions":
-    "Diversification dimensions",
+  "portfolio.diversification.dimensions": "Diversification dimensions",
   "portfolio.diversification.dimension.asset_class": "Asset class",
   "portfolio.diversification.dimension.sector": "Sector",
   "portfolio.diversification.dimension.geography": "Geography",
@@ -216,6 +214,11 @@ export const en = {
   "accounts.actions.archive": "Archive",
   "accounts.actions.delete": "Delete",
   "accounts.actions.tryAgain": "Try again",
+  "accounts.metalPurchase.title": "Add {{metal}} purchase",
+  "accounts.metalPurchase.add": "Add purchase",
+  "accounts.metalPurchase.addFor": "Add purchase to {{name}}",
+  "accounts.metalPurchase.paidFrom": "Paid from",
+  "accounts.metalPurchase.fundingAccountRequired": "Select an account",
   "accounts.filters.search": "Search accounts",
   "accounts.filters.searchPlaceholder": "Search by account name",
   "accounts.filters.type": "Filter by account type",
@@ -264,8 +267,7 @@ export const en = {
   "accounts.form.chooseTypeDescription":
     "Select the account category that accurately describes this account.",
   "accounts.form.editTitle": "Edit account",
-  "accounts.form.description":
-    "Keep account details accurate for reporting.",
+  "accounts.form.description": "Keep account details accurate for reporting.",
   "accounts.form.close": "Close dialog",
   "accounts.form.saving": "Saving…",
   "accounts.form.saveChanges": "Save changes",
@@ -372,8 +374,7 @@ export const en = {
   "assets.error.actionTitle": "Asset action failed",
   "assets.error.loadTitle": "We couldn't load assets",
   "assets.error.unexpected": "An unexpected error occurred",
-  "assets.error.mutationInProgress":
-    "An asset change is already in progress",
+  "assets.error.mutationInProgress": "An asset change is already in progress",
   "assets.form.assetType": "Asset type",
   "assets.form.name": "Name",
   "assets.form.symbol": "Symbol",
@@ -383,14 +384,12 @@ export const en = {
   "assets.form.activeDescription": "Include this asset in active views.",
   "assets.form.createTitle": "Create custom asset",
   "assets.form.editTitle": "Edit custom asset",
-  "assets.form.description":
-    "Custom assets are private to your account.",
+  "assets.form.description": "Custom assets are private to your account.",
   "assets.form.close": "Close dialog",
   "assets.form.saving": "Saving…",
   "assets.form.saveChanges": "Save changes",
   "assets.validation.nameRequired": "Name is required",
-  "assets.validation.symbolTooLong":
-    "Symbol must be 30 characters or fewer",
+  "assets.validation.symbolTooLong": "Symbol must be 30 characters or fewer",
   "assets.validation.exchangeTooLong":
     "Exchange must be 100 characters or fewer",
   "assets.archive.title": "Archive {{name}}?",
@@ -426,17 +425,21 @@ export const en = {
   "assets.table.editLabel": "Edit {{name}}",
   "assets.table.archiveLabel": "Archive {{name}}",
   "assets.workspace.eyebrow": "Asset register",
-  "assets.workspace.description": "Manage asset records and distinguish them from ledger-derived ownership.",
+  "assets.workspace.description":
+    "Manage asset records and distinguish them from ledger-derived ownership.",
   "assets.workspace.scope": "Workspace scope",
   "assets.workspace.allAssets": "All eligible assets",
   "assets.workspace.add": "Add Asset or Investment",
   "assets.intent.title": "What would you like to add?",
-  "assets.intent.description": "Asset records describe an asset. Investments create ledger-backed ownership.",
+  "assets.intent.description":
+    "Asset records describe an asset. Investments create ledger-backed ownership.",
   "assets.intent.search": "Search existing asset records first",
   "assets.intent.record": "Create Asset Record",
-  "assets.intent.recordDescription": "Add descriptive catalog information without creating ownership.",
+  "assets.intent.recordDescription":
+    "Add descriptive catalog information without creating ownership.",
   "assets.intent.investment": "Record Investment",
-  "assets.intent.investmentDescription": "Use the trusted investment workflow to create ledger and holding evidence.",
+  "assets.intent.investmentDescription":
+    "Use the trusted investment workflow to create ledger and holding evidence.",
   "assets.workspace.records": "{{count}} asset records",
   "assets.workspace.owned": "{{count}} owned",
   "assets.workspace.issues": "{{count}} data issues",
@@ -475,35 +478,50 @@ export const en = {
   "assets.workspace.data.missing_valuation_date": "Missing valuation date",
   "assets.workspace.actionsFor": "Actions for {{name}}",
   "assets.workspace.accounts": "{{count}} accounts",
-  "assets.workspace.emptyFiltered": "No asset records match the current workspace filters.",
-  "assets.workspace.refreshFailed": "The latest asset refresh failed. Previous data remains visible.",
+  "assets.workspace.emptyFiltered":
+    "No asset records match the current workspace filters.",
+  "assets.workspace.refreshFailed":
+    "The latest asset refresh failed. Previous data remains visible.",
   "assets.health.eyebrow": "Operational readiness",
   "assets.health.title": "Asset Health",
-  "assets.health.description": "A deterministic assessment of catalog coverage and valuation readiness.",
+  "assets.health.description":
+    "A deterministic assessment of catalog coverage and valuation readiness.",
   "assets.health.overall": "Overall health",
-  "assets.health.unavailable": "Health is unavailable until relevant asset records exist.",
-  "assets.health.provisional": "Provisional — unavailable factors and open issues remain explicit.",
+  "assets.health.unavailable":
+    "Health is unavailable until relevant asset records exist.",
+  "assets.health.provisional":
+    "Provisional — unavailable factors and open issues remain explicit.",
   "assets.health.complete": "All supported health factors are complete.",
   "assets.health.coverage": "{{numerator}} of {{denominator}} complete",
-  "assets.health.factorUnavailable": "No applicable records in the current asset-class scope.",
+  "assets.health.factorUnavailable":
+    "No applicable records in the current asset-class scope.",
   "assets.health.filterLabel": "Health",
   "assets.health.factor.price_coverage": "Price Coverage",
   "assets.health.factor.fx_coverage": "FX Coverage",
-  "assets.health.factor.classification_completeness": "Classification Completeness",
+  "assets.health.factor.classification_completeness":
+    "Classification Completeness",
   "assets.health.factor.valuation_readiness": "Valuation Readiness",
   "assets.health.factor.archived_references": "Archived References",
-  "assets.health.explanation.price_coverage": "Measures owned, price-supported assets with an authoritative current market price.",
-  "assets.health.explanation.fx_coverage": "Measures required current currency conversions that resolve through the existing FX service.",
-  "assets.health.explanation.classification_completeness": "Measures asset records with a valid stored asset classification.",
-  "assets.health.explanation.valuation_readiness": "Measures owned assets with complete supported price, date, and FX evidence.",
-  "assets.health.explanation.archived_references": "Measures archived records without holdings or posted-ledger references.",
+  "assets.health.explanation.price_coverage":
+    "Measures owned, price-supported assets with an authoritative current market price.",
+  "assets.health.explanation.fx_coverage":
+    "Measures required current currency conversions that resolve through the existing FX service.",
+  "assets.health.explanation.classification_completeness":
+    "Measures asset records with a valid stored asset classification.",
+  "assets.health.explanation.valuation_readiness":
+    "Measures owned assets with complete supported price, date, and FX evidence.",
+  "assets.health.explanation.archived_references":
+    "Measures archived records without holdings or posted-ledger references.",
   "assets.quality.eyebrow": "Authoritative dependencies",
   "assets.quality.title": "Data Quality",
-  "assets.quality.description": "Review the exact missing or unavailable inputs affecting asset valuation.",
+  "assets.quality.description":
+    "Review the exact missing or unavailable inputs affecting asset valuation.",
   "assets.quality.emptyTitle": "No supported data-quality issues",
-  "assets.quality.emptyDescription": "The current asset-class scope has no authoritative issues to resolve.",
+  "assets.quality.emptyDescription":
+    "The current asset-class scope has no authoritative issues to resolve.",
   "assets.quality.selectedIssue": "Selected issue",
-  "assets.quality.selectPrompt": "Select an issue to review its explanation and affected asset records.",
+  "assets.quality.selectPrompt":
+    "Select an issue to review its explanation and affected asset records.",
   "assets.quality.filterLabel": "Issue",
   "assets.quality.issue.missing_price": "Missing Price",
   "assets.quality.issue.missing_fx": "Missing FX",
@@ -512,19 +530,28 @@ export const en = {
   "assets.quality.issue.unsupported_valuation": "Unsupported Valuation",
   "assets.quality.issue.archived_reference": "Archived Reference",
   "assets.quality.issue.stale_market_price": "Stale Market Price",
-  "assets.quality.explanation.missing_price": "An owned, price-supported asset has no current market-price record. No substitute value is used.",
-  "assets.quality.explanation.missing_fx": "A required currency conversion cannot be resolved through a direct or inverse user-owned exchange rate.",
-  "assets.quality.explanation.missing_classification": "The stored asset record does not contain the classification required by the current catalog model.",
-  "assets.quality.explanation.missing_valuation_date": "A market price exists without the timestamp required to establish when the valuation applies.",
-  "assets.quality.explanation.unsupported_valuation": "The current Market Data Service does not support current-price valuation for this asset class.",
-  "assets.quality.explanation.archived_reference": "An archived asset remains referenced by a holding or posted ledger entry and is preserved for financial history.",
-  "assets.quality.explanation.stale_market_price": "The latest valid market price is older than the current freshness threshold.",
+  "assets.quality.explanation.missing_price":
+    "An owned, price-supported asset has no current market-price record. No substitute value is used.",
+  "assets.quality.explanation.missing_fx":
+    "A required currency conversion cannot be resolved through a direct or inverse user-owned exchange rate.",
+  "assets.quality.explanation.missing_classification":
+    "The stored asset record does not contain the classification required by the current catalog model.",
+  "assets.quality.explanation.missing_valuation_date":
+    "A market price exists without the timestamp required to establish when the valuation applies.",
+  "assets.quality.explanation.unsupported_valuation":
+    "The current Market Data Service does not support current-price valuation for this asset class.",
+  "assets.quality.explanation.archived_reference":
+    "An archived asset remains referenced by a holding or posted ledger entry and is preserved for financial history.",
+  "assets.quality.explanation.stale_market_price":
+    "The latest valid market price is older than the current freshness threshold.",
   "assets.quality.resolvePrice": "Manage market price",
   "assets.quality.resolveFx": "Manage exchange rate",
-  "assets.quality.noResolution": "No supported resolution workflow is available for this issue in the current data model.",
+  "assets.quality.noResolution":
+    "No supported resolution workflow is available for this issue in the current data model.",
   "assets.relationships.eyebrow": "Ownership evidence",
   "assets.relationships.title": "Accounts and positions",
-  "assets.relationships.description": "Explicit holdings that connect asset records to owned positions and financial accounts.",
+  "assets.relationships.description":
+    "Explicit holdings that connect asset records to owned positions and financial accounts.",
   "assets.relationships.filterAccount": "Filter relationships by account",
   "assets.relationships.accountFilterActive": "Position account filtered",
   "assets.relationships.account": "Account",
@@ -535,16 +562,20 @@ export const en = {
   "assets.relationships.currentPrice": "Current price",
   "assets.relationships.openHolding": "Open position evidence",
   "assets.relationships.positionEvidence": "Position evidence",
-  "assets.relationships.empty": "No explicit holding relationships are available in this workspace.",
-  "assets.relationships.noSelected": "This asset record has no explicit owned position in the current scope.",
+  "assets.relationships.empty":
+    "No explicit holding relationships are available in this workspace.",
+  "assets.relationships.noSelected":
+    "This asset record has no explicit owned position in the current scope.",
   "assets.activity.eyebrow": "Ledger evidence",
   "assets.activity.title": "Recent asset activity",
-  "assets.activity.description": "Recent posted transactions that explicitly reference assets in this workspace.",
+  "assets.activity.description":
+    "Recent posted transactions that explicitly reference assets in this workspace.",
   "assets.activity.filterType": "Filter activity by type",
   "assets.activity.filterAccount": "Filter activity by account",
   "assets.activity.accountFilterActive": "Activity account filtered",
   "assets.activity.allTypes": "All activity types",
-  "assets.activity.empty": "No posted asset-linked activity matches the current workspace.",
+  "assets.activity.empty":
+    "No posted asset-linked activity matches the current workspace.",
   "assets.activity.unavailable": "Recent activity is unavailable",
   "assets.detail.viewPortfolio": "View in Portfolio",
   "assetType.stock": "Stock",
@@ -567,19 +598,25 @@ export const en = {
   "investment.success": "{{asset}} was added to {{account}}.",
   "investment.edit.action": "Edit investment",
   "investment.edit.title": "Edit investment",
-  "investment.edit.description": "Correct the supported financial details while preserving the immutable original ledger.",
-  "investment.edit.correctionNotice": "Saving creates a linked correction reversal and a corrected replacement. The original posted investment is never rewritten.",
-  "investment.edit.accountLocked": "Account is locked to preserve custody and ledger ownership.",
-  "investment.edit.assetLocked": "Asset is locked to preserve asset identity and holding history.",
+  "investment.edit.description":
+    "Correct the supported financial details while preserving the immutable original ledger.",
+  "investment.edit.correctionNotice":
+    "Saving creates a linked correction reversal and a corrected replacement. The original posted investment is never rewritten.",
+  "investment.edit.accountLocked":
+    "Account is locked to preserve custody and ledger ownership.",
+  "investment.edit.assetLocked":
+    "Asset is locked to preserve asset identity and holding history.",
   "investment.edit.save": "Save correction",
   "investment.edit.saving": "Saving correction…",
   "investment.common.choose": "Choose…",
   "investment.account.section": "Account",
   "investment.funding.section": "Funding source",
   "investment.funding.external": "Existing holding / external funds",
-  "investment.funding.externalDescription": "Record the investment without reducing a cash account.",
+  "investment.funding.externalDescription":
+    "Record the investment without reducing a cash account.",
   "investment.funding.cash": "Pay from an existing cash account",
-  "investment.funding.cashDescription": "Reduce only the cash account you select.",
+  "investment.funding.cashDescription":
+    "Reduce only the cash account you select.",
   "investment.funding.account": "Funding cash account",
   "investment.account.existing": "Existing account",
   "investment.account.new": "Create New Account",
@@ -591,9 +628,9 @@ export const en = {
   "investment.asset.new": "Create custom asset",
   "investment.asset.select": "Search or select asset",
   "investment.asset.searchLabel": "Search your asset catalog",
-  "investment.asset.searchPlaceholder": "Search existing assets by name or symbol",
-  "investment.asset.noResults":
-    "This asset is not in your catalog yet.",
+  "investment.asset.searchPlaceholder":
+    "Search existing assets by name or symbol",
+  "investment.asset.noResults": "This asset is not in your catalog yet.",
   "investment.asset.createCustom": "Create custom asset",
   "investment.asset.authoritativeSelection":
     "Selected {{symbol}} · {{exchange}} · {{currency}}",
@@ -645,13 +682,12 @@ export const en = {
   "investment.identifier.provider": "Provider alias",
   "investment.validation.positiveQuantity":
     "Enter a quantity greater than zero",
-  "investment.validation.validAmount":
-    "Enter a valid non-negative amount",
+  "investment.validation.validAmount": "Enter a valid non-negative amount",
   "investment.validation.dateRequired": "Transaction date is required",
   "investment.validation.accountRequired": "Select an active account",
-  "investment.validation.fundingAccountRequired": "Select a funding cash account",
-  "investment.validation.accountNameRequired":
-    "New account name is required",
+  "investment.validation.fundingAccountRequired":
+    "Select a funding cash account",
+  "investment.validation.accountNameRequired": "New account name is required",
   "investment.validation.assetRequired": "Select an asset",
   "investment.validation.assetIdentityRequired":
     "Asset information is required",
@@ -659,8 +695,7 @@ export const en = {
   "investment.validation.marketIdentityRequired":
     "Symbol and exchange or network are required",
   "investment.validation.marketSymbolRequired": "Symbol is required",
-  "investment.error.loadOptions":
-    "Accounts and assets could not be loaded",
+  "investment.error.loadOptions": "Accounts and assets could not be loaded",
   "holdings.page.eyebrow": "Current investments",
   "holdings.page.title": "Holdings",
   "holdings.page.description":
@@ -684,8 +719,7 @@ export const en = {
   "holdings.filters.assetType": "Filter by asset type",
   "holdings.filters.allAccounts": "All accounts",
   "holdings.filters.allTypes": "All asset types",
-  "holdings.filters.noResults":
-    "No holdings match the current filters.",
+  "holdings.filters.noResults": "No holdings match the current filters.",
   "holdings.unit.shares": "Shares",
   "holdings.unit.troy_ounces": "Troy ounces",
   "holdings.unit.grams": "Grams",
@@ -716,13 +750,18 @@ export const en = {
   "portfolio.evidence.status.missing_price": "Missing price",
   "portfolio.evidence.status.missing_fx": "Missing FX",
   "portfolio.evidence.status.partial": "Partial",
-  "portfolio.evidence.inheritedFilter": "This evidence is focused by the active portfolio analysis selection.",
-  "portfolio.evidence.adjustFilters": "Adjust the search or local filters to see positions.",
-  "portfolio.evidence.noInheritedMatches": "No positions support the active analytical selection.",
-  "portfolio.evidence.openOnly": "Open positions only. Closed-position history is not available in the current holdings projection.",
+  "portfolio.evidence.inheritedFilter":
+    "This evidence is focused by the active portfolio analysis selection.",
+  "portfolio.evidence.adjustFilters":
+    "Adjust the search or local filters to see positions.",
+  "portfolio.evidence.noInheritedMatches":
+    "No positions support the active analytical selection.",
+  "portfolio.evidence.openOnly":
+    "Open positions only. Closed-position history is not available in the current holdings projection.",
   "portfolio.custody.eyebrow": "Ownership structure",
   "portfolio.custody.title": "Account and custody breakdown",
-  "portfolio.custody.empty": "No contributing investment accounts in this scope.",
+  "portfolio.custody.empty":
+    "No contributing investment accounts in this scope.",
   "portfolio.custody.account": "Account",
   "portfolio.custody.investments": "Investments",
   "portfolio.custody.cash": "Projected cash",
@@ -737,7 +776,8 @@ export const en = {
   "portfolio.activity.empty": "No posted portfolio activity yet.",
   "portfolio.activity.noMatches": "No posted activity matches these filters.",
   "portfolio.activity.posted": "Posted",
-  "portfolio.activity.recentOnly": "Showing the most recent posted ledger activity.",
+  "portfolio.activity.recentOnly":
+    "Showing the most recent posted ledger activity.",
   "portfolio.activity.date": "Posting date",
   "portfolio.activity.amount": "Amount",
   "portfolio.activity.entries": "Ledger entries",

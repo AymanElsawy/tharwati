@@ -3,7 +3,10 @@ import { useMemo, useState } from "react"
 
 import { Button } from "@/components/ui/button"
 import { UnsavedChangesDialog } from "@/components/UnsavedChangesDialog"
-import { AccountFilterBar, type AccountFilters } from "@/features/accounts/components/AccountFilterBar"
+import {
+  AccountFilterBar,
+  type AccountFilters,
+} from "@/features/accounts/components/AccountFilterBar"
 import { AccountFormDialog } from "@/features/accounts/components/AccountFormDialog"
 import {
   AccountInventory,
@@ -12,7 +15,9 @@ import {
 } from "@/features/accounts/components/AccountInventory"
 import { ArchiveAccountDialog } from "@/features/accounts/components/ArchiveAccountDialog"
 import { DeleteAccountDialog } from "@/features/accounts/components/DeleteAccountDialog"
+import { MetalPurchaseDialog } from "@/features/accounts/components/MetalPurchaseDialog"
 import { useAccounts } from "@/features/accounts/hooks/useAccounts"
+import { metalPurchasesRepository } from "@/features/accounts/repositories/metal-purchases.repository"
 import {
   accountToFormValues,
   emptyAccountFormValues,
@@ -30,8 +35,17 @@ function compareValues(left: string, right: string, direction: "asc" | "desc") {
 export function AccountsPage() {
   const { t } = useTranslation()
   const accounts = useAccounts()
-  const [form, setForm] = useState<{ mode: "create" | "edit"; account: AccountSummary | null } | null>(null)
-  const [confirm, setConfirm] = useState<{ mode: "archive" | "delete"; account: AccountSummary } | null>(null)
+  const [form, setForm] = useState<{
+    mode: "create" | "edit"
+    account: AccountSummary | null
+  } | null>(null)
+  const [confirm, setConfirm] = useState<{
+    mode: "archive" | "delete"
+    account: AccountSummary
+  } | null>(null)
+  const [metalPurchaseAccount, setMetalPurchaseAccount] =
+    useState<AccountSummary | null>(null)
+  const [isSavingMetalPurchase, setIsSavingMetalPurchase] = useState(false)
   const [formDirty, setFormDirty] = useState(false)
   const [filters, setFilters] = useState<AccountFilters>({
     search: "",
@@ -44,8 +58,11 @@ export function AccountsPage() {
   const unsaved = useUnsavedChanges(formDirty)
 
   const defaults = useMemo<AccountFormValues>(
-    () => (form?.account ? accountToFormValues(form.account) : emptyAccountFormValues),
-    [form],
+    () =>
+      form?.account
+        ? accountToFormValues(form.account)
+        : emptyAccountFormValues,
+    [form]
   )
 
   const closeForm = () =>
@@ -55,15 +72,24 @@ export function AccountsPage() {
     })
 
   const currencies = useMemo(
-    () => [...new Set(accounts.accounts.map((account) => account.currency_code))].sort(),
-    [accounts.accounts],
+    () =>
+      [
+        ...new Set(accounts.accounts.map((account) => account.currency_code)),
+      ].sort(),
+    [accounts.accounts]
   )
 
   const items = useMemo<AccountInventoryItem[]>(() => {
     const filtered = accounts.accounts.filter((account) => {
-      if (filters.search && !account.name.toLowerCase().includes(filters.search.toLowerCase())) return false
-      if (filters.type && account.account_type_code !== filters.type) return false
-      if (filters.currency && account.currency_code !== filters.currency) return false
+      if (
+        filters.search &&
+        !account.name.toLowerCase().includes(filters.search.toLowerCase())
+      )
+        return false
+      if (filters.type && account.account_type_code !== filters.type)
+        return false
+      if (filters.currency && account.currency_code !== filters.currency)
+        return false
       if (filters.status === "active" && !account.is_active) return false
       if (filters.status === "archived" && account.is_active) return false
       return true
@@ -71,7 +97,8 @@ export function AccountsPage() {
 
     const withBalance = filtered.map((account) => ({
       account,
-      currentBalance: account.account_type_code === "gold" ? null : account.opening_balance,
+      currentBalance:
+        account.account_type_code === "gold" ? null : account.opening_balance,
     }))
 
     return withBalance.sort((left, right) => {
@@ -79,15 +106,33 @@ export function AccountsPage() {
         case "name":
           return compareValues(left.account.name, right.account.name, direction)
         case "type":
-          return compareValues(left.account.account_type_code, right.account.account_type_code, direction)
+          return compareValues(
+            left.account.account_type_code,
+            right.account.account_type_code,
+            direction
+          )
         case "currency":
-          return compareValues(left.account.currency_code, right.account.currency_code, direction)
+          return compareValues(
+            left.account.currency_code,
+            right.account.currency_code,
+            direction
+          )
         case "status":
-          return compareValues(String(left.account.is_active), String(right.account.is_active), direction)
+          return compareValues(
+            String(left.account.is_active),
+            String(right.account.is_active),
+            direction
+          )
         case "balance": {
-          const leftValue = Number(left.currentBalance ?? left.account.balance_grams ?? 0)
-          const rightValue = Number(right.currentBalance ?? right.account.balance_grams ?? 0)
-          return direction === "asc" ? leftValue - rightValue : rightValue - leftValue
+          const leftValue = Number(
+            left.currentBalance ?? left.account.balance_grams ?? 0
+          )
+          const rightValue = Number(
+            right.currentBalance ?? right.account.balance_grams ?? 0
+          )
+          return direction === "asc"
+            ? leftValue - rightValue
+            : rightValue - leftValue
         }
         default:
           return 0
@@ -117,8 +162,12 @@ export function AccountsPage() {
     return (
       <div className="flex min-h-[50vh] flex-col items-center justify-center gap-4 text-center">
         <AlertTriangle size={28} className="text-amber-600" />
-        <p className="max-w-sm text-sm text-[var(--color-text-secondary)]">{t("accounts.error.loadTitle")}</p>
-        <Button onClick={() => void accounts.refreshAccounts()}>{t("accounts.actions.tryAgain")}</Button>
+        <p className="max-w-sm text-sm text-[var(--color-text-secondary)]">
+          {t("accounts.error.loadTitle")}
+        </p>
+        <Button onClick={() => void accounts.refreshAccounts()}>
+          {t("accounts.actions.tryAgain")}
+        </Button>
       </div>
     )
   }
@@ -129,8 +178,12 @@ export function AccountsPage() {
         <div className="flex flex-wrap items-end justify-between gap-4">
           <div>
             <p className="tharwati-eyebrow">{t("accounts.page.eyebrow")}</p>
-            <h1 className="tharwati-page-title mt-2">{t("accounts.page.title")}</h1>
-            <p className="tharwati-page-description mt-2 max-w-2xl">{t("accounts.page.description")}</p>
+            <h1 className="tharwati-page-title mt-2">
+              {t("accounts.page.title")}
+            </h1>
+            <p className="tharwati-page-description mt-2 max-w-2xl">
+              {t("accounts.page.description")}
+            </p>
           </div>
           <Button onClick={() => setForm({ mode: "create", account: null })}>
             <Plus size={16} />
@@ -161,13 +214,19 @@ export function AccountsPage() {
         filters={filters}
         currencies={currencies}
         resultCount={items.length}
-        onChange={(key, value) => setFilters((current) => ({ ...current, [key]: value }))}
+        onChange={(key, value) =>
+          setFilters((current) => ({ ...current, [key]: value }))
+        }
       />
 
       {items.length === 0 ? (
         <div className="mt-10 flex flex-col items-center gap-2 rounded-2xl border border-dashed border-[var(--border-subtle)] py-16 text-center">
-          <p className="font-semibold text-[var(--color-text-primary)]">{t("accounts.empty.title")}</p>
-          <p className="max-w-sm text-sm text-[var(--color-text-secondary)]">{t("accounts.empty.description")}</p>
+          <p className="font-semibold text-[var(--color-text-primary)]">
+            {t("accounts.empty.title")}
+          </p>
+          <p className="max-w-sm text-sm text-[var(--color-text-secondary)]">
+            {t("accounts.empty.description")}
+          </p>
         </div>
       ) : (
         <AccountInventory
@@ -178,6 +237,7 @@ export function AccountsPage() {
           onEdit={(account) => setForm({ mode: "edit", account })}
           onArchive={(account) => setConfirm({ mode: "archive", account })}
           onDelete={(account) => setConfirm({ mode: "delete", account })}
+          onAddMetalPurchase={setMetalPurchaseAccount}
           canDelete={accounts.canDeleteAccount}
         />
       )}
@@ -187,13 +247,22 @@ export function AccountsPage() {
           defaultValues={defaults}
           isOpen
           isSaving={accounts.isSaving}
-          isCurrencyLocked={form.mode === "edit" && !!form.account && accounts.hasFinancialHistory(form.account.id)}
-          isOpeningBalanceLocked={form.mode === "edit" && !!form.account && accounts.hasFinancialHistory(form.account.id)}
+          isCurrencyLocked={
+            form.mode === "edit" &&
+            !!form.account &&
+            accounts.hasFinancialHistory(form.account.id)
+          }
+          isOpeningBalanceLocked={
+            form.mode === "edit" &&
+            !!form.account &&
+            accounts.hasFinancialHistory(form.account.id)
+          }
           mode={form.mode}
           onDirtyChange={setFormDirty}
           onClose={closeForm}
           onSubmit={async (values) => {
-            if (form.mode === "edit" && form.account) await accounts.updateAccount(form.account.id, values)
+            if (form.mode === "edit" && form.account)
+              await accounts.updateAccount(form.account.id, values)
             else await accounts.createAccount(values)
             setFormDirty(false)
             setForm(null)
@@ -220,6 +289,30 @@ export function AccountsPage() {
           if (confirm) {
             await accounts.deleteAccount(confirm.account.id)
             setConfirm(null)
+          }
+        }}
+      />
+      <MetalPurchaseDialog
+        account={metalPurchaseAccount}
+        fundingAccounts={accounts.accounts.filter(
+          (account) =>
+            account.is_active &&
+            ["cash", "bank", "deposit"].includes(account.account_type_code)
+        )}
+        isSaving={isSavingMetalPurchase}
+        onClose={() => setMetalPurchaseAccount(null)}
+        onSubmit={async (values) => {
+          if (!metalPurchaseAccount) return
+          setIsSavingMetalPurchase(true)
+          try {
+            await metalPurchasesRepository.addPurchase(
+              metalPurchaseAccount.id,
+              values
+            )
+            setMetalPurchaseAccount(null)
+            window.dispatchEvent(new Event("tharwati:data-changed"))
+          } finally {
+            setIsSavingMetalPurchase(false)
           }
         }}
       />

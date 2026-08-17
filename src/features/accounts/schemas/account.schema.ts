@@ -5,7 +5,6 @@ import {
   accountTypeCodes,
   bankSubtypeCodes,
   currencyCodes,
-  getPurityOptions,
   investmentTypeCodes,
   metalTypeCodes,
   propertyTypeCodes,
@@ -14,18 +13,14 @@ import {
 } from "../types/account-form"
 
 const decimalAmountPattern = /^\d{1,18}(?:\.\d{1,2})?$/
-const gramsPattern = /^\d{1,18}(?:\.\d{1,3})?$/
 const percentagePattern = /^\d{1,3}(?:\.\d{1,2})?$/
 
 export function createAccountSchema(
-  t: Translate,
+  t: Translate
 ): z.ZodType<AccountFormValues, AccountFormValues> {
   return z
     .object({
-      name: z
-        .string()
-        .trim()
-        .min(1, t("accounts.validation.nameRequired")),
+      name: z.string().trim(),
       accountTypeCode: z.enum(accountTypeCodes),
       currencyCode: z.enum(currencyCodes),
       openingBalance: z.string().trim(),
@@ -46,19 +41,42 @@ export function createAccountSchema(
     .superRefine((values, ctx) => {
       const requireBalance = (message: string) => {
         if (!values.openingBalance) {
-          ctx.addIssue({ code: "custom", path: ["openingBalance"], message: t("accounts.validation.balanceRequired") })
+          ctx.addIssue({
+            code: "custom",
+            path: ["openingBalance"],
+            message: t("accounts.validation.balanceRequired"),
+          })
         } else if (!decimalAmountPattern.test(values.openingBalance)) {
           ctx.addIssue({ code: "custom", path: ["openingBalance"], message })
         }
       }
       const requirePercentage = () => {
         if (!values.ownershipPercentage) {
-          ctx.addIssue({ code: "custom", path: ["ownershipPercentage"], message: t("accounts.validation.ownershipPercentageRequired") })
+          ctx.addIssue({
+            code: "custom",
+            path: ["ownershipPercentage"],
+            message: t("accounts.validation.ownershipPercentageRequired"),
+          })
           return
         }
-        if (!percentagePattern.test(values.ownershipPercentage) || Number(values.ownershipPercentage) > 100) {
-          ctx.addIssue({ code: "custom", path: ["ownershipPercentage"], message: t("accounts.validation.ownershipPercentageInvalid") })
+        if (
+          !percentagePattern.test(values.ownershipPercentage) ||
+          Number(values.ownershipPercentage) > 100
+        ) {
+          ctx.addIssue({
+            code: "custom",
+            path: ["ownershipPercentage"],
+            message: t("accounts.validation.ownershipPercentageInvalid"),
+          })
         }
+      }
+
+      if (values.accountTypeCode !== "gold" && !values.name) {
+        ctx.addIssue({
+          code: "custom",
+          path: ["name"],
+          message: t("accounts.validation.nameRequired"),
+        })
       }
 
       switch (values.accountTypeCode) {
@@ -70,38 +88,32 @@ export function createAccountSchema(
         case "bank": {
           requireBalance(t("accounts.validation.balanceInvalid"))
           if (!values.bankSubtype) {
-            ctx.addIssue({ code: "custom", path: ["bankSubtype"], message: t("accounts.validation.bankSubtypeRequired") })
+            ctx.addIssue({
+              code: "custom",
+              path: ["bankSubtype"],
+              message: t("accounts.validation.bankSubtypeRequired"),
+            })
           }
           break
         }
         case "brokerage": {
           requireBalance(t("accounts.validation.balanceInvalid"))
           if (!values.investmentType) {
-            ctx.addIssue({ code: "custom", path: ["investmentType"], message: t("accounts.validation.investmentTypeRequired") })
+            ctx.addIssue({
+              code: "custom",
+              path: ["investmentType"],
+              message: t("accounts.validation.investmentTypeRequired"),
+            })
           }
           break
         }
         case "gold": {
-          if (!values.balanceGrams) {
-            ctx.addIssue({ code: "custom", path: ["balanceGrams"], message: t("accounts.validation.balanceGramsRequired") })
-          } else if (!gramsPattern.test(values.balanceGrams)) {
-            ctx.addIssue({ code: "custom", path: ["balanceGrams"], message: t("accounts.validation.balanceGramsInvalid") })
-          }
           if (!values.metalType) {
-            ctx.addIssue({ code: "custom", path: ["metalType"], message: t("accounts.validation.metalTypeRequired") })
-          }
-          if (!values.purity) {
-            ctx.addIssue({ code: "custom", path: ["purity"], message: t("accounts.validation.purityRequired") })
-          } else if (values.metalType && !getPurityOptions(values.metalType).some((option) => option.value === values.purity)) {
-            ctx.addIssue({ code: "custom", path: ["purity"], message: t("accounts.validation.purityRequired") })
-          }
-          if (!values.purchaseDate) {
-            ctx.addIssue({ code: "custom", path: ["purchaseDate"], message: t("accounts.validation.purchaseDateRequired") })
-          }
-          if (!values.costPerUnit) {
-            ctx.addIssue({ code: "custom", path: ["costPerUnit"], message: t("accounts.validation.costPerUnitRequired") })
-          } else if (!decimalAmountPattern.test(values.costPerUnit)) {
-            ctx.addIssue({ code: "custom", path: ["costPerUnit"], message: t("accounts.validation.costPerUnitInvalid") })
+            ctx.addIssue({
+              code: "custom",
+              path: ["metalType"],
+              message: t("accounts.validation.metalTypeRequired"),
+            })
           }
           break
         }
@@ -109,7 +121,11 @@ export function createAccountSchema(
           requireBalance(t("accounts.validation.balanceInvalid"))
           requirePercentage()
           if (!values.propertyType) {
-            ctx.addIssue({ code: "custom", path: ["propertyType"], message: t("accounts.validation.propertyTypeRequired") })
+            ctx.addIssue({
+              code: "custom",
+              path: ["propertyType"],
+              message: t("accounts.validation.propertyTypeRequired"),
+            })
           }
           break
         }
@@ -117,10 +133,18 @@ export function createAccountSchema(
           requireBalance(t("accounts.validation.balanceInvalid"))
           requirePercentage()
           if (!values.businessType) {
-            ctx.addIssue({ code: "custom", path: ["businessType"], message: t("accounts.validation.businessTypeRequired") })
+            ctx.addIssue({
+              code: "custom",
+              path: ["businessType"],
+              message: t("accounts.validation.businessTypeRequired"),
+            })
           }
           if (!values.industry) {
-            ctx.addIssue({ code: "custom", path: ["industry"], message: t("accounts.validation.industryRequired") })
+            ctx.addIssue({
+              code: "custom",
+              path: ["industry"],
+              message: t("accounts.validation.industryRequired"),
+            })
           }
           break
         }

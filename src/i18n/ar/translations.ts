@@ -38,8 +38,7 @@ export const ar: Record<TranslationKey, string> = {
   "theme.colorful": "ملوّن",
   "pages.dashboard.eyebrow": "نظرة مالية عامة",
   "pages.dashboard.title": "ثروتك في لمحة",
-  "pages.dashboard.description":
-    "اطّلع على حساباتك وأرصدتك في لمحة واحدة.",
+  "pages.dashboard.description": "اطّلع على حساباتك وأرصدتك في لمحة واحدة.",
   "dashboard.accountsOverview.title": "نظرة عامة على الحسابات",
   "dashboard.accountsOverview.description":
     "الأرصدة النشطة مجمّعة حسب نوع الحساب",
@@ -47,19 +46,19 @@ export const ar: Record<TranslationKey, string> = {
     "أضف حسابًا لعرض الأرصدة مجمّعة حسب النوع.",
   "dashboard.accountsOverview.accountCount": "{{count}} حسابات",
   "dashboard.accountsOverview.metalUnits": "{{units}} جم",
-  "dashboard.accountsOverview.costPerUnit": "تم الشراء بسعر {{price}} {{currency}}/جم",
-  "dashboard.accountsOverview.currentPricePerUnit": "القيمة الحالية {{price}} {{currency}}/جم",
+  "dashboard.accountsOverview.costPerUnit":
+    "تم الشراء بسعر {{price}} {{currency}}/جم",
+  "dashboard.accountsOverview.currentPricePerUnit":
+    "القيمة الحالية {{price}} {{currency}}/جم",
   "dashboard.accountsOverview.currentPriceUnavailable": "السعر الحالي غير متاح",
   "dashboard.netWorth.title": "صافي الثروة",
   "dashboard.netWorth.accountCount": "عبر {{count}} حسابات",
-  "dashboard.netWorth.empty":
-    "أضف حساب نقد أو بنك أو عقار لعرض صافي ثروتك.",
+  "dashboard.netWorth.empty": "أضف حساب نقد أو بنك أو عقار لعرض صافي ثروتك.",
   "dashboard.netWorth.noBaseCurrency":
     "اختر عملة أساسية أثناء التهيئة لعرض صافي ثروتك هنا.",
   "dashboard.netWorth.completeOnboarding": "أكمل التهيئة",
   "dashboard.netWorth.unavailable": "صافي الثروة غير متاح مؤقتًا",
-  "dashboard.netWorth.skippedTypes":
-    "أرصدة {{types}} غير مضمّنة بعد.",
+  "dashboard.netWorth.skippedTypes": "أرصدة {{types}} غير مضمّنة بعد.",
   "dashboard.netWorth.unavailableRates":
     "أسعار الصرف غير متاحة لـ {{pairs}} — يُعرض إجمالي جزئي.",
   "pages.portfolio.title": "المحفظة",
@@ -80,8 +79,7 @@ export const ar: Record<TranslationKey, string> = {
   "portfolio.value.openHoldings": "الحيازات المفتوحة",
   "portfolio.value.coverage": "تغطية التقييم",
   "portfolio.value.coverageCount": "تم تقييم {{valued}} من {{total}} حيازة",
-  "portfolio.value.partial":
-    "هذا تقييم جزئي. تظهر البيانات الناقصة أدناه.",
+  "portfolio.value.partial": "هذا تقييم جزئي. تظهر البيانات الناقصة أدناه.",
   "fx.cachedRate": "يتم استخدام أحدث سعر صرف محفوظ.",
   "fx.temporaryUnavailable": "سعر الصرف التلقائي غير متاح مؤقتًا.",
   "fx.retry": "إعادة المحاولة",
@@ -90,10 +88,8 @@ export const ar: Record<TranslationKey, string> = {
   "portfolio.empty.description":
     "أضف استثمارك الأول لتتبع قيمة المحفظة وصحتها وأولوياتها.",
   "portfolio.health.eyebrow": "صحة المحفظة",
-  "portfolio.health.description":
-    "تقييم شفاف لبنية المحفظة وجودة بياناتها.",
-  "portfolio.health.unavailable":
-    "تتوفر صحة المحفظة بعد إضافة استثمارك الأول.",
+  "portfolio.health.description": "تقييم شفاف لبنية المحفظة وجودة بياناتها.",
+  "portfolio.health.unavailable": "تتوفر صحة المحفظة بعد إضافة استثمارك الأول.",
   "portfolio.health.status.strong": "قوية",
   "portfolio.health.status.healthy": "صحية",
   "portfolio.health.status.needs_attention": "تحتاج إلى اهتمام",
@@ -115,11 +111,9 @@ export const ar: Record<TranslationKey, string> = {
   "portfolio.actions.eyebrow": "الخطوات التالية",
   "portfolio.actions.title": "الإجراءات الموصى بها",
   "portfolio.actions.begin": "ابدأ",
-  "portfolio.actions.empty":
-    "لا توجد إجراءات فورية موصى بها للمحفظة.",
+  "portfolio.actions.empty": "لا توجد إجراءات فورية موصى بها للمحفظة.",
   "portfolio.error.title": "المحفظة غير متاحة",
-  "portfolio.error.description":
-    "تعذر تحميل الملخص التنفيذي لمحفظتك.",
+  "portfolio.error.description": "تعذر تحميل الملخص التنفيذي لمحفظتك.",
   "portfolio.error.update":
     "تعذر تحميل آخر تحديث للمحفظة. ما زالت القيم السابقة ظاهرة.",
   "portfolio.error.retry": "حاول مرة أخرى",
@@ -150,8 +144,7 @@ export const ar: Record<TranslationKey, string> = {
   "portfolio.diversification.dimension.geography": "المنطقة الجغرافية",
   "portfolio.diversification.dimension.currency": "العملة",
   "portfolio.diversification.dimension.account": "الحساب أو أمين الحفظ",
-  "portfolio.diversification.filtered":
-    "التركيز على فئة الأصل: {{assetClass}}",
+  "portfolio.diversification.filtered": "التركيز على فئة الأصل: {{assetClass}}",
   "portfolio.diversification.unavailableTitle": "هذا البُعد غير متاح",
   "portfolio.diversification.unavailable.asset_class":
     "بيانات فئات الأصول غير متاحة للنطاق الحالي.",
@@ -197,8 +190,7 @@ export const ar: Record<TranslationKey, string> = {
   "portfolio.risk.severity.unavailable": "غير متاح",
   "portfolio.risk.unavailable": "غير متاح",
   "portfolio.risk.register": "سجل المخاطر",
-  "portfolio.risk.provisional":
-    "هذه النتيجة مؤقتة لأن بعض الحيازات غير مقيمة.",
+  "portfolio.risk.provisional": "هذه النتيجة مؤقتة لأن بعض الحيازات غير مقيمة.",
   "portfolio.risk.threshold": "حد المراجعة: {{threshold}}",
   "portfolio.risk.noEvidence":
     "لا يوفر النموذج الحالي أدلة داعمة موثوقة لهذا المقياس.",
@@ -207,14 +199,18 @@ export const ar: Record<TranslationKey, string> = {
   "pages.goals.description": "ستظهر أهدافك المالية هنا.",
   "accounts.page.eyebrow": "الحسابات المالية",
   "accounts.page.title": "الحسابات",
-  "accounts.page.description":
-    "أدِر الحسابات التي تحفظ ثروتك وتنظمها.",
+  "accounts.page.description": "أدِر الحسابات التي تحفظ ثروتك وتنظمها.",
   "accounts.actions.add": "إضافة حساب",
   "accounts.actions.create": "إنشاء حساب",
   "accounts.actions.edit": "تعديل",
   "accounts.actions.archive": "أرشفة",
   "accounts.actions.delete": "حذف",
   "accounts.actions.tryAgain": "إعادة المحاولة",
+  "accounts.metalPurchase.title": "إضافة عملية شراء {{metal}}",
+  "accounts.metalPurchase.add": "إضافة عملية شراء",
+  "accounts.metalPurchase.addFor": "إضافة عملية شراء إلى {{name}}",
+  "accounts.metalPurchase.paidFrom": "تم الدفع من",
+  "accounts.metalPurchase.fundingAccountRequired": "اختر حسابًا",
   "accounts.filters.search": "البحث في الحسابات",
   "accounts.filters.searchPlaceholder": "ابحث باسم الحساب",
   "accounts.filters.type": "التصفية حسب نوع الحساب",
@@ -242,8 +238,7 @@ export const ar: Record<TranslationKey, string> = {
   "accounts.error.actionTitle": "تعذر تنفيذ الإجراء على الحساب",
   "accounts.error.loadTitle": "تعذر تحميل حساباتك",
   "accounts.error.unexpected": "حدث خطأ غير متوقع",
-  "accounts.error.mutationInProgress":
-    "يجري حاليًا تنفيذ تغيير آخر على الحساب",
+  "accounts.error.mutationInProgress": "يجري حاليًا تنفيذ تغيير آخر على الحساب",
   "accounts.form.name": "الاسم",
   "accounts.form.accountType": "نوع الحساب",
   "accounts.form.currency": "العملة",
@@ -263,8 +258,7 @@ export const ar: Record<TranslationKey, string> = {
   "accounts.form.chooseTypeDescription":
     "اختر تصنيف الحساب الذي يصف هذا الحساب بدقة.",
   "accounts.form.editTitle": "تعديل الحساب",
-  "accounts.form.description":
-    "حافظ على دقة بيانات الحساب لأغراض التقارير.",
+  "accounts.form.description": "حافظ على دقة بيانات الحساب لأغراض التقارير.",
   "accounts.form.close": "إغلاق النافذة",
   "accounts.form.saving": "جارٍ الحفظ…",
   "accounts.form.saveChanges": "حفظ التغييرات",
@@ -304,10 +298,8 @@ export const ar: Record<TranslationKey, string> = {
   "accounts.validation.balanceGramsInvalid":
     "أدخل قيمة غير سالبة وبحد أقصى ثلاث منازل عشرية",
   "accounts.validation.propertyTypeRequired": "اختر نوع العقار",
-  "accounts.validation.ownershipPercentageRequired":
-    "نسبة الملكية مطلوبة",
-  "accounts.validation.ownershipPercentageInvalid":
-    "أدخل قيمة بين 0 و100",
+  "accounts.validation.ownershipPercentageRequired": "نسبة الملكية مطلوبة",
+  "accounts.validation.ownershipPercentageInvalid": "أدخل قيمة بين 0 و100",
   "accounts.validation.businessTypeRequired": "نوع النشاط التجاري مطلوب",
   "accounts.validation.industryRequired": "القطاع مطلوب",
   "accounts.validation.metalTypeRequired": "اختر ذهب أو فضة",
@@ -347,8 +339,7 @@ export const ar: Record<TranslationKey, string> = {
   "currency.GBP": "GBP — الجنيه الإسترليني",
   "assets.page.eyebrow": "الأصول الاستثمارية",
   "assets.page.title": "الأصول",
-  "assets.page.description":
-    "تصفّح الأصول العامة وأدِر أصولك المخصصة.",
+  "assets.page.description": "تصفّح الأصول العامة وأدِر أصولك المخصصة.",
   "assets.actions.create": "إنشاء أصل",
   "assets.actions.edit": "تعديل",
   "assets.actions.archive": "أرشفة",
@@ -366,8 +357,7 @@ export const ar: Record<TranslationKey, string> = {
   "assets.card.readOnly": "أصل عام — للقراءة فقط",
   "assets.card.deleteLabel": "حذف {{name}}",
   "assets.empty.title": "لا توجد أصول",
-  "assets.empty.description":
-    "أنشئ أصلًا مخصصًا لبدء تتبع أحد استثماراتك.",
+  "assets.empty.description": "أنشئ أصلًا مخصصًا لبدء تتبع أحد استثماراتك.",
   "assets.error.actionTitle": "تعذر تنفيذ الإجراء على الأصل",
   "assets.error.loadTitle": "تعذر تحميل الأصول",
   "assets.error.unexpected": "حدث خطأ غير متوقع",
@@ -387,10 +377,8 @@ export const ar: Record<TranslationKey, string> = {
   "assets.form.saving": "جارٍ الحفظ…",
   "assets.form.saveChanges": "حفظ التغييرات",
   "assets.validation.nameRequired": "اسم الأصل مطلوب",
-  "assets.validation.symbolTooLong":
-    "يجب ألا يتجاوز الرمز 30 حرفًا",
-  "assets.validation.exchangeTooLong":
-    "يجب ألا يتجاوز اسم السوق 100 حرف",
+  "assets.validation.symbolTooLong": "يجب ألا يتجاوز الرمز 30 حرفًا",
+  "assets.validation.exchangeTooLong": "يجب ألا يتجاوز اسم السوق 100 حرف",
   "assets.archive.title": "أرشفة {{name}}؟",
   "assets.archive.description":
     "سيبقى الأصل متاحًا للسجلات المالية، لكنه سيُصنّف كأصل غير نشط.",
@@ -443,17 +431,22 @@ export const ar: Record<TranslationKey, string> = {
   "investment.success": "تمت إضافة {{asset}} إلى {{account}}.",
   "investment.edit.action": "تعديل الاستثمار",
   "investment.edit.title": "تعديل الاستثمار",
-  "investment.edit.description": "صحّح التفاصيل المالية المدعومة مع الحفاظ على دفتر الأستاذ الأصلي غير القابل للتغيير.",
-  "investment.edit.correctionNotice": "ينشئ الحفظ قيد عكس مرتبطًا واستثمارًا بديلًا مصححًا. لا تتم إعادة كتابة الاستثمار المُرحّل الأصلي.",
-  "investment.edit.accountLocked": "الحساب مقفل للحفاظ على الحيازة وملكية قيود دفتر الأستاذ.",
-  "investment.edit.assetLocked": "الأصل مقفل للحفاظ على هوية الأصل وسجل الحيازة.",
+  "investment.edit.description":
+    "صحّح التفاصيل المالية المدعومة مع الحفاظ على دفتر الأستاذ الأصلي غير القابل للتغيير.",
+  "investment.edit.correctionNotice":
+    "ينشئ الحفظ قيد عكس مرتبطًا واستثمارًا بديلًا مصححًا. لا تتم إعادة كتابة الاستثمار المُرحّل الأصلي.",
+  "investment.edit.accountLocked":
+    "الحساب مقفل للحفاظ على الحيازة وملكية قيود دفتر الأستاذ.",
+  "investment.edit.assetLocked":
+    "الأصل مقفل للحفاظ على هوية الأصل وسجل الحيازة.",
   "investment.edit.save": "حفظ التصحيح",
   "investment.edit.saving": "جارٍ حفظ التصحيح…",
   "investment.common.choose": "اختر…",
   "investment.account.section": "الحساب",
   "investment.funding.section": "مصدر التمويل",
   "investment.funding.external": "حيازة قائمة / أموال خارجية",
-  "investment.funding.externalDescription": "سجّل الاستثمار دون تخفيض أي حساب نقدي.",
+  "investment.funding.externalDescription":
+    "سجّل الاستثمار دون تخفيض أي حساب نقدي.",
   "investment.funding.cash": "الدفع من حساب نقدي قائم",
   "investment.funding.cashDescription": "يُخفّض فقط الحساب النقدي الذي تختاره.",
   "investment.funding.account": "حساب التمويل النقدي",
@@ -467,9 +460,9 @@ export const ar: Record<TranslationKey, string> = {
   "investment.asset.new": "إنشاء أصل مخصص",
   "investment.asset.select": "ابحث عن أصل أو اختره",
   "investment.asset.searchLabel": "البحث في سجل أصولك",
-  "investment.asset.searchPlaceholder": "ابحث في الأصول القائمة بالاسم أو الرمز",
-  "investment.asset.noResults":
-    "هذا الأصل غير موجود في سجل أصولك بعد.",
+  "investment.asset.searchPlaceholder":
+    "ابحث في الأصول القائمة بالاسم أو الرمز",
+  "investment.asset.noResults": "هذا الأصل غير موجود في سجل أصولك بعد.",
   "investment.asset.createCustom": "إنشاء أصل مخصص",
   "investment.asset.authoritativeSelection":
     "تم اختيار {{symbol}} · {{exchange}} · {{currency}}",
@@ -519,24 +512,19 @@ export const ar: Record<TranslationKey, string> = {
   "investment.identifier.custom_real_estate": "عقار مخصص",
   "investment.identifier.custom_business": "نشاط تجاري مخصص",
   "investment.identifier.provider": "معرّف مزوّد",
-  "investment.validation.positiveQuantity":
-    "أدخل كمية أكبر من صفر",
-  "investment.validation.validAmount":
-    "أدخل مبلغًا صحيحًا غير سالب",
+  "investment.validation.positiveQuantity": "أدخل كمية أكبر من صفر",
+  "investment.validation.validAmount": "أدخل مبلغًا صحيحًا غير سالب",
   "investment.validation.dateRequired": "تاريخ المعاملة مطلوب",
   "investment.validation.accountRequired": "اختر حسابًا نشطًا",
   "investment.validation.fundingAccountRequired": "اختر حساب تمويل نقدي",
-  "investment.validation.accountNameRequired":
-    "اسم الحساب الجديد مطلوب",
+  "investment.validation.accountNameRequired": "اسم الحساب الجديد مطلوب",
   "investment.validation.assetRequired": "اختر أصلًا",
-  "investment.validation.assetIdentityRequired":
-    "بيانات الأصل مطلوبة",
+  "investment.validation.assetIdentityRequired": "بيانات الأصل مطلوبة",
   "investment.validation.assetNameRequired": "اسم الأصل مطلوب",
   "investment.validation.marketIdentityRequired":
     "الرمز والسوق أو الشبكة مطلوبان",
   "investment.validation.marketSymbolRequired": "الرمز مطلوب",
-  "investment.error.loadOptions":
-    "تعذر تحميل الحسابات والأصول",
+  "investment.error.loadOptions": "تعذر تحميل الحسابات والأصول",
   "holdings.page.eyebrow": "الاستثمارات الحالية",
   "holdings.page.title": "الحيازات",
   "holdings.page.description":
@@ -549,8 +537,7 @@ export const ar: Record<TranslationKey, string> = {
   "holdings.summary.portfolioCostBasis": "تكلفة المحفظة",
   "holdings.summary.openPositions": "{{count}} حيازات مفتوحة",
   "holdings.empty.title": "لا توجد حيازات حالية",
-  "holdings.empty.description":
-    "أضف استثمارك الأول لبدء بناء محفظتك.",
+  "holdings.empty.description": "أضف استثمارك الأول لبدء بناء محفظتك.",
   "holdings.error.title": "تعذر تحميل حيازاتك",
   "holdings.error.unexpected": "حدث خطأ غير متوقع",
   "holdings.actions.tryAgain": "إعادة المحاولة",
@@ -560,8 +547,7 @@ export const ar: Record<TranslationKey, string> = {
   "holdings.filters.assetType": "التصفية حسب نوع الأصل",
   "holdings.filters.allAccounts": "جميع الحسابات",
   "holdings.filters.allTypes": "جميع أنواع الأصول",
-  "holdings.filters.noResults":
-    "لا توجد حيازات مطابقة لعوامل التصفية.",
+  "holdings.filters.noResults": "لا توجد حيازات مطابقة لعوامل التصفية.",
   "holdings.unit.shares": "أسهم",
   "holdings.unit.troy_ounces": "أونصات تروي",
   "holdings.unit.grams": "غرامات",
@@ -592,10 +578,14 @@ export const ar: Record<TranslationKey, string> = {
   "portfolio.evidence.status.missing_price": "السعر مفقود",
   "portfolio.evidence.status.missing_fx": "سعر الصرف مفقود",
   "portfolio.evidence.status.partial": "جزئية",
-  "portfolio.evidence.inheritedFilter": "تم تركيز هذه التفاصيل وفق تحديد تحليل المحفظة النشط.",
-  "portfolio.evidence.adjustFilters": "عدّل البحث أو عوامل التصفية لعرض المراكز.",
-  "portfolio.evidence.noInheritedMatches": "لا توجد مراكز تدعم التحديد التحليلي النشط.",
-  "portfolio.evidence.openOnly": "المراكز المفتوحة فقط. سجل المراكز المغلقة غير متاح في إسقاط الحيازات الحالي.",
+  "portfolio.evidence.inheritedFilter":
+    "تم تركيز هذه التفاصيل وفق تحديد تحليل المحفظة النشط.",
+  "portfolio.evidence.adjustFilters":
+    "عدّل البحث أو عوامل التصفية لعرض المراكز.",
+  "portfolio.evidence.noInheritedMatches":
+    "لا توجد مراكز تدعم التحديد التحليلي النشط.",
+  "portfolio.evidence.openOnly":
+    "المراكز المفتوحة فقط. سجل المراكز المغلقة غير متاح في إسقاط الحيازات الحالي.",
   "portfolio.custody.eyebrow": "هيكل الملكية",
   "portfolio.custody.title": "تفصيل الحسابات والحفظ",
   "portfolio.custody.empty": "لا توجد حسابات استثمار مساهمة ضمن هذا النطاق.",
@@ -618,17 +608,21 @@ export const ar: Record<TranslationKey, string> = {
   "portfolio.activity.amount": "المبلغ",
   "portfolio.activity.entries": "قيود دفتر الأستاذ",
   "assets.workspace.eyebrow": "سجل الأصول",
-  "assets.workspace.description": "إدارة سجلات الأصول وتمييزها عن الملكية المشتقة من دفتر الأستاذ.",
+  "assets.workspace.description":
+    "إدارة سجلات الأصول وتمييزها عن الملكية المشتقة من دفتر الأستاذ.",
   "assets.workspace.scope": "نطاق مساحة العمل",
   "assets.workspace.allAssets": "جميع الأصول المؤهلة",
   "assets.workspace.add": "إضافة أصل أو استثمار",
   "assets.intent.title": "ماذا تريد أن تضيف؟",
-  "assets.intent.description": "يصف سجل الأصل بياناته، بينما ينشئ الاستثمار ملكية موثقة في دفتر الأستاذ.",
+  "assets.intent.description":
+    "يصف سجل الأصل بياناته، بينما ينشئ الاستثمار ملكية موثقة في دفتر الأستاذ.",
   "assets.intent.search": "ابحث أولاً في سجلات الأصول الحالية",
   "assets.intent.record": "إنشاء سجل أصل",
-  "assets.intent.recordDescription": "أضف بيانات وصفية إلى دليل الأصول دون إنشاء ملكية.",
+  "assets.intent.recordDescription":
+    "أضف بيانات وصفية إلى دليل الأصول دون إنشاء ملكية.",
   "assets.intent.investment": "تسجيل استثمار",
-  "assets.intent.investmentDescription": "استخدم مسار الاستثمار الموثوق لإنشاء أدلة دفتر الأستاذ والحيازة.",
+  "assets.intent.investmentDescription":
+    "استخدم مسار الاستثمار الموثوق لإنشاء أدلة دفتر الأستاذ والحيازة.",
   "assets.workspace.records": "{{count}} سجل أصول",
   "assets.workspace.owned": "{{count}} مملوك",
   "assets.workspace.issues": "{{count}} مشكلة بيانات",
@@ -667,35 +661,47 @@ export const ar: Record<TranslationKey, string> = {
   "assets.workspace.data.missing_valuation_date": "تاريخ تقييم مفقود",
   "assets.workspace.actionsFor": "إجراءات {{name}}",
   "assets.workspace.accounts": "{{count}} حسابات",
-  "assets.workspace.emptyFiltered": "لا توجد سجلات أصول تطابق عوامل تصفية مساحة العمل.",
-  "assets.workspace.refreshFailed": "فشل آخر تحديث للأصول. لا تزال البيانات السابقة ظاهرة.",
+  "assets.workspace.emptyFiltered":
+    "لا توجد سجلات أصول تطابق عوامل تصفية مساحة العمل.",
+  "assets.workspace.refreshFailed":
+    "فشل آخر تحديث للأصول. لا تزال البيانات السابقة ظاهرة.",
   "assets.health.eyebrow": "الجاهزية التشغيلية",
   "assets.health.title": "صحة الأصول",
   "assets.health.description": "تقييم حتمي لتغطية السجل والجاهزية للتقييم.",
   "assets.health.overall": "الصحة العامة",
   "assets.health.unavailable": "لا تتوفر الصحة حتى توجد سجلات أصول ذات صلة.",
-  "assets.health.provisional": "مؤقتة — تظل العوامل غير المتاحة والمشكلات المفتوحة واضحة.",
+  "assets.health.provisional":
+    "مؤقتة — تظل العوامل غير المتاحة والمشكلات المفتوحة واضحة.",
   "assets.health.complete": "جميع عوامل الصحة المدعومة مكتملة.",
   "assets.health.coverage": "{{numerator}} من {{denominator}} مكتمل",
-  "assets.health.factorUnavailable": "لا توجد سجلات منطبقة ضمن نطاق فئة الأصول الحالي.",
+  "assets.health.factorUnavailable":
+    "لا توجد سجلات منطبقة ضمن نطاق فئة الأصول الحالي.",
   "assets.health.filterLabel": "الصحة",
   "assets.health.factor.price_coverage": "تغطية الأسعار",
   "assets.health.factor.fx_coverage": "تغطية الصرف",
   "assets.health.factor.classification_completeness": "اكتمال التصنيف",
   "assets.health.factor.valuation_readiness": "الجاهزية للتقييم",
   "assets.health.factor.archived_references": "مراجع الأصول المؤرشفة",
-  "assets.health.explanation.price_coverage": "يقيس الأصول المملوكة المدعومة سعرياً والتي لها سعر سوق حالي موثوق.",
-  "assets.health.explanation.fx_coverage": "يقيس تحويلات العملات الحالية المطلوبة التي تحل عبر خدمة الصرف الحالية.",
-  "assets.health.explanation.classification_completeness": "يقيس سجلات الأصول التي تحتوي على تصنيف أصل مخزن وصالح.",
-  "assets.health.explanation.valuation_readiness": "يقيس الأصول المملوكة ذات أدلة السعر والتاريخ والصرف المكتملة والمدعومة.",
-  "assets.health.explanation.archived_references": "يقيس السجلات المؤرشفة التي لا ترتبط بحيازات أو قيود دفتر أستاذ مرحلة.",
+  "assets.health.explanation.price_coverage":
+    "يقيس الأصول المملوكة المدعومة سعرياً والتي لها سعر سوق حالي موثوق.",
+  "assets.health.explanation.fx_coverage":
+    "يقيس تحويلات العملات الحالية المطلوبة التي تحل عبر خدمة الصرف الحالية.",
+  "assets.health.explanation.classification_completeness":
+    "يقيس سجلات الأصول التي تحتوي على تصنيف أصل مخزن وصالح.",
+  "assets.health.explanation.valuation_readiness":
+    "يقيس الأصول المملوكة ذات أدلة السعر والتاريخ والصرف المكتملة والمدعومة.",
+  "assets.health.explanation.archived_references":
+    "يقيس السجلات المؤرشفة التي لا ترتبط بحيازات أو قيود دفتر أستاذ مرحلة.",
   "assets.quality.eyebrow": "المتطلبات الموثوقة",
   "assets.quality.title": "جودة البيانات",
-  "assets.quality.description": "راجع المدخلات المفقودة أو غير المتاحة التي تؤثر في تقييم الأصول.",
+  "assets.quality.description":
+    "راجع المدخلات المفقودة أو غير المتاحة التي تؤثر في تقييم الأصول.",
   "assets.quality.emptyTitle": "لا توجد مشكلات جودة بيانات مدعومة",
-  "assets.quality.emptyDescription": "لا توجد ضمن نطاق فئة الأصول الحالي مشكلات موثوقة لحلها.",
+  "assets.quality.emptyDescription":
+    "لا توجد ضمن نطاق فئة الأصول الحالي مشكلات موثوقة لحلها.",
   "assets.quality.selectedIssue": "المشكلة المحددة",
-  "assets.quality.selectPrompt": "حدد مشكلة لمراجعة تفسيرها وسجلات الأصول المتأثرة.",
+  "assets.quality.selectPrompt":
+    "حدد مشكلة لمراجعة تفسيرها وسجلات الأصول المتأثرة.",
   "assets.quality.filterLabel": "المشكلة",
   "assets.quality.issue.missing_price": "سعر مفقود",
   "assets.quality.issue.missing_fx": "سعر صرف مفقود",
@@ -704,19 +710,28 @@ export const ar: Record<TranslationKey, string> = {
   "assets.quality.issue.unsupported_valuation": "تقييم غير مدعوم",
   "assets.quality.issue.archived_reference": "مرجع مؤرشف",
   "assets.quality.issue.stale_market_price": "سعر سوق قديم",
-  "assets.quality.explanation.missing_price": "لا يوجد سجل سعر سوق حالي لأصل مملوك ومدعوم سعرياً، ولا تستخدم قيمة بديلة.",
-  "assets.quality.explanation.missing_fx": "لا يمكن حل تحويل العملة المطلوب عبر سعر صرف مباشر أو عكسي مملوك للمستخدم.",
-  "assets.quality.explanation.missing_classification": "لا يحتوي سجل الأصل المخزن على التصنيف المطلوب في نموذج السجل الحالي.",
-  "assets.quality.explanation.missing_valuation_date": "يوجد سعر سوق دون الطابع الزمني المطلوب لتحديد وقت سريان التقييم.",
-  "assets.quality.explanation.unsupported_valuation": "لا تدعم خدمة بيانات السوق الحالية تقييم السعر الحالي لفئة هذا الأصل.",
-  "assets.quality.explanation.archived_reference": "يظل الأصل المؤرشف مرتبطاً بحيازة أو قيد دفتر أستاذ مرحل ويُحفظ للتاريخ المالي.",
-  "assets.quality.explanation.stale_market_price": "أحدث سعر سوق صالح أقدم من حد حداثة البيانات الحالي.",
+  "assets.quality.explanation.missing_price":
+    "لا يوجد سجل سعر سوق حالي لأصل مملوك ومدعوم سعرياً، ولا تستخدم قيمة بديلة.",
+  "assets.quality.explanation.missing_fx":
+    "لا يمكن حل تحويل العملة المطلوب عبر سعر صرف مباشر أو عكسي مملوك للمستخدم.",
+  "assets.quality.explanation.missing_classification":
+    "لا يحتوي سجل الأصل المخزن على التصنيف المطلوب في نموذج السجل الحالي.",
+  "assets.quality.explanation.missing_valuation_date":
+    "يوجد سعر سوق دون الطابع الزمني المطلوب لتحديد وقت سريان التقييم.",
+  "assets.quality.explanation.unsupported_valuation":
+    "لا تدعم خدمة بيانات السوق الحالية تقييم السعر الحالي لفئة هذا الأصل.",
+  "assets.quality.explanation.archived_reference":
+    "يظل الأصل المؤرشف مرتبطاً بحيازة أو قيد دفتر أستاذ مرحل ويُحفظ للتاريخ المالي.",
+  "assets.quality.explanation.stale_market_price":
+    "أحدث سعر سوق صالح أقدم من حد حداثة البيانات الحالي.",
   "assets.quality.resolvePrice": "إدارة سعر السوق",
   "assets.quality.resolveFx": "إدارة سعر الصرف",
-  "assets.quality.noResolution": "لا يتوفر مسار حل مدعوم لهذه المشكلة ضمن نموذج البيانات الحالي.",
+  "assets.quality.noResolution":
+    "لا يتوفر مسار حل مدعوم لهذه المشكلة ضمن نموذج البيانات الحالي.",
   "assets.relationships.eyebrow": "أدلة الملكية",
   "assets.relationships.title": "الحسابات والمراكز",
-  "assets.relationships.description": "حيازات صريحة تربط سجلات الأصول بالمراكز المملوكة والحسابات المالية.",
+  "assets.relationships.description":
+    "حيازات صريحة تربط سجلات الأصول بالمراكز المملوكة والحسابات المالية.",
   "assets.relationships.filterAccount": "تصفية العلاقات حسب الحساب",
   "assets.relationships.accountFilterActive": "تمت تصفية حساب المركز",
   "assets.relationships.account": "الحساب",
@@ -727,16 +742,20 @@ export const ar: Record<TranslationKey, string> = {
   "assets.relationships.currentPrice": "السعر الحالي",
   "assets.relationships.openHolding": "فتح دليل المركز",
   "assets.relationships.positionEvidence": "دليل المركز",
-  "assets.relationships.empty": "لا توجد علاقات حيازة صريحة في مساحة العمل الحالية.",
-  "assets.relationships.noSelected": "لا يملك سجل الأصل هذا مركزاً صريحاً ضمن النطاق الحالي.",
+  "assets.relationships.empty":
+    "لا توجد علاقات حيازة صريحة في مساحة العمل الحالية.",
+  "assets.relationships.noSelected":
+    "لا يملك سجل الأصل هذا مركزاً صريحاً ضمن النطاق الحالي.",
   "assets.activity.eyebrow": "أدلة دفتر الأستاذ",
   "assets.activity.title": "نشاط الأصول الأخير",
-  "assets.activity.description": "أحدث المعاملات المرحلة التي تشير صراحةً إلى أصول في مساحة العمل.",
+  "assets.activity.description":
+    "أحدث المعاملات المرحلة التي تشير صراحةً إلى أصول في مساحة العمل.",
   "assets.activity.filterType": "تصفية النشاط حسب النوع",
   "assets.activity.filterAccount": "تصفية النشاط حسب الحساب",
   "assets.activity.accountFilterActive": "تمت تصفية حساب النشاط",
   "assets.activity.allTypes": "كل أنواع النشاط",
-  "assets.activity.empty": "لا يوجد نشاط مرحّل مرتبط بالأصول يطابق مساحة العمل الحالية.",
+  "assets.activity.empty":
+    "لا يوجد نشاط مرحّل مرتبط بالأصول يطابق مساحة العمل الحالية.",
   "assets.activity.unavailable": "النشاط الأخير غير متاح",
   "assets.detail.viewPortfolio": "عرض في المحفظة",
 }

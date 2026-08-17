@@ -235,6 +235,7 @@ type TransactionEntryRow = {
   account_fx_source: string | null
   unit_price: Decimal | null
   memo: string | null
+  purity: string | null
   created_at: string
   updated_at: string
 }
@@ -308,7 +309,8 @@ export type Database = {
           currency_code: string
           as_of: string
           fetched_at?: string
-          price_type?: "realtime" | "delayed" | "previous_close" | "stale" | "manual"
+          price_type?:
+            "realtime" | "delayed" | "previous_close" | "stale" | "manual"
           created_at?: string
           updated_at?: string
         }
@@ -337,7 +339,8 @@ export type Database = {
           bank_subtype?: "debit" | "credit" | null
           investment_type?: "stock_etf" | "crypto" | "other" | null
           balance_grams?: Decimal | null
-          property_type?: "apartment" | "villa" | "land" | "office" | "other" | null
+          property_type?:
+            "apartment" | "villa" | "land" | "office" | "other" | null
           ownership_percentage?: Decimal | null
           business_type?: string | null
           industry?: string | null
@@ -485,6 +488,7 @@ export type Database = {
           account_fx_source?: string | null
           unit_price?: Decimal | null
           memo?: string | null
+          purity?: string | null
           created_at?: string
           updated_at?: string
         },
@@ -508,6 +512,7 @@ export type Database = {
           account_fx_source?: string | null
           unit_price?: Decimal | null
           memo?: string | null
+          purity?: string | null
           created_at?: string
           updated_at?: string
         }>,
@@ -580,6 +585,19 @@ export type Database = {
           p_fees: Decimal | null
           p_occurred_at: string
           p_notes: string | null
+        }
+        Returns: Json
+      }
+      add_metal_purchase: {
+        Args: {
+          p_account_id: string
+          p_purity: string
+          p_occurred_at: string
+          p_quantity_grams: Decimal
+          p_cost_per_unit: Decimal
+          p_funding_mode: "external" | "cash_account"
+          p_funding_account_id: string | null
+          p_fees: Decimal
         }
         Returns: Json
       }
@@ -689,7 +707,7 @@ export class RepositoryError extends Error {
 
 export function toRepositoryError(
   error: SupabaseErrorLike,
-  operation: string,
+  operation: string
 ): RepositoryError {
   const codeByDatabaseCode: Record<string, RepositoryErrorCode> = {
     "23503": "constraint_violation",
