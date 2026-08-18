@@ -1,14 +1,17 @@
+import type { ReactNode } from "react"
 import {
   ArrowUpDown,
   Archive,
   ArchiveRestore,
   Coins,
+  Eye,
   Pencil,
   Trash2,
 } from "lucide-react"
 
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import {
   getAccountTypeLabel,
   metalTypeOptions,
@@ -21,6 +24,42 @@ import {
 import type { AccountSummary } from "@/lib/supabase/types"
 import type { TranslationKey } from "@/i18n/en/translations"
 import { useTranslation } from "@/i18n/useTranslation"
+
+function ActionButton({
+  ariaLabel,
+  tooltip,
+  onClick,
+  disabled,
+  className,
+  children,
+}: {
+  ariaLabel: string
+  tooltip: string
+  onClick: () => void
+  disabled?: boolean
+  className?: string
+  children: ReactNode
+}) {
+  return (
+    <Tooltip>
+      <TooltipTrigger
+        render={
+          <Button
+            variant="ghost"
+            size="icon"
+            disabled={disabled}
+            aria-label={ariaLabel}
+            onClick={onClick}
+            className={className}
+          />
+        }
+      >
+        {children}
+      </TooltipTrigger>
+      <TooltipContent>{tooltip}</TooltipContent>
+    </Tooltip>
+  )
+}
 
 export type AccountInventorySort =
   "name" | "type" | "currency" | "balance" | "status"
@@ -75,6 +114,7 @@ export function AccountInventory({
   onArchive,
   onDelete,
   onAddMetalPurchase,
+  onViewMetalPurchases,
   canDelete,
 }: {
   items: AccountInventoryItem[]
@@ -85,6 +125,7 @@ export function AccountInventory({
   onArchive: (account: AccountSummary) => void
   onDelete: (account: AccountSummary) => void
   onAddMetalPurchase: (account: AccountSummary) => void
+  onViewMetalPurchases: (account: AccountSummary) => void
   canDelete: (accountId: string) => boolean
 }) {
   const { t, language } = useTranslation()
@@ -160,35 +201,47 @@ export function AccountInventory({
                 </td>
                 <td className="px-4 py-4">
                   <div className="flex justify-end gap-1">
-                    {item.account.account_type_code === "gold" &&
-                    item.account.is_active ? (
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        aria-label={t("accounts.metalPurchase.addFor", {
+                    {item.account.account_type_code === "gold" ? (
+                      <ActionButton
+                        ariaLabel={t("accounts.metalPurchaseHistory.viewFor", {
                           name: item.account.name,
                         })}
+                        tooltip={t("accounts.metalPurchaseHistory.view")}
+                        onClick={() => onViewMetalPurchases(item.account)}
+                      >
+                        <Eye size={15} />
+                      </ActionButton>
+                    ) : null}
+                    {item.account.account_type_code === "gold" &&
+                    item.account.is_active ? (
+                      <ActionButton
+                        ariaLabel={t("accounts.metalPurchase.addFor", {
+                          name: item.account.name,
+                        })}
+                        tooltip={t("accounts.metalPurchase.add")}
                         onClick={() => onAddMetalPurchase(item.account)}
                       >
                         <Coins size={15} />
-                      </Button>
+                      </ActionButton>
                     ) : null}
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      aria-label={t("accounts.table.editLabel", {
+                    <ActionButton
+                      ariaLabel={t("accounts.table.editLabel", {
                         name: item.account.name,
                       })}
+                      tooltip={t("accounts.actions.edit")}
                       onClick={() => onEdit(item.account)}
                     >
                       <Pencil size={15} />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      aria-label={t("accounts.table.archiveLabel", {
+                    </ActionButton>
+                    <ActionButton
+                      ariaLabel={t("accounts.table.archiveLabel", {
                         name: item.account.name,
                       })}
+                      tooltip={t(
+                        item.account.is_active
+                          ? "accounts.actions.archive"
+                          : "accounts.actions.restore"
+                      )}
                       onClick={() => onArchive(item.account)}
                     >
                       {item.account.is_active ? (
@@ -196,19 +249,18 @@ export function AccountInventory({
                       ) : (
                         <ArchiveRestore size={15} />
                       )}
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      disabled={!canDelete(item.account.id)}
-                      aria-label={t("accounts.table.deleteLabel", {
+                    </ActionButton>
+                    <ActionButton
+                      ariaLabel={t("accounts.table.deleteLabel", {
                         name: item.account.name,
                       })}
+                      tooltip={t("accounts.actions.delete")}
+                      disabled={!canDelete(item.account.id)}
                       onClick={() => onDelete(item.account)}
                       className="text-red-600 hover:text-red-700 disabled:text-muted-foreground dark:text-red-400"
                     >
                       <Trash2 size={15} />
-                    </Button>
+                    </ActionButton>
                   </div>
                 </td>
               </tr>
@@ -239,35 +291,47 @@ export function AccountInventory({
                 {balanceCell(item, locale)}
               </strong>
               <div className="flex gap-1">
-                {item.account.account_type_code === "gold" &&
-                item.account.is_active ? (
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    aria-label={t("accounts.metalPurchase.addFor", {
+                {item.account.account_type_code === "gold" ? (
+                  <ActionButton
+                    ariaLabel={t("accounts.metalPurchaseHistory.viewFor", {
                       name: item.account.name,
                     })}
+                    tooltip={t("accounts.metalPurchaseHistory.view")}
+                    onClick={() => onViewMetalPurchases(item.account)}
+                  >
+                    <Eye size={15} />
+                  </ActionButton>
+                ) : null}
+                {item.account.account_type_code === "gold" &&
+                item.account.is_active ? (
+                  <ActionButton
+                    ariaLabel={t("accounts.metalPurchase.addFor", {
+                      name: item.account.name,
+                    })}
+                    tooltip={t("accounts.metalPurchase.add")}
                     onClick={() => onAddMetalPurchase(item.account)}
                   >
                     <Coins size={15} />
-                  </Button>
+                  </ActionButton>
                 ) : null}
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  aria-label={t("accounts.table.editLabel", {
+                <ActionButton
+                  ariaLabel={t("accounts.table.editLabel", {
                     name: item.account.name,
                   })}
+                  tooltip={t("accounts.actions.edit")}
                   onClick={() => onEdit(item.account)}
                 >
                   <Pencil size={15} />
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  aria-label={t("accounts.table.archiveLabel", {
+                </ActionButton>
+                <ActionButton
+                  ariaLabel={t("accounts.table.archiveLabel", {
                     name: item.account.name,
                   })}
+                  tooltip={t(
+                    item.account.is_active
+                      ? "accounts.actions.archive"
+                      : "accounts.actions.restore"
+                  )}
                   onClick={() => onArchive(item.account)}
                 >
                   {item.account.is_active ? (
@@ -275,19 +339,18 @@ export function AccountInventory({
                   ) : (
                     <ArchiveRestore size={15} />
                   )}
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  disabled={!canDelete(item.account.id)}
-                  aria-label={t("accounts.table.deleteLabel", {
+                </ActionButton>
+                <ActionButton
+                  ariaLabel={t("accounts.table.deleteLabel", {
                     name: item.account.name,
                   })}
+                  tooltip={t("accounts.actions.delete")}
+                  disabled={!canDelete(item.account.id)}
                   onClick={() => onDelete(item.account)}
                   className="text-red-600 hover:text-red-700 disabled:text-muted-foreground dark:text-red-400"
                 >
                   <Trash2 size={15} />
-                </Button>
+                </ActionButton>
               </div>
             </div>
           </div>

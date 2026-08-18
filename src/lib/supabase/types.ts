@@ -130,6 +130,20 @@ type FinancialAccountRow = {
   updated_at: string
 }
 
+type MetalPurchaseRow = {
+  id: string
+  user_id: string
+  account_id: string
+  purity: string
+  purchased_at: string
+  quantity_grams: Decimal
+  cost_per_unit: Decimal
+  fees: Decimal
+  funding_mode: "external" | "cash_account"
+  funding_account_id: string | null
+  created_at: string
+}
+
 type AssetTypeRow = {
   code: string
   name: string
@@ -350,6 +364,22 @@ export type Database = {
           cost_per_unit?: Decimal | null
           created_at?: string
           updated_at?: string
+        }
+      >
+      metal_purchases: TableDefinition<
+        MetalPurchaseRow,
+        {
+          id?: string
+          user_id: string
+          account_id: string
+          purity: string
+          purchased_at: string
+          quantity_grams: Decimal
+          cost_per_unit: Decimal
+          fees?: Decimal
+          funding_mode: "external" | "cash_account"
+          funding_account_id?: string | null
+          created_at?: string
         }
       >
       asset_types: TableDefinition<
@@ -641,6 +671,7 @@ export type TableUpdate<Name extends TableName> =
 
 export type AccountSummary = TableRow<"financial_accounts">
 export type AssetSummary = TableRow<"assets">
+export type MetalPurchaseRecord = TableRow<"metal_purchases">
 
 export type TransactionDraft = {
   transactionTypeCode: string

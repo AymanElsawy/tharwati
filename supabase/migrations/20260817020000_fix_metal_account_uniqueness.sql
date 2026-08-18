@@ -1,12 +1,9 @@
-alter table public.financial_accounts
-  add column metal_type text;
-
 update public.financial_accounts
 set metal_type = case
   when lower(btrim(name)) = 'silver' then 'silver'
   else 'gold'
 end
-where account_type_code = 'gold';
+where account_type_code = 'gold' and metal_type is null;
 
 drop index if exists public.financial_accounts_user_name_lower_key;
 

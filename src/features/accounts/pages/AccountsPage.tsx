@@ -1,5 +1,5 @@
 import { AlertTriangle, Plus } from "lucide-react"
-import { useMemo, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 
 import { Button } from "@/components/ui/button"
 import { UnsavedChangesDialog } from "@/components/UnsavedChangesDialog"
@@ -16,6 +16,7 @@ import {
 import { ArchiveAccountDialog } from "@/features/accounts/components/ArchiveAccountDialog"
 import { DeleteAccountDialog } from "@/features/accounts/components/DeleteAccountDialog"
 import { MetalPurchaseDialog } from "@/features/accounts/components/MetalPurchaseDialog"
+import { MetalPurchaseHistoryDialog } from "@/features/accounts/components/MetalPurchaseHistoryDialog"
 import { useAccounts } from "@/features/accounts/hooks/useAccounts"
 import { metalPurchasesRepository } from "@/features/accounts/repositories/metal-purchases.repository"
 import {
@@ -25,7 +26,7 @@ import {
 } from "@/features/accounts/types/account-form"
 import { useUnsavedChanges } from "@/hooks/useUnsavedChanges"
 import { useTranslation } from "@/i18n/useTranslation"
-import type { AccountSummary } from "@/lib/supabase/types"
+import type { AccountSummary, MetalPurchaseRecord } from "@/lib/supabase/types"
 
 function compareValues(left: string, right: string, direction: "asc" | "desc") {
   const result = left.localeCompare(right)
@@ -46,6 +47,14 @@ export function AccountsPage() {
   const [metalPurchaseAccount, setMetalPurchaseAccount] =
     useState<AccountSummary | null>(null)
   const [isSavingMetalPurchase, setIsSavingMetalPurchase] = useState(false)
+  const [purchaseHistoryAccount, setPurchaseHistoryAccount] =
+    useState<AccountSummary | null>(null)
+  const [purchaseHistory, setPurchaseHistory] = useState<
+    MetalPurchaseRecord[]
+  >([])
+  const [isLoadingPurchaseHistory, setIsLoadingPurchaseHistory] =
+    useState(false)
+  const [purchaseHistoryError, setPurchaseHistoryError] = useState(false)
   const [formDirty, setFormDirty] = useState(false)
   const [filters, setFilters] = useState<AccountFilters>({
     search: "",
@@ -56,6 +65,34 @@ export function AccountsPage() {
   const [sort, setSort] = useState<AccountInventorySort>("name")
   const [direction, setDirection] = useState<"asc" | "desc">("asc")
   const unsaved = useUnsavedChanges(formDirty)
+
+  useEffect(() => {
+    if (!purchaseHistoryAccount) {
+      setPurchaseHistory([])
+      setPurchaseHistoryError(false)
+      return
+    }
+
+    let cancelled = false
+    setIsLoadingPurchaseHistory(true)
+    setPurchaseHistoryError(false)
+
+    metalPurchasesRepository
+      .getPurchases(purchaseHistoryAccount.id)
+      .then((records) => {
+        if (!cancelled) setPurchaseHistory(records)
+      })
+      .catch(() => {
+        if (!cancelled) setPurchaseHistoryError(true)
+      })
+      .finally(() => {
+        if (!cancelled) setIsLoadingPurchaseHistory(false)
+      })
+
+    return () => {
+      cancelled = true
+    }
+  }, [purchaseHistoryAccount])
 
   const defaults = useMemo<AccountFormValues>(
     () =>
@@ -238,6 +275,7 @@ export function AccountsPage() {
           onArchive={(account) => setConfirm({ mode: "archive", account })}
           onDelete={(account) => setConfirm({ mode: "delete", account })}
           onAddMetalPurchase={setMetalPurchaseAccount}
+          onViewMetalPurchases={setPurchaseHistoryAccount}
           canDelete={accounts.canDeleteAccount}
         />
       )}
@@ -315,6 +353,14 @@ export function AccountsPage() {
             setIsSavingMetalPurchase(false)
           }
         }}
+      />
+      <MetalPurchaseHistoryDialog
+        account={purchaseHistoryAccount}
+        purchases={purchaseHistory}
+        fundingAccounts={accounts.accounts}
+        isLoading={isLoadingPurchaseHistory}
+        isError={purchaseHistoryError}
+        onClose={() => setPurchaseHistoryAccount(null)}
       />
       <UnsavedChangesDialog
         open={unsaved.confirmationOpen}

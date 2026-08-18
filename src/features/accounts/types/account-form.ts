@@ -1,4 +1,5 @@
 import type { Translate } from "../../../i18n/context"
+import type { TranslationKey } from "../../../i18n/en/translations"
 import type { AccountSummary } from "../../../lib/supabase/types"
 import { multiplyDecimals } from "../../../lib/financial-calculations/decimal"
 
@@ -149,7 +150,7 @@ export const purityCodes = [
 
 export function getPurityOptions(
   metalType: (typeof metalTypeCodes)[number] | ""
-): ReadonlyArray<{ value: string; label?: string; labelKey?: string }> {
+): ReadonlyArray<{ value: string; label?: string; labelKey?: TranslationKey }> {
   if (metalType === "gold") return [...goldPurityOptions, purityOtherOption]
   if (metalType === "silver") return [...silverPurityOptions, purityOtherOption]
   return []

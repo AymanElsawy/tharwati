@@ -3,10 +3,18 @@ import {
   requireAuthenticatedUserId,
   requireQueryData,
 } from "@/lib/supabase/repository"
+import type { MetalPurchaseRecord } from "@/lib/supabase/types"
 import type { MetalPurchaseFormValues } from "../types/metal-purchase"
 
+const metalPurchaseSelect =
+  "id,user_id,account_id,purity,purchased_at,quantity_grams::text,cost_per_unit::text,fees::text,funding_mode,funding_account_id,created_at" as const
+
 export class MetalPurchasesRepository {
-  constructor(private readonly client: TypedSupabaseClient = supabase) {}
+  private readonly client: TypedSupabaseClient
+
+  constructor(client: TypedSupabaseClient = supabase) {
+    this.client = client
+  }
 
   async addPurchase(
     accountId: string,
@@ -29,6 +37,21 @@ export class MetalPurchasesRepository {
     })
 
     requireQueryData(data, error, operation)
+  }
+
+  async getPurchases(accountId: string): Promise<MetalPurchaseRecord[]> {
+    const operation = "metalPurchases.getPurchases"
+    const userId = await requireAuthenticatedUserId(this.client, operation)
+
+    const { data, error } = await this.client
+      .from("metal_purchases")
+      .select(metalPurchaseSelect)
+      .eq("account_id", accountId)
+      .eq("user_id", userId)
+      .order("purchased_at", { ascending: false })
+      .order("created_at", { ascending: false })
+
+    return requireQueryData(data, error, operation)
   }
 }
 

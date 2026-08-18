@@ -1,3 +1,46 @@
+create table public.metal_purchases (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users (id) on delete cascade,
+  account_id uuid not null references public.financial_accounts (id) on delete cascade,
+  purity text not null,
+  purchased_at date not null,
+  quantity_grams numeric(20, 3) not null,
+  cost_per_unit numeric(20, 2) not null,
+  fees numeric(20, 2) not null default 0,
+  funding_mode text not null,
+  funding_account_id uuid references public.financial_accounts (id) on delete set null,
+  created_at timestamptz not null default now(),
+  constraint metal_purchases_quantity_grams_check check (quantity_grams > 0),
+  constraint metal_purchases_cost_per_unit_check check (cost_per_unit > 0),
+  constraint metal_purchases_fees_check check (fees >= 0),
+  constraint metal_purchases_funding_mode_check check (
+    funding_mode in ('external', 'cash_account')
+  ),
+  constraint metal_purchases_funding_account_check check (
+    (funding_mode = 'cash_account' and funding_account_id is not null)
+    or (funding_mode = 'external' and funding_account_id is null)
+  )
+);
+
+create index metal_purchases_account_id_idx
+  on public.metal_purchases (account_id, purchased_at desc);
+
+alter table public.metal_purchases enable row level security;
+
+create policy "metal_purchases_select_own"
+  on public.metal_purchases
+  for select
+  to authenticated
+  using ((select auth.uid()) = user_id);
+
+grant select, insert on public.metal_purchases to authenticated;
+
+create policy "metal_purchases_insert_own"
+  on public.metal_purchases
+  for insert
+  to authenticated
+  with check ((select auth.uid()) = user_id);
+
 create or replace function public.add_metal_purchase(
   p_account_id uuid,
   p_purity text,
@@ -97,6 +140,8 @@ begin
     where id = v_funding_account.id;
   elsif p_funding_mode <> 'external' then
     raise exception 'funding mode must be external or cash_account' using errcode = '22023';
+  else
+    p_funding_account_id := null;
   end if;
 
   v_new_balance := coalesce(v_account.balance_grams, 0::numeric) + p_quantity_grams;
@@ -113,6 +158,14 @@ begin
     purchase_date = p_occurred_at::date
   where id = v_account.id
   returning * into v_account;
+
+  insert into public.metal_purchases (
+    user_id, account_id, purity, purchased_at, quantity_grams,
+    cost_per_unit, fees, funding_mode, funding_account_id
+  ) values (
+    v_user_id, v_account.id, v_purity, p_occurred_at::date, p_quantity_grams,
+    p_cost_per_unit, v_fee_amount, p_funding_mode, p_funding_account_id
+  );
 
   return v_account;
 end;
