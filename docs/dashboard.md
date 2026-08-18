@@ -1,0 +1,260 @@
+# Dashboard Tab — Data & Logic Spec (for Mobile Reimplementation)
+
+This document describes the **data model, business logic, and UI/UX flow** of the web app's "Dashboard" tab (`src/features/dashboard/`, rendered at route `/dashboard` via `src/pages/DashboardPage.tsx`), so it can be reimplemented for mobile with behavioral parity.
+
+## 0. Important: two parallel implementations exist — pick one deliberately
+
+The codebase contains **two distinct dashboard designs**, and only one is currently live:
+
+1. **Production dashboard** (what actually renders today at `/dashboard`): just `<NetWorthCard />` + `<AccountsOverviewCard />`. These use their own lightweight hooks (`useNetWorth`, `useAccountsOverview`) that read `financial_accounts` more or less directly (raw `opening_balance`, not ledger-adjusted).
+2. **Orphaned "rich" dashboard** — a fully-built but currently unused composite: `DashboardSummary` (Net Worth / Cash / Investments metric grid), `MissingDataCards`, `PerformanceCard`, `PortfolioAllocationCard`, `RecentActivityCard`, `DashboardEmptyState`, driven by a single `useDashboard()` hook / `dashboardService.load()` returning a `DashboardViewModel`. No route or page currently renders these components (confirmed via repo-wide search — only a design-mockup page references similarly-named components with fully separate, hardcoded mock data). This richer design is clearly the more complete product intent (net worth + cash + investment performance + allocation + recent activity + missing-data warnings), but it is not wired up.
+
+**Recommendation**: build the mobile dashboard against the richer `DashboardViewModel` design (§2–§4 below cover it fully), since it's the more complete and clearly-intended experience — but confirm with the product owner first, since it is unused in production today and its strings aren't even localized yet (see §6). Both are documented in full below so the decision is informed either way.
+
+## 1. Data model
+
+### 1.1 Core `DashboardViewModel` (rich dashboard)
+
+```ts
+type Decimal = string   // exact-precision decimal string, never a float — see §7
+
+type DashboardAllocationGroup = "stocks" | "etfs" | "cash" | "other"
+
+interface DashboardAllocation {
+  group: DashboardAllocationGroup
+  marketValue: Decimal
+  percentage: Decimal
+}
+
+interface DashboardActivity {
+  id: string
+  kind: "transaction" | "exchange_rate"
+  type: string
+  title: string
+  description: string
+  occurredAt: string   // ISO timestamp
+}
+
+interface DashboardViewModel {
+  baseCurrency: string
+  netWorth: NetWorthResult                 // see 1.2
+  cash: {
+    projectedBalanceBase: Decimal
+    accountCount: number
+    currencyCode: string
+    isPartial: boolean
+  }
+  investments: {
+    marketValueBase: Decimal | null
+    unrealizedGainLossBase: Decimal | null
+    unrealizedReturnPercent: Decimal | null
+    holdingsCount: number
+    currencyCode: string
+    priceSources: Array<{ symbol: string | null; provider: string; priceType: string; fetchedAt: string }>
+  }
+  allocation: DashboardAllocation[]
+  performance: {
+    marketValueBase: Decimal | null
+    unrealizedGainLossBase: Decimal | null
+    unrealizedReturnPercent: Decimal | null
+    isHistorical: false                    // hardcoded placeholder; no historical series yet
+  }
+  activities: DashboardActivity[]
+  missingData: {
+    priceHoldings: Array<{ holdingId: string; assetId: string; assetName: string; symbol: string | null }>
+    exchangeRatePairs: Array<{ sourceCurrencyCode: string; destinationCurrencyCode: string }>
+  }
+  isEmpty: boolean   // true if zero cash accounts AND zero holdings AND zero transactions
+}
+```
+
+### 1.2 `NetWorthResult` (rich dashboard)
+
+```ts
+interface NetWorthResultBase {
+  accountCount: number
+  baseCurrency: string
+  totalLiabilities: Decimal              // hardcoded "0" — no liability tracking yet
+  cashAssets: Decimal
+  investmentAssets: Decimal
+  investmentHoldingCount: number
+  missingPriceHoldings: Array<{ holdingId: string; assetId: string; assetName: string; symbol: string | null }>
+  missingCurrencyPairs: Array<{ sourceCurrencyCode: string; destinationCurrencyCode: string }>
+  fxRates?: FxRateMetadata[]
+}
+type NetWorthResult =
+  | (NetWorthResultBase & { status: "success" | "empty"; totalAssets: Decimal; netWorth: Decimal })
+  | (NetWorthResultBase & { status: "partial"; totalAssets: Decimal; netWorth: Decimal })
+```
+
+> ⚠️ **Naming collision**: the *production* `NetWorthCard` uses a completely different, simpler local type also called `NetWorthResult` (see §1.3). They are unrelated — don't conflate them when writing mobile types.
+
+### 1.3 Production `NetWorthResult` (`useNetWorth.ts` — the currently-live, simpler type)
+
+```ts
+interface NetWorthResult {
+  baseCurrencyCode: string
+  total: number             // plain JS float here (not Decimal string) — inconsistent with the rest of the app
+  accountCount: number
+  skippedTypes: AccountTypeCode[]   // account types excluded from this total, see §3.2
+  unavailablePairs: string[]        // "SRC/DST" strings for currencies that couldn't be converted
+}
+```
+
+### 1.4 Production `AccountsOverviewCard` types (`useAccountsOverview.ts`)
+
+```ts
+type AccountTypeCurrencyTotal = { currencyCode: string; total: Decimal }
+
+type MetalAccountDetail = {
+  accountId: string; name: string; metalType: "gold" | "silver"
+  units: Decimal; costPerUnit: Decimal; currencyCode: string
+  currentPricePerUnit: number | null   // null if live metal price fetch failed
+}
+
+type AccountTypeOverview = {
+  accountTypeCode: "cash" | "bank" | "brokerage" | "gold" | "real_estate" | "business" | "other"
+  accountCount: number
+  currencyTotals: AccountTypeCurrencyTotal[]
+  metalAccounts: MetalAccountDetail[] | null   // populated only for accountTypeCode === "gold"
+}
+```
+Groups are output in fixed order `["cash","bank","brokerage","gold","real_estate","business","other"]`; a type with zero accounts is omitted entirely.
+
+### 1.5 Portfolio valuation model (feeds `investments`/`performance`/`allocation` in the rich dashboard)
+
+```ts
+interface HoldingValuationResult {
+  holdingId: string; assetId: string; symbol: string | null; assetName: string; assetType: string
+  quantity: Decimal; averageCost: Decimal | null
+  costBasisNative: Decimal; costBasisCurrency: string
+  marketPrice: Decimal | null; marketPriceCurrency: string | null
+  marketPriceTimestamp: string | null; marketPriceSource: string | null
+  marketPriceType?: "realtime" | "delayed" | "previous_close" | "stale" | "manual" | null
+  marketValueNative: Decimal | null
+  unrealizedGainLossNative: Decimal | null; unrealizedReturnPercent: Decimal | null
+  marketValueBase: Decimal | null; costBasisBase: Decimal | null; unrealizedGainLossBase: Decimal | null
+  baseCurrency: string
+  missingMarketPrice: boolean
+  missingExchangeRate: Array<{ sourceCurrencyCode: string; destinationCurrencyCode: string }>
+  stalePrice: boolean | null            // true if price age > 24h
+}
+
+interface PortfolioValuationResult {
+  baseCurrency: string
+  holdings: HoldingValuationResult[]
+  totalMarketValueBase: Decimal | null
+  totalCostBasisBase: Decimal | null
+  totalUnrealizedGainLossBase: Decimal | null
+  totalUnrealizedReturnPercent: Decimal | null
+  valuedHoldingsCount: number
+  missingPriceHoldings: Array<{ holdingId: string; assetId: string; assetName: string; symbol: string | null }>
+  missingExchangeRatePairs: Array<{ sourceCurrencyCode: string; destinationCurrencyCode: string }>
+  completenessStatus: "complete" | "partial" | "unavailable"
+}
+```
+
+## 2. Business logic / calculations
+
+All exact math uses a **bigint-based decimal library** (`add/subtract/multiply/divideDecimals`, `compareDecimals`) — values are transported and computed as decimal strings, never JS floats, in the rich-dashboard code path. (The production `useNetWorth` hook is an exception — see §3.2's float caveat.)
+
+### 2.1 Portfolio valuation
+Per holding: fetch current market price → compute native market value (`quantity * price`) → convert cost basis and market value into the base currency (collecting any missing FX pairs) → compute native and base-currency gain/loss and return% (`gain / costBasis * 100`, only if costBasis > 0) → flag `stalePrice` if the price is more than 24h old.
+
+Portfolio totals: sum market value / cost basis / gain-loss only over holdings that successfully resolved (nulls excluded from sums, not treated as zero). `totalUnrealizedReturnPercent = totalGainLoss / valuedCostBasis * 100` (only if valued cost basis > 0). `completenessStatus`: `"complete"` if nothing missing; `"partial"` if some data missing but ≥1 holding valued; `"unavailable"` if missing data and zero holdings valued.
+
+### 2.2 Net worth aggregation (rich path)
+- If there are zero cash accounts: net worth = portfolio value alone.
+- Otherwise: convert every cash account balance into the base currency (skip conversion if already base currency; collect any unresolvable pairs into `missingCurrencyPairs` rather than failing the whole calculation).
+- `totalAssets = totalCash + portfolioMarketValue`; `totalLiabilities = "0"` (hardcoded — no liability tracking exists yet); `netWorth = totalAssets - totalLiabilities`.
+- `status: "partial"` if any missing currency pair or missing price holding exists, else `"success"` (or `"empty"` if there's nothing to value at all).
+
+### 2.3 Portfolio allocation grouping
+Group = `"stocks"` if asset type is `stock`, `"etfs"` if `etf`, else `"other"`; plus a synthetic `"cash"` group entry if cash assets > 0. Percentages are computed per group as `groupValue / totalPositiveValue * 100`, **except the last group, which receives the residual `100 − sum(others)`** — this guarantees percentages always sum to exactly 100 despite floating-point/rounding drift. Non-positive-value groups are excluded.
+
+### 2.4 Recent activity feed
+Up to 8 most recent **posted** transactions, each mapped to an activity with a title derived from transaction type (`buy`→"Investment purchased", `deposit`→"Deposit posted", `withdrawal`→"Withdrawal posted", `fee`→"Fee posted", else falls back to the transaction's own description) — plus one synthetic "Investment fee" activity per transaction entry whose memo is `"investment_fee"` — plus up to 3 most recent exchange-rate updates ("Exchange rate updated", described as `"{base}/{quote}"`). All merged, sorted descending by `occurredAt`, then truncated to the first 8 (so a synthetic fee/rate entry can push out an older transaction activity even though the transaction fetch itself was already capped at 8).
+
+### 2.5 Missing-data / empty-state determination
+`isEmpty = (cash accounts = 0) AND (holdings = 0) AND (transactions = 0)` — should drive a dedicated empty-state screen (see §5.2) instead of the normal dashboard.
+
+Missing exchange-rate pairs are split into:
+- **Auto-retryable** — pairs supported by the live FX provider (Frankfurter) → shown with a "temporarily unavailable" message + a Retry action that re-triggers the dashboard load.
+- **Unsupported** — pairs the provider can't supply at all → informational only, no retry (implies the user needs to enter a manual rate elsewhere in the app).
+
+The missing-data card section should render nothing at all if there are zero missing price holdings AND zero missing FX pairs.
+
+### 2.6 Gold/silver live pricing (used by `AccountsOverviewCard`, both dashboard variants)
+- Metal symbol: gold → `XAU`, silver → `XAG`. Fetches USD price per troy ounce from an external metals-price API, converts to USD-per-gram (÷ 31.1034768), then converts to the account's currency via the FX service if not already USD.
+- Cached in-memory for 6 hours, with in-flight request de-duplication per symbol.
+- Returns `null` (never throws) on any failure — UI must show "Current price unavailable" rather than erroring.
+
+### 2.7 Exchange rate resolution
+Live rate is fetched first from an external FX provider (6h in-memory cache, request de-duplication per currency pair; identity rate `1` if source = destination). If the live fetch fails, falls back to the most recent **manually-entered** rate stored in the app's own exchange-rates table (checking both the direct and inverted direction). If neither is available, the conversion fails with a "rate unavailable" error, which calling code (net worth / portfolio valuation) catches and folds into `missingCurrencyPairs`/`missingExchangeRatePairs` rather than failing the whole dashboard load.
+
+### 2.8 Production net worth calculation (`useNetWorth.ts` — what's actually live today)
+Materially different and simpler than §2.2:
+- **Only `cash`, `bank`, and `real_estate` account types are included** — `brokerage`, `gold`, `business`, and `other` are always excluded (tracked in `skippedTypes`). This means brokerage/holdings market value and gold/silver value are **not** part of this net-worth figure at all today.
+- Uses each account's raw `opening_balance` directly — **ignores any posted-transaction ledger effects** (unlike the rich path, which would use a ledger-adjusted balance if that data existed).
+- If the user's base currency isn't set yet (onboarding incomplete), the result is `null` and the UI should prompt the user to complete onboarding.
+- Uses simple float-based currency conversion, not the decimal-safe path — a known inconsistency versus the rest of the app.
+
+**Recommendation for mobile**: if reimplementing the rich `DashboardViewModel` design, use the more correct §2.2 semantics (include brokerage/gold, use ledger-adjusted balances where available) rather than reproducing this simplified/inconsistent production behavior — but flag the choice explicitly since it's a deliberate improvement over current web behavior, not pure parity.
+
+### 2.9 Refresh behavior
+No polling/interval refresh anywhere. All dashboard data loads once on mount and reloads whenever a **global cross-feature "data changed" event** fires (broadcast elsewhere in the app after any mutation — account edits, transactions, exchange rate changes, etc.). A silent background reload (old data stays visible while refetching) is distinguished from an explicit user-triggered "Try again"/refresh (which shows a loading state). **Mobile needs an equivalent global invalidation mechanism** — e.g. a shared event emitter or query-cache invalidation by a shared key — since there's no `window` object to dispatch a DOM event on.
+
+## 3. UI / UX flow
+
+### 3.1 Production dashboard (currently live)
+Page = header (eyebrow/title/description) + `NetWorthCard` + `AccountsOverviewCard`.
+
+**`NetWorthCard`** states, in priority order:
+1. Loading — pulsing skeleton.
+2. Error — warning icon + message + "Try again".
+3. No base currency set — prompt + "Complete onboarding" link.
+4. Success — big total (`{amount} {baseCurrencyCode}`, forced LTR), account count line, an amber warning line if any currency pairs were unavailable, a muted note listing any account types excluded from the total, and a link to the full Accounts tab.
+
+**`AccountsOverviewCard`** states: loading (3 skeleton tiles) / error / empty ("add an account" prompt) / success (a responsive grid of per-account-type cards). Each type card shows an icon, localized type label, and account count; for **gold**, it additionally lists each metal sub-account (name, gold/silver badge, units in grams, cost-per-unit paid, current live price-per-unit or "unavailable"); for all other types, one row per currency held showing the summed total.
+
+### 3.2 Rich dashboard (unused in production, but the more complete design)
+
+Intended composition, top to bottom:
+1. **`DashboardEmptyState`** — renders instead of everything else when `isEmpty` is true: heading, description, two CTAs ("Add cash account", "View investments").
+2. **`DashboardSummary`** — 3-card metric row: Net Worth, Cash, Investments (the Investments card also shows signed gain/loss + return%, plus a list of price-provenance lines like `"{symbol}: {provider} · {priceType} · {fetchedAt}"`).
+3. **`MissingDataCards`** — an "Action required" banner section (hidden entirely if nothing is missing); up to 3 cards: missing market prices (link to a market-prices screen), auto-retryable FX pairs (with Retry), unsupported FX pairs (informational only).
+4. **`PerformanceCard`** — market value / unrealized gain-loss / unrealized return% surface; explicitly notes no historical time-series is available yet (a placeholder for future charting — worth designing with a chart slot in mind for mobile even if not populated initially).
+5. **`PortfolioAllocationCard`** — per-group (stocks/ETFs/cash/other) rows with percentage + a horizontal progress-bar fill; empty-state text if allocation is empty.
+6. **`RecentActivityCard`** — ordered list of activities (title, description, localized date); empty-state "No posted activity yet."
+7. **`AccountsOverviewCard`** — same component/behavior as the production dashboard (§3.1).
+
+### 3.3 Number/currency formatting conventions (apply throughout, both variants)
+- Money formatted with exactly 2 decimal places; percentages with up to 2 decimal places (no forced minimum).
+- **All numeric/currency/date text is forced left-to-right**, even inside an RTL (Arabic) page layout — this is deliberate and must be replicated on mobile regardless of the app's overall text direction.
+- Dates: medium date + short time style for price provenance; localized date-only for activity timestamps.
+- Signed values (gain/loss): prefix `+` unless already negative; render "Unavailable" for `null`.
+
+## 4. API / data layer
+
+No dedicated server-side dashboard aggregation exists (no Supabase view/RPC named for dashboard/net-worth/portfolio-valuation) — **all aggregation math happens client-side** in TypeScript services, built from a few plain table reads plus two RPCs:
+
+- **`get_account_balances(p_account_ids?)`** — ledger-adjusted balance read model: `current_balance = opening_balance + Σ(posted debit − posted credit account-side entries)`, excluding asset-side entries and draft/void transactions. Used by the rich net-worth path (not by the production `useNetWorth`, which reads raw `opening_balance` directly).
+- **`resolve_historical_exchange_rate(source, destination, requested_at)`** — for historical-rate lookups (not used by current-value dashboard calculations, which resolve *current* rates via a live external FX call with a stored-table fallback).
+- Plain table reads: `financial_accounts` (accounts), `holdings` (open positions, `quantity > 0` only, with joined asset + account details), `financial_transactions` + `transaction_entries` (recent activity), `exchange_rates` (manual-rate fallback), `profiles.base_currency_code` (throws a "not found"/onboarding-incomplete error if unset).
+- External integrations (not Supabase): a live FX rate API (6h cache) and a live metals-price API (6h cache) — see §2.6/§2.7.
+
+**Implication for mobile**: achieving parity means either (a) porting the client-side `NetWorthService` / `PortfolioValuationService` / decimal-arithmetic logic to the mobile app as well, or (b) — the better long-term option — requesting a proper server-side aggregation endpoint/RPC so both platforms share one source of truth. Flag this as a decision point rather than silently choosing one.
+
+## 5. i18n / RTL
+
+- Production components (`NetWorthCard`, `AccountsOverviewCard`) are fully localized via `t("dashboard.*")` / `t("pages.dashboard.*")` keys, present in both `en` and `ar` translation dictionaries.
+- **Gap**: the rich-dashboard components (`DashboardSummary`, `PerformanceCard`, `PortfolioAllocationCard`, `RecentActivityCard`, `DashboardEmptyState`) currently use **hardcoded English strings**, not translation keys — if mobile builds against the rich design, new i18n keys need to be added to both dictionaries (they don't exist yet); don't assume they're already there.
+- RTL: numeric/currency/date values are always rendered left-to-right regardless of page direction (see §3.3) — the one hard rule to carry over into the mobile layout system (e.g. explicit LTR writing-direction override, not a blanket RTL flip of numeric strings).
+
+## 6. Summary of decisions to make before/while building the mobile version
+
+1. **Which dashboard design to build**: the simple, currently-live one (§3.1), or the richer, more complete but unused one (§3.2)? Recommended: the rich one, pending product sign-off — it's clearly the intended experience.
+2. **Net worth semantics**: replicate the production `useNetWorth`'s narrower/simpler behavior (only cash/bank/real_estate, raw opening balances, float math) for strict parity, or use the more correct rich-dashboard semantics (all account types incl. brokerage/gold, decimal-safe math)? These produce genuinely different totals for the same data.
+3. **New i18n keys** are needed if building the rich design (§5).
+4. **All monetary/quantity data must be handled as decimal strings**, not floats, throughout the mobile app's calculations and network payloads — port the bigint-decimal arithmetic approach (or an equivalent library) rather than relying on native numbers.
+5. **A global data-invalidation mechanism** is needed to replace the web's DOM-event-based cross-feature refresh signal (§2.9).
