@@ -18,10 +18,10 @@ import {
 } from "@/features/accounts/types/account-form"
 import {
   formatPortfolioAmount,
-  formatPortfolioDecimal,
   formatPortfolioPercent,
 } from "@/features/portfolio/utils/portfolio-formatters"
 import type { AccountSummary } from "@/lib/supabase/types"
+import type { MetalAccountAggregate } from "@/features/accounts/types/metal-purchase"
 import type { TranslationKey } from "@/i18n/en/translations"
 import { useTranslation } from "@/i18n/useTranslation"
 
@@ -67,6 +67,7 @@ export type AccountInventorySort =
 export type AccountInventoryItem = {
   account: AccountSummary
   currentBalance: string | null
+  metalAggregate: MetalAccountAggregate | null
 }
 
 const columns: Array<[AccountInventorySort, TranslationKey]> = [
@@ -92,9 +93,14 @@ function typeLabel(
 
 function balanceCell(item: AccountInventoryItem, locale: string) {
   if (item.account.account_type_code === "gold") {
-    return item.account.balance_grams === null
-      ? "—"
-      : `${formatPortfolioDecimal(item.account.balance_grams, locale, 3)} g`
+    const aggregate = item.metalAggregate ?? {
+      totalAmount: "0",
+    }
+    return (
+      <span className="tabular-nums" dir="ltr">
+        {formatPortfolioAmount(aggregate.totalAmount, item.account.currency_code, locale)}
+      </span>
+    )
   }
   return item.currentBalance === null
     ? "—"

@@ -229,9 +229,11 @@ class AccountsRepository {
 
 class MetalPurchasesRepository {
   addPurchase(accountId, values: MetalPurchaseFormValues): Promise<void>   // calls RPC add_metal_purchase
-  getPurchases(accountId): Promise<MetalPurchaseRecord[]>                  // order by purchased_at desc, created_at desc
+  getPurchaseHistoryRows(accountIds): Promise<MetalPurchaseRecord[]>      // reads metal_purchases, ordered by purchased_at desc, created_at desc
 }
 ```
+
+Purchase-history numeric columns are requested with `::text` casts, then normalized from either a text or finite numeric Supabase response into validated decimal strings before any totals are calculated. The deployed RPC returns the updated `financial_accounts` row; the client ignores that response and reloads immutable `metal_purchases` records for history.
 
 `CreateAccountInput`/`UpdateAccountInput`: camelCase mirror of the type-specific DB columns (`accountTypeCode, name, currencyCode, openingBalance, notes, bankSubtype, investmentType, balanceGrams, propertyType, ownershipPercentage, businessType, industry, metalType, purity, purchaseDate, costPerUnit`, plus `isActive` on update).
 
@@ -249,7 +251,7 @@ Filters: `search` (case-insensitive substring on name), `type` (exact match), `c
 
 Sort columns: `name | type | currency | balance | status` — string columns use locale compare, `balance` sorts numerically on `currentBalance ?? balance_grams ?? 0`. Clicking the active sort column flips direction; picking a new column resets to ascending.
 
-**Displayed "balance"**: for non-gold accounts this is the raw `opening_balance` column — **not** a ledger-adjusted current balance (there's no transaction-effect calculation on this page, unlike the related `cash-accounts` feature). For gold accounts, `balance_grams` is shown instead (3 decimals + "g" suffix).
+**Displayed "balance"**: for non-gold accounts this is the raw `opening_balance` column — **not** a ledger-adjusted current balance (there's no transaction-effect calculation on this page, unlike the related `cash-accounts` feature). For gold/silver accounts this is the total purchase value, derived with decimal-safe `quantity_grams * cost_per_unit` across that account's `metal_purchases`; quantity is not shown at this layer.
 
 ### 6.3 List/table row content
 Name, type label (for gold accounts, shows "Gold"/"Silver" from `metal_type` rather than the generic type label), currency code, balance (per §6.2), status badge (Active/Archived), ownership % (real_estate/business only, else "—").
@@ -280,7 +282,13 @@ Simple modal: title interpolating account name, description, Cancel + destructiv
 Fields: `purity` (options depend on account's `metal_type`), `purchaseDate`, `unitsGrams`, `costPerUnit`, a "Paid from" toggle revealing a funding-account picker (active `cash`/`bank` accounts only) when checked, and a live read-only "Total amount" = `unitsGrams * costPerUnit` (fees excluded from this preview since there's no fee field).
 
 ### 6.7 Metal purchase history dialog
-Read-only table: Date, Purity, Units (g), Cost per unit, Total amount (`qty*cost + fees`), Paid from (funding account name, or "External" if none). States: loading/error/empty/data.
+The history flow has three transaction-derived layers:
+
+1. **Account list** — Gold/Silver, currency, and total value only.
+2. **Purity summary** — opening a metal account shows a horizontally scrollable, responsive table with one header row: **Purity | Total quantity | Total value**. Each selectable purity row shows only those values; it does not list individual purchases.
+3. **Purity transactions** — opening a purity shows a compact responsive table, newest first, with one header row: **Date | Quantity | Cost per unit | Total amount**. Each purchase is one row; field labels are not repeated in every row. Dates are displayed as `DD-MM-YYYY` without changing their stored value. The table fits its modal on desktop and wraps compact cells on mobile without horizontal scrolling.
+
+The web client reloads `metal_purchases` after a successful RPC call. These records are the source of truth for every displayed aggregate; purchases are never merged or persisted as a summary. Each layer has loading, error, and empty states as applicable.
 
 ## 7. Number formatting & decimal safety (critical — apply throughout)
 
@@ -306,5 +314,5 @@ Display formatting:
 6. **The Accounts tab's balance column is the raw `opening_balance`**, not a ledger-adjusted current balance — this differs from the separate `cash-accounts` feature, which does compute a ledger-adjusted balance via the `get_account_balances` RPC. Recommend matching today's Accounts-tab behavior (raw `opening_balance`) for parity, but flag this inconsistency to the team.
 7. A `"deposit"` account type appears in one funding-account filter but is **not a real type** — dead code; only `cash`/`bank` are valid metal-purchase funding sources.
 8. **Metal purchase fees are hardcoded to `"0"`** from the client — no fee input UI exists yet, despite full schema/RPC support. Adding it on mobile is net-new, not parity.
-9. The purchase-history dialog's displayed "Total amount" is computed with native `Number()` math (the one spot not using the decimal-safe helpers) — minor precision risk; prefer decimal-safe math on mobile.
+9. Gold/silver totals are calculated from immutable purchase records with decimal-safe helpers. The RPC's account-shaped response is not a purchase-history payload and must not be used to render the history.
 10. Currency set is a fixed 5-item enum (`USD, SAR, EGP, EUR, GBP`), enforced at both DB and schema level — not user-extensible from this feature today.

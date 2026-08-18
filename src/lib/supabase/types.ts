@@ -233,7 +233,7 @@ type TransactionEntryRow = {
   id: string
   transaction_id: string
   user_id: string
-  account_id: string
+  account_id: string | null
   asset_id: string | null
   entry_side: "debit" | "credit"
   transaction_amount: Decimal
@@ -429,7 +429,7 @@ export type Database = {
         {
           id?: string
           user_id: string
-          account_id: string
+          account_id?: string | null
           asset_id: string
           quantity?: Decimal
           average_cost?: Decimal | null
@@ -442,7 +442,7 @@ export type Database = {
         Partial<{
           id?: string
           user_id: string
-          account_id: string
+          account_id?: string | null
           asset_id: string
           quantity?: Decimal
           average_cost?: Decimal | null
@@ -502,7 +502,7 @@ export type Database = {
           id?: string
           transaction_id: string
           user_id: string
-          account_id: string
+          account_id?: string | null
           asset_id?: string | null
           entry_side: "debit" | "credit"
           transaction_amount: Decimal
@@ -526,7 +526,7 @@ export type Database = {
           id?: string
           transaction_id: string
           user_id: string
-          account_id: string
+          account_id?: string | null
           asset_id?: string | null
           entry_side: "debit" | "credit"
           transaction_amount: Decimal
@@ -683,7 +683,7 @@ export type TransactionDraft = {
 }
 
 export type TransactionEntryInput = {
-  accountId: string
+  accountId: string | null
   assetId?: string | null
   entrySide: "debit" | "credit"
   transactionAmount: Decimal

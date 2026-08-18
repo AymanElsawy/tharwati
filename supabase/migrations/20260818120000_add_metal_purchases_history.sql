@@ -1,45 +1,63 @@
-create table public.metal_purchases (
-  id uuid primary key default gen_random_uuid(),
-  user_id uuid not null references auth.users (id) on delete cascade,
-  account_id uuid not null references public.financial_accounts (id) on delete cascade,
-  purity text not null,
-  purchased_at date not null,
-  quantity_grams numeric(20, 3) not null,
-  cost_per_unit numeric(20, 2) not null,
-  fees numeric(20, 2) not null default 0,
-  funding_mode text not null,
-  funding_account_id uuid references public.financial_accounts (id) on delete set null,
-  created_at timestamptz not null default now(),
-  constraint metal_purchases_quantity_grams_check check (quantity_grams > 0),
-  constraint metal_purchases_cost_per_unit_check check (cost_per_unit > 0),
-  constraint metal_purchases_fees_check check (fees >= 0),
-  constraint metal_purchases_funding_mode_check check (
-    funding_mode in ('external', 'cash_account')
+alter table public.transaction_entries
+  alter column account_id drop not null,
+  add column purity text;
+
+alter table public.transaction_entries
+  add constraint transaction_entries_accountless_owner_contribution_check check (
+    account_id is not null
+    or (
+      memo = 'owner_contribution'
+      and asset_id is null
+      and quantity_delta is null
+      and unit_price is null
+      and purity is null
+    )
   ),
-  constraint metal_purchases_funding_account_check check (
-    (funding_mode = 'cash_account' and funding_account_id is not null)
-    or (funding_mode = 'external' and funding_account_id is null)
-  )
-);
+  add constraint transaction_entries_metal_purchase_purity_check check (
+    purity is null
+    or (
+      memo = 'metal_purchase'
+      and purity in (
+        '24k', '22k', '21k', '18k', '14k', '10k', '9k',
+        '999', '958', '950', '925', '900', '835', '800', 'other'
+      )
+    )
+  );
 
-create index metal_purchases_account_id_idx
-  on public.metal_purchases (account_id, purchased_at desc);
+create or replace function public.validate_transaction_entry_relationships()
+returns trigger
+language plpgsql
+security definer
+set search_path = ''
+as $$
+begin
+  if not exists (
+    select 1 from public.financial_transactions
+    where id = new.transaction_id and user_id = new.user_id
+  ) then
+    raise exception 'transaction entry user % does not own transaction %',
+      new.user_id, new.transaction_id using errcode = '23514';
+  end if;
 
-alter table public.metal_purchases enable row level security;
+  if new.account_id is not null and not exists (
+    select 1 from public.financial_accounts
+    where id = new.account_id and user_id = new.user_id
+  ) then
+    raise exception 'transaction entry account % is not owned by user %',
+      new.account_id, new.user_id using errcode = '23514';
+  end if;
 
-create policy "metal_purchases_select_own"
-  on public.metal_purchases
-  for select
-  to authenticated
-  using ((select auth.uid()) = user_id);
+  if new.asset_id is not null and not exists (
+    select 1 from public.assets
+    where id = new.asset_id and (user_id is null or user_id = new.user_id)
+  ) then
+    raise exception 'transaction entry asset % is neither global nor owned by user %',
+      new.asset_id, new.user_id using errcode = '23514';
+  end if;
 
-grant select, insert on public.metal_purchases to authenticated;
-
-create policy "metal_purchases_insert_own"
-  on public.metal_purchases
-  for insert
-  to authenticated
-  with check ((select auth.uid()) = user_id);
+  return new;
+end;
+$$;
 
 create or replace function public.add_metal_purchase(
   p_account_id uuid,
@@ -51,21 +69,25 @@ create or replace function public.add_metal_purchase(
   p_funding_account_id uuid,
   p_fees numeric
 )
-returns public.financial_accounts
+returns jsonb
 language plpgsql
-security invoker
+security definer
 set search_path = ''
 as $$
 declare
   v_user_id uuid := auth.uid();
   v_account public.financial_accounts%rowtype;
   v_funding_account public.financial_accounts%rowtype;
+  v_asset public.assets%rowtype;
+  v_transaction public.financial_transactions%rowtype;
   v_purity text := lower(pg_catalog.btrim(p_purity));
   v_fee_amount numeric := coalesce(p_fees, 0::numeric);
   v_total numeric;
   v_payment_total numeric;
-  v_new_balance numeric;
-  v_new_cost_per_unit numeric;
+  v_funding_rate numeric;
+  v_available_funding numeric;
+  v_asset_name text;
+  v_asset_symbol text;
 begin
   if v_user_id is null then
     raise exception 'authentication is required' using errcode = '42501';
@@ -109,7 +131,11 @@ begin
   v_total := p_quantity_grams * p_cost_per_unit;
   v_payment_total := v_total + v_fee_amount;
 
-  if p_funding_mode = 'cash_account' then
+  if p_funding_mode = 'external' then
+    if p_funding_account_id is not null then
+      raise exception 'external funding cannot specify a funding account' using errcode = '22023';
+    end if;
+  elsif p_funding_mode = 'cash_account' then
     if p_funding_account_id is null then
       raise exception 'a funding cash account is required' using errcode = '22023';
     end if;
@@ -119,63 +145,133 @@ begin
     where id = p_funding_account_id
       and user_id = v_user_id
       and is_active
-      and account_type_code in ('cash', 'bank')
+      and account_type_code in ('cash', 'bank', 'deposit')
     for update;
 
     if not found then
       raise exception 'selected funding account is not available' using errcode = '42501';
     end if;
 
-    if v_funding_account.currency_code <> v_account.currency_code then
-      raise exception 'funding account currency must match the Gold/Silver account currency'
-        using errcode = '22023';
+    if v_funding_account.currency_code = v_account.currency_code then
+      v_funding_rate := 1::numeric;
+    else
+      select rate into v_funding_rate
+      from public.resolve_historical_exchange_rate(
+        v_account.currency_code, v_funding_account.currency_code, p_occurred_at
+      );
+      if v_funding_rate is null or v_funding_rate <= 0 then
+        raise exception 'a historical funding-account exchange rate is required'
+          using errcode = 'P0002';
+      end if;
     end if;
 
-    if v_funding_account.opening_balance < v_payment_total then
+    select accounts.opening_balance + coalesce(sum(
+      case entries.entry_side
+        when 'debit' then entries.account_amount
+        else -entries.account_amount
+      end
+    ) filter (where transactions.status = 'posted'), 0::numeric)
+    into v_available_funding
+    from public.financial_accounts as accounts
+    left join public.transaction_entries as entries
+      on entries.account_id = accounts.id and entries.asset_id is null
+    left join public.financial_transactions as transactions
+      on transactions.id = entries.transaction_id
+      and transactions.user_id = accounts.user_id
+    where accounts.id = v_funding_account.id
+    group by accounts.opening_balance;
+
+    if v_available_funding < v_payment_total * v_funding_rate then
       raise exception 'insufficient funding account balance' using errcode = 'P0002';
     end if;
-
-    update public.financial_accounts
-    set opening_balance = opening_balance - v_payment_total
-    where id = v_funding_account.id;
-  elsif p_funding_mode <> 'external' then
-    raise exception 'funding mode must be external or cash_account' using errcode = '22023';
   else
-    p_funding_account_id := null;
+    raise exception 'funding mode must be external or cash_account' using errcode = '22023';
   end if;
 
-  v_new_balance := coalesce(v_account.balance_grams, 0::numeric) + p_quantity_grams;
-  v_new_cost_per_unit := (
-    coalesce(v_account.balance_grams, 0::numeric) * coalesce(v_account.cost_per_unit, 0::numeric)
-    + v_total
-  ) / v_new_balance;
+  v_asset_name := initcap(v_account.metal_type) || ' ' || v_account.currency_code || ' grams';
+  v_asset_symbol := case v_account.metal_type when 'gold' then 'XAU-G-' else 'XAG-G-' end
+    || v_account.currency_code;
 
-  update public.financial_accounts
-  set
-    balance_grams = v_new_balance,
-    cost_per_unit = v_new_cost_per_unit,
-    purity = v_purity,
-    purchase_date = p_occurred_at::date
-  where id = v_account.id
-  returning * into v_account;
+  select * into v_asset
+  from public.assets
+  where user_id = v_user_id and lower(btrim(name)) = lower(v_asset_name)
+  for update;
 
-  insert into public.metal_purchases (
-    user_id, account_id, purity, purchased_at, quantity_grams,
-    cost_per_unit, fees, funding_mode, funding_account_id
+  if not found then
+    insert into public.assets (
+      user_id, asset_type_code, symbol, name, currency_code,
+      is_custom, is_active, canonical_quantity_unit
+    ) values (
+      v_user_id, 'commodity', v_asset_symbol, v_asset_name,
+      v_account.currency_code, true, true, 'grams'
+    ) returning * into v_asset;
+  end if;
+
+  insert into public.financial_transactions (
+    user_id, transaction_type_code, transaction_currency_code,
+    status, occurred_at, description
   ) values (
-    v_user_id, v_account.id, v_purity, p_occurred_at::date, p_quantity_grams,
-    p_cost_per_unit, v_fee_amount, p_funding_mode, p_funding_account_id
+    v_user_id, 'buy', v_account.currency_code, 'draft', p_occurred_at,
+    'Buy ' || initcap(v_account.metal_type)
+  ) returning * into v_transaction;
+
+  insert into public.transaction_entries (
+    transaction_id, user_id, account_id, asset_id, entry_side,
+    transaction_amount, account_amount, quantity_delta,
+    input_quantity, input_quantity_unit, quantity_conversion_factor,
+    cost_basis_delta, account_cost_basis_delta, account_fx_rate,
+    unit_price, memo, purity
+  ) values (
+    v_transaction.id, v_user_id, v_account.id, v_asset.id, 'debit',
+    v_total, v_total, p_quantity_grams,
+    p_quantity_grams, 'grams', 1,
+    v_total, v_total, 1,
+    p_cost_per_unit, 'metal_purchase', v_purity
   );
 
-  return v_account;
+  if v_fee_amount > 0 then
+    insert into public.transaction_entries (
+      transaction_id, user_id, account_id, asset_id, entry_side,
+      transaction_amount, account_amount,
+      cost_basis_delta, account_cost_basis_delta, account_fx_rate, memo
+    ) values (
+      v_transaction.id, v_user_id, v_account.id, v_asset.id, 'debit',
+      v_fee_amount, v_fee_amount,
+      v_fee_amount, v_fee_amount, 1, 'metal_purchase_fee'
+    );
+  end if;
+
+  insert into public.transaction_entries (
+    transaction_id, user_id, account_id, entry_side,
+    transaction_amount, account_amount, memo
+  ) values (
+    v_transaction.id,
+    v_user_id,
+    case when p_funding_mode = 'cash_account' then v_funding_account.id else null end,
+    'credit',
+    v_payment_total,
+    case when p_funding_mode = 'cash_account'
+      then v_payment_total * v_funding_rate else v_payment_total end,
+    case when p_funding_mode = 'cash_account'
+      then 'metal_purchase_payment' else 'owner_contribution' end
+  );
+
+  select * into v_transaction from public.post_transaction(v_transaction.id);
+
+  return pg_catalog.jsonb_build_object(
+    'transaction', pg_catalog.to_jsonb(v_transaction),
+    'entries', (
+      select pg_catalog.jsonb_agg(pg_catalog.to_jsonb(entries) order by entries.created_at)
+      from public.transaction_entries as entries
+      where entries.transaction_id = v_transaction.id
+    )
+  );
 end;
 $$;
 
 revoke all on function public.add_metal_purchase(
   uuid, text, timestamptz, numeric, numeric, text, uuid, numeric
-)
-  from public, anon, authenticated;
+) from public, anon, authenticated;
 grant execute on function public.add_metal_purchase(
   uuid, text, timestamptz, numeric, numeric, text, uuid, numeric
-)
-  to authenticated;
+) to authenticated;
