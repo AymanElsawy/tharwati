@@ -58,7 +58,7 @@ export interface PortfolioCustodyAccount {
 
 export interface PortfolioActivityEntry {
   id: string
-  accountId: string
+  accountId: string | null
   assetId: string | null
   side: "debit" | "credit"
   amount: Decimal

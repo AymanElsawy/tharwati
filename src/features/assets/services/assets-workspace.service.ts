@@ -349,7 +349,7 @@ export class AssetsWorkspaceService {
     return transactions.flatMap((transaction) => {
       if (transaction.status !== "posted") return []
       const entries = transaction.transaction_entries.flatMap((entry) => {
-        if (!entry.asset_id) return []
+        if (!entry.asset_id || !entry.account_id) return []
         const asset = assetsById.get(entry.asset_id)
         if (!asset) return []
         return [

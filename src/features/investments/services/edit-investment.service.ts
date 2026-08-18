@@ -16,7 +16,7 @@ export async function loadEditableInvestment(transactionId: string): Promise<Edi
   const record = await investmentsRepository.getInvestment(transactionId)
   const assetEntry = record.transaction_entries.find((entry) => entry.memo === "investment_asset")
   const feeEntry = record.transaction_entries.find((entry) => entry.memo === "investment_fee")
-  if (!assetEntry?.asset_id || assetEntry.quantity_delta == null || assetEntry.unit_price == null) {
+  if (!assetEntry?.account_id || !assetEntry.asset_id || assetEntry.quantity_delta == null || assetEntry.unit_price == null) {
     throw new Error("The investment does not have the supported immutable Buy ledger shape.")
   }
   const [account, asset] = await Promise.all([

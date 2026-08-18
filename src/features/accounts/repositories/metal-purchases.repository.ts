@@ -72,7 +72,11 @@ export function mapMetalPurchaseHistoryRow(
 }
 
 export class MetalPurchasesRepository {
-  constructor(private readonly client: TypedSupabaseClient = supabase) {}
+  private readonly client: TypedSupabaseClient
+
+  constructor(client: TypedSupabaseClient = supabase) {
+    this.client = client
+  }
 
   async addPurchase(command: AddMetalPurchaseCommand): Promise<void> {
     const operation = "metalPurchases.addPurchase"

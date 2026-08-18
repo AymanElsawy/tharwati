@@ -80,7 +80,9 @@ export class PortfolioEvidenceService {
       amount: transaction.transaction_entries[0]?.transaction_amount ?? "0",
       accountIds: [
         ...new Set(
-          transaction.transaction_entries.map((entry) => entry.account_id)
+          transaction.transaction_entries.flatMap((entry) =>
+            entry.account_id ? [entry.account_id] : []
+          )
         ),
       ],
       assetIds: [
