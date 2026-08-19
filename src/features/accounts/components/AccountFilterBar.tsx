@@ -1,14 +1,20 @@
-import { accountTypeOptions, type AccountTypeCode } from "@/features/accounts/types/account-form"
+import {
+  accountTypeOptions,
+  type AccountTypeCode,
+} from "@/features/accounts/types/account-form"
 import { useTranslation } from "@/i18n/useTranslation"
 
 export type AccountFilters = {
   search: string
   type: AccountTypeCode | null
   currency: string | null
-  status: "all" | "active" | "archived"
+  showArchived: boolean
 }
 
-type Update = <Key extends keyof AccountFilters>(key: Key, value: AccountFilters[Key]) => void
+type Update = <Key extends keyof AccountFilters>(
+  key: Key,
+  value: AccountFilters[Key]
+) => void
 
 export function AccountFilterBar({
   filters,
@@ -25,7 +31,7 @@ export function AccountFilterBar({
   const input =
     "h-10 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] px-3 text-sm text-[var(--color-text-primary)] outline-none transition focus-visible:border-[var(--color-primary)] focus-visible:ring-2 focus-visible:ring-[var(--color-primary-soft)]"
   return (
-    <div className="mt-6 grid gap-3 py-4 sm:grid-cols-2 lg:grid-cols-[minmax(14rem,1fr)_repeat(3,auto)_auto]">
+    <div className="mt-6 grid gap-3 py-4 sm:grid-cols-2 lg:grid-cols-[minmax(14rem,1fr)_repeat(2,auto)_auto_auto]">
       <input
         aria-label={t("accounts.filters.search")}
         placeholder={t("accounts.filters.searchPlaceholder")}
@@ -36,7 +42,12 @@ export function AccountFilterBar({
       <select
         aria-label={t("accounts.filters.type")}
         value={filters.type ?? ""}
-        onChange={(event) => onChange("type", (event.target.value || null) as AccountTypeCode | null)}
+        onChange={(event) =>
+          onChange(
+            "type",
+            (event.target.value || null) as AccountTypeCode | null
+          )
+        }
         className={input}
       >
         <option value="">{t("accounts.filters.allTypes")}</option>
@@ -57,20 +68,17 @@ export function AccountFilterBar({
           <option key={item}>{item}</option>
         ))}
       </select>
-      <select
-        aria-label={t("accounts.filters.status")}
-        value={filters.status}
-        onChange={(event) => onChange("status", event.target.value as AccountFilters["status"])}
-        className={input}
-      >
-        <option value="all">{t("accounts.filters.allStatuses")}</option>
-        <option value="active">{t("accounts.card.active")}</option>
-        <option value="archived">{t("accounts.card.archived")}</option>
-      </select>
+      <label className="flex h-10 items-center gap-2 px-1 text-sm text-[var(--color-text-primary)]">
+        <input
+          type="checkbox"
+          checked={filters.showArchived}
+          onChange={(event) => onChange("showArchived", event.target.checked)}
+        />
+        {t("accounts.filters.showArchived")}
+      </label>
       <span className="self-center text-xs text-muted-foreground">
         {t("accounts.filters.results", { count: resultCount })}
       </span>
     </div>
   )
 }
-

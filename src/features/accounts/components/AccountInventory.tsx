@@ -9,9 +9,12 @@ import {
   Trash2,
 } from "lucide-react"
 
-import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"
 import {
   getAccountTypeLabel,
   metalTypeOptions,
@@ -61,8 +64,7 @@ function ActionButton({
   )
 }
 
-export type AccountInventorySort =
-  "name" | "type" | "currency" | "balance" | "status"
+export type AccountInventorySort = "name" | "type" | "balance"
 
 export type AccountInventoryItem = {
   account: AccountSummary
@@ -73,9 +75,7 @@ export type AccountInventoryItem = {
 const columns: Array<[AccountInventorySort, TranslationKey]> = [
   ["name", "accounts.table.name"],
   ["type", "accounts.table.type"],
-  ["currency", "accounts.table.currency"],
   ["balance", "accounts.table.balance"],
-  ["status", "accounts.table.status"],
 ]
 
 function typeLabel(
@@ -98,7 +98,11 @@ function balanceCell(item: AccountInventoryItem, locale: string) {
     }
     return (
       <span className="tabular-nums" dir="ltr">
-        {formatPortfolioAmount(aggregate.totalAmount, item.account.currency_code, locale)}
+        {formatPortfolioAmount(
+          aggregate.totalAmount,
+          item.account.currency_code,
+          locale
+        )}
       </span>
     )
   }
@@ -121,6 +125,7 @@ export function AccountInventory({
   onDelete,
   onAddMetalPurchase,
   onViewMetalPurchases,
+  onViewAccountRecords,
   canDelete,
 }: {
   items: AccountInventoryItem[]
@@ -132,6 +137,7 @@ export function AccountInventory({
   onDelete: (account: AccountSummary) => void
   onAddMetalPurchase: (account: AccountSummary) => void
   onViewMetalPurchases: (account: AccountSummary) => void
+  onViewAccountRecords: (account: AccountSummary) => void
   canDelete: (accountId: string) => boolean
 }) {
   const { t, language } = useTranslation()
@@ -180,22 +186,22 @@ export function AccountInventory({
                 key={item.account.id}
                 className="border-b border-[var(--color-border)] last:border-b-0 hover:bg-[var(--color-surface-hover)]"
               >
-                <td className="px-4 py-4 font-medium">{item.account.name}</td>
-                <td className="px-4 py-4">{typeLabel(item.account, t)}</td>
-                <td className="px-4 py-4" dir="ltr">
-                  {item.account.currency_code}
+                <td className="px-4 py-4 font-medium">
+                  {item.account.account_type_code === "gold" ? (
+                    item.account.name
+                  ) : (
+                    <button
+                      type="button"
+                      className="text-start underline-offset-4 hover:underline focus-visible:ring-2"
+                      onClick={() => onViewAccountRecords(item.account)}
+                    >
+                      {item.account.name}
+                    </button>
+                  )}
                 </td>
+                <td className="px-4 py-4">{typeLabel(item.account, t)}</td>
                 <td className="px-4 py-4 tabular-nums" dir="ltr">
                   {balanceCell(item, locale)}
-                </td>
-                <td className="px-4 py-4">
-                  <Badge variant={item.account.is_active ? "ghost" : "outline"}>
-                    {t(
-                      item.account.is_active
-                        ? "accounts.card.active"
-                        : "accounts.card.archived"
-                    )}
-                  </Badge>
                 </td>
                 <td className="px-4 py-4 tabular-nums" dir="ltr">
                   {item.account.ownership_percentage === null
@@ -279,18 +285,21 @@ export function AccountInventory({
           <div key={item.account.id} className="grid gap-3 px-4 py-4">
             <div className="flex items-start justify-between gap-3">
               <span>
-                <strong className="block">{item.account.name}</strong>
+                {item.account.account_type_code === "gold" ? (
+                  <strong className="block">{item.account.name}</strong>
+                ) : (
+                  <button
+                    type="button"
+                    className="block text-start font-bold underline-offset-4 hover:underline focus-visible:ring-2"
+                    onClick={() => onViewAccountRecords(item.account)}
+                  >
+                    {item.account.name}
+                  </button>
+                )}
                 <span className="mt-1 block text-xs text-muted-foreground">
-                  {typeLabel(item.account, t)} · {item.account.currency_code}
+                  {typeLabel(item.account, t)}
                 </span>
               </span>
-              <Badge variant={item.account.is_active ? "ghost" : "outline"}>
-                {t(
-                  item.account.is_active
-                    ? "accounts.card.active"
-                    : "accounts.card.archived"
-                )}
-              </Badge>
             </div>
             <div className="flex items-center justify-between">
               <strong className="tabular-nums" dir="ltr">

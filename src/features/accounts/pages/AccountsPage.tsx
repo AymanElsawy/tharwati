@@ -14,6 +14,7 @@ import {
   type AccountInventorySort,
 } from "@/features/accounts/components/AccountInventory"
 import { ArchiveAccountDialog } from "@/features/accounts/components/ArchiveAccountDialog"
+import { AccountRecordsDialog } from "@/features/accounts/components/AccountRecordsDialog"
 import { DeleteAccountDialog } from "@/features/accounts/components/DeleteAccountDialog"
 import { MetalPurchaseDialog } from "@/features/accounts/components/MetalPurchaseDialog"
 import { MetalPurchaseHistoryDialog } from "@/features/accounts/components/MetalPurchaseHistoryDialog"
@@ -26,6 +27,7 @@ import {
   getEligibleMetalFundingAccounts,
   getMetalPurchases,
 } from "@/features/accounts/services/metal-purchases.service"
+import { getAccountRecords } from "@/features/accounts/services/account-records.service"
 import {
   accountToFormValues,
   emptyAccountFormValues,
@@ -35,6 +37,7 @@ import { useUnsavedChanges } from "@/hooks/useUnsavedChanges"
 import { useTranslation } from "@/i18n/useTranslation"
 import type { AccountSummary } from "@/lib/supabase/types"
 import type { MetalPurchaseTransaction } from "@/features/accounts/types/metal-purchase"
+import type { AccountRecord } from "@/features/accounts/types/account-record"
 
 function compareValues(left: string, right: string, direction: "asc" | "desc") {
   const result = left.localeCompare(right)
@@ -57,28 +60,36 @@ export function AccountsPage() {
   const [isSavingMetalPurchase, setIsSavingMetalPurchase] = useState(false)
   const [purchaseHistoryAccount, setPurchaseHistoryAccount] =
     useState<AccountSummary | null>(null)
-  const [selectedMetalPurity, setSelectedMetalPurity] = useState<string | null>(null)
+  const [selectedMetalPurity, setSelectedMetalPurity] = useState<string | null>(
+    null
+  )
   const [metalPurchases, setMetalPurchases] = useState<
     MetalPurchaseTransaction[]
   >([])
   const [isLoadingPurchaseHistory, setIsLoadingPurchaseHistory] =
     useState(false)
   const [purchaseHistoryError, setPurchaseHistoryError] = useState(false)
+  const [accountRecordsAccount, setAccountRecordsAccount] =
+    useState<AccountSummary | null>(null)
+  const [accountRecords, setAccountRecords] = useState<AccountRecord[]>([])
+  const [isLoadingAccountRecords, setIsLoadingAccountRecords] = useState(false)
+  const [accountRecordsError, setAccountRecordsError] = useState(false)
   const [formDirty, setFormDirty] = useState(false)
   const [filters, setFilters] = useState<AccountFilters>({
     search: "",
     type: null,
     currency: null,
-    status: "all",
+    showArchived: false,
   })
   const [sort, setSort] = useState<AccountInventorySort>("name")
   const [direction, setDirection] = useState<"asc" | "desc">("asc")
   const unsaved = useUnsavedChanges(formDirty)
 
   const metalAccountIds = useMemo(
-    () => accounts.accounts
-      .filter((account) => account.account_type_code === "gold")
-      .map((account) => account.id),
+    () =>
+      accounts.accounts
+        .filter((account) => account.account_type_code === "gold")
+        .map((account) => account.id),
     [accounts.accounts]
   )
 
@@ -98,14 +109,40 @@ export function AccountsPage() {
     void loadMetalPurchases()
   }, [loadMetalPurchases])
 
+  const loadAccountRecords = useCallback(async (accountId: string) => {
+    setIsLoadingAccountRecords(true)
+    setAccountRecordsError(false)
+    setAccountRecords([])
+    try {
+      setAccountRecords(await getAccountRecords(accountId))
+    } catch {
+      setAccountRecords([])
+      setAccountRecordsError(true)
+    } finally {
+      setIsLoadingAccountRecords(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    if (!accountRecordsAccount) {
+      setAccountRecords([])
+      setAccountRecordsError(false)
+      return
+    }
+    void loadAccountRecords(accountRecordsAccount.id)
+  }, [accountRecordsAccount, loadAccountRecords])
+
   const metalAggregates = useMemo(
     () => aggregateMetalPurchases(metalPurchases),
     [metalPurchases]
   )
   const purchaseHistory = useMemo(
-    () => purchaseHistoryAccount
-      ? metalPurchases.filter((purchase) => purchase.accountId === purchaseHistoryAccount.id)
-      : [],
+    () =>
+      purchaseHistoryAccount
+        ? metalPurchases.filter(
+            (purchase) => purchase.accountId === purchaseHistoryAccount.id
+          )
+        : [],
     [metalPurchases, purchaseHistoryAccount]
   )
   const purityBreakdown = useMemo(
@@ -113,9 +150,12 @@ export function AccountsPage() {
     [purchaseHistory]
   )
   const purityTransactions = useMemo(
-    () => selectedMetalPurity
-      ? purchaseHistory.filter((purchase) => purchase.purity === selectedMetalPurity)
-      : [],
+    () =>
+      selectedMetalPurity
+        ? purchaseHistory.filter(
+            (purchase) => purchase.purity === selectedMetalPurity
+          )
+        : [],
     [purchaseHistory, selectedMetalPurity]
   )
 
@@ -152,8 +192,7 @@ export function AccountsPage() {
         return false
       if (filters.currency && account.currency_code !== filters.currency)
         return false
-      if (filters.status === "active" && !account.is_active) return false
-      if (filters.status === "archived" && account.is_active) return false
+      if (!filters.showArchived && !account.is_active) return false
       return true
     })
 
@@ -172,18 +211,6 @@ export function AccountsPage() {
           return compareValues(
             left.account.account_type_code,
             right.account.account_type_code,
-            direction
-          )
-        case "currency":
-          return compareValues(
-            left.account.currency_code,
-            right.account.currency_code,
-            direction
-          )
-        case "status":
-          return compareValues(
-            String(left.account.is_active),
-            String(right.account.is_active),
             direction
           )
         case "balance": {
@@ -302,6 +329,7 @@ export function AccountsPage() {
           onDelete={(account) => setConfirm({ mode: "delete", account })}
           onAddMetalPurchase={setMetalPurchaseAccount}
           onViewMetalPurchases={setPurchaseHistoryAccount}
+          onViewAccountRecords={setAccountRecordsAccount}
           canDelete={accounts.canDeleteAccount}
         />
       )}
@@ -399,6 +427,13 @@ export function AccountsPage() {
           setSelectedMetalPurity(null)
           setPurchaseHistoryAccount(null)
         }}
+      />
+      <AccountRecordsDialog
+        account={accountRecordsAccount}
+        records={accountRecords}
+        isLoading={isLoadingAccountRecords}
+        isError={accountRecordsError}
+        onClose={() => setAccountRecordsAccount(null)}
       />
       <UnsavedChangesDialog
         open={unsaved.confirmationOpen}

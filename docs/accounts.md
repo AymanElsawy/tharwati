@@ -7,6 +7,7 @@ This document describes the **data model, business logic, validation, and UI/UX 
 The Accounts tab manages a single polymorphic table, `financial_accounts`, representing **7 account types**: `cash`, `bank`, `brokerage`, `gold` (covers both gold and silver), `real_estate`, `business`, `other`. Gold/silver accounts have a companion append-only history table, `metal_purchases`, and a dedicated RPC (`add_metal_purchase`) that both records a purchase and updates the parent account's running weighted-average cost/balance.
 
 Related-but-separate features that share the same table (context only, not part of this tab):
+
 - `src/features/cash-accounts/` — a simplified, cash-only accounts page. Uses ledger-adjusted `current_balance` (via `account-balances` RPC) instead of raw `opening_balance`. **Not i18n-driven** (hardcoded English), unlike this tab.
 - `src/features/account-balances/` — RPC-driven ledger balance read model (`get_account_balances`). Not used by this tab today (see §9 quirk).
 
@@ -41,6 +42,7 @@ create table public.financial_accounts (
 ```
 
 Key constraints:
+
 - `name` cannot be blank.
 - `currency_code` restricted to `USD | SAR | EGP | EUR | GBP` (fixed 5-item enum, not user-extensible).
 - All type-specific columns are nullable but constrained via CHECK to only be non-null for their matching `account_type_code`.
@@ -48,12 +50,14 @@ Key constraints:
 - Purity enum depends on `metal_type`: gold → `24k,22k,21k,18k,14k,10k,9k,other`; silver → `999,958,950,925,900,835,800,other`.
 
 Uniqueness:
+
 - **Non-metal accounts**: unique on `(user_id, lower(trim(name)))` where `account_type_code <> 'gold'` — case-insensitive unique name per user.
 - **Gold/silver accounts**: unique on `(user_id, currency_code, metal_type)` where `account_type_code = 'gold'` — **only one Gold and one Silver account per currency, per user.** This is why gold/silver accounts are always auto-named "Gold"/"Silver" and the name field is hidden in the form.
 
 RLS: standard per-user CRUD (`auth.uid() = user_id`).
 
 Triggers (immutability guards once financial history exists):
+
 - Changing `currency_code` on an account with existing `transaction_entries` raises Postgres error `23514` ("This account already contains financial history. Its currency cannot be changed.").
 - Changing `opening_balance` similarly raises `23514` for opening balance.
 - **Current caveat**: `getAccountDeletionEligibility()` in the repository always returns `hasFinancialHistory: false` today (this deployment has no populated ledger), so these locked-field UI states never actually trigger yet — but the UI pattern (read-only field + explanatory caption) should still be built for forward compatibility.
@@ -113,29 +117,46 @@ Logic (must be replicated exactly, either by calling this same RPC from mobile o
 ### 2.4 TypeScript domain types
 
 ```ts
-type AccountTypeCode = "cash" | "bank" | "brokerage" | "gold" | "real_estate" | "business" | "other"
-type Decimal = string   // ALL monetary/quantity values are strings, never JS numbers — see §10
+type AccountTypeCode =
+  "cash" | "bank" | "brokerage" | "gold" | "real_estate" | "business" | "other"
+type Decimal = string // ALL monetary/quantity values are strings, never JS numbers — see §10
 
 type AccountSummary = {
-  id: string; user_id: string; account_type_code: AccountTypeCode; name: string
+  id: string
+  user_id: string
+  account_type_code: AccountTypeCode
+  name: string
   currency_code: "USD" | "SAR" | "EGP" | "EUR" | "GBP"
-  opening_balance: Decimal; notes: string | null; is_active: boolean
+  opening_balance: Decimal
+  notes: string | null
+  is_active: boolean
   bank_subtype: "debit" | "credit" | null
   investment_type: "stock_etf" | "crypto" | "other" | null
   balance_grams: Decimal | null
   property_type: "apartment" | "villa" | "land" | "office" | "other" | null
   ownership_percentage: Decimal | null
-  business_type: string | null; industry: string | null
-  metal_type: "gold" | "silver" | null; purity: string | null
-  purchase_date: string | null; cost_per_unit: Decimal | null
-  created_at: string; updated_at: string
+  business_type: string | null
+  industry: string | null
+  metal_type: "gold" | "silver" | null
+  purity: string | null
+  purchase_date: string | null
+  cost_per_unit: Decimal | null
+  created_at: string
+  updated_at: string
 }
 
 type MetalPurchaseRecord = {
-  id: string; user_id: string; account_id: string; purity: string
-  purchased_at: string; quantity_grams: Decimal; cost_per_unit: Decimal
-  fees: Decimal; funding_mode: "external" | "cash_account"
-  funding_account_id: string | null; created_at: string
+  id: string
+  user_id: string
+  account_id: string
+  purity: string
+  purchased_at: string
+  quantity_grams: Decimal
+  cost_per_unit: Decimal
+  fees: Decimal
+  funding_mode: "external" | "cash_account"
+  funding_account_id: string | null
+  created_at: string
 }
 ```
 
@@ -167,6 +188,7 @@ type AccountFormValues = {
 ```
 
 `toAccountTypeSpecificFields(values)` strips/nulls irrelevant fields per type before sending to the repository:
+
 - `cash` / `other`: `openingBalance` only.
 - `bank`: `openingBalance` + `bankSubtype`.
 - `brokerage`: `openingBalance` + `investmentType`.
@@ -178,8 +200,12 @@ type AccountFormValues = {
 
 ```ts
 type MetalPurchaseFormValues = {
-  purity: string; purchaseDate: string; unitsGrams: string
-  costPerUnit: string; paidFromAccount: boolean; fundingAccountId: string
+  purity: string
+  purchaseDate: string
+  unitsGrams: string
+  costPerUnit: string
+  paidFromAccount: boolean
+  fundingAccountId: string
 }
 // getMetalPurchaseTotal(values) = multiplyDecimals(unitsGrams, costPerUnit)  — live preview, excludes fees
 ```
@@ -188,17 +214,18 @@ type MetalPurchaseFormValues = {
 
 Per-type, on submit (Zod schema, errors shown only after first submit attempt):
 
-| Type | Required / validated fields |
-|---|---|
-| `cash`, `other` | `openingBalance` — pattern `^\d{1,18}(\.\d{1,2})?$` |
-| `bank` | above + `bankSubtype` required |
-| `brokerage` | above + `investmentType` required |
-| `real_estate` | above + `ownershipPercentage` (pattern `^\d{1,3}(\.\d{1,2})?$`, ≤ 100) + `propertyType` required |
-| `business` | above + `ownershipPercentage` + `businessType` required + `industry` required |
-| `gold` | `metalType` required only (no balance field shown) |
-| all types except `gold` | `name` required |
+| Type                    | Required / validated fields                                                                      |
+| ----------------------- | ------------------------------------------------------------------------------------------------ |
+| `cash`, `other`         | `openingBalance` — pattern `^\d{1,18}(\.\d{1,2})?$`                                              |
+| `bank`                  | above + `bankSubtype` required                                                                   |
+| `brokerage`             | above + `investmentType` required                                                                |
+| `real_estate`           | above + `ownershipPercentage` (pattern `^\d{1,3}(\.\d{1,2})?$`, ≤ 100) + `propertyType` required |
+| `business`              | above + `ownershipPercentage` + `businessType` required + `industry` required                    |
+| `gold`                  | `metalType` required only (no balance field shown)                                               |
+| all types except `gold` | `name` required                                                                                  |
 
 Metal purchase form:
+
 - `purity` — must be a valid option for the account's `metalType`.
 - `purchaseDate` — required.
 - `unitsGrams` — pattern `^\d{1,18}(\.\d{1,3})?$`, must be `> 0`.
@@ -218,18 +245,18 @@ Metal purchase form:
 
 ```ts
 class AccountsRepository {
-  getAccounts(): Promise<AccountSummary[]>                       // all accounts for user, order by created_at desc
+  getAccounts(): Promise<AccountSummary[]> // all accounts for user, order by created_at desc
   getAccount(id): Promise<AccountSummary>
   createAccount(input: CreateAccountInput): Promise<AccountSummary>
   updateAccount(id, input: UpdateAccountInput): Promise<AccountSummary>
-  archiveAccount(id): Promise<AccountSummary>                    // = updateAccount(id, {isActive:false})
-  getAccountDeletionEligibility(ids): Promise<AccountDeletionEligibility[]>  // stub: always canDelete:true
-  deleteAccount(id): Promise<void>                                // throws constraint_violation if ineligible
+  archiveAccount(id): Promise<AccountSummary> // = updateAccount(id, {isActive:false})
+  getAccountDeletionEligibility(ids): Promise<AccountDeletionEligibility[]> // stub: always canDelete:true
+  deleteAccount(id): Promise<void> // throws constraint_violation if ineligible
 }
 
 class MetalPurchasesRepository {
-  addPurchase(accountId, values: MetalPurchaseFormValues): Promise<void>   // calls RPC add_metal_purchase
-  getPurchaseHistoryRows(accountIds): Promise<MetalPurchaseRecord[]>      // reads metal_purchases, ordered by purchased_at desc, created_at desc
+  addPurchase(accountId, values: MetalPurchaseFormValues): Promise<void> // calls RPC add_metal_purchase
+  getPurchaseHistoryRows(accountIds): Promise<MetalPurchaseRecord[]> // reads metal_purchases, ordered by purchased_at desc, created_at desc
 }
 ```
 
@@ -242,30 +269,37 @@ Error handling: Postgres errors are normalized into a `RepositoryError { code, o
 ## 6. UI / UX flow
 
 ### 6.1 Page states
+
 1. **Loading** — skeleton placeholders.
 2. **Hard error** (error + zero accounts) — icon + message + "Try again".
 3. **Normal** — header with "Add account" CTA, optional non-blocking inline error banner if accounts exist despite an error, filter bar, then either an **empty state** (no accounts at all, or none match filters — same copy either way) or the account list/table.
 
 ### 6.2 Filtering & sorting (all client-side, over the full loaded account list)
-Filters: `search` (case-insensitive substring on name), `type` (exact match), `currency` (exact match; options are derived dynamically from currencies actually present, not the full static enum), `status` (`all | active | archived`).
 
-Sort columns: `name | type | currency | balance | status` — string columns use locale compare, `balance` sorts numerically on `currentBalance ?? balance_grams ?? 0`. Clicking the active sort column flips direction; picking a new column resets to ascending.
+Filters: `search` (case-insensitive substring on name), `type` (exact match), `currency` (exact match; options are derived dynamically from currencies actually present, not the full static enum), and **Show Archived**. Show Archived defaults off and shows active accounts only; when on, it includes both active and archived accounts.
+
+Sort columns: `name | type | balance` — string columns use locale compare, `balance` sorts numerically on `currentBalance ?? balance_grams ?? 0`. Clicking the active sort column flips direction; picking a new column resets to ascending.
 
 **Displayed "balance"**: for non-gold accounts this is the raw `opening_balance` column — **not** a ledger-adjusted current balance (there's no transaction-effect calculation on this page, unlike the related `cash-accounts` feature). For gold/silver accounts this is the total purchase value, derived with decimal-safe `quantity_grams * cost_per_unit` across that account's `metal_purchases`; quantity is not shown at this layer.
 
 ### 6.3 List/table row content
-Name, type label (for gold accounts, shows "Gold"/"Silver" from `metal_type` rather than the generic type label), currency code, balance (per §6.2), status badge (Active/Archived), ownership % (real_estate/business only, else "—").
+
+Name, type label (for gold accounts, shows "Gold"/"Silver" from `metal_type` rather than the generic type label), balance (per §6.2, including its currency code), and ownership % (real_estate/business only, else "—"). Currency and status are not table columns.
 
 Row actions:
+
 - **View purchases** (gold accounts only) → opens purchase history dialog.
 - **Add purchase** (active gold accounts only) → opens metal purchase dialog.
 - **Edit** (always) → opens account form dialog in edit mode.
 - **Archive/Restore** (icon+label toggles based on `is_active`) → opens confirm dialog.
 - **Delete** (always visible, disabled when ineligible — currently never disabled) → opens confirm dialog.
 
-> **Known web-app bug to decide on for mobile**: the "Restore" action for an archived account reuses the *same* archive confirmation flow and repository call (`archiveAccount`, which always sets `is_active: false`) — so restoring currently does nothing (no-op). There is no working un-archive path in the current app despite the UI implying one. **Recommendation**: fix this on mobile with a distinct `restoreAccount = updateAccount(id, {isActive: true})` call and matching "Restore this account?" dialog copy, but be aware this is a deliberate deviation from current web behavior.
+For non-gold accounts, selecting the account name opens a read-only Account Records details layer. It loads the existing `financial_transactions` joined through matching `transaction_entries.account_id`, ordered newest first, and shows date, description/type, and amount. The fetch and mapping live in the Accounts repository/service (`account-records.repository` and `account-records.service`) rather than the React dialog, so the same transaction-record layer can be reused by mobile clients. Gold/Silver keeps its dedicated three-layer flow in §6.7.
+
+> **Known web-app bug to decide on for mobile**: the "Restore" action for an archived account reuses the _same_ archive confirmation flow and repository call (`archiveAccount`, which always sets `is_active: false`) — so restoring currently does nothing (no-op). There is no working un-archive path in the current app despite the UI implying one. **Recommendation**: fix this on mobile with a distinct `restoreAccount = updateAccount(id, {isActive: true})` call and matching "Restore this account?" dialog copy, but be aware this is a deliberate deviation from current web behavior.
 
 ### 6.4 Create/edit flow (form dialog)
+
 - **Create mode**: two-step — (1) a type picker (radio-group grid of 7 type cards with icon+label), (2) the form itself, pre-seeded with the chosen type.
 - **Edit mode**: skips the type picker; type is effectively immutable from the UI once created.
 - Field visibility/labels are conditional on `accountTypeCode` exactly as described in §2.5/§3.
@@ -276,12 +310,15 @@ Row actions:
 - Closing a dirty form should prompt an "unsaved changes" confirmation.
 
 ### 6.5 Archive / Delete confirm dialogs
+
 Simple modal: title interpolating account name, description, Cancel + destructive/warning confirm button (disabled + "…ing" label while in flight).
 
 ### 6.6 Add metal purchase dialog
+
 Fields: `purity` (options depend on account's `metal_type`), `purchaseDate`, `unitsGrams`, `costPerUnit`, a "Paid from" toggle revealing a funding-account picker (active `cash`/`bank` accounts only) when checked, and a live read-only "Total amount" = `unitsGrams * costPerUnit` (fees excluded from this preview since there's no fee field).
 
 ### 6.7 Metal purchase history dialog
+
 The history flow has three transaction-derived layers:
 
 1. **Account list** — Gold/Silver, currency, and total value only.
@@ -295,6 +332,7 @@ The web client reloads `metal_purchases` after a successful RPC call. These reco
 **All monetary and quantity values must be handled as decimal strings end-to-end** (network payloads, form state, calculations, display) — never native floats — to avoid precision loss. The web app uses a custom bigint-based decimal library (`add/subtract/multiply/divideDecimals`, `compareDecimals`, `normalizeDecimal`). Port an equivalent (e.g. a decimal/bignum library) to mobile.
 
 Display formatting:
+
 - Amounts render as `"{CURRENCY_CODE} {formatted number}"` (e.g. `"USD 1,234.56"`) — **not** a currency symbol, always the ISO code prefix.
 - Grouping/decimal separators and digit glyphs are locale-aware (Arabic-Indic digits in `ar` locale), but **numeric text is always displayed left-to-right** (`dir="ltr"`) even inside an RTL (Arabic) page layout — mobile must force LTR writing direction for all numeric/currency/date fields regardless of the app's overall RTL state.
 
