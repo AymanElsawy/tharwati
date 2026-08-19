@@ -38,6 +38,10 @@ export type MetalPurchaseTransaction = {
   createdAt: string
 }
 
+export type ValuedMetalPurchaseTransaction = MetalPurchaseTransaction & {
+  currentValue: Decimal | null
+}
+
 export type MetalAccountAggregate = {
   purchaseCount: number
   totalUnitsGrams: Decimal

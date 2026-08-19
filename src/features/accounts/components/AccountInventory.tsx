@@ -16,6 +16,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip"
 import {
+  bankSubtypeOptions,
   getAccountTypeLabel,
   metalTypeOptions,
 } from "@/features/accounts/types/account-form"
@@ -24,7 +25,6 @@ import {
   formatPortfolioPercent,
 } from "@/features/portfolio/utils/portfolio-formatters"
 import type { AccountSummary } from "@/lib/supabase/types"
-import type { MetalAccountAggregate } from "@/features/accounts/types/metal-purchase"
 import type { TranslationKey } from "@/i18n/en/translations"
 import { useTranslation } from "@/i18n/useTranslation"
 
@@ -69,7 +69,7 @@ export type AccountInventorySort = "name" | "type" | "balance"
 export type AccountInventoryItem = {
   account: AccountSummary
   currentBalance: string | null
-  metalAggregate: MetalAccountAggregate | null
+  metalCurrentValue: string | null
 }
 
 const columns: Array<[AccountInventorySort, TranslationKey]> = [
@@ -88,18 +88,24 @@ function typeLabel(
     )
     if (option) return t(option.labelKey)
   }
+  if (account.account_type_code === "bank" && account.bank_subtype) {
+    const subtype = bankSubtypeOptions.find(
+      (item) => item.value === account.bank_subtype
+    )
+    if (subtype)
+      return `${getAccountTypeLabel(account.account_type_code, t)} ${t(subtype.labelKey)}`
+  }
   return getAccountTypeLabel(account.account_type_code, t)
 }
 
 function balanceCell(item: AccountInventoryItem, locale: string) {
   if (item.account.account_type_code === "gold") {
-    const aggregate = item.metalAggregate ?? {
-      totalAmount: "0",
-    }
-    return (
+    return item.metalCurrentValue === null ? (
+      "—"
+    ) : (
       <span className="tabular-nums" dir="ltr">
         {formatPortfolioAmount(
-          aggregate.totalAmount,
+          item.metalCurrentValue,
           item.account.currency_code,
           locale
         )}

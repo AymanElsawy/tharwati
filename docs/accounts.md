@@ -281,13 +281,13 @@ Filters: `search` (case-insensitive substring on name), `type` (exact match), `c
 
 The page also reads two URL query params on mount (no UI control for either — they only exist to support deep-linking from elsewhere in the app, currently the dashboard's gold/silver cards, see `docs/dashboard.md`): `type` seeds the initial value of the `type` filter above, and `metal` (`gold | silver`) applies an additional, filter-bar-invisible predicate on `metal_type` so a link can land the user on just gold or just silver accounts without exposing a separate metal filter control.
 
-Sort columns: `name | type | balance` — string columns use locale compare, `balance` sorts numerically on `currentBalance ?? balance_grams ?? 0`. Clicking the active sort column flips direction; picking a new column resets to ascending.
+Sort columns: `name | type | balance` — the `balance` sort key is presented as **Current Value** and sorts numerically on the displayed non-metal value or live metal current value. Clicking the active sort column flips direction; picking a new column resets to ascending.
 
-**Displayed "balance"**: for non-gold accounts this is the raw `opening_balance` column — **not** a ledger-adjusted current balance (there's no transaction-effect calculation on this page, unlike the related `cash-accounts` feature). For gold/silver accounts this is the total purchase value, derived with decimal-safe `quantity_grams * cost_per_unit` across that account's `metal_purchases`; quantity is not shown at this layer.
+**Displayed "Current Value"**: for non-gold accounts this remains the raw `opening_balance` column — **not** a ledger-adjusted current balance (there's no transaction-effect calculation on this page, unlike the related `cash-accounts` feature). For gold/silver accounts it is current quantity in grams multiplied by the live current price per gram in the account currency. The price path reuses `getMetalPricePerGram`: XAU/XAG USD price from Gold API, converted from a troy ounce to a gram, then converted with the existing FX service when required. Historical purchase cost is never substituted when a current price is unavailable; the UI shows an unavailable value instead. Quantity is not shown at this layer.
 
 ### 6.3 List/table row content
 
-Name, type label (for gold accounts, shows "Gold"/"Silver" from `metal_type` rather than the generic type label), balance (per §6.2, including its currency code), and ownership % (real_estate/business only, else "—"). Currency and status are not table columns.
+Name, type label (for gold accounts, shows "Gold"/"Silver" from `metal_type`; for bank accounts, shows the stored subtype as "Bank Debit" or "Bank Credit"; all other types use their normal labels), balance (per §6.2, including its currency code), and ownership % (real_estate/business only, else "—"). Currency and status are not table columns.
 
 Row actions:
 
@@ -324,11 +324,11 @@ Fields: `purity` (options depend on account's `metal_type`), `purchaseDate`, `un
 
 The history flow has three transaction-derived layers:
 
-1. **Account list** — Gold/Silver, currency, and total value only.
+1. **Account list** — Gold/Silver, currency, and current value only. Current value is transaction-derived total grams multiplied by the existing live price per gram for the metal and account currency.
 2. **Purity summary** — opening a metal account shows a horizontally scrollable, responsive table with one header row: **Purity | Total quantity | Total value**. Each selectable purity row shows only those values; it does not list individual purchases.
-3. **Purity transactions** — opening a purity shows a compact responsive table, newest first, with one header row: **Date | Quantity | Cost per unit | Total amount**. Each purchase is one row; field labels are not repeated in every row. Dates are displayed as `DD-MM-YYYY` without changing their stored value. The table fits its modal on desktop and wraps compact cells on mobile without horizontal scrolling.
+3. **Purity transactions** — opening a purity shows a compact responsive table, newest first, with one header row: **Date | Quantity | Cost per unit | Total cost | Current value**. Total cost is the immutable purchase quantity multiplied by its historical cost per unit. Current value is that purchase quantity multiplied by the existing live current price per gram for the account's metal and currency; if the price is unavailable, no historical-cost fallback is shown. Each purchase remains one row, and its stored purchase data is unchanged. Dates are displayed as `DD-MM-YYYY` without changing their stored value.
 
-The web client reloads `metal_purchases` after a successful RPC call. These records are the source of truth for every displayed aggregate; purchases are never merged or persisted as a summary. Each layer has loading, error, and empty states as applicable.
+The web client reloads `metal_purchases` after a successful RPC call. These records remain the source of truth for purchase quantities and historical costs; purchases are never merged or persisted as a summary. Current values are derived at read time from those quantities and the shared live metal-price service. Each layer has loading, error, and empty states as applicable.
 
 ## 7. Number formatting & decimal safety (critical — apply throughout)
 
@@ -355,5 +355,5 @@ Display formatting:
 6. **The Accounts tab's balance column is the raw `opening_balance`**, not a ledger-adjusted current balance — this differs from the separate `cash-accounts` feature, which does compute a ledger-adjusted balance via the `get_account_balances` RPC. Recommend matching today's Accounts-tab behavior (raw `opening_balance`) for parity, but flag this inconsistency to the team.
 7. A `"deposit"` account type appears in one funding-account filter but is **not a real type** — dead code; only `cash`/`bank` are valid metal-purchase funding sources.
 8. **Metal purchase fees are hardcoded to `"0"`** from the client — no fee input UI exists yet, despite full schema/RPC support. Adding it on mobile is net-new, not parity.
-9. Gold/silver totals are calculated from immutable purchase records with decimal-safe helpers. The RPC's account-shaped response is not a purchase-history payload and must not be used to render the history.
+9. Gold/silver historical totals are calculated from immutable purchase records with decimal-safe helpers. Current values combine those immutable quantities with the shared XAU/XAG live price-per-gram path and never fall back to historical cost. The RPC's account-shaped response is not a purchase-history payload and must not be used to render the history.
 10. Currency set is a fixed 5-item enum (`USD, SAR, EGP, EUR, GBP`), enforced at both DB and schema level — not user-extensible from this feature today.

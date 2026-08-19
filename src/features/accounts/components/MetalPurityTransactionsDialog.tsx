@@ -9,14 +9,16 @@ import {
 import { useTranslation } from "@/i18n/useTranslation"
 import type { AccountSummary } from "@/lib/supabase/types"
 import { getPurityOptions } from "../types/account-form"
-import type { MetalPurchaseTransaction } from "../types/metal-purchase"
+import type { ValuedMetalPurchaseTransaction } from "../types/metal-purchase"
 
 function purityLabel(
   metalType: "gold" | "silver",
   purity: string,
   t: ReturnType<typeof useTranslation>["t"]
 ) {
-  const option = getPurityOptions(metalType).find((item) => item.value === purity)
+  const option = getPurityOptions(metalType).find(
+    (item) => item.value === purity
+  )
   return option?.label ?? (option?.labelKey ? t(option.labelKey) : purity)
 }
 
@@ -34,7 +36,7 @@ export function MetalPurityTransactionsDialog({
 }: {
   account: AccountSummary | null
   purity: string | null
-  purchases: MetalPurchaseTransaction[]
+  purchases: ValuedMetalPurchaseTransaction[]
   onBack: () => void
   onClose: () => void
 }) {
@@ -43,10 +45,13 @@ export function MetalPurityTransactionsDialog({
   const metalType = account?.metal_type === "silver" ? "silver" : "gold"
 
   return (
-    <Dialog.Root open={account !== null && purity !== null} onOpenChange={(open) => !open && onClose()}>
+    <Dialog.Root
+      open={account !== null && purity !== null}
+      onOpenChange={(open) => !open && onClose()}
+    >
       <Dialog.Portal>
         <Dialog.Backdrop className="fixed inset-0 z-[80] bg-black/60" />
-        <Dialog.Popup className="fixed top-1/2 left-1/2 z-[90] w-[min(42rem,calc(100vw-2rem))] -translate-x-1/2 -translate-y-1/2 overflow-hidden rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-2xl">
+        <Dialog.Popup className="fixed top-1/2 left-1/2 z-[90] w-[min(52rem,calc(100vw-2rem))] -translate-x-1/2 -translate-y-1/2 overflow-hidden rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-2xl">
           <header className="flex items-start justify-between border-b border-[var(--color-border)] px-6 py-5">
             <div>
               <Dialog.Title className="font-heading text-xl font-semibold">
@@ -64,19 +69,70 @@ export function MetalPurityTransactionsDialog({
             <table className="w-full table-fixed text-xs sm:text-sm">
               <thead>
                 <tr className="border-b border-[var(--color-border)] text-xs font-medium tracking-[0.08em] text-muted-foreground uppercase">
-                  <th className="w-[22%] px-1.5 py-2 text-start sm:px-2">{t("accounts.metalPurchaseHistory.date")}</th>
-                  <th className="w-[20%] px-1.5 py-2 text-end sm:px-2">{t("accounts.metalPurchaseHistory.quantity")}</th>
-                  <th className="w-[29%] px-1.5 py-2 text-end sm:px-2">{t("accounts.metalPurchaseHistory.costPerUnit")}</th>
-                  <th className="w-[29%] px-1.5 py-2 text-end sm:px-2">{t("accounts.metalPurchaseHistory.totalAmount")}</th>
+                  <th className="w-[18%] px-1 py-2 text-start sm:px-2">
+                    {t("accounts.metalPurchaseHistory.date")}
+                  </th>
+                  <th className="w-[16%] px-1 py-2 text-end sm:px-2">
+                    {t("accounts.metalPurchaseHistory.quantity")}
+                  </th>
+                  <th className="w-[22%] px-1 py-2 text-end sm:px-2">
+                    {t("accounts.metalPurchaseHistory.costPerUnit")}
+                  </th>
+                  <th className="w-[22%] px-1 py-2 text-end sm:px-2">
+                    {t("accounts.metalPurchaseHistory.totalCost")}
+                  </th>
+                  <th className="w-[22%] px-1 py-2 text-end sm:px-2">
+                    {t("accounts.metalPurchaseHistory.currentValue")}
+                  </th>
                 </tr>
               </thead>
               <tbody>
                 {purchases.map((purchase) => (
-                  <tr key={purchase.id} className="border-b border-[var(--color-border)] last:border-b-0">
-                    <td className="px-1.5 py-3 tabular-nums sm:px-2" dir="ltr">{formatPurchaseDate(purchase.purchaseDate)}</td>
-                    <td className="px-1.5 py-3 text-end tabular-nums sm:px-2" dir="ltr">{formatPortfolioDecimal(purchase.unitsGrams, locale, 3)} g</td>
-                    <td className="px-1.5 py-3 text-end tabular-nums break-words sm:px-2" dir="ltr">{formatPortfolioAmount(purchase.costPerUnit, account?.currency_code ?? "USD", locale)}</td>
-                    <td className="px-1.5 py-3 text-end font-medium tabular-nums break-words sm:px-2" dir="ltr">{formatPortfolioAmount(purchase.totalAmount, account?.currency_code ?? "USD", locale)}</td>
+                  <tr
+                    key={purchase.id}
+                    className="border-b border-[var(--color-border)] last:border-b-0"
+                  >
+                    <td className="px-1 py-3 tabular-nums sm:px-2" dir="ltr">
+                      {formatPurchaseDate(purchase.purchaseDate)}
+                    </td>
+                    <td
+                      className="px-1 py-3 text-end tabular-nums sm:px-2"
+                      dir="ltr"
+                    >
+                      {formatPortfolioDecimal(purchase.unitsGrams, locale, 3)} g
+                    </td>
+                    <td
+                      className="px-1 py-3 text-end break-words tabular-nums sm:px-2"
+                      dir="ltr"
+                    >
+                      {formatPortfolioAmount(
+                        purchase.costPerUnit,
+                        account?.currency_code ?? "USD",
+                        locale
+                      )}
+                    </td>
+                    <td
+                      className="px-1 py-3 text-end font-medium break-words tabular-nums sm:px-2"
+                      dir="ltr"
+                    >
+                      {formatPortfolioAmount(
+                        purchase.totalAmount,
+                        account?.currency_code ?? "USD",
+                        locale
+                      )}
+                    </td>
+                    <td
+                      className="px-1 py-3 text-end font-medium break-words tabular-nums sm:px-2"
+                      dir="ltr"
+                    >
+                      {purchase.currentValue === null
+                        ? "—"
+                        : formatPortfolioAmount(
+                            purchase.currentValue,
+                            account?.currency_code ?? "USD",
+                            locale
+                          )}
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -87,7 +143,9 @@ export function MetalPurityTransactionsDialog({
               <ArrowLeft size={16} />
               {t("common.back")}
             </Button>
-            <Button variant="destructive" onClick={onClose}>{t("common.close")}</Button>
+            <Button variant="destructive" onClick={onClose}>
+              {t("common.close")}
+            </Button>
           </footer>
         </Dialog.Popup>
       </Dialog.Portal>

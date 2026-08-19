@@ -10,7 +10,9 @@ import {
   aggregateMetalPurchasesByPurity,
   buildAddMetalPurchaseCommand,
   getEligibleMetalFundingAccounts,
+  getMetalCurrentValue,
   mapMetalPurchaseHistoryRows,
+  valueMetalPurchases,
 } from "./metal-purchases.service"
 
 const ledgerRow = (
@@ -19,7 +21,7 @@ const ledgerRow = (
   units: string,
   costPerUnit: string,
   paymentAccountId: string | null,
-  purity = "24k",
+  purity = "24k"
 ): MetalPurchaseHistoryRow => ({
   id,
   user_id: "user",
@@ -36,14 +38,16 @@ const ledgerRow = (
 
 describe("metal purchases service", () => {
   it("builds an accountless owner-contribution command by default", () => {
-    expect(buildAddMetalPurchaseCommand("metal", {
-      purity: "24k",
-      purchaseDate: "2026-08-18",
-      unitsGrams: "10",
-      costPerUnit: "100",
-      paidFromAccount: false,
-      fundingAccountId: "ignored",
-    })).toMatchObject({
+    expect(
+      buildAddMetalPurchaseCommand("metal", {
+        purity: "24k",
+        purchaseDate: "2026-08-18",
+        unitsGrams: "10",
+        costPerUnit: "100",
+        paidFromAccount: false,
+        fundingAccountId: "ignored",
+      })
+    ).toMatchObject({
       accountId: "metal",
       fundingMode: "external",
       fundingAccountId: null,
@@ -81,24 +85,43 @@ describe("metal purchases service", () => {
   })
 
   it("returns only active cash, bank, or deposit funding accounts", () => {
-    const account = (id: string, type: string, active = true) => ({
-      id,
-      account_type_code: type,
-      is_active: active,
-    }) as AccountSummary
-    expect(getEligibleMetalFundingAccounts([
-      account("cash", "cash"),
-      account("bank", "bank"),
-      account("deposit", "deposit"),
-      account("archived", "cash", false),
-      account("other", "other"),
-    ]).map((item) => item.id)).toEqual(["cash", "bank", "deposit"])
+    const account = (id: string, type: string, active = true) =>
+      ({
+        id,
+        account_type_code: type,
+        is_active: active,
+      }) as AccountSummary
+    expect(
+      getEligibleMetalFundingAccounts([
+        account("cash", "cash"),
+        account("bank", "bank"),
+        account("deposit", "deposit"),
+        account("archived", "cash", false),
+        account("other", "other"),
+      ]).map((item) => item.id)
+    ).toEqual(["cash", "bank", "deposit"])
   })
 
   it("normalizes numeric database values before aggregating", () => {
-    expect(mapMetalPurchaseHistoryRow({
-      ...ledgerRow("1", "metal", "10", "100", null),
-      quantity_grams: 10 as unknown as string,
-    }).quantity_grams).toBe("10")
+    expect(
+      mapMetalPurchaseHistoryRow({
+        ...ledgerRow("1", "metal", "10", "100", null),
+        quantity_grams: 10 as unknown as string,
+      }).quantity_grams
+    ).toBe("10")
+  })
+
+  it("values each purchase from grams and the current price without changing historical cost", () => {
+    const purchases = mapMetalPurchaseHistoryRows([
+      ledgerRow("1", "metal", "10", "50", null),
+    ])
+
+    expect(getMetalCurrentValue("10", "75")).toBe("750")
+    expect(valueMetalPurchases(purchases, "75")[0]).toMatchObject({
+      costPerUnit: "50",
+      totalAmount: "500",
+      currentValue: "750",
+    })
+    expect(valueMetalPurchases(purchases, null)[0]?.currentValue).toBeNull()
   })
 })

@@ -26,7 +26,10 @@ import {
   aggregateMetalPurchases,
   aggregateMetalPurchasesByPurity,
   getEligibleMetalFundingAccounts,
+  getMetalAccountCurrentPrices,
+  getMetalCurrentValue,
   getMetalPurchases,
+  valueMetalPurchases,
 } from "@/features/accounts/services/metal-purchases.service"
 import { getAccountRecords } from "@/features/accounts/services/account-records.service"
 import {
@@ -36,7 +39,7 @@ import {
 } from "@/features/accounts/types/account-form"
 import { useUnsavedChanges } from "@/hooks/useUnsavedChanges"
 import { useTranslation } from "@/i18n/useTranslation"
-import type { AccountSummary } from "@/lib/supabase/types"
+import type { AccountSummary, Decimal } from "@/lib/supabase/types"
 import type { MetalPurchaseTransaction } from "@/features/accounts/types/metal-purchase"
 import type { AccountRecord } from "@/features/accounts/types/account-record"
 
@@ -72,6 +75,9 @@ export function AccountsPage() {
   const [isLoadingPurchaseHistory, setIsLoadingPurchaseHistory] =
     useState(false)
   const [purchaseHistoryError, setPurchaseHistoryError] = useState(false)
+  const [metalCurrentPrices, setMetalCurrentPrices] = useState<
+    Map<string, Decimal | null>
+  >(new Map())
   const [accountRecordsAccount, setAccountRecordsAccount] =
     useState<AccountSummary | null>(null)
   const [accountRecords, setAccountRecords] = useState<AccountRecord[]>([])
@@ -111,6 +117,20 @@ export function AccountsPage() {
   useEffect(() => {
     void loadMetalPurchases()
   }, [loadMetalPurchases])
+
+  useEffect(() => {
+    let active = true
+    void getMetalAccountCurrentPrices(
+      accounts.accounts.filter(
+        (account) => account.account_type_code === "gold"
+      )
+    ).then((prices) => {
+      if (active) setMetalCurrentPrices(prices)
+    })
+    return () => {
+      active = false
+    }
+  }, [accounts.accounts])
 
   const loadAccountRecords = useCallback(async (accountId: string) => {
     setIsLoadingAccountRecords(true)
@@ -161,6 +181,16 @@ export function AccountsPage() {
         : [],
     [purchaseHistory, selectedMetalPurity]
   )
+  const valuedPurityTransactions = useMemo(
+    () =>
+      valueMetalPurchases(
+        purityTransactions,
+        purchaseHistoryAccount
+          ? (metalCurrentPrices.get(purchaseHistoryAccount.id) ?? null)
+          : null
+      ),
+    [metalCurrentPrices, purchaseHistoryAccount, purityTransactions]
+  )
 
   const defaults = useMemo<AccountFormValues>(
     () =>
@@ -200,12 +230,21 @@ export function AccountsPage() {
       return true
     })
 
-    const withBalance = filtered.map((account) => ({
-      account,
-      currentBalance:
-        account.account_type_code === "gold" ? null : account.opening_balance,
-      metalAggregate: metalAggregates.get(account.id) ?? null,
-    }))
+    const withBalance = filtered.map((account) => {
+      const metalAggregate = metalAggregates.get(account.id) ?? null
+      return {
+        account,
+        currentBalance:
+          account.account_type_code === "gold" ? null : account.opening_balance,
+        metalCurrentValue:
+          account.account_type_code === "gold"
+            ? getMetalCurrentValue(
+                metalAggregate?.totalUnitsGrams ?? "0",
+                metalCurrentPrices.get(account.id) ?? null
+              )
+            : null,
+      }
+    })
 
     return withBalance.sort((left, right) => {
       switch (sort) {
@@ -219,10 +258,10 @@ export function AccountsPage() {
           )
         case "balance": {
           const leftValue = Number(
-            left.currentBalance ?? left.metalAggregate?.totalUnitsGrams ?? 0
+            left.currentBalance ?? left.metalCurrentValue ?? 0
           )
           const rightValue = Number(
-            right.currentBalance ?? right.metalAggregate?.totalUnitsGrams ?? 0
+            right.currentBalance ?? right.metalCurrentValue ?? 0
           )
           return direction === "asc"
             ? leftValue - rightValue
@@ -233,6 +272,14 @@ export function AccountsPage() {
       }
     })
   }, [accounts.accounts, direction, filters, metalAggregates, metalFilter, sort])
+  }, [
+    accounts.accounts,
+    direction,
+    filters,
+    metalAggregates,
+    metalCurrentPrices,
+    sort,
+  ])
 
   const toggleSort = (nextSort: AccountInventorySort) => {
     if (nextSort === sort) {
@@ -425,7 +472,7 @@ export function AccountsPage() {
       <MetalPurityTransactionsDialog
         account={purchaseHistoryAccount}
         purity={selectedMetalPurity}
-        purchases={purityTransactions}
+        purchases={valuedPurityTransactions}
         onBack={() => setSelectedMetalPurity(null)}
         onClose={() => {
           setSelectedMetalPurity(null)

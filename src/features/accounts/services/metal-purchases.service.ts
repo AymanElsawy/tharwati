@@ -3,6 +3,8 @@ import {
   multiplyDecimals,
 } from "@/lib/financial-calculations/decimal"
 import type { AccountSummary } from "@/lib/supabase/types"
+import type { Decimal } from "@/lib/supabase/types"
+import { getMetalPricePerGram } from "@/services/metalPriceService"
 import {
   metalPurchasesRepository,
   type MetalPurchaseHistoryRow,
@@ -13,6 +15,7 @@ import type {
   MetalPurchaseFormValues,
   MetalPurchaseTransaction,
   MetalPurityAggregate,
+  ValuedMetalPurchaseTransaction,
 } from "../types/metal-purchase"
 
 function addOrThrow(left: string, right: string): string {
@@ -32,9 +35,7 @@ export function buildAddMetalPurchaseCommand(
     quantityGrams: values.unitsGrams.trim(),
     costPerUnit: values.costPerUnit.trim(),
     fundingMode: values.paidFromAccount ? "cash_account" : "external",
-    fundingAccountId: values.paidFromAccount
-      ? values.fundingAccountId
-      : null,
+    fundingAccountId: values.paidFromAccount ? values.fundingAccountId : null,
     fees: "0",
   }
 }
@@ -69,24 +70,60 @@ export function mapMetalPurchaseHistoryRows(
   rows: readonly MetalPurchaseHistoryRow[]
 ): MetalPurchaseTransaction[] {
   return rows.map((row) => ({
-      id: row.id,
-      accountId: row.account_id,
-      purity: row.purity,
-      purchaseDate: row.purchased_at,
-      unitsGrams: row.quantity_grams,
-      costPerUnit: row.cost_per_unit,
-      totalAmount: multiplyOrThrow(row.quantity_grams, row.cost_per_unit),
-      currencyCode: "",
-      fundingMode: row.funding_mode,
-      fundingAccountId: row.funding_account_id,
-      createdAt: row.created_at,
-    }))
+    id: row.id,
+    accountId: row.account_id,
+    purity: row.purity,
+    purchaseDate: row.purchased_at,
+    unitsGrams: row.quantity_grams,
+    costPerUnit: row.cost_per_unit,
+    totalAmount: multiplyOrThrow(row.quantity_grams, row.cost_per_unit),
+    currencyCode: "",
+    fundingMode: row.funding_mode,
+    fundingAccountId: row.funding_account_id,
+    createdAt: row.created_at,
+  }))
 }
 
 function multiplyOrThrow(left: string, right: string): string {
   const result = multiplyDecimals(left, right)
   if (result === null) throw new Error("Invalid metal purchase decimal")
   return result
+}
+
+export async function getMetalAccountCurrentPrices(
+  accounts: readonly AccountSummary[]
+): Promise<Map<string, Decimal | null>> {
+  const prices = await Promise.all(
+    accounts
+      .filter((account) => account.account_type_code === "gold")
+      .map(async (account) => {
+        const symbol = account.metal_type === "silver" ? "XAG" : "XAU"
+        const price = await getMetalPricePerGram(symbol, account.currency_code)
+        return [account.id, price === null ? null : String(price)] as const
+      })
+  )
+  return new Map(prices)
+}
+
+export function getMetalCurrentValue(
+  unitsGrams: Decimal,
+  currentPricePerGram: Decimal | null
+): Decimal | null {
+  if (currentPricePerGram === null) return null
+  return multiplyDecimals(unitsGrams, currentPricePerGram)
+}
+
+export function valueMetalPurchases(
+  purchases: readonly MetalPurchaseTransaction[],
+  currentPricePerGram: Decimal | null
+): ValuedMetalPurchaseTransaction[] {
+  return purchases.map((purchase) => ({
+    ...purchase,
+    currentValue: getMetalCurrentValue(
+      purchase.unitsGrams,
+      currentPricePerGram
+    ),
+  }))
 }
 
 export function aggregateMetalPurchases(
