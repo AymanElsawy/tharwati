@@ -52,6 +52,8 @@ export const ar: Record<TranslationKey, string> = {
   "dashboard.accountsOverview.currentPricePerUnit":
     "القيمة الحالية {{price}} {{currency}}/جم",
   "dashboard.accountsOverview.currentPriceUnavailable": "السعر الحالي غير متاح",
+  "dashboard.accountsOverview.valueIncreased": "القيمة الحالية أعلى مما دفعته",
+  "dashboard.accountsOverview.valueDecreased": "القيمة الحالية أقل مما دفعته",
   "dashboard.netWorth.title": "صافي الثروة",
   "dashboard.netWorth.accountCount": "عبر {{count}} حسابات",
   "dashboard.netWorth.empty": "أضف حساب نقد أو بنك أو عقار لعرض صافي ثروتك.",

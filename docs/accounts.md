@@ -277,6 +277,9 @@ Error handling: Postgres errors are normalized into a `RepositoryError { code, o
 ### 6.2 Filtering & sorting (all client-side, over the full loaded account list)
 
 Filters: `search` (case-insensitive substring on name), `type` (exact match), `currency` (exact match; options are derived dynamically from currencies actually present, not the full static enum), and **Show Archived**. Show Archived defaults off and shows active accounts only; when on, it includes both active and archived accounts.
+Filters: `search` (case-insensitive substring on name), `type` (exact match), `currency` (exact match; options are derived dynamically from currencies actually present, not the full static enum), `status` (`all | active | archived`).
+
+The page also reads two URL query params on mount (no UI control for either — they only exist to support deep-linking from elsewhere in the app, currently the dashboard's gold/silver cards, see `docs/dashboard.md`): `type` seeds the initial value of the `type` filter above, and `metal` (`gold | silver`) applies an additional, filter-bar-invisible predicate on `metal_type` so a link can land the user on just gold or just silver accounts without exposing a separate metal filter control.
 
 Sort columns: `name | type | balance` — string columns use locale compare, `balance` sorts numerically on `currentBalance ?? balance_grams ?? 0`. Clicking the active sort column flips direction; picking a new column resets to ascending.
 

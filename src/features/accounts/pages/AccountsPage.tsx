@@ -1,5 +1,6 @@
 import { AlertTriangle, Plus } from "lucide-react"
 import { useCallback, useEffect, useMemo, useState } from "react"
+import { useSearchParams } from "react-router-dom"
 
 import { Button } from "@/components/ui/button"
 import { UnsavedChangesDialog } from "@/components/UnsavedChangesDialog"
@@ -47,6 +48,8 @@ function compareValues(left: string, right: string, direction: "asc" | "desc") {
 export function AccountsPage() {
   const { t } = useTranslation()
   const accounts = useAccounts()
+  const [searchParams] = useSearchParams()
+  const metalFilter = searchParams.get("metal") as "gold" | "silver" | null
   const [form, setForm] = useState<{
     mode: "create" | "edit"
     account: AccountSummary | null
@@ -77,7 +80,7 @@ export function AccountsPage() {
   const [formDirty, setFormDirty] = useState(false)
   const [filters, setFilters] = useState<AccountFilters>({
     search: "",
-    type: null,
+    type: searchParams.get("type") as AccountFilters["type"],
     currency: null,
     showArchived: false,
   })
@@ -190,6 +193,7 @@ export function AccountsPage() {
         return false
       if (filters.type && account.account_type_code !== filters.type)
         return false
+      if (metalFilter && account.metal_type !== metalFilter) return false
       if (filters.currency && account.currency_code !== filters.currency)
         return false
       if (!filters.showArchived && !account.is_active) return false
@@ -228,7 +232,7 @@ export function AccountsPage() {
           return 0
       }
     })
-  }, [accounts.accounts, direction, filters, metalAggregates, sort])
+  }, [accounts.accounts, direction, filters, metalAggregates, metalFilter, sort])
 
   const toggleSort = (nextSort: AccountInventorySort) => {
     if (nextSort === sort) {

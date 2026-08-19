@@ -51,6 +51,10 @@ export const en = {
     "Now worth {{price}} {{currency}}/g",
   "dashboard.accountsOverview.currentPriceUnavailable":
     "Current price unavailable",
+  "dashboard.accountsOverview.valueIncreased":
+    "Current value is above what you paid",
+  "dashboard.accountsOverview.valueDecreased":
+    "Current value is below what you paid",
   "dashboard.netWorth.title": "Net worth",
   "dashboard.netWorth.accountCount": "Across {{count}} accounts",
   "dashboard.netWorth.empty":

@@ -106,20 +106,29 @@ interface NetWorthResult {
 ```ts
 type AccountTypeCurrencyTotal = { currencyCode: string; total: Decimal }
 
-type MetalAccountDetail = {
-  accountId: string; name: string; metalType: "gold" | "silver"
-  units: Decimal; costPerUnit: Decimal; currencyCode: string
-  currentPricePerUnit: number | null   // null if live metal price fetch failed
-}
-
 type AccountTypeOverview = {
-  accountTypeCode: "cash" | "bank" | "brokerage" | "gold" | "real_estate" | "business" | "other"
+  kind: "type"
+  accountTypeCode: "cash" | "bank" | "brokerage" | "real_estate" | "business" | "other"
   accountCount: number
   currencyTotals: AccountTypeCurrencyTotal[]
-  metalAccounts: MetalAccountDetail[] | null   // populated only for accountTypeCode === "gold"
 }
+
+type MetalOverview = {
+  kind: "metal"
+  metalType: "gold" | "silver"
+  accountCount: number
+  totalValueBase: Decimal | null      // null if base currency unset or live metal price fetch failed
+  costBasisBase: Decimal | null       // null if base currency unset or an FX pair for a held currency is unavailable
+  baseCurrencyCode: string | null
+}
+
+type OverviewCard = AccountTypeOverview | MetalOverview
 ```
-Groups are output in fixed order `["cash","bank","brokerage","gold","real_estate","business","other"]`; a type with zero accounts is omitted entirely.
+`financial_accounts` rows with `account_type_code === "gold"` are split by their `metal_type` column into two separate cards — one for `gold`, one for `silver` — instead of one combined "gold" card. Each metal card shows only a single **total value converted into the user's onboarding base currency** (`profiles.base_currency_code`): sum of that metal's grams across all its accounts, multiplied by the live price-per-gram in the base currency (`getMetalPricePerGram(symbol, baseCurrencyCode)`, which itself does the USD→base FX conversion). Per-account name/units/cost-per-unit/current-price detail rows (previously shown per metal sub-account) are no longer rendered on the dashboard.
+
+**Increase/decrease indicator**: `costBasisBase` is `Σ(balance_grams × cost_per_unit)` per account (that account's weighted-average purchase cost, from `financial_accounts`, not `metal_purchases` history), grouped by the account's own `currency_code` and converted into the base currency via `convertCurrency` (same live-FX-then-manual-fallback resolution as everywhere else, §2.7) — summed across every account of that metal. When both `totalValueBase` and `costBasisBase` resolve, the card renders a colored trend icon (up/emerald if `totalValueBase > costBasisBase`, down/red if less, a dash if equal) next to the total, with a signed `±return%` computed as `(totalValueBase − costBasisBase) / costBasisBase × 100` (only when `costBasisBase > 0`) and a tooltip stating whether the current value is above or below what the user paid. The icon is omitted entirely if either value is `null` (no base currency, or a live price/FX lookup failed).
+
+Non-metal groups are output in fixed order `["cash","bank","brokerage","real_estate","business","other"]`; a type with zero accounts is omitted entirely. The gold/silver metal cards (present only when at least one account of that metal exists) are inserted into the card list immediately after the `brokerage` slot (or at the front if there's no brokerage card), matching the metal group's old position in the order.
 
 ### 1.5 Portfolio valuation model (feeds `investments`/`performance`/`allocation` in the rich dashboard)
 
@@ -215,7 +224,7 @@ Page = header (eyebrow/title/description) + `NetWorthCard` + `AccountsOverviewCa
 3. No base currency set — prompt + "Complete onboarding" link.
 4. Success — big total (`{amount} {baseCurrencyCode}`, forced LTR), account count line, an amber warning line if any currency pairs were unavailable, a muted note listing any account types excluded from the total, and a link to the full Accounts tab.
 
-**`AccountsOverviewCard`** states: loading (3 skeleton tiles) / error / empty ("add an account" prompt) / success (a responsive grid of per-account-type cards). Each type card shows an icon, localized type label, and account count; for **gold**, it additionally lists each metal sub-account (name, gold/silver badge, units in grams, cost-per-unit paid, current live price-per-unit or "unavailable"); for all other types, one row per currency held showing the summed total.
+**`AccountsOverviewCard`** states: loading (3 skeleton tiles) / error / empty ("add an account" prompt) / success (a responsive grid of per-account-type cards, plus separate gold/silver metal cards — see below). Each type card shows an icon, localized type label, and account count, with one row per currency held showing the summed total. **Gold** and **silver** are each rendered as their own card (not part of `typeOrder`, and no longer combined into one "gold" card): title is the metal's localized label, subtitle is the account count, and the body shows a single total-value line — that metal's total grams across all its accounts converted into the user's base currency (or "Current price unavailable" if the base currency isn't set or the live price fetch failed) — next to a trend icon comparing that current value against what the user paid for it (see §1.4's "Increase/decrease indicator"). No other per-account detail (name, units, cost-per-unit, live price-per-unit) is shown on the dashboard for metal accounts anymore. Every card, including the metal cards, is a `<Link>`; clicking a type card goes to `/accounts`, and clicking the gold or silver card goes to `/accounts?type=gold&metal=gold` or `/accounts?type=gold&metal=silver` respectively — the Accounts page reads those query params on mount to pre-filter its list to just that metal type.
 
 ### 3.2 Rich dashboard (unused in production, but the more complete design)
 
