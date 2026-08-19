@@ -116,6 +116,8 @@ type FinancialAccountRow = {
   is_active: boolean
   notes: string | null
   bank_subtype: "debit" | "credit" | null
+  credit_card_limit: Decimal | null
+  due_day_of_month: number | null
   investment_type: "stock_etf" | "crypto" | "other" | null
   balance_grams: Decimal | null
   property_type: "apartment" | "villa" | "land" | "office" | "other" | null
@@ -351,6 +353,8 @@ export type Database = {
           is_active?: boolean
           notes?: string | null
           bank_subtype?: "debit" | "credit" | null
+          credit_card_limit?: Decimal | null
+          due_day_of_month?: number | null
           investment_type?: "stock_etf" | "crypto" | "other" | null
           balance_grams?: Decimal | null
           property_type?:

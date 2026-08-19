@@ -315,6 +315,9 @@ export const en = {
   "accounts.form.bankSubtype.label": "Type",
   "accounts.form.bankSubtype.debit": "Debit",
   "accounts.form.bankSubtype.credit": "Credit",
+  "accounts.form.creditCardLimit": "Credit Card Limit",
+  "accounts.form.dueDayOfMonth": "Due Day of Month",
+  "accounts.form.dueDayUnset": "Unset",
   "accounts.form.investmentType.label": "Type of investments",
   "accounts.form.investmentType.stockEtf": "Stock & ETF",
   "accounts.form.investmentType.crypto": "Crypto",
@@ -330,6 +333,12 @@ export const en = {
   "accounts.validation.balanceInvalid":
     "Enter a non-negative amount with up to 2 decimal places",
   "accounts.validation.bankSubtypeRequired": "Select debit or credit",
+  "accounts.validation.creditCardLimitInvalid":
+    "Enter a positive credit card limit with up to 2 decimal places",
+  "accounts.validation.dueDayOfMonthInvalid":
+    "Select a due day from 1 through 31",
+  "accounts.validation.creditBalanceExceedsLimit":
+    "Current balance cannot exceed the credit card limit",
   "accounts.validation.investmentTypeRequired": "Select a type of investment",
   "accounts.validation.balanceGramsRequired": "Balance in grams is required",
   "accounts.validation.balanceGramsInvalid":

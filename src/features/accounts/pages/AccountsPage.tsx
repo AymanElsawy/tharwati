@@ -24,7 +24,7 @@ import { useAccounts } from "@/features/accounts/hooks/useAccounts"
 import {
   addMetalPurchase,
   aggregateMetalPurchases,
-  aggregateMetalPurchasesByPurity,
+  aggregateValuedMetalPurchasesByPurity,
   getEligibleMetalFundingAccounts,
   getMetalAccountCurrentPrices,
   getMetalCurrentValue,
@@ -168,28 +168,28 @@ export function AccountsPage() {
         : [],
     [metalPurchases, purchaseHistoryAccount]
   )
-  const purityBreakdown = useMemo(
-    () => aggregateMetalPurchasesByPurity(purchaseHistory),
-    [purchaseHistory]
-  )
-  const purityTransactions = useMemo(
-    () =>
-      selectedMetalPurity
-        ? purchaseHistory.filter(
-            (purchase) => purchase.purity === selectedMetalPurity
-          )
-        : [],
-    [purchaseHistory, selectedMetalPurity]
-  )
-  const valuedPurityTransactions = useMemo(
+  const valuedPurchaseHistory = useMemo(
     () =>
       valueMetalPurchases(
-        purityTransactions,
+        purchaseHistory,
         purchaseHistoryAccount
           ? (metalCurrentPrices.get(purchaseHistoryAccount.id) ?? null)
           : null
       ),
-    [metalCurrentPrices, purchaseHistoryAccount, purityTransactions]
+    [metalCurrentPrices, purchaseHistory, purchaseHistoryAccount]
+  )
+  const purityBreakdown = useMemo(
+    () => aggregateValuedMetalPurchasesByPurity(valuedPurchaseHistory),
+    [valuedPurchaseHistory]
+  )
+  const valuedPurityTransactions = useMemo(
+    () =>
+      selectedMetalPurity
+        ? valuedPurchaseHistory.filter(
+            (purchase) => purchase.purity === selectedMetalPurity
+          )
+        : [],
+    [selectedMetalPurity, valuedPurchaseHistory]
   )
 
   const defaults = useMemo<AccountFormValues>(
@@ -271,12 +271,12 @@ export function AccountsPage() {
           return 0
       }
     })
-  }, [accounts.accounts, direction, filters, metalAggregates, metalFilter, sort])
   }, [
     accounts.accounts,
     direction,
     filters,
     metalAggregates,
+    metalFilter,
     metalCurrentPrices,
     sort,
   ])

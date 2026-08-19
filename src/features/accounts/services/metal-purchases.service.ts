@@ -16,6 +16,7 @@ import type {
   MetalPurchaseTransaction,
   MetalPurityAggregate,
   ValuedMetalPurchaseTransaction,
+  ValuedMetalPurityAggregate,
 } from "../types/metal-purchase"
 
 function addOrThrow(left: string, right: string): string {
@@ -161,6 +162,34 @@ export function aggregateMetalPurchasesByPurity(
       transactionCount: current.transactionCount + 1,
       totalUnitsGrams: addOrThrow(current.totalUnitsGrams, purchase.unitsGrams),
       totalAmount: addOrThrow(current.totalAmount, purchase.totalAmount),
+    })
+  }
+  return [...aggregates.values()].sort((left, right) =>
+    left.purity.localeCompare(right.purity)
+  )
+}
+
+export function aggregateValuedMetalPurchasesByPurity(
+  purchases: readonly ValuedMetalPurchaseTransaction[]
+): ValuedMetalPurityAggregate[] {
+  const aggregates = new Map<string, ValuedMetalPurityAggregate>()
+  for (const purchase of purchases) {
+    const current = aggregates.get(purchase.purity)
+    aggregates.set(purchase.purity, {
+      purity: purchase.purity,
+      transactionCount: (current?.transactionCount ?? 0) + 1,
+      totalUnitsGrams: addOrThrow(
+        current?.totalUnitsGrams ?? "0",
+        purchase.unitsGrams
+      ),
+      totalAmount: addOrThrow(
+        current?.totalAmount ?? "0",
+        purchase.totalAmount
+      ),
+      currentValue:
+        current?.currentValue === null || purchase.currentValue === null
+          ? null
+          : addOrThrow(current?.currentValue ?? "0", purchase.currentValue),
     })
   }
   return [...aggregates.values()].sort((left, right) =>

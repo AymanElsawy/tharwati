@@ -26,6 +26,8 @@ create table public.financial_accounts (
   is_active boolean not null default true,
   notes text,
   bank_subtype text,                          -- 'debit' | 'credit', only when type = bank
+  credit_card_limit numeric(20, 2),           -- positive when set; only for bank credit accounts
+  due_day_of_month integer,                   -- optional 1-31; only for bank credit accounts
   investment_type text,                       -- 'stock_etf' | 'crypto' | 'other', only when type = brokerage
   balance_grams numeric(20, 3),               -- only when type = gold
   property_type text,                         -- 'apartment'|'villa'|'land'|'office'|'other', only when type = real_estate
@@ -46,6 +48,7 @@ Key constraints:
 - `name` cannot be blank.
 - `currency_code` restricted to `USD | SAR | EGP | EUR | GBP` (fixed 5-item enum, not user-extensible).
 - All type-specific columns are nullable but constrained via CHECK to only be non-null for their matching `account_type_code`.
+- `credit_card_limit`, when present, must be positive, and `opening_balance` (available credit) must be between zero and that limit. `due_day_of_month`, when present, must be between 1 and 31. Both credit-only columns must remain null unless the account is a bank account with `bank_subtype = 'credit'`.
 - `metal_type` is **required** when `account_type_code = 'gold'`, and must be `null` otherwise.
 - Purity enum depends on `metal_type`: gold → `24k,22k,21k,18k,14k,10k,9k,other`; silver → `999,958,950,925,900,835,800,other`.
 
@@ -131,6 +134,8 @@ type AccountSummary = {
   notes: string | null
   is_active: boolean
   bank_subtype: "debit" | "credit" | null
+  credit_card_limit: Decimal | null
+  due_day_of_month: number | null
   investment_type: "stock_etf" | "crypto" | "other" | null
   balance_grams: Decimal | null
   property_type: "apartment" | "villa" | "land" | "office" | "other" | null
@@ -171,6 +176,8 @@ type AccountFormValues = {
   currencyCode: "USD" | "SAR" | "EGP" | "EUR" | "GBP"
   openingBalance: string
   bankSubtype: "debit" | "credit" | ""
+  creditCardLimit: string
+  dueDayOfMonth: string
   investmentType: "stock_etf" | "crypto" | "other" | ""
   balanceGrams: string
   propertyType: "apartment" | "villa" | "land" | "office" | "other" | ""
@@ -190,7 +197,8 @@ type AccountFormValues = {
 `toAccountTypeSpecificFields(values)` strips/nulls irrelevant fields per type before sending to the repository:
 
 - `cash` / `other`: `openingBalance` only.
-- `bank`: `openingBalance` + `bankSubtype`.
+- `bank` Debit: `openingBalance` + `bankSubtype`; credit-only fields are cleared.
+- `bank` Credit: `openingBalance` (available credit) + `bankSubtype` + required `creditCardLimit` + optional `dueDayOfMonth`.
 - `brokerage`: `openingBalance` + `investmentType`.
 - `gold`: **`openingBalance` forced to `"0"`** + `metalType` (actual balance accrues only via metal purchases, never edited directly).
 - `real_estate`: `openingBalance` + `propertyType` + `ownershipPercentage`.
@@ -214,15 +222,16 @@ type MetalPurchaseFormValues = {
 
 Per-type, on submit (Zod schema, errors shown only after first submit attempt):
 
-| Type                    | Required / validated fields                                                                      |
-| ----------------------- | ------------------------------------------------------------------------------------------------ |
-| `cash`, `other`         | `openingBalance` — pattern `^\d{1,18}(\.\d{1,2})?$`                                              |
-| `bank`                  | above + `bankSubtype` required                                                                   |
-| `brokerage`             | above + `investmentType` required                                                                |
-| `real_estate`           | above + `ownershipPercentage` (pattern `^\d{1,3}(\.\d{1,2})?$`, ≤ 100) + `propertyType` required |
-| `business`              | above + `ownershipPercentage` + `businessType` required + `industry` required                    |
-| `gold`                  | `metalType` required only (no balance field shown)                                               |
-| all types except `gold` | `name` required                                                                                  |
+| Type                    | Required / validated fields                                                                                                          |
+| ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
+| `cash`, `other`         | `openingBalance` — pattern `^\d{1,18}(\.\d{1,2})?$`                                                                                  |
+| `bank` Debit            | non-negative `openingBalance` + `bankSubtype = debit`                                                                                |
+| `bank` Credit           | non-negative `openingBalance` + positive `creditCardLimit` + optional `dueDayOfMonth` from 1-31; `openingBalance <= creditCardLimit` |
+| `brokerage`             | above + `investmentType` required                                                                                                    |
+| `real_estate`           | above + `ownershipPercentage` (pattern `^\d{1,3}(\.\d{1,2})?$`, ≤ 100) + `propertyType` required                                     |
+| `business`              | above + `ownershipPercentage` + `businessType` required + `industry` required                                                        |
+| `gold`                  | `metalType` required only (no balance field shown)                                                                                   |
+| all types except `gold` | `name` required                                                                                                                      |
 
 Metal purchase form:
 
@@ -262,7 +271,7 @@ class MetalPurchasesRepository {
 
 Purchase-history numeric columns are requested with `::text` casts, then normalized from either a text or finite numeric Supabase response into validated decimal strings before any totals are calculated. The deployed RPC returns the updated `financial_accounts` row; the client ignores that response and reloads immutable `metal_purchases` records for history.
 
-`CreateAccountInput`/`UpdateAccountInput`: camelCase mirror of the type-specific DB columns (`accountTypeCode, name, currencyCode, openingBalance, notes, bankSubtype, investmentType, balanceGrams, propertyType, ownershipPercentage, businessType, industry, metalType, purity, purchaseDate, costPerUnit`, plus `isActive` on update).
+`CreateAccountInput`/`UpdateAccountInput`: camelCase mirror of the type-specific DB columns (`accountTypeCode, name, currencyCode, openingBalance, notes, bankSubtype, creditCardLimit, dueDayOfMonth, investmentType, balanceGrams, propertyType, ownershipPercentage, businessType, industry, metalType, purity, purchaseDate, costPerUnit`, plus `isActive` on update).
 
 Error handling: Postgres errors are normalized into a `RepositoryError { code, operation, details?, hint? }`, where `code` is one of `database_error | constraint_violation | conflict | not_found | forbidden`, mapped from Postgres codes (`23503→constraint_violation, 23505→conflict, 23514→constraint_violation, 42501→forbidden, PGRST116→not_found`). Note: a duplicate-name violation surfaces as a generic `conflict` with no bespoke friendly message today — design proper mobile-side copy for this case (e.g. "An account with this name already exists").
 
@@ -307,6 +316,7 @@ For non-gold accounts, selecting the account name opens a read-only Account Reco
 - **Edit mode**: skips the type picker; type is effectively immutable from the UI once created.
 - Field visibility/labels are conditional on `accountTypeCode` exactly as described in §2.5/§3.
 - Balance field label varies by type: `brokerage` → "Starting cash balance"; `real_estate`/`business` → "Current value"; `cash`/`bank`/`other` → "Starting balance"; hidden entirely for `gold`.
+- Bank Debit shows Name, Currency, Type, Current Balance, and Active account. Bank Credit additionally shows a required Credit Card Limit and an optional Due Day of Month dropdown (`Unset`, then 1-31). For Bank Credit, Current Balance means available credit, and Amount Due is derived outside the form as `Credit Card Limit - Current Balance`; Amount Due is never entered manually.
 - "Active account" toggle shown for all types except `gold` (gold accounts can't be created inactive from this form).
 - Locked-field states (currency/opening balance read-only with explanatory caption) exist in the UI for when `hasFinancialHistory` is true — currently never triggered live (see §2.1 caveat), but should be built for forward compatibility.
 - Validation errors only render after the first submit attempt, then update live.
@@ -325,7 +335,7 @@ Fields: `purity` (options depend on account's `metal_type`), `purchaseDate`, `un
 The history flow has three transaction-derived layers:
 
 1. **Account list** — Gold/Silver, currency, and current value only. Current value is transaction-derived total grams multiplied by the existing live price per gram for the metal and account currency.
-2. **Purity summary** — opening a metal account shows a horizontally scrollable, responsive table with one header row: **Purity | Total quantity | Total value**. Each selectable purity row shows only those values; it does not list individual purchases.
+2. **Purity summary** — opening a metal account shows a responsive four-column table with one header row: **Purity | Total quantity | Total cost | Current value**. It fits within the modal without desktop horizontal scrolling; compact columns and wrapping keep it usable on mobile. Total quantity is summed from the purchases at that purity. Total cost is the sum of each immutable historical purchase cost (`quantity × historical cost per unit`). Current value is the sum of those purchases' live values, using the same current price per gram as Layer 3; it shows unavailable rather than falling back to historical cost. Each selectable purity row shows only those values; it does not list individual purchases.
 3. **Purity transactions** — opening a purity shows a compact responsive table, newest first, with one header row: **Date | Quantity | Cost per unit | Total cost | Current value**. Total cost is the immutable purchase quantity multiplied by its historical cost per unit. Current value is that purchase quantity multiplied by the existing live current price per gram for the account's metal and currency; if the price is unavailable, no historical-cost fallback is shown. Each purchase remains one row, and its stored purchase data is unchanged. Dates are displayed as `DD-MM-YYYY` without changing their stored value.
 
 The web client reloads `metal_purchases` after a successful RPC call. These records remain the source of truth for purchase quantities and historical costs; purchases are never merged or persisted as a summary. Current values are derived at read time from those quantities and the shared live metal-price service. Each layer has loading, error, and empty states as applicable.

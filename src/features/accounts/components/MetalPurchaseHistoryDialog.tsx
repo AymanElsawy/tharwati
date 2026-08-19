@@ -9,7 +9,7 @@ import {
 import { useTranslation } from "@/i18n/useTranslation"
 import type { AccountSummary } from "@/lib/supabase/types"
 import { getPurityOptions } from "../types/account-form"
-import type { MetalPurityAggregate } from "../types/metal-purchase"
+import type { ValuedMetalPurityAggregate } from "../types/metal-purchase"
 
 function purityLabel(
   metalType: "gold" | "silver",
@@ -33,7 +33,7 @@ export function MetalPurchaseHistoryDialog({
   onOpenPurity,
 }: {
   account: AccountSummary | null
-  purities: MetalPurityAggregate[]
+  purities: ValuedMetalPurityAggregate[]
   isLoading: boolean
   isError: boolean
   onClose: () => void
@@ -71,9 +71,16 @@ export function MetalPurchaseHistoryDialog({
           </header>
           <div className="max-h-[28rem] overflow-auto px-4 py-5 sm:px-6">
             {isLoading ? (
-              <div className="space-y-3" role="status" aria-label={t("common.loading")}>
+              <div
+                className="space-y-3"
+                role="status"
+                aria-label={t("common.loading")}
+              >
                 {Array.from({ length: 4 }).map((_, index) => (
-                  <div key={index} className="h-16 animate-pulse rounded-xl bg-muted" />
+                  <div
+                    key={index}
+                    className="h-16 animate-pulse rounded-xl bg-muted"
+                  />
                 ))}
               </div>
             ) : isError ? (
@@ -85,36 +92,66 @@ export function MetalPurchaseHistoryDialog({
                 {t("accounts.metalPurchaseHistory.empty")}
               </p>
             ) : (
-              <div className="overflow-x-auto">
-                <div className="min-w-[32rem]">
-                  <div className="grid grid-cols-[minmax(8rem,1fr)_minmax(9rem,0.9fr)_minmax(10rem,1fr)] gap-4 border-b border-[var(--color-border)] px-4 py-2 text-xs font-medium tracking-[0.08em] text-muted-foreground uppercase">
-                    <span>{t("accounts.metalPurchaseHistory.purity")}</span>
-                    <span className="text-end">{t("accounts.metalPurchaseHistory.totalQuantity")}</span>
-                    <span className="text-end">{t("accounts.metalPurchaseHistory.totalValue")}</span>
-                  </div>
-                  {purities.map((purity) => (
-                    <button
-                      key={purity.purity}
-                      type="button"
-                      className="grid w-full grid-cols-[minmax(8rem,1fr)_minmax(9rem,0.9fr)_minmax(10rem,1fr)] gap-4 border-b border-[var(--color-border)] px-4 py-3 text-start transition-colors last:border-b-0 hover:bg-[var(--color-surface-muted)]"
-                      onClick={() => onOpenPurity(purity.purity)}
-                    >
-                      <span className="font-medium">
-                        {purityLabel(metalType, purity.purity, t)}
-                      </span>
-                      <span className="text-end text-sm text-muted-foreground tabular-nums" dir="ltr">
-                        {formatPortfolioDecimal(purity.totalUnitsGrams, locale, 3)} g
-                      </span>
-                      <span className="text-end font-medium tabular-nums" dir="ltr">
-                        {formatPortfolioAmount(
-                          purity.totalAmount,
-                          account?.currency_code ?? "USD",
-                          locale
-                        )}
-                      </span>
-                    </button>
-                  ))}
+              <div className="w-full">
+                <div className="grid grid-cols-[minmax(0,0.8fr)_minmax(0,0.9fr)_minmax(0,1.15fr)_minmax(0,1.15fr)] gap-2 border-b border-[var(--color-border)] px-1 py-2 text-[10px] font-medium tracking-[0.06em] text-muted-foreground uppercase sm:gap-3 sm:px-3 sm:text-xs sm:tracking-[0.08em]">
+                  <span className="min-w-0">
+                    {t("accounts.metalPurchaseHistory.purity")}
+                  </span>
+                  <span className="min-w-0 text-end break-words">
+                    {t("accounts.metalPurchaseHistory.totalQuantity")}
+                  </span>
+                  <span className="min-w-0 text-end break-words">
+                    {t("accounts.metalPurchaseHistory.totalCost")}
+                  </span>
+                  <span className="min-w-0 text-end break-words">
+                    {t("accounts.metalPurchaseHistory.currentValue")}
+                  </span>
                 </div>
+                {purities.map((purity) => (
+                  <button
+                    key={purity.purity}
+                    type="button"
+                    className="grid w-full grid-cols-[minmax(0,0.8fr)_minmax(0,0.9fr)_minmax(0,1.15fr)_minmax(0,1.15fr)] gap-2 border-b border-[var(--color-border)] px-1 py-3 text-start text-xs transition-colors last:border-b-0 hover:bg-[var(--color-surface-muted)] sm:gap-3 sm:px-3 sm:text-sm"
+                    onClick={() => onOpenPurity(purity.purity)}
+                  >
+                    <span className="min-w-0 font-medium">
+                      {purityLabel(metalType, purity.purity, t)}
+                    </span>
+                    <span
+                      className="min-w-0 text-end break-words text-muted-foreground tabular-nums"
+                      dir="ltr"
+                    >
+                      {formatPortfolioDecimal(
+                        purity.totalUnitsGrams,
+                        locale,
+                        3
+                      )}{" "}
+                      g
+                    </span>
+                    <span
+                      className="min-w-0 text-end font-medium break-words tabular-nums"
+                      dir="ltr"
+                    >
+                      {formatPortfolioAmount(
+                        purity.totalAmount,
+                        account?.currency_code ?? "USD",
+                        locale
+                      )}
+                    </span>
+                    <span
+                      className="min-w-0 text-end font-medium break-words tabular-nums"
+                      dir="ltr"
+                    >
+                      {purity.currentValue === null
+                        ? "—"
+                        : formatPortfolioAmount(
+                            purity.currentValue,
+                            account?.currency_code ?? "USD",
+                            locale
+                          )}
+                    </span>
+                  </button>
+                ))}
               </div>
             )}
           </div>

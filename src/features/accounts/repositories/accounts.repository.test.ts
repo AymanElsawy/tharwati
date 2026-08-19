@@ -14,6 +14,8 @@ const account = {
   notes: "Updated notes",
   is_active: true,
   bank_subtype: null,
+  credit_card_limit: null,
+  due_day_of_month: null,
   investment_type: null,
   balance_grams: null,
   property_type: null,

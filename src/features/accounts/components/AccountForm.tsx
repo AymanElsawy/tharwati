@@ -11,6 +11,7 @@ import {
 import {
   bankSubtypeOptions,
   currencyOptions,
+  dueDayOfMonthOptions,
   getBalanceLabelKey,
   investmentTypeOptions,
   metalTypeOptions,
@@ -74,6 +75,7 @@ export function AccountForm({
   }, [defaultValues, onDirtyChange, values])
 
   const accountTypeCode = defaultValues.accountTypeCode
+  const bankSubtype = values.bankSubtype ?? defaultValues.bankSubtype
   const isDisabled = isSaving || isSubmitting
   const showBalance = accountTypeCode !== "gold"
 
@@ -165,6 +167,57 @@ export function AccountForm({
           {showError("bankSubtype") ? (
             <p className={errorClassName}>{errors.bankSubtype?.message}</p>
           ) : null}
+        </div>
+      ) : null}
+
+      {accountTypeCode === "bank" && bankSubtype === "credit" ? (
+        <div className="grid gap-5 sm:grid-cols-2">
+          <div>
+            <label
+              htmlFor={`${formId}-credit-card-limit`}
+              className={labelClassName}
+            >
+              {t("accounts.form.creditCardLimit")}
+            </label>
+            <input
+              id={`${formId}-credit-card-limit`}
+              className={fieldClassName}
+              disabled={isDisabled}
+              inputMode="decimal"
+              dir="ltr"
+              placeholder="0.00"
+              {...register("creditCardLimit")}
+            />
+            {showError("creditCardLimit") ? (
+              <p className={errorClassName}>
+                {errors.creditCardLimit?.message}
+              </p>
+            ) : null}
+          </div>
+          <div>
+            <label
+              htmlFor={`${formId}-due-day-of-month`}
+              className={labelClassName}
+            >
+              {t("accounts.form.dueDayOfMonth")}
+            </label>
+            <select
+              id={`${formId}-due-day-of-month`}
+              className={fieldClassName}
+              disabled={isDisabled}
+              {...register("dueDayOfMonth")}
+            >
+              <option value="">{t("accounts.form.dueDayUnset")}</option>
+              {dueDayOfMonthOptions.map((day) => (
+                <option key={day} value={day}>
+                  {day}
+                </option>
+              ))}
+            </select>
+            {showError("dueDayOfMonth") ? (
+              <p className={errorClassName}>{errors.dueDayOfMonth?.message}</p>
+            ) : null}
+          </div>
         </div>
       ) : null}
 

@@ -21,6 +21,8 @@ export type CreateAccountInput = {
   openingBalance?: Decimal
   notes?: string | null
   bankSubtype?: "debit" | "credit" | null
+  creditCardLimit?: Decimal | null
+  dueDayOfMonth?: number | null
   investmentType?: "stock_etf" | "crypto" | "other" | null
   balanceGrams?: Decimal | null
   propertyType?: "apartment" | "villa" | "land" | "office" | "other" | null
@@ -41,6 +43,8 @@ export type UpdateAccountInput = {
   notes?: string | null
   isActive?: boolean
   bankSubtype?: "debit" | "credit" | null
+  creditCardLimit?: Decimal | null
+  dueDayOfMonth?: number | null
   investmentType?: "stock_etf" | "crypto" | "other" | null
   balanceGrams?: Decimal | null
   propertyType?: "apartment" | "villa" | "land" | "office" | "other" | null
@@ -69,32 +73,71 @@ type DatabaseError = {
   message: string
 }
 
-const accountSelect = "id,user_id,account_type_code,name,currency_code,opening_balance::text,notes,is_active,bank_subtype,investment_type,balance_grams::text,property_type,ownership_percentage::text,business_type,industry,metal_type,purity,purchase_date,cost_per_unit::text,created_at,updated_at" as const
+const accountSelect =
+  "id,user_id,account_type_code,name,currency_code,opening_balance::text,notes,is_active,bank_subtype,credit_card_limit::text,due_day_of_month,investment_type,balance_grams::text,property_type,ownership_percentage::text,business_type,industry,metal_type,purity,purchase_date,cost_per_unit::text,created_at,updated_at" as const
 
-export function requireAccountDecimalText(value: unknown, field: string, operation: string): Decimal {
+export function requireAccountDecimalText(
+  value: unknown,
+  field: string,
+  operation: string
+): Decimal {
   if (typeof value !== "string" || normalizeDecimal(value) === null) {
-    throw new RepositoryError({ code: "database_error", message: `Account field ${field} must be a PostgreSQL decimal string`, operation })
+    throw new RepositoryError({
+      code: "database_error",
+      message: `Account field ${field} must be a PostgreSQL decimal string`,
+      operation,
+    })
   }
   return value
 }
 
-function requireNullableAccountDecimalText(value: unknown, field: string, operation: string): Decimal | null {
-  return value === null ? null : requireAccountDecimalText(value, field, operation)
+function requireNullableAccountDecimalText(
+  value: unknown,
+  field: string,
+  operation: string
+): Decimal | null {
+  return value === null
+    ? null
+    : requireAccountDecimalText(value, field, operation)
 }
 
-function mapAccountSummary(row: AccountSummary, operation: string): AccountSummary {
+function mapAccountSummary(
+  row: AccountSummary,
+  operation: string
+): AccountSummary {
   return {
     ...row,
-    opening_balance: requireAccountDecimalText(row.opening_balance, "opening_balance", operation),
-    balance_grams: requireNullableAccountDecimalText(row.balance_grams, "balance_grams", operation),
-    ownership_percentage: requireNullableAccountDecimalText(row.ownership_percentage, "ownership_percentage", operation),
-    cost_per_unit: requireNullableAccountDecimalText(row.cost_per_unit, "cost_per_unit", operation),
+    opening_balance: requireAccountDecimalText(
+      row.opening_balance,
+      "opening_balance",
+      operation
+    ),
+    credit_card_limit: requireNullableAccountDecimalText(
+      row.credit_card_limit,
+      "credit_card_limit",
+      operation
+    ),
+    balance_grams: requireNullableAccountDecimalText(
+      row.balance_grams,
+      "balance_grams",
+      operation
+    ),
+    ownership_percentage: requireNullableAccountDecimalText(
+      row.ownership_percentage,
+      "ownership_percentage",
+      operation
+    ),
+    cost_per_unit: requireNullableAccountDecimalText(
+      row.cost_per_unit,
+      "cost_per_unit",
+      operation
+    ),
   }
 }
 
 function throwAccountUpdateError(
   error: DatabaseError | null,
-  operation: string,
+  operation: string
 ): void {
   if (!error) {
     return
@@ -141,7 +184,9 @@ export class AccountsRepository {
       .eq("user_id", userId)
       .order("created_at", { ascending: false })
 
-    return requireQueryData(data, error, operation).map((row) => mapAccountSummary(row, operation))
+    return requireQueryData(data, error, operation).map((row) =>
+      mapAccountSummary(row, operation)
+    )
   }
 
   async getAccount(id: string): Promise<AccountSummary> {
@@ -154,7 +199,10 @@ export class AccountsRepository {
       .eq("user_id", userId)
       .single()
 
-    return mapAccountSummary(requireQueryData(data, error, operation), operation)
+    return mapAccountSummary(
+      requireQueryData(data, error, operation),
+      operation
+    )
   }
 
   async createAccount(input: CreateAccountInput): Promise<AccountSummary> {
@@ -170,6 +218,8 @@ export class AccountsRepository {
         opening_balance: input.openingBalance,
         notes: input.notes,
         bank_subtype: input.bankSubtype,
+        credit_card_limit: input.creditCardLimit,
+        due_day_of_month: input.dueDayOfMonth,
         investment_type: input.investmentType,
         balance_grams: input.balanceGrams,
         property_type: input.propertyType,
@@ -184,12 +234,15 @@ export class AccountsRepository {
       .select(accountSelect)
       .single()
 
-    return mapAccountSummary(requireQueryData(data, error, operation), operation)
+    return mapAccountSummary(
+      requireQueryData(data, error, operation),
+      operation
+    )
   }
 
   async updateAccount(
     id: string,
-    input: UpdateAccountInput,
+    input: UpdateAccountInput
   ): Promise<AccountSummary> {
     const operation = "accounts.updateAccount"
     const userId = await requireAuthenticatedUserId(this.client, operation)
@@ -215,6 +268,12 @@ export class AccountsRepository {
     }
     if (input.bankSubtype !== undefined) {
       update.bank_subtype = input.bankSubtype
+    }
+    if (input.creditCardLimit !== undefined) {
+      update.credit_card_limit = input.creditCardLimit
+    }
+    if (input.dueDayOfMonth !== undefined) {
+      update.due_day_of_month = input.dueDayOfMonth
     }
     if (input.investmentType !== undefined) {
       update.investment_type = input.investmentType
@@ -256,7 +315,10 @@ export class AccountsRepository {
       .single()
 
     throwAccountUpdateError(error, operation)
-    return mapAccountSummary(requireQueryData(data, error, operation), operation)
+    return mapAccountSummary(
+      requireQueryData(data, error, operation),
+      operation
+    )
   }
 
   async archiveAccount(id: string): Promise<AccountSummary> {
@@ -264,7 +326,7 @@ export class AccountsRepository {
   }
 
   async getAccountDeletionEligibility(
-    accountIds: string[],
+    accountIds: string[]
   ): Promise<AccountDeletionEligibility[]> {
     // This deployment scopes financial_accounts as a standalone table with no
     // ledger/holdings schema, so no account can carry financial history yet.

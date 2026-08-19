@@ -1,7 +1,10 @@
 import type { Translate } from "../../../i18n/context"
 import type { TranslationKey } from "../../../i18n/en/translations"
 import type { AccountSummary } from "../../../lib/supabase/types"
-import { multiplyDecimals } from "../../../lib/financial-calculations/decimal"
+import {
+  multiplyDecimals,
+  subtractDecimals,
+} from "../../../lib/financial-calculations/decimal"
 
 export const accountTypeOptions = [
   {
@@ -53,6 +56,10 @@ export const bankSubtypeOptions = [
   { value: "debit", labelKey: "accounts.form.bankSubtype.debit" },
   { value: "credit", labelKey: "accounts.form.bankSubtype.credit" },
 ] as const
+
+export const dueDayOfMonthOptions = Array.from({ length: 31 }, (_, index) =>
+  String(index + 1)
+)
 
 export const investmentTypeOptions = [
   { value: "stock_etf", labelKey: "accounts.form.investmentType.stockEtf" },
@@ -164,6 +171,8 @@ export type AccountFormValues = {
   currencyCode: (typeof currencyCodes)[number]
   openingBalance: string
   bankSubtype: (typeof bankSubtypeCodes)[number] | ""
+  creditCardLimit: string
+  dueDayOfMonth: string
   investmentType: (typeof investmentTypeCodes)[number] | ""
   balanceGrams: string
   propertyType: (typeof propertyTypeCodes)[number] | ""
@@ -184,6 +193,8 @@ export const emptyAccountFormValues: AccountFormValues = {
   currencyCode: "USD",
   openingBalance: "0",
   bankSubtype: "",
+  creditCardLimit: "",
+  dueDayOfMonth: "",
   investmentType: "",
   balanceGrams: "0",
   propertyType: "",
@@ -209,6 +220,9 @@ export function accountToFormValues(
     openingBalance: account.opening_balance,
     bankSubtype: (account.bank_subtype ??
       "") as AccountFormValues["bankSubtype"],
+    creditCardLimit: account.credit_card_limit ?? "",
+    dueDayOfMonth:
+      account.due_day_of_month === null ? "" : String(account.due_day_of_month),
     investmentType: (account.investment_type ??
       "") as AccountFormValues["investmentType"],
     balanceGrams: account.balance_grams ?? "0",
@@ -253,6 +267,8 @@ export function getAccountTypeLabel(code: string, t: Translate): string {
 export type AccountTypeSpecificFields = {
   openingBalance: string | undefined
   bankSubtype: "debit" | "credit" | null
+  creditCardLimit: string | null
+  dueDayOfMonth: number | null
   investmentType: "stock_etf" | "crypto" | "other" | null
   balanceGrams: string | null
   propertyType: "apartment" | "villa" | "land" | "office" | "other" | null
@@ -271,6 +287,8 @@ export function toAccountTypeSpecificFields(
   const fields: AccountTypeSpecificFields = {
     openingBalance: undefined,
     bankSubtype: null,
+    creditCardLimit: null,
+    dueDayOfMonth: null,
     investmentType: null,
     balanceGrams: null,
     propertyType: null,
@@ -291,6 +309,12 @@ export function toAccountTypeSpecificFields(
     case "bank":
       fields.openingBalance = values.openingBalance.trim()
       fields.bankSubtype = values.bankSubtype || null
+      if (values.bankSubtype === "credit") {
+        fields.creditCardLimit = values.creditCardLimit.trim() || null
+        fields.dueDayOfMonth = values.dueDayOfMonth
+          ? Number(values.dueDayOfMonth)
+          : null
+      }
       break
     case "brokerage":
       fields.openingBalance = values.openingBalance.trim()
@@ -314,4 +338,11 @@ export function toAccountTypeSpecificFields(
   }
 
   return fields
+}
+
+export function getCreditCardAmountDue(
+  creditCardLimit: string,
+  currentBalance: string
+): string | null {
+  return subtractDecimals(creditCardLimit.trim(), currentBalance.trim())
 }

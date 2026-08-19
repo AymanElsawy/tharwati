@@ -1,6 +1,7 @@
 import { z } from "zod"
 
 import type { Translate } from "../../../i18n/context"
+import { compareDecimals } from "../../../lib/financial-calculations/decimal"
 import {
   accountTypeCodes,
   bankSubtypeCodes,
@@ -25,6 +26,8 @@ export function createAccountSchema(
       currencyCode: z.enum(currencyCodes),
       openingBalance: z.string().trim(),
       bankSubtype: z.union([z.enum(bankSubtypeCodes), z.literal("")]),
+      creditCardLimit: z.string().trim(),
+      dueDayOfMonth: z.string().trim(),
       investmentType: z.union([z.enum(investmentTypeCodes), z.literal("")]),
       balanceGrams: z.string().trim(),
       propertyType: z.union([z.enum(propertyTypeCodes), z.literal("")]),
@@ -93,6 +96,40 @@ export function createAccountSchema(
               path: ["bankSubtype"],
               message: t("accounts.validation.bankSubtypeRequired"),
             })
+          }
+          if (values.bankSubtype === "credit") {
+            if (
+              !decimalAmountPattern.test(values.creditCardLimit) ||
+              compareDecimals(values.creditCardLimit, "0") !== 1
+            ) {
+              ctx.addIssue({
+                code: "custom",
+                path: ["creditCardLimit"],
+                message: t("accounts.validation.creditCardLimitInvalid"),
+              })
+            }
+            if (
+              values.dueDayOfMonth &&
+              !/^(?:[1-9]|[12]\d|3[01])$/.test(values.dueDayOfMonth)
+            ) {
+              ctx.addIssue({
+                code: "custom",
+                path: ["dueDayOfMonth"],
+                message: t("accounts.validation.dueDayOfMonthInvalid"),
+              })
+            }
+            if (
+              decimalAmountPattern.test(values.openingBalance) &&
+              decimalAmountPattern.test(values.creditCardLimit) &&
+              compareDecimals(values.openingBalance, values.creditCardLimit) ===
+                1
+            ) {
+              ctx.addIssue({
+                code: "custom",
+                path: ["openingBalance"],
+                message: t("accounts.validation.creditBalanceExceedsLimit"),
+              })
+            }
           }
           break
         }

@@ -55,6 +55,10 @@ export type MetalPurityAggregate = {
   totalAmount: Decimal
 }
 
+export type ValuedMetalPurityAggregate = MetalPurityAggregate & {
+  currentValue: Decimal | null
+}
+
 export const emptyMetalPurchaseFormValues: MetalPurchaseFormValues = {
   purity: "",
   purchaseDate: "",

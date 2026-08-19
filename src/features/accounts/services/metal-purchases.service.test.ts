@@ -8,6 +8,7 @@ import {
 import {
   aggregateMetalPurchases,
   aggregateMetalPurchasesByPurity,
+  aggregateValuedMetalPurchasesByPurity,
   buildAddMetalPurchaseCommand,
   getEligibleMetalFundingAccounts,
   getMetalCurrentValue,
@@ -123,5 +124,25 @@ describe("metal purchases service", () => {
       currentValue: "750",
     })
     expect(valueMetalPurchases(purchases, null)[0]?.currentValue).toBeNull()
+  })
+
+  it("derives purity totals from valued purchase transactions", () => {
+    const purchases = valueMetalPurchases(
+      mapMetalPurchaseHistoryRows([
+        ledgerRow("1", "metal", "10", "50", null, "24k"),
+        ledgerRow("2", "metal", "10", "50", null, "24k"),
+      ]),
+      "103.646"
+    )
+
+    expect(aggregateValuedMetalPurchasesByPurity(purchases)).toEqual([
+      {
+        purity: "24k",
+        transactionCount: 2,
+        totalUnitsGrams: "20",
+        totalAmount: "1000",
+        currentValue: "2072.92",
+      },
+    ])
   })
 })

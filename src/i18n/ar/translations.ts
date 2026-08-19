@@ -304,6 +304,9 @@ export const ar: Record<TranslationKey, string> = {
   "accounts.form.bankSubtype.label": "النوع",
   "accounts.form.bankSubtype.debit": "مدين",
   "accounts.form.bankSubtype.credit": "ائتماني",
+  "accounts.form.creditCardLimit": "حد البطاقة الائتمانية",
+  "accounts.form.dueDayOfMonth": "يوم الاستحقاق من الشهر",
+  "accounts.form.dueDayUnset": "غير محدد",
   "accounts.form.investmentType.label": "نوع الاستثمارات",
   "accounts.form.investmentType.stockEtf": "أسهم وصناديق مؤشرات",
   "accounts.form.investmentType.crypto": "عملات رقمية",
@@ -319,6 +322,11 @@ export const ar: Record<TranslationKey, string> = {
   "accounts.validation.balanceInvalid":
     "أدخل مبلغًا غير سالب وبحد أقصى منزلتين عشريتين",
   "accounts.validation.bankSubtypeRequired": "اختر مدين أو ائتماني",
+  "accounts.validation.creditCardLimitInvalid":
+    "أدخل حدًا ائتمانيًا موجبًا وبحد أقصى منزلتين عشريتين",
+  "accounts.validation.dueDayOfMonthInvalid": "اختر يوم استحقاق من 1 إلى 31",
+  "accounts.validation.creditBalanceExceedsLimit":
+    "لا يمكن أن يتجاوز الرصيد الحالي حد البطاقة الائتمانية",
   "accounts.validation.investmentTypeRequired": "اختر نوع الاستثمار",
   "accounts.validation.balanceGramsRequired": "الرصيد بالجرام مطلوب",
   "accounts.validation.balanceGramsInvalid":
