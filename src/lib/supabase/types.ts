@@ -214,6 +214,28 @@ type TransactionTypeRow = {
   created_at: string
 }
 
+type RecordCategoryRow = {
+  id: string
+  user_id: string | null
+  parent_id: string | null
+  system_code: string | null
+  level: "main" | "subcategory"
+  name: string
+  sort_order: number
+  is_archived: boolean
+  created_at: string
+  updated_at: string
+}
+
+type RecordCategoryOverrideRow = {
+  user_id: string
+  category_id: string
+  name: string | null
+  is_hidden: boolean
+  created_at: string
+  updated_at: string
+}
+
 type FinancialTransactionRow = {
   id: string
   user_id: string
@@ -224,6 +246,8 @@ type FinancialTransactionRow = {
   description: string
   external_reference: string | null
   notes: string | null
+  main_category_id: string | null
+  subcategory_id: string | null
   posted_at: string | null
   created_at: string
   updated_at: string
@@ -483,6 +507,32 @@ export type Database = {
           created_at?: string
         }
       >
+      record_categories: TableDefinition<
+        RecordCategoryRow,
+        {
+          id?: string
+          user_id?: string | null
+          parent_id?: string | null
+          system_code?: string | null
+          level: "main" | "subcategory"
+          name: string
+          sort_order: number
+          is_archived?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+      >
+      record_category_overrides: TableDefinition<
+        RecordCategoryOverrideRow,
+        {
+          user_id: string
+          category_id: string
+          name?: string | null
+          is_hidden?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+      >
       financial_transactions: TableDefinition<
         FinancialTransactionRow,
         {
@@ -495,6 +545,8 @@ export type Database = {
           description: string
           external_reference?: string | null
           notes?: string | null
+          main_category_id?: string | null
+          subcategory_id?: string | null
           posted_at?: string | null
           created_at?: string
           updated_at?: string
@@ -632,6 +684,21 @@ export type Database = {
           p_funding_mode: "external" | "cash_account"
           p_funding_account_id: string | null
           p_fees: Decimal
+        }
+        Returns: Json
+      }
+      add_account_record: {
+        Args: {
+          p_record_type: "income" | "expense" | "transfer"
+          p_account_id: string
+          p_counterparty_account_id: string | null
+          p_amount: Decimal
+          p_received_amount: Decimal | null
+          p_occurred_at: string
+          p_category: string | null
+          p_notes: string | null
+          p_main_category_id?: string | null
+          p_subcategory_id?: string | null
         }
         Returns: Json
       }

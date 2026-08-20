@@ -9,7 +9,9 @@ The Accounts tab manages a single polymorphic table, `financial_accounts`, repre
 Related-but-separate features that share the same table (context only, not part of this tab):
 
 - `src/features/cash-accounts/` — a simplified, cash-only accounts page. Uses ledger-adjusted `current_balance` (via `account-balances` RPC) instead of raw `opening_balance`. **Not i18n-driven** (hardcoded English), unlike this tab.
-- `src/features/account-balances/` — RPC-driven ledger balance read model (`get_account_balances`). Not used by this tab today (see §9 quirk).
+- `src/features/account-balances/` — RPC-driven ledger balance read model (`get_account_balances`), also reused by this tab for Cash and Bank current values.
+
+Cash and Bank account records reuse the shared `financial_transactions` / `transaction_entries` ledger. No parallel records table exists.
 
 ## 2. Data model
 
@@ -68,6 +70,24 @@ Triggers (immutability guards once financial history exists):
 `account_types` reference table (seed data only, not queried dynamically by the client — types are hardcoded client-side):
 `cash, bank, brokerage, gold, real_estate, business, other`.
 
+### 2.1a Minimal Cash/Bank ledger foundation
+
+The current project has a deliberately minimal Cash/Bank ledger foundation:
+
+- `transaction_types` contains only `income`, `expense`, and `transfer` for this flow.
+- `financial_transactions` stores authenticated-user transaction headers, status, occurrence time, description, and notes.
+- `transaction_entries` stores exact decimal debit/credit amounts. `transaction_amount` is the balanced transaction-currency value; `account_amount` is the referenced account-native value. Accountless entries are restricted to the approved external-flow convention.
+- Posted transactions and their entries are immutable. Ownership checks restrict account entries to owned Cash or Bank accounts, exact debit/credit balance is validated before posting, and `get_account_balances` projects opening balance plus posted ledger effects.
+- Client roles receive read access only. Ledger writes occur through authenticated security-definer RPCs; PUBLIC and anon have no table or function write access.
+
+### 2.1b Record categories
+
+`record_categories` is a shared hierarchical catalog for both Income and Expense. Each row is either a `main` category (no parent) or a `subcategory` linked to a main category, with explicit `sort_order` at both levels. System defaults have `user_id = null` and stable `system_code`; custom rows belong to one user and can be archived instead of deleted. The deployed seed preserves the approved display order for every default main category and subcategory.
+
+`record_category_overrides` is per-user and applies only to system rows. It stores an optional replacement name and `is_hidden`, allowing a user to rename, hide, or restore a default without changing it for anyone else. RLS permits authenticated users to read system defaults plus their own custom rows, and to read/write only their own custom rows and overrides.
+
+`financial_transactions.main_category_id` and `subcategory_id` are nullable FKs to `record_categories`. New ID-based Income/Expense RPC calls require a visible, linked main/subcategory pair; Transfer requires both values to be null. Historical transactions remain unchanged with null category IDs and are not backfilled. The web Add Record form uses the ID-based path; the RPC retains its text-category compatibility path only for existing callers.
+
 ### 2.2 `metal_purchases` table (append-only purchase history)
 
 ```sql
@@ -118,6 +138,8 @@ Logic (must be replicated exactly, either by calling this same RPC from mobile o
 8. Client always sends `p_fees: "0"` today — **there is no fee input field in the UI**, even though schema/RPC/table fully support fees. Adding fee UI on mobile would be a net-new feature, not parity.
 
 ### 2.4 TypeScript domain types
+
+The `add_account_record` RPC atomically posts exactly `income`, `expense`, or `transfer` records for active, owned Cash and Bank accounts. Income debits the selected account and balances against an accountless `owner_contribution`; Expense credits it and balances against an accountless `owner_draw`. Transfers credit the From account and debit the To account. For cross-currency transfers, both entries use the source-native sent amount as their exactly balanced `transaction_amount`, while each `account_amount` remains native to its referenced account; the destination therefore stores the final user-approved received amount. This records a neutral transfer in the ledger without updating `exchange_rates` or persisting a reusable inferred rate. The RPC locks and validates accounts, rejects insufficient available balance, and rejects any Bank Credit inflow when `credit_card_limit` is null or the resulting available credit would exceed that limit.
 
 ```ts
 type AccountTypeCode =
@@ -267,7 +289,15 @@ class MetalPurchasesRepository {
   addPurchase(accountId, values: MetalPurchaseFormValues): Promise<void> // calls RPC add_metal_purchase
   getPurchaseHistoryRows(accountIds): Promise<MetalPurchaseRecord[]> // reads metal_purchases, ordered by purchased_at desc, created_at desc
 }
+
+class AccountRecordsRepository {
+  getAccountRecordRows(accountId): Promise<AccountRecordRow[]>
+  getAccountBalances(accountIds): Promise<AccountBalanceRow[]>
+  addAccountRecord(values): Promise<void> // calls add_account_record with mainCategoryId/subcategoryId for Income and Expense
+}
 ```
+
+Account-record history embeds the matched entry's `financial_accounts.currency_code` through the deployed `transaction_entries_account_id_fkey` relationship, so each side of a transfer is mapped with its account-native currency.
 
 Purchase-history numeric columns are requested with `::text` casts, then normalized from either a text or finite numeric Supabase response into validated decimal strings before any totals are calculated. The deployed RPC returns the updated `financial_accounts` row; the client ignores that response and reloads immutable `metal_purchases` records for history.
 
@@ -292,7 +322,7 @@ The page also reads two URL query params on mount (no UI control for either — 
 
 Sort columns: `name | type | balance` — the `balance` sort key is presented as **Current Value** and sorts numerically on the displayed non-metal value or live metal current value. Clicking the active sort column flips direction; picking a new column resets to ascending.
 
-**Displayed "Current Value"**: for non-gold accounts this remains the raw `opening_balance` column — **not** a ledger-adjusted current balance (there's no transaction-effect calculation on this page, unlike the related `cash-accounts` feature). For gold/silver accounts it is current quantity in grams multiplied by the live current price per gram in the account currency. The price path reuses `getMetalPricePerGram`: XAU/XAG USD price from Gold API, converted from a troy ounce to a gram, then converted with the existing FX service when required. Historical purchase cost is never substituted when a current price is unavailable; the UI shows an unavailable value instead. Quantity is not shown at this layer.
+**Displayed "Current Value"**: Cash and Bank accounts use `get_account_balances`, so posted Account Records affect the displayed value; other non-gold accounts retain raw `opening_balance`. Gold/silver behavior is unchanged: current quantity in grams multiplied by the live current price per gram in the account currency.
 
 ### 6.3 List/table row content
 
@@ -300,13 +330,16 @@ Name, type label (for gold accounts, shows "Gold"/"Silver" from `metal_type`; fo
 
 Row actions:
 
-- **View purchases** (gold accounts only) → opens purchase history dialog.
 - **Add purchase** (active gold accounts only) → opens metal purchase dialog.
 - **Edit** (always) → opens account form dialog in edit mode.
 - **Archive/Restore** (icon+label toggles based on `is_active`) → opens confirm dialog.
 - **Delete** (always visible, disabled when ineligible — currently never disabled) → opens confirm dialog.
 
-For non-gold accounts, selecting the account name opens a read-only Account Records details layer. It loads the existing `financial_transactions` joined through matching `transaction_entries.account_id`, ordered newest first, and shows date, description/type, and amount. The fetch and mapping live in the Accounts repository/service (`account-records.repository` and `account-records.service`) rather than the React dialog, so the same transaction-record layer can be reused by mobile clients. Gold/Silver keeps its dedicated three-layer flow in §6.7.
+The entire account row/card is selectable (including keyboard Enter/Space) and navigates to `/accounts/:accountId`. Row action controls stop propagation, so Edit, Archive/Restore, Delete, and Gold/Silver-specific actions do not trigger navigation. Cash, Bank Debit, and Bank Credit reuse their full Account Records page with Back navigation; account creation/opening balance is excluded because it is not a ledger transaction. Existing records appear newest first with account-native signed amounts, an empty state appears when none exist, and a visible Add Record action opens the Expense/Income/Transfer form. Gold/Silver opens its account-details page with the dedicated purchase-history content in §6.7. Brokerage, Real Estate, Business, and Other currently show their account-details header only; no new transaction flow is introduced.
+
+The Add Record form presents the Record Type as three responsive, visible buttons rather than a dropdown: Income (green), Expense (red), and Transfer (neutral gray). Selecting one keeps the existing record type value and all conditional fields/validation unchanged. Expense and Income require Amount, selected Account, Category, and Date & Time; Notes are optional and Currency is read-only from the account. Category is a searchable hierarchical picker: normal browsing preserves configured main/subcategory `sort_order`, while search matches either level and displays the complete path (for example, `Life & Entertainment → Gym & Sport`). Its Manage Categories dialog lets the current user add custom main/subcategories, rename system or custom items, hide and restore system defaults, and archive custom items; those changes use the user-scoped catalog/override data and never affect another user. Transfer does not render or submit a category. Expense decreases value and Income increases it. Transfer requires different owned From/To accounts, Amount Sent, and Date & Time. Same-currency transfers use the same amount on both sides. Different-currency transfers show a current-rate estimate from the shared FX service, allow the received amount to be overridden, and persist the final native received amount without writing to the app's FX-rate source. Transfers remain transfer transactions, not income or expense. History formats each side with its own account currency, so the destination displays the received amount in the destination currency. The Add Record form defaults Date & Time from the current device/browser local time and explicitly converts the submitted local `datetime-local` value to UTC for storage. The Records table shows separate Date and Time columns from that stored timestamp in the current device/browser local timezone (never raw UTC); Income rows are green, Expense rows are red, and Transfer rows retain neutral styling.
+
+For Bank Credit, value means available credit: Expense/transfer-out decreases it; Income/payment/transfer-in increases it without exceeding the credit limit. Amount Due remains `credit_card_limit - current_balance`.
 
 > **Known web-app bug to decide on for mobile**: the "Restore" action for an archived account reuses the _same_ archive confirmation flow and repository call (`archiveAccount`, which always sets `is_active: false`) — so restoring currently does nothing (no-op). There is no working un-archive path in the current app despite the UI implying one. **Recommendation**: fix this on mobile with a distinct `restoreAccount = updateAccount(id, {isActive: true})` call and matching "Restore this account?" dialog copy, but be aware this is a deliberate deviation from current web behavior.
 
@@ -330,12 +363,12 @@ Simple modal: title interpolating account name, description, Cancel + destructiv
 
 Fields: `purity` (options depend on account's `metal_type`), `purchaseDate`, `unitsGrams`, `costPerUnit`, a "Paid from" toggle revealing a funding-account picker (active `cash`/`bank` accounts only) when checked, and a live read-only "Total amount" = `unitsGrams * costPerUnit` (fees excluded from this preview since there's no fee field).
 
-### 6.7 Metal purchase history dialog
+### 6.7 Metal purchase history on the account-details page
 
 The history flow has three transaction-derived layers:
 
 1. **Account list** — Gold/Silver, currency, and current value only. Current value is transaction-derived total grams multiplied by the existing live price per gram for the metal and account currency.
-2. **Purity summary** — opening a metal account shows a responsive four-column table with one header row: **Purity | Total quantity | Total cost | Current value**. It fits within the modal without desktop horizontal scrolling; compact columns and wrapping keep it usable on mobile. Total quantity is summed from the purchases at that purity. Total cost is the sum of each immutable historical purchase cost (`quantity × historical cost per unit`). Current value is the sum of those purchases' live values, using the same current price per gram as Layer 3; it shows unavailable rather than falling back to historical cost. Each selectable purity row shows only those values; it does not list individual purchases.
+2. **Purity summary** — opening a metal account navigates to its account-details page and shows a responsive four-column table with one header row: **Purity | Total quantity | Total cost | Current value**. Total quantity is summed from the purchases at that purity. Total cost is the sum of each immutable historical purchase cost (`quantity × historical cost per unit`). Current value is the sum of those purchases' live values, using the same current price per gram as Layer 3; it shows unavailable rather than falling back to historical cost. Each selectable purity row shows only those values; it does not list individual purchases.
 3. **Purity transactions** — opening a purity shows a compact responsive table, newest first, with one header row: **Date | Quantity | Cost per unit | Total cost | Current value**. Total cost is the immutable purchase quantity multiplied by its historical cost per unit. Current value is that purchase quantity multiplied by the existing live current price per gram for the account's metal and currency; if the price is unavailable, no historical-cost fallback is shown. Each purchase remains one row, and its stored purchase data is unchanged. Dates are displayed as `DD-MM-YYYY` without changing their stored value.
 
 The web client reloads `metal_purchases` after a successful RPC call. These records remain the source of truth for purchase quantities and historical costs; purchases are never merged or persisted as a summary. Current values are derived at read time from those quantities and the shared live metal-price service. Each layer has loading, error, and empty states as applicable.
@@ -362,7 +395,7 @@ Display formatting:
 3. **Weighted-average cost formula** excludes fees; must be replicated exactly (§2.3 step 5).
 4. **"Restore" is effectively broken** in the current web app (§6.3) — recommend fixing on mobile, but note the deviation.
 5. **Delete eligibility / locked-field checks are stubbed to always pass** today — the DB-level immutability triggers exist but never fire in this deployment (no populated ledger yet). Build the UI pattern anyway for forward compatibility.
-6. **The Accounts tab's balance column is the raw `opening_balance`**, not a ledger-adjusted current balance — this differs from the separate `cash-accounts` feature, which does compute a ledger-adjusted balance via the `get_account_balances` RPC. Recommend matching today's Accounts-tab behavior (raw `opening_balance`) for parity, but flag this inconsistency to the team.
+6. Cash and Bank values are ledger-adjusted through `get_account_balances`; other non-metal account types still display raw `opening_balance`.
 7. A `"deposit"` account type appears in one funding-account filter but is **not a real type** — dead code; only `cash`/`bank` are valid metal-purchase funding sources.
 8. **Metal purchase fees are hardcoded to `"0"`** from the client — no fee input UI exists yet, despite full schema/RPC support. Adding it on mobile is net-new, not parity.
 9. Gold/silver historical totals are calculated from immutable purchase records with decimal-safe helpers. Current values combine those immutable quantities with the shared XAU/XAG live price-per-gram path and never fall back to historical cost. The RPC's account-shaped response is not a purchase-history payload and must not be used to render the history.

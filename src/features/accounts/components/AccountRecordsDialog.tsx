@@ -1,5 +1,5 @@
 import { Dialog } from "@base-ui/react/dialog"
-import { ArrowLeft, X } from "lucide-react"
+import { ArrowLeft, Plus, X } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import { formatPortfolioAmount } from "@/features/portfolio/utils/portfolio-formatters"
@@ -13,12 +13,14 @@ export function AccountRecordsDialog({
   isLoading,
   isError,
   onClose,
+  onAdd,
 }: {
   account: AccountSummary | null
   records: AccountRecord[]
   isLoading: boolean
   isError: boolean
   onClose: () => void
+  onAdd: () => void
 }) {
   const { t, language } = useTranslation()
   const locale = language === "ar" ? "ar-SA" : "en-US"
@@ -96,7 +98,10 @@ export function AccountRecordsDialog({
               </table>
             )}
           </div>
-          <footer className="flex justify-end border-t border-[var(--color-border)] px-6 py-4">
+          <footer className="flex justify-between border-t border-[var(--color-border)] px-6 py-4">
+            <Button onClick={onAdd} disabled={!account?.is_active}>
+              <Plus size={16} />{t("accounts.records.add")}
+            </Button>
             <Button variant="secondary" onClick={onClose}>
               <ArrowLeft size={16} />
               {t("common.back")}

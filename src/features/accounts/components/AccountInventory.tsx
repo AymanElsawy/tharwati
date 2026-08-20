@@ -4,7 +4,6 @@ import {
   Archive,
   ArchiveRestore,
   Coins,
-  Eye,
   Pencil,
   Trash2,
 } from "lucide-react"
@@ -52,7 +51,10 @@ function ActionButton({
             size="icon"
             disabled={disabled}
             aria-label={ariaLabel}
-            onClick={onClick}
+            onClick={(event) => {
+              event.stopPropagation()
+              onClick()
+            }}
             className={className}
           />
         }
@@ -130,8 +132,7 @@ export function AccountInventory({
   onArchive,
   onDelete,
   onAddMetalPurchase,
-  onViewMetalPurchases,
-  onViewAccountRecords,
+  onOpenAccount,
   canDelete,
 }: {
   items: AccountInventoryItem[]
@@ -142,8 +143,7 @@ export function AccountInventory({
   onArchive: (account: AccountSummary) => void
   onDelete: (account: AccountSummary) => void
   onAddMetalPurchase: (account: AccountSummary) => void
-  onViewMetalPurchases: (account: AccountSummary) => void
-  onViewAccountRecords: (account: AccountSummary) => void
+  onOpenAccount: (account: AccountSummary) => void
   canDelete: (accountId: string) => boolean
 }) {
   const { t, language } = useTranslation()
@@ -190,20 +190,18 @@ export function AccountInventory({
             {items.map((item) => (
               <tr
                 key={item.account.id}
-                className="border-b border-[var(--color-border)] last:border-b-0 hover:bg-[var(--color-surface-hover)]"
+                className="cursor-pointer border-b border-[var(--color-border)] last:border-b-0 hover:bg-[var(--color-surface-hover)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--color-primary)]"
+                tabIndex={0}
+                onClick={() => onOpenAccount(item.account)}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter" || event.key === " ") {
+                    event.preventDefault()
+                    onOpenAccount(item.account)
+                  }
+                }}
               >
                 <td className="px-4 py-4 font-medium">
-                  {item.account.account_type_code === "gold" ? (
-                    item.account.name
-                  ) : (
-                    <button
-                      type="button"
-                      className="text-start underline-offset-4 hover:underline focus-visible:ring-2"
-                      onClick={() => onViewAccountRecords(item.account)}
-                    >
-                      {item.account.name}
-                    </button>
-                  )}
+                  {item.account.name}
                 </td>
                 <td className="px-4 py-4">{typeLabel(item.account, t)}</td>
                 <td className="px-4 py-4 tabular-nums" dir="ltr">
@@ -219,17 +217,6 @@ export function AccountInventory({
                 </td>
                 <td className="px-4 py-4">
                   <div className="flex justify-end gap-1">
-                    {item.account.account_type_code === "gold" ? (
-                      <ActionButton
-                        ariaLabel={t("accounts.metalPurchaseHistory.viewFor", {
-                          name: item.account.name,
-                        })}
-                        tooltip={t("accounts.metalPurchaseHistory.view")}
-                        onClick={() => onViewMetalPurchases(item.account)}
-                      >
-                        <Eye size={15} />
-                      </ActionButton>
-                    ) : null}
                     {item.account.account_type_code === "gold" &&
                     item.account.is_active ? (
                       <ActionButton
@@ -288,20 +275,10 @@ export function AccountInventory({
       </div>
       <div className="mt-2 divide-y divide-[var(--color-border)] rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-sm lg:hidden">
         {items.map((item) => (
-          <div key={item.account.id} className="grid gap-3 px-4 py-4">
+          <div key={item.account.id} className="grid cursor-pointer gap-3 px-4 py-4 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--color-primary)]" tabIndex={0} role="button" onClick={() => onOpenAccount(item.account)} onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); onOpenAccount(item.account) } }}>
             <div className="flex items-start justify-between gap-3">
               <span>
-                {item.account.account_type_code === "gold" ? (
-                  <strong className="block">{item.account.name}</strong>
-                ) : (
-                  <button
-                    type="button"
-                    className="block text-start font-bold underline-offset-4 hover:underline focus-visible:ring-2"
-                    onClick={() => onViewAccountRecords(item.account)}
-                  >
-                    {item.account.name}
-                  </button>
-                )}
+                <strong className="block">{item.account.name}</strong>
                 <span className="mt-1 block text-xs text-muted-foreground">
                   {typeLabel(item.account, t)}
                 </span>
@@ -312,17 +289,6 @@ export function AccountInventory({
                 {balanceCell(item, locale)}
               </strong>
               <div className="flex gap-1">
-                {item.account.account_type_code === "gold" ? (
-                  <ActionButton
-                    ariaLabel={t("accounts.metalPurchaseHistory.viewFor", {
-                      name: item.account.name,
-                    })}
-                    tooltip={t("accounts.metalPurchaseHistory.view")}
-                    onClick={() => onViewMetalPurchases(item.account)}
-                  >
-                    <Eye size={15} />
-                  </ActionButton>
-                ) : null}
                 {item.account.account_type_code === "gold" &&
                 item.account.is_active ? (
                   <ActionButton
