@@ -259,6 +259,7 @@ export const en = {
   "accounts.records.amount": "Amount",
   "accounts.records.dailyNet": "Daily net",
   "accounts.records.add": "Add record",
+  "accounts.records.loadMore": "Load more",
   "accounts.records.edit": "Edit record",
   "accounts.records.save": "Save record",
   "accounts.records.delete": "Delete record",

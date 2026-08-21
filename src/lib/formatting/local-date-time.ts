@@ -3,6 +3,19 @@ export type LocalDateTime = {
   time: string
 }
 
+/** Returns the IANA timezone used by the current runtime for local-calendar calculations. */
+export function getRuntimeTimeZone() {
+  return Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC"
+}
+
+/** Formats an ISO local-calendar date without shifting it into a different timezone. */
+export function formatLocalCalendarDate(date: string, locale: string) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return date
+  return new Intl.DateTimeFormat(locale, { dateStyle: "medium", timeZone: "UTC" }).format(
+    new Date(`${date}T00:00:00.000Z`)
+  )
+}
+
 function pad(value: number) {
   return String(value).padStart(2, "0")
 }

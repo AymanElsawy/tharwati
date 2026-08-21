@@ -10,6 +10,8 @@ export type AccountRecord = {
   subcategoryId: string | null
   amount: Decimal
   currencyCode: string
+  localDate: string
+  dailyNet: Decimal
 }
 
 export type EditableAccountRecord = {

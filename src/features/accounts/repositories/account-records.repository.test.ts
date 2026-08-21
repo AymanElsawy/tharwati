@@ -107,4 +107,19 @@ describe("AccountRecordsRepository.addAccountRecord", () => {
       p_transaction_id: "original-record",
     })
   })
+
+  it("requests history through the paginated effective-history RPC", async () => {
+    const { repository, rpc } = createRepository()
+    rpc.mockResolvedValue({ data: [], error: null })
+
+    await repository.getAccountRecordHistory("cash-account", { occurredAt: "2026-08-20T12:00:00Z", id: "cursor-id" }, 50, "Asia/Riyadh")
+
+    expect(rpc).toHaveBeenCalledWith("get_account_record_history", {
+      p_account_id: "cash-account",
+      p_cursor_occurred_at: "2026-08-20T12:00:00Z",
+      p_cursor_id: "cursor-id",
+      p_page_size: 50,
+      p_time_zone: "Asia/Riyadh",
+    })
+  })
 })

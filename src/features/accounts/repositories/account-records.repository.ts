@@ -27,6 +27,22 @@ export type AccountRecordRow = {
 }
 
 export type AccountBalanceRow = { account_id: string; current_balance: string }
+export type AccountRecordHistoryRow = {
+  id: string
+  occurred_at: string
+  transaction_type_code: string
+  description: string
+  notes: string | null
+  main_category_id: string | null
+  subcategory_id: string | null
+  account_id: string
+  entry_side: "debit" | "credit"
+  account_amount: string
+  currency_code: string
+  local_date: string
+  daily_net: string
+}
+export type AccountRecordHistoryCursor = { occurredAt: string; id: string }
 
 const accountRecordSelect = `
   id,
@@ -54,22 +70,21 @@ export class AccountRecordsRepository {
     this.client = client
   }
 
-  async getAccountRecordRows(accountId: string): Promise<AccountRecordRow[]> {
-    const operation = "accountRecords.getAccountRecords"
-    const userId = await requireAuthenticatedUserId(this.client, operation)
-    const { data, error } = await this.client
-      .from("financial_transactions")
-      .select(accountRecordSelect)
-      .eq("user_id", userId)
-      .eq("account_entries.account_id", accountId)
-      .order("occurred_at", { ascending: false })
-      .order("created_at", { ascending: false })
-
-    return requireQueryData(
-      data,
-      error,
-      operation
-    ) as unknown as AccountRecordRow[]
+  async getAccountRecordHistory(
+    accountId: string,
+    cursor: AccountRecordHistoryCursor | null,
+    pageSize = 50,
+    timeZone = "UTC"
+  ): Promise<AccountRecordHistoryRow[]> {
+    const operation = "accountRecords.getAccountRecordHistory"
+    const { data, error } = await this.client.rpc("get_account_record_history", {
+      p_account_id: accountId,
+      p_cursor_occurred_at: cursor?.occurredAt ?? null,
+      p_cursor_id: cursor?.id ?? null,
+      p_page_size: pageSize,
+      p_time_zone: timeZone,
+    })
+    return requireQueryData(data, error, operation) as AccountRecordHistoryRow[]
   }
 
   async addAccountRecord(values: AccountRecordFormValues): Promise<void> {

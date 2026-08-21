@@ -640,6 +640,30 @@ export type Database = {
           current_balance: Decimal
         }>
       }
+      get_account_record_history: {
+        Args: {
+          p_account_id: string
+          p_cursor_occurred_at?: string | null
+          p_cursor_id?: string | null
+          p_page_size?: number | null
+          p_time_zone?: string | null
+        }
+        Returns: Array<{
+          id: string
+          occurred_at: string
+          transaction_type_code: string
+          description: string
+          notes: string | null
+          main_category_id: string | null
+          subcategory_id: string | null
+          account_id: string
+          entry_side: "debit" | "credit"
+          account_amount: Decimal
+          currency_code: string
+          local_date: string
+          daily_net: Decimal
+        }>
+      }
       get_current_market_price: {
         Args: {
           p_asset_id: string

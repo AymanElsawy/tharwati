@@ -295,7 +295,7 @@ class MetalPurchasesRepository {
 }
 
 class AccountRecordsRepository {
-  getAccountRecordRows(accountId): Promise<AccountRecordRow[]>
+  getAccountRecordHistory(accountId, cursor, pageSize?): Promise<AccountRecordHistoryRow[]>
   getAccountRecordDetail(recordId): Promise<AccountRecordRow>
   getAccountBalances(accountIds): Promise<AccountBalanceRow[]>
   addAccountRecord(values): Promise<void> // calls add_account_record with mainCategoryId/subcategoryId for Income and Expense
@@ -305,6 +305,8 @@ class AccountRecordsRepository {
 ```
 
 Account-record history embeds the matched entry's `financial_accounts.currency_code` through the deployed `transaction_entries_account_id_fkey` relationship, so each side of a transfer is mapped with its account-native currency.
+
+Normal Account Record history uses `get_account_record_history(accountId, cursor, pageSize, timeZone)` rather than loading the ledger directly. The authenticated RPC returns only effective posted records for the owned Cash/Bank account: reversal audit rows, reversed originals, and corrected originals are excluded; correction replacements remain. It uses the stable keyset cursor `(occurred_at, id)` in descending order, defaults to 50 rows, and clamps requested pages to 100. The caller supplies its IANA device timezone; the RPC resolves the cursor page first, identifies only that page's local calendar dates, converts each local midnight boundary to its DST-safe UTC timestamp range, and calculates each returned record's complete signed Daily Net across all effective movements in those ranges. Therefore a displayed date spanning pages never shows a partial net without aggregating unrelated historical dates. The web page automatically loads the next page near the end of the current list using a viewport observer that re-arms after each append; it also provides a subtle Load more fallback. A failed page load stops automatic retry and shows a small retry action.
 
 Purchase-history numeric columns are requested with `::text` casts, then normalized from either a text or finite numeric Supabase response into validated decimal strings before any totals are calculated. The deployed RPC returns the updated `financial_accounts` row; the client ignores that response and reloads immutable `metal_purchases` records for history.
 

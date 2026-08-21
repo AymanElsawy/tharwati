@@ -249,6 +249,7 @@ export const ar: Record<TranslationKey, string> = {
   "accounts.records.amount": "المبلغ",
   "accounts.records.dailyNet": "صافي اليوم",
   "accounts.records.add": "إضافة سجل",
+  "accounts.records.loadMore": "تحميل المزيد",
   "accounts.records.edit": "تعديل السجل",
   "accounts.records.save": "حفظ السجل",
   "accounts.records.delete": "حذف السجل",
