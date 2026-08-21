@@ -2,6 +2,7 @@ import { AlertTriangle, RefreshCw, WalletCards } from "lucide-react"
 import { Link } from "react-router-dom"
 
 import { Button } from "@/components/ui/button"
+import { AnimatedNetWorthValue } from "@/features/dashboard/components/AnimatedNetWorthValue"
 import { getAccountTypeLabel } from "@/features/accounts/types/account-form"
 import { useNetWorth } from "@/features/dashboard/hooks/useNetWorth"
 import { useTranslation } from "@/i18n/useTranslation"
@@ -75,7 +76,7 @@ export function NetWorthCard() {
         </div>
 
         <p className="mt-5 text-3xl font-black tracking-tight text-[var(--color-text-primary)]" dir="ltr">
-          {formatAmount(result.total)} {result.baseCurrencyCode}
+          <AnimatedNetWorthValue value={result.total} format={formatAmount} /> {result.baseCurrencyCode}
         </p>
 
         {result.accountCount === 0 ? (
