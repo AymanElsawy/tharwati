@@ -266,6 +266,7 @@ export const ar: Record<TranslationKey, string> = {
   "accounts.categories.empty": "لا توجد فئات مطابقة.",
   "accounts.categories.manage": "إدارة الفئات",
   "accounts.categories.name": "اسم الفئة",
+  "accounts.categories.save": "حفظ",
   "accounts.categories.addMain": "إضافة فئة رئيسية",
   "accounts.categories.addSub": "إضافة فئة فرعية",
   "accounts.categories.rename": "إعادة تسمية",

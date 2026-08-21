@@ -25,7 +25,11 @@ function mapCategory(row: Record<string, unknown>): RecordCategory {
 }
 
 export class RecordCategoriesRepository {
-  constructor(private readonly client: TypedSupabaseClient = supabase) {}
+  private readonly client: TypedSupabaseClient
+
+  constructor(client: TypedSupabaseClient = supabase) {
+    this.client = client
+  }
 
   async getCategories(): Promise<RecordCategory[]> {
     const operation = "recordCategories.getCategories"

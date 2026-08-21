@@ -276,6 +276,7 @@ export const en = {
   "accounts.categories.empty": "No matching categories.",
   "accounts.categories.manage": "Manage categories",
   "accounts.categories.name": "Category name",
+  "accounts.categories.save": "Save",
   "accounts.categories.addMain": "Add main category",
   "accounts.categories.addSub": "Add subcategory",
   "accounts.categories.rename": "Rename",

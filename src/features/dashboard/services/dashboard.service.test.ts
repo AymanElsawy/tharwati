@@ -25,6 +25,8 @@ const postedBuy: TableRow<"financial_transactions"> & {
   user_id: "user-1",
   transaction_type_code: "buy",
   transaction_currency_code: "USD",
+  main_category_id: null,
+  subcategory_id: null,
   status: "posted",
   occurred_at: "2026-07-25T10:00:00.000Z",
   description: "Buy Test",
