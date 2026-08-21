@@ -21,6 +21,28 @@ export type EditableAccountRecord = {
 
 export type AccountRecordType = "expense" | "income" | "transfer"
 
+export type AccountRecordHistoryFilters = {
+  search: string
+  fromDate: string
+  toDate: string
+  recordType: "" | AccountRecordType
+  mainCategoryId: string
+  subcategoryId: string
+  minAmount: string
+  maxAmount: string
+}
+
+export const emptyAccountRecordHistoryFilters: AccountRecordHistoryFilters = {
+  search: "",
+  fromDate: "",
+  toDate: "",
+  recordType: "",
+  mainCategoryId: "",
+  subcategoryId: "",
+  minAmount: "",
+  maxAmount: "",
+}
+
 export type AccountRecordFormValues = {
   type: AccountRecordType
   accountId: string

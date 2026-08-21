@@ -5,7 +5,12 @@ import {
   type AccountRecordRow,
 } from "../repositories/account-records.repository"
 import type { AccountRecord } from "../types/account-record"
-import type { AccountRecordFormValues, EditableAccountRecord } from "../types/account-record"
+import {
+  emptyAccountRecordHistoryFilters,
+  type AccountRecordFormValues,
+  type AccountRecordHistoryFilters,
+  type EditableAccountRecord,
+} from "../types/account-record"
 import type { AccountSummary, Decimal } from "@/lib/supabase/types"
 import { divideDecimals, multiplyDecimals, normalizeDecimal } from "@/lib/financial-calculations/decimal"
 import { exchangeRateService } from "@/services/exchange-rates"
@@ -137,10 +142,11 @@ export async function getAccountRecordHistoryPage(
   accountId: string,
   cursor: AccountRecordHistoryCursor | null,
   pageSize = 50,
-  timeZone = "UTC"
+  timeZone = "UTC",
+  filters: AccountRecordHistoryFilters = emptyAccountRecordHistoryFilters
 ): Promise<AccountRecordHistoryPage> {
   return mapAccountRecordHistoryPage(
-    await accountRecordsRepository.getAccountRecordHistory(accountId, cursor, pageSize, timeZone),
+    await accountRecordsRepository.getAccountRecordHistory(accountId, cursor, pageSize, timeZone, filters),
     pageSize
   )
 }

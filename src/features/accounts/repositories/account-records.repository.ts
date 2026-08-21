@@ -5,7 +5,11 @@ import {
 } from "@/lib/supabase/repository"
 import { toRepositoryError } from "@/lib/supabase/types"
 import { localDateTimeInputToIso } from "@/lib/formatting/local-date-time"
-import type { AccountRecordFormValues } from "../types/account-record"
+import {
+  emptyAccountRecordHistoryFilters,
+  type AccountRecordFormValues,
+  type AccountRecordHistoryFilters,
+} from "../types/account-record"
 
 export type AccountRecordRow = {
   id: string
@@ -74,7 +78,8 @@ export class AccountRecordsRepository {
     accountId: string,
     cursor: AccountRecordHistoryCursor | null,
     pageSize = 50,
-    timeZone = "UTC"
+    timeZone = "UTC",
+    filters: AccountRecordHistoryFilters = emptyAccountRecordHistoryFilters
   ): Promise<AccountRecordHistoryRow[]> {
     const operation = "accountRecords.getAccountRecordHistory"
     const { data, error } = await this.client.rpc("get_account_record_history", {
@@ -83,6 +88,14 @@ export class AccountRecordsRepository {
       p_cursor_id: cursor?.id ?? null,
       p_page_size: pageSize,
       p_time_zone: timeZone,
+      p_search: filters.search.trim() || null,
+      p_from_date: filters.fromDate || null,
+      p_to_date: filters.toDate || null,
+      p_record_type: filters.recordType || null,
+      p_main_category_id: filters.mainCategoryId || null,
+      p_subcategory_id: filters.subcategoryId || null,
+      p_min_amount: filters.minAmount.trim() || null,
+      p_max_amount: filters.maxAmount.trim() || null,
     })
     return requireQueryData(data, error, operation) as AccountRecordHistoryRow[]
   }

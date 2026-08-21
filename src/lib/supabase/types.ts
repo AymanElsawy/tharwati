@@ -647,6 +647,14 @@ export type Database = {
           p_cursor_id?: string | null
           p_page_size?: number | null
           p_time_zone?: string | null
+          p_search?: string | null
+          p_from_date?: string | null
+          p_to_date?: string | null
+          p_record_type?: string | null
+          p_main_category_id?: string | null
+          p_subcategory_id?: string | null
+          p_min_amount?: Decimal | null
+          p_max_amount?: Decimal | null
         }
         Returns: Array<{
           id: string

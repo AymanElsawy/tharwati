@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from "vitest"
 import type { TypedSupabaseClient } from "@/lib/supabase/client"
 import { localDateTimeInputToIso } from "@/lib/formatting/local-date-time"
 import { AccountRecordsRepository } from "./account-records.repository"
-import type { AccountRecordFormValues } from "../types/account-record"
+import type { AccountRecordFormValues, AccountRecordHistoryFilters } from "../types/account-record"
 
 function createRepository() {
   const rpc = vi.fn().mockResolvedValue({ error: null })
@@ -108,7 +108,7 @@ describe("AccountRecordsRepository.addAccountRecord", () => {
     })
   })
 
-  it("requests history through the paginated effective-history RPC", async () => {
+  it("requests history through the server-filtered paginated effective-history RPC", async () => {
     const { repository, rpc } = createRepository()
     rpc.mockResolvedValue({ data: [], error: null })
 
@@ -120,6 +120,42 @@ describe("AccountRecordsRepository.addAccountRecord", () => {
       p_cursor_id: "cursor-id",
       p_page_size: 50,
       p_time_zone: "Asia/Riyadh",
+      p_search: null,
+      p_from_date: null,
+      p_to_date: null,
+      p_record_type: null,
+      p_main_category_id: null,
+      p_subcategory_id: null,
+      p_min_amount: null,
+      p_max_amount: null,
     })
+  })
+
+  it("passes combined search, local-date, type, category, and native-amount filters to the RPC", async () => {
+    const { repository, rpc } = createRepository()
+    rpc.mockResolvedValue({ data: [], error: null })
+    const filters: AccountRecordHistoryFilters = {
+      search: "  gym  ",
+      fromDate: "2026-08-18",
+      toDate: "2026-08-21",
+      recordType: "expense",
+      mainCategoryId: "main-category",
+      subcategoryId: "subcategory",
+      minAmount: "10",
+      maxAmount: "100.50",
+    }
+
+    await repository.getAccountRecordHistory("cash-account", null, 50, "Asia/Riyadh", filters)
+
+    expect(rpc).toHaveBeenCalledWith("get_account_record_history", expect.objectContaining({
+      p_search: "gym",
+      p_from_date: "2026-08-18",
+      p_to_date: "2026-08-21",
+      p_record_type: "expense",
+      p_main_category_id: "main-category",
+      p_subcategory_id: "subcategory",
+      p_min_amount: "10",
+      p_max_amount: "100.50",
+    }))
   })
 })

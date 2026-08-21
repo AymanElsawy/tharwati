@@ -4,6 +4,7 @@ import type { AccountRecordHistoryRow } from "../repositories/account-records.re
 import { groupAccountRecordsByLocalDate, mapAccountRecordHistoryPage, mapAccountRecordHistoryRows, mapEditableAccountRecord } from "./account-records.service"
 import historyMigration from "../../../../supabase/migrations/20260821050000_add_paginated_account_record_history.sql?raw"
 import historyFixMigration from "../../../../supabase/migrations/20260821060000_fix_account_record_history_local_date_ambiguity.sql?raw"
+import historyFiltersMigration from "../../../../supabase/migrations/20260821070000_add_account_record_history_filters.sql?raw"
 
 function historyRow(overrides: Partial<AccountRecordHistoryRow> = {}): AccountRecordHistoryRow {
   return {
@@ -124,5 +125,35 @@ describe("effective history RPC", () => {
     expect(historyFixMigration).toContain("select distinct p.local_date")
     expect(historyFixMigration).toContain("d.local_date::timestamp at time zone v_time_zone")
     expect(historyFixMigration).toContain("(d.local_date + 1)::timestamp at time zone v_time_zone")
+  })
+
+  it("applies search, local date, type, category, and native amount filters before cursor pagination", () => {
+    expect(historyFiltersMigration).toContain("p_search text default null")
+    expect(historyFiltersMigration).toContain("p_from_date date default null")
+    expect(historyFiltersMigration).toContain("p_to_date date default null")
+    expect(historyFiltersMigration).toContain("p_record_type text default null")
+    expect(historyFiltersMigration).toContain("p_main_category_id uuid default null")
+    expect(historyFiltersMigration).toContain("p_subcategory_id uuid default null")
+    expect(historyFiltersMigration).toContain("p_min_amount numeric default null")
+    expect(historyFiltersMigration).toContain("p_max_amount numeric default null")
+    expect(historyFiltersMigration).toContain("t.occurred_at >= v_from_occurred_at")
+    expect(historyFiltersMigration).toContain("t.occurred_at < v_to_occurred_at")
+    expect(historyFiltersMigration).toContain("t.transaction_type_code = p_record_type")
+    expect(historyFiltersMigration).toContain("t.main_category_id = p_main_category_id")
+    expect(historyFiltersMigration).toContain("t.subcategory_id = p_subcategory_id")
+    expect(historyFiltersMigration).toContain("abs(e.account_amount) >= p_min_amount")
+    expect(historyFiltersMigration).toContain("abs(e.account_amount) <= p_max_amount")
+    expect(historyFiltersMigration).toContain("coalesce(t.notes, '') ilike")
+    expect(historyFiltersMigration).toContain("subcategory_override.name")
+    expect(historyFiltersMigration).toContain("page_records as materialized")
+  })
+
+  it("computes a complete filtered Daily Net for all page dates, including a date spanning pages", () => {
+    expect(historyFiltersMigration).toContain("join effective_records r")
+    expect(historyFiltersMigration).toContain("r.occurred_at >= d.occurred_at_start")
+    expect(historyFiltersMigration).toContain("r.occurred_at < d.occurred_at_end")
+    expect(historyFiltersMigration).toContain("sum(r.signed_amount) as daily_net")
+    expect(historyFiltersMigration).toContain("order by r.occurred_at desc, r.id desc")
+    expect(historyFiltersMigration).not.toMatch(/\boffset\b/i)
   })
 })
