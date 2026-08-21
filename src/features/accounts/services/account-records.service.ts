@@ -3,10 +3,12 @@ import {
   type AccountRecordRow,
 } from "../repositories/account-records.repository"
 import type { AccountRecord } from "../types/account-record"
-import type { AccountRecordFormValues } from "../types/account-record"
+import type { AccountRecordFormValues, EditableAccountRecord } from "../types/account-record"
 import type { AccountSummary, Decimal } from "@/lib/supabase/types"
-import { divideDecimals, multiplyDecimals } from "@/lib/financial-calculations/decimal"
+import { addDecimals, divideDecimals, multiplyDecimals, normalizeDecimal } from "@/lib/financial-calculations/decimal"
 import { exchangeRateService } from "@/services/exchange-rates"
+import { formatLocalDateTime, formatLocalDateTimeInput } from "@/lib/formatting/local-date-time"
+import type { VisibleRecordMainCategory } from "../types/record-category"
 
 export function mapAccountRecordRows(
   rows: readonly AccountRecordRow[]
@@ -20,6 +22,9 @@ export function mapAccountRecordRows(
         occurredAt: row.occurred_at,
         type: row.transaction_type_code,
         description: row.description,
+        notes: row.notes,
+        mainCategoryId: row.main_category_id,
+        subcategoryId: row.subcategory_id,
         amount: entry.entry_side === "credit"
           ? `-${entry.account_amount}`
           : entry.account_amount,
@@ -29,12 +34,108 @@ export function mapAccountRecordRows(
   })
 }
 
+/** Excludes immutable reversal audit rows and the originals they reverse. */
+export function getEffectiveAccountRecordRows(rows: readonly AccountRecordRow[]) {
+  const reversedRecordIds = new Set(
+    rows.flatMap((row) => row.reverses_transaction_id ? [row.reverses_transaction_id] : [])
+  )
+  return rows.filter((row) => row.reverses_transaction_id === null && !reversedRecordIds.has(row.id))
+}
+
+export function mapEditableAccountRecord(row: AccountRecordRow): EditableAccountRecord {
+  const entryFor = (side: "debit" | "credit") => row.account_entries.find(
+    (entry) => entry.entry_side === side && entry.account_id
+  )
+  const occurredAt = formatLocalDateTimeInput(new Date(row.occurred_at))
+
+  if (row.transaction_type_code === "income" || row.transaction_type_code === "expense") {
+    const accountEntry = entryFor(row.transaction_type_code === "income" ? "debit" : "credit")
+    if (!accountEntry?.account_id || !accountEntry.account_amount) throw new Error("Account record cannot be edited")
+    return {
+      id: row.id,
+      values: {
+        type: row.transaction_type_code,
+        accountId: accountEntry.account_id,
+        toAccountId: "",
+        amount: normalizeDecimal(accountEntry.account_amount) ?? accountEntry.account_amount,
+        receivedAmount: "",
+        mainCategoryId: row.main_category_id ?? "",
+        subcategoryId: row.subcategory_id ?? "",
+        occurredAt,
+        notes: row.notes ?? "",
+      },
+    }
+  }
+
+  const source = entryFor("credit")
+  const destination = entryFor("debit")
+  if (row.transaction_type_code !== "transfer" || !source?.account_id || !destination?.account_id) {
+    throw new Error("Account record cannot be edited")
+  }
+  return {
+    id: row.id,
+    values: {
+      type: "transfer",
+      accountId: source.account_id,
+      toAccountId: destination.account_id,
+      amount: normalizeDecimal(source.account_amount) ?? source.account_amount,
+      receivedAmount: normalizeDecimal(destination.account_amount) ?? destination.account_amount,
+      mainCategoryId: "",
+      subcategoryId: "",
+      occurredAt,
+      notes: row.notes ?? "",
+    },
+  }
+}
+
+export type AccountRecordDateGroup = {
+  date: string
+  dailyNet: Decimal
+  currencyCode: string
+  records: AccountRecord[]
+}
+
+/** Groups newest-first account records by the runtime's local calendar date. */
+export function groupAccountRecordsByLocalDate(
+  records: readonly AccountRecord[],
+  locale: string
+): AccountRecordDateGroup[] {
+  const groups = new Map<string, AccountRecordDateGroup>()
+  for (const record of records) {
+    const date = formatLocalDateTime(record.occurredAt, locale).date
+    const existing = groups.get(date)
+    if (existing) {
+      existing.records.push(record)
+      existing.dailyNet = addDecimals(existing.dailyNet, record.amount) ?? existing.dailyNet
+    } else {
+      groups.set(date, { date, dailyNet: record.amount, currencyCode: record.currencyCode, records: [record] })
+    }
+  }
+  return [...groups.values()]
+}
+
+export function getAccountRecordCategoryLabel(
+  record: AccountRecord,
+  categories: readonly VisibleRecordMainCategory[]
+) {
+  if (record.type === "transfer") return null
+  for (const main of categories) {
+    const subcategory = main.subcategories.find((item) => item.id === record.subcategoryId)
+    if (subcategory) return subcategory.name
+  }
+  return record.description.replace(/^(Income|Expense):\s*/i, "") || record.type
+}
+
 export async function getAccountRecords(
   accountId: string
 ): Promise<AccountRecord[]> {
   return mapAccountRecordRows(
-    await accountRecordsRepository.getAccountRecordRows(accountId)
+    getEffectiveAccountRecordRows(await accountRecordsRepository.getAccountRecordRows(accountId))
   )
+}
+
+export async function getEditableAccountRecord(recordId: string) {
+  return mapEditableAccountRecord(await accountRecordsRepository.getAccountRecordDetail(recordId))
 }
 
 export function getRecordAccounts(accounts: readonly AccountSummary[]) {
@@ -60,6 +161,14 @@ export async function estimateTransferReceived(
 
 export async function addAccountRecord(values: AccountRecordFormValues) {
   await accountRecordsRepository.addAccountRecord(values)
+}
+
+export async function correctAccountRecord(recordId: string, values: AccountRecordFormValues) {
+  await accountRecordsRepository.correctAccountRecord(recordId, values)
+}
+
+export async function reverseAccountRecord(recordId: string) {
+  await accountRecordsRepository.reverseAccountRecord(recordId)
 }
 
 export async function getAccountRecordBalances(accountIds: string[]) {

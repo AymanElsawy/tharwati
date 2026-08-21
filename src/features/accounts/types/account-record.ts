@@ -5,8 +5,16 @@ export type AccountRecord = {
   occurredAt: string
   type: string
   description: string
+  notes: string | null
+  mainCategoryId: string | null
+  subcategoryId: string | null
   amount: Decimal
   currencyCode: string
+}
+
+export type EditableAccountRecord = {
+  id: string
+  values: AccountRecordFormValues
 }
 
 export type AccountRecordType = "expense" | "income" | "transfer"

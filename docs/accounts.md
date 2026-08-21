@@ -72,12 +72,16 @@ Triggers (immutability guards once financial history exists):
 
 ### 2.1a Minimal Cash/Bank ledger foundation
 
+`financial_transactions` also carries nullable immutable-correction links: `reverses_transaction_id` and `corrects_transaction_id`. Each is a self-FK with `ON DELETE RESTRICT`, cannot reference itself, and has a unique partial index so an original transaction can have at most one reversal and one corrected replacement. The internal `post_account_record_internal` function accepts both links only at transaction creation; the public `add_account_record` RPC always passes null for both and retains its existing client contract.
+
 The current project has a deliberately minimal Cash/Bank ledger foundation:
 
 - `transaction_types` contains only `income`, `expense`, and `transfer` for this flow.
 - `financial_transactions` stores authenticated-user transaction headers, status, occurrence time, description, and notes.
 - `transaction_entries` stores exact decimal debit/credit amounts. `transaction_amount` is the balanced transaction-currency value; `account_amount` is the referenced account-native value. Accountless entries are restricted to the approved external-flow convention.
 - Posted transactions and their entries are immutable. Ownership checks restrict account entries to owned Cash or Bank accounts, exact debit/credit balance is validated before posting, and `get_account_balances` projects opening balance plus posted ledger effects.
+- `reverse_account_record(transaction_id)` is an authenticated, immutable reversal path for supported posted Income, Expense, and Transfer records. It creates a new linked transaction with `reverses_transaction_id` set at insert time; it never updates or deletes the original. A reversal must leave every affected account non-negative and respect Bank Credit limits. Cross-currency transfers reverse both native account amounts while retaining the original shared transaction amount.
+- `correct_account_record(...)` is an authenticated atomic correction path. It locks an owned posted original, rejects already reversed/corrected originals, posts its linked reversal, then posts the submitted replacement with `corrects_transaction_id` set at creation. The submitted type, accounts, amounts (including cross-currency received amount), category IDs, notes, and occurrence time are passed unchanged into the normal internal posting validation; an error from either step rolls back the full correction.
 - Client roles receive read access only. Ledger writes occur through authenticated security-definer RPCs; PUBLIC and anon have no table or function write access.
 
 ### 2.1b Record categories
@@ -292,8 +296,11 @@ class MetalPurchasesRepository {
 
 class AccountRecordsRepository {
   getAccountRecordRows(accountId): Promise<AccountRecordRow[]>
+  getAccountRecordDetail(recordId): Promise<AccountRecordRow>
   getAccountBalances(accountIds): Promise<AccountBalanceRow[]>
   addAccountRecord(values): Promise<void> // calls add_account_record with mainCategoryId/subcategoryId for Income and Expense
+  correctAccountRecord(recordId, values): Promise<void> // calls correct_account_record
+  reverseAccountRecord(recordId): Promise<void> // calls reverse_account_record
 }
 ```
 
@@ -335,7 +342,7 @@ Row actions:
 - **Archive/Restore** (icon+label toggles based on `is_active`) → opens confirm dialog.
 - **Delete** (always visible, disabled when ineligible — currently never disabled) → opens confirm dialog.
 
-The entire account row/card is selectable (including keyboard Enter/Space) and navigates to `/accounts/:accountId`. Row action controls stop propagation, so Edit, Archive/Restore, Delete, and Gold/Silver-specific actions do not trigger navigation. Cash, Bank Debit, and Bank Credit reuse their full Account Records page with Back navigation; account creation/opening balance is excluded because it is not a ledger transaction. Existing records appear newest first with account-native signed amounts, an empty state appears when none exist, and a visible Add Record action opens the Expense/Income/Transfer form. Gold/Silver opens its account-details page with the dedicated purchase-history content in §6.7. Brokerage, Real Estate, Business, and Other currently show their account-details header only; no new transaction flow is introduced.
+The entire account row/card is selectable (including keyboard Enter/Space) and navigates to `/accounts/:accountId`. Row action controls stop propagation, so Edit, Archive/Restore, Delete, and Gold/Silver-specific actions do not trigger navigation. Cash, Bank Debit, and Bank Credit reuse their full Account Records page with Back navigation; account creation/opening balance is excluded because it is not a ledger transaction. Existing records appear newest first and are grouped by the device-local calendar date. Each date header shows that account's signed Daily Net in its account currency; rows show Time, Category, Notes, and account-native signed Amount. Income/Expense use the current visible subcategory name when linked (with a legacy description fallback), Transfers display “Transfer,” and empty notes display an em dash. Income rows are green, Expense rows red, and Transfers neutral; Daily Net follows the same positive/negative/zero styling. Each effective row is keyboard/click selectable and opens Edit Record with account sides, native transfer amounts, categories, local Date & Time, and notes prefilled. Saving submits an immutable correction; Delete requires confirmation and submits an immutable reversal. Linked audit rows and their superseded originals are filtered from normal history, while correction replacements remain visible. An empty state appears when no records exist, and a visible Add Record action opens the Expense/Income/Transfer form. Gold/Silver opens its account-details page with the dedicated purchase-history content in §6.7. Brokerage, Real Estate, Business, and Other currently show their account-details header only; no new transaction flow is introduced.
 
 The Add Record form presents the Record Type as three responsive, visible buttons rather than a dropdown: Income (green), Expense (red), and Transfer (neutral gray). Selecting one keeps the existing record type value and all conditional fields/validation unchanged. Expense and Income require Amount, selected Account, Category, and Date & Time; Notes are optional and Currency is read-only from the account. Category is a compact field that opens a separate, internally scrollable searchable popover, so it never expands the form. In normal browsing, main categories are subtly colored accordion sections and only their indented subcategories are selectable; configured main/subcategory `sort_order` is retained. Search matches either level and displays the complete path (for example, `Life & Entertainment → Gym & Sport`). A selection closes the popover and is shown in that same path format, with a checkmark in the list. Its Manage Categories dialog lets the current user add custom main/subcategories, rename system or custom items, hide and restore system defaults, and archive custom items; those changes use the user-scoped catalog/override data and never affect another user. Transfer does not render or submit a category. Expense decreases value and Income increases it. Transfer requires different owned From/To accounts, Amount Sent, and Date & Time. Same-currency transfers use the same amount on both sides. Different-currency transfers show a current-rate estimate from the shared FX service, allow the received amount to be overridden, and persist the final native received amount without writing to the app's FX-rate source. Transfers remain transfer transactions, not income or expense. History formats each side with its own account currency, so the destination displays the received amount in the destination currency. The Add Record form defaults Date & Time from the current device/browser local time and explicitly converts the submitted local `datetime-local` value to UTC for storage. The Records table shows separate Date and Time columns from that stored timestamp in the current device/browser local timezone (never raw UTC); Income rows are green, Expense rows are red, and Transfer rows retain neutral styling.
 
@@ -345,11 +352,13 @@ For Bank Credit, value means available credit: Expense/transfer-out decreases it
 
 ### 6.4 Create/edit flow (form dialog)
 
+The Account Records grouped-history table has no repeated column header. Its compact date-group header displays only the local date and signed, account-currency net amount; rows reserve 10%/25%/45%/20% for Time, Category, Notes, and Amount, with time and amounts kept on one line.
+
 The Add Record Category popover is viewport-aware: it is anchored to its field, opens below when space permits, flips above when it does not, and constrains its internal results list to the visible viewport.
 
 Manage Categories remains a compact settings action on the Category label row. Default main categories use semantic icons with subtle accent colors; search retains a neutral border until it receives focus.
 
-For Income and Expense, Add Record uses a wide two-column grid on tablet/desktop: Account and Category first, then Amount (with its account currency) and Date & Time; Notes spans both columns. The standalone read-only Currency field is not displayed. Narrow screens stack these fields into one column. Transfer retains its existing account, amount, received-amount, and FX behavior.
+For Income and Expense, Add Record uses a wide two-column grid on tablet/desktop: Account and Category first, then Amount (with its account currency) and Date & Time; Notes spans both columns. The standalone read-only Currency field is not displayed. Narrow screens stack these fields into one column. Transfer retains its existing account, amount, received-amount, and FX behavior. Edit prefill normalizes stored decimal strings by removing only trailing zeroes, so displayed monetary inputs remain valid under the existing two-decimal form rule without changing stored precision.
 
 - **Create mode**: two-step — (1) a type picker (radio-group grid of 7 type cards with icon+label), (2) the form itself, pre-seeded with the chosen type.
 - **Edit mode**: skips the type picker; type is effectively immutable from the UI once created.

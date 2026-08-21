@@ -547,6 +547,8 @@ export type Database = {
           notes?: string | null
           main_category_id?: string | null
           subcategory_id?: string | null
+          reverses_transaction_id?: string | null
+          corrects_transaction_id?: string | null
           posted_at?: string | null
           created_at?: string
           updated_at?: string
@@ -689,6 +691,26 @@ export type Database = {
       }
       add_account_record: {
         Args: {
+          p_record_type: "income" | "expense" | "transfer"
+          p_account_id: string
+          p_counterparty_account_id: string | null
+          p_amount: Decimal
+          p_received_amount: Decimal | null
+          p_occurred_at: string
+          p_category: string | null
+          p_notes: string | null
+          p_main_category_id?: string | null
+          p_subcategory_id?: string | null
+        }
+        Returns: Json
+      }
+      reverse_account_record: {
+        Args: { p_transaction_id: string }
+        Returns: Json
+      }
+      correct_account_record: {
+        Args: {
+          p_transaction_id: string
           p_record_type: "income" | "expense" | "transfer"
           p_account_id: string
           p_counterparty_account_id: string | null
