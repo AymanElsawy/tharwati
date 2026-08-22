@@ -1,5 +1,5 @@
 import { AlertTriangle, Plus } from "lucide-react"
-import { useCallback, useEffect, useMemo, useState } from "react"
+import { useMemo, useState } from "react"
 import { useNavigate, useSearchParams } from "react-router-dom"
 
 import { Button } from "@/components/ui/button"
@@ -16,17 +16,9 @@ import {
 } from "@/features/accounts/components/AccountInventory"
 import { ArchiveAccountDialog } from "@/features/accounts/components/ArchiveAccountDialog"
 import { DeleteAccountDialog } from "@/features/accounts/components/DeleteAccountDialog"
-import { MetalPurchaseDialog } from "@/features/accounts/components/MetalPurchaseDialog"
+import { MetalPurchaseEntryDialog } from "@/features/accounts/components/MetalPurchaseDialog"
 import { useAccounts } from "@/features/accounts/hooks/useAccounts"
-import {
-  addMetalPurchase,
-  aggregateMetalPurchases,
-  getEligibleMetalFundingAccounts,
-  getMetalAccountCurrentPrices,
-  getMetalCurrentValue,
-  getMetalPurchases,
-} from "@/features/accounts/services/metal-purchases.service"
-import { getAccountRecordBalances, getRecordAccounts } from "@/features/accounts/services/account-records.service"
+import { useAccountCurrentValues } from "@/features/accounts/hooks/useAccountCurrentValues"
 import {
   accountToFormValues,
   emptyAccountFormValues,
@@ -34,8 +26,7 @@ import {
 } from "@/features/accounts/types/account-form"
 import { useUnsavedChanges } from "@/hooks/useUnsavedChanges"
 import { useTranslation } from "@/i18n/useTranslation"
-import type { AccountSummary, Decimal } from "@/lib/supabase/types"
-import type { MetalPurchaseTransaction } from "@/features/accounts/types/metal-purchase"
+import type { AccountSummary } from "@/lib/supabase/types"
 
 function compareValues(left: string, right: string, direction: "asc" | "desc") {
   const result = left.localeCompare(right)
@@ -58,14 +49,6 @@ export function AccountsPage() {
   } | null>(null)
   const [metalPurchaseAccount, setMetalPurchaseAccount] =
     useState<AccountSummary | null>(null)
-  const [isSavingMetalPurchase, setIsSavingMetalPurchase] = useState(false)
-  const [metalPurchases, setMetalPurchases] = useState<
-    MetalPurchaseTransaction[]
-  >([])
-  const [metalCurrentPrices, setMetalCurrentPrices] = useState<
-    Map<string, Decimal | null>
-  >(new Map())
-  const [recordBalances, setRecordBalances] = useState<Map<string, Decimal>>(new Map())
   const [formDirty, setFormDirty] = useState(false)
   const [filters, setFilters] = useState<AccountFilters>({
     search: "",
@@ -77,48 +60,7 @@ export function AccountsPage() {
   const [direction, setDirection] = useState<"asc" | "desc">("asc")
   const unsaved = useUnsavedChanges(formDirty)
 
-  const metalAccountIds = useMemo(
-    () =>
-      accounts.accounts
-        .filter((account) => account.account_type_code === "gold")
-        .map((account) => account.id),
-    [accounts.accounts]
-  )
-
-  const loadMetalPurchases = useCallback(async () => {
-    try {
-      setMetalPurchases(await getMetalPurchases(metalAccountIds))
-    } catch {}
-  }, [metalAccountIds])
-
-  useEffect(() => {
-    void loadMetalPurchases()
-  }, [loadMetalPurchases])
-
-  useEffect(() => {
-    let active = true
-    void getMetalAccountCurrentPrices(
-      accounts.accounts.filter(
-        (account) => account.account_type_code === "gold"
-      )
-    ).then((prices) => {
-      if (active) setMetalCurrentPrices(prices)
-    })
-    return () => {
-      active = false
-    }
-  }, [accounts.accounts])
-
-  const recordAccounts = useMemo(() => getRecordAccounts(accounts.accounts), [accounts.accounts])
-  const loadRecordBalances = useCallback(async () => {
-    setRecordBalances(await getAccountRecordBalances(recordAccounts.map((account) => account.id)))
-  }, [recordAccounts])
-  useEffect(() => { void loadRecordBalances() }, [loadRecordBalances])
-
-  const metalAggregates = useMemo(
-    () => aggregateMetalPurchases(metalPurchases),
-    [metalPurchases]
-  )
+  const accountCurrentValues = useAccountCurrentValues(accounts.accounts)
 
   const defaults = useMemo<AccountFormValues>(
     () =>
@@ -159,19 +101,15 @@ export function AccountsPage() {
     })
 
     const withBalance = filtered.map((account) => {
-      const metalAggregate = metalAggregates.get(account.id) ?? null
       return {
         account,
         currentBalance:
           account.account_type_code === "gold"
             ? null
-            : recordBalances.get(account.id) ?? account.opening_balance,
+            : accountCurrentValues.values.get(account.id) ?? account.opening_balance,
         metalCurrentValue:
           account.account_type_code === "gold"
-            ? getMetalCurrentValue(
-                metalAggregate?.totalUnitsGrams ?? "0",
-                metalCurrentPrices.get(account.id) ?? null
-              )
+            ? accountCurrentValues.values.get(account.id) ?? null
             : null,
       }
     })
@@ -205,10 +143,8 @@ export function AccountsPage() {
     accounts.accounts,
     direction,
     filters,
-    metalAggregates,
     metalFilter,
-    metalCurrentPrices,
-    recordBalances,
+    accountCurrentValues.values,
     sort,
   ])
 
@@ -365,23 +301,11 @@ export function AccountsPage() {
           }
         }}
       />
-      <MetalPurchaseDialog
+      <MetalPurchaseEntryDialog
         account={metalPurchaseAccount}
-        fundingAccounts={getEligibleMetalFundingAccounts(accounts.accounts)}
-        isSaving={isSavingMetalPurchase}
+        accounts={accounts.accounts}
         onClose={() => setMetalPurchaseAccount(null)}
-        onSubmit={async (values) => {
-          if (!metalPurchaseAccount) return
-          setIsSavingMetalPurchase(true)
-          try {
-            await addMetalPurchase(metalPurchaseAccount.id, values)
-            await loadMetalPurchases()
-            setMetalPurchaseAccount(null)
-            window.dispatchEvent(new Event("tharwati:data-changed"))
-          } finally {
-            setIsSavingMetalPurchase(false)
-          }
-        }}
+        onSaved={() => accountCurrentValues.refresh()}
       />
       <UnsavedChangesDialog
         open={unsaved.confirmationOpen}

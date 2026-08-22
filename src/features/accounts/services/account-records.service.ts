@@ -25,6 +25,9 @@ export function mapAccountRecordHistoryRows(rows: readonly AccountRecordHistoryR
         id: row.id,
         occurredAt: row.occurred_at,
         type: row.transaction_type_code,
+        isEditable: ["income", "expense", "transfer"].includes(
+          row.transaction_type_code
+        ),
         description: row.description,
         notes: row.notes,
         mainCategoryId: row.main_category_id,

@@ -14,6 +14,7 @@ import { SignUpPage } from "../features/auth/SignUpPage"
 import { AccountsPage } from "../features/accounts/pages/AccountsPage"
 import { AccountRecordsPage } from "../features/accounts/pages/AccountRecordsPage"
 import { AccountDetailsPage } from "../features/accounts/pages/AccountDetailsPage"
+import { MetalPurityDetailsPage } from "../features/accounts/pages/MetalPurityDetailsPage"
 import CountryPage from "../features/onboarding/pages/CountryPage"
 import CurrencyPage from "../features/onboarding/pages/CurrencyPage"
 import OnboardingGoalsPage from "../features/onboarding/pages/GoalsPage"
@@ -191,6 +192,7 @@ export default function App() {
         >
           <Route path="/dashboard" element={<DashboardPage />} />
           <Route path="/accounts" element={<AccountsPage />} />
+          <Route path="/accounts/:accountId/purities/:purity" element={<MetalPurityDetailsPage />} />
           <Route path="/accounts/:accountId" element={<AccountDetailsPage />} />
           <Route path="/accounts/:accountId/records" element={<AccountRecordsPage />} />
           <Route path="/design-lab" element={<DesignLabPage />} />

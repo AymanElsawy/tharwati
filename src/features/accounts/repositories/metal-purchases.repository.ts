@@ -31,20 +31,6 @@ export type MetalPurchaseLedgerRow = {
 
 export type MetalPurchaseHistoryRow = MetalPurchaseRecord
 
-const metalPurchaseHistorySelect = `
-  id,
-  user_id,
-  account_id,
-  purity,
-  purchased_at,
-  quantity_grams::text,
-  cost_per_unit::text,
-  fees::text,
-  funding_mode,
-  funding_account_id,
-  created_at
-` as const
-
 function requireDecimalText(value: unknown, field: string): Decimal {
   const decimal = typeof value === "number" && Number.isFinite(value)
     ? String(value)
@@ -91,6 +77,40 @@ export class MetalPurchasesRepository {
       p_funding_mode: command.fundingMode,
       p_funding_account_id: command.fundingAccountId,
       p_fees: command.fees,
+      p_notes: command.notes,
+    })
+
+    requireQueryData(data, error, operation)
+  }
+
+  async reversePurchase(purchaseId: string): Promise<void> {
+    const operation = "metalPurchases.reversePurchase"
+    await requireAuthenticatedUserId(this.client, operation)
+
+    const { data, error } = await this.client.rpc("reverse_metal_purchase", {
+      p_purchase_id: purchaseId,
+    })
+
+    requireQueryData(data, error, operation)
+  }
+
+  async correctPurchase(
+    purchaseId: string,
+    command: AddMetalPurchaseCommand
+  ): Promise<void> {
+    const operation = "metalPurchases.correctPurchase"
+    await requireAuthenticatedUserId(this.client, operation)
+
+    const { data, error } = await this.client.rpc("correct_metal_purchase", {
+      p_purchase_id: purchaseId,
+      p_purity: command.purity,
+      p_occurred_at: command.occurredAt,
+      p_quantity_grams: command.quantityGrams,
+      p_cost_per_unit: command.costPerUnit,
+      p_funding_mode: command.fundingMode,
+      p_funding_account_id: command.fundingAccountId,
+      p_fees: command.fees,
+      p_notes: command.notes,
     })
 
     requireQueryData(data, error, operation)
@@ -102,16 +122,13 @@ export class MetalPurchasesRepository {
     if (accountIds.length === 0) return []
 
     const operation = "metalPurchases.getPurchases"
-    const userId = await requireAuthenticatedUserId(this.client, operation)
-    const { data, error } = await this.client
-      .from("metal_purchases")
-      .select(metalPurchaseHistorySelect)
-      .eq("user_id", userId)
-      .in("account_id", [...accountIds])
-      .order("purchased_at", { ascending: false })
-      .order("created_at", { ascending: false })
+    await requireAuthenticatedUserId(this.client, operation)
+    const { data, error } = await this.client.rpc("get_effective_metal_purchases", {
+      p_account_ids: [...accountIds],
+    })
 
-    return requireQueryData(data, error, operation).map(mapMetalPurchaseHistoryRow)
+    return requireQueryData(data, error, operation)
+      .map((row) => mapMetalPurchaseHistoryRow(row as MetalPurchaseRecord))
   }
 }
 

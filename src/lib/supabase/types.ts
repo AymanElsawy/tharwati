@@ -141,8 +141,10 @@ type MetalPurchaseRow = {
   quantity_grams: Decimal
   cost_per_unit: Decimal
   fees: Decimal
+  notes: string | null
   funding_mode: "external" | "cash_account"
   funding_account_id: string | null
+  funding_transaction_id: string | null
   created_at: string
 }
 
@@ -405,8 +407,10 @@ export type Database = {
           quantity_grams: Decimal
           cost_per_unit: Decimal
           fees?: Decimal
+          notes?: string | null
           funding_mode: "external" | "cash_account"
           funding_account_id?: string | null
+          funding_transaction_id?: string | null
           created_at?: string
         }
       >
@@ -718,6 +722,29 @@ export type Database = {
           p_funding_mode: "external" | "cash_account"
           p_funding_account_id: string | null
           p_fees: Decimal
+          p_notes: string | null
+        }
+        Returns: Json
+      }
+      get_effective_metal_purchases: {
+        Args: { p_account_ids?: string[] | null }
+        Returns: MetalPurchaseRow[]
+      }
+      reverse_metal_purchase: {
+        Args: { p_purchase_id: string }
+        Returns: Json
+      }
+      correct_metal_purchase: {
+        Args: {
+          p_purchase_id: string
+          p_purity: string
+          p_occurred_at: string
+          p_quantity_grams: Decimal
+          p_cost_per_unit: Decimal
+          p_funding_mode: "external" | "cash_account"
+          p_funding_account_id: string | null
+          p_fees: Decimal
+          p_notes?: string | null
         }
         Returns: Json
       }

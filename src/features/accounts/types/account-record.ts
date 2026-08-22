@@ -4,6 +4,7 @@ export type AccountRecord = {
   id: string
   occurredAt: string
   type: string
+  isEditable: boolean
   description: string
   notes: string | null
   mainCategoryId: string | null

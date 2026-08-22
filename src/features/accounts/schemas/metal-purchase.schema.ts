@@ -38,8 +38,16 @@ export function createMetalPurchaseSchema(
         (value) => amountPattern.test(value) && Number(value) > 0,
         t("accounts.validation.costPerUnitInvalid")
       ),
+    fees: z
+      .string()
+      .trim()
+      .refine(
+        (value) => value === "" || (amountPattern.test(value) && Number(value) >= 0),
+        t("accounts.validation.feesInvalid")
+      ),
     paidFromAccount: z.boolean(),
     fundingAccountId: z.string(),
+    notes: z.string(),
   }).superRefine((values, ctx) => {
     if (values.paidFromAccount && !values.fundingAccountId) {
       ctx.addIssue({

@@ -100,18 +100,32 @@ create table public.metal_purchases (
   user_id uuid not null references auth.users (id) on delete cascade,
   account_id uuid not null references public.financial_accounts (id) on delete cascade,
   purity text not null,
-  purchased_at date not null,
+  purchased_at timestamptz not null,
   quantity_grams numeric(20, 3) not null,     -- check: > 0
   cost_per_unit numeric(20, 2) not null,      -- check: > 0
   fees numeric(20, 2) not null default 0,     -- check: >= 0
   funding_mode text not null,                 -- 'external' | 'cash_account'
   funding_account_id uuid references public.financial_accounts (id) on delete set null,
+  funding_transaction_id uuid references public.financial_transactions (id) on delete restrict,
+  notes text,
   created_at timestamptz not null default now()
 )
 ```
 
 - `funding_account_id` required if and only if `funding_mode = 'cash_account'`.
+- Funded purchases retain the posted `investment_purchase` transaction in
+  `funding_transaction_id`; external purchases retain no funding transaction.
 - RLS: **select + insert only** — no update/delete policy. Purchase records are immutable from the client once created.
+
+### 2.2a Metal purchase lifecycle events
+
+`metal_purchase_lifecycle_events` is an append-only internal audit table. One
+event may affect an original purchase: `reversal` makes it ineffective, while
+`correction` additionally links an immutable replacement purchase. Events retain
+the actor, optional linked funding reversal transaction, and creation time.
+Normal purchase history is read through `get_effective_metal_purchases`, which
+returns only purchases without a lifecycle event; audit history is not exposed by
+the web client.
 
 ### 2.3 `add_metal_purchase` RPC — the core "buy more gold/silver" transaction
 
@@ -119,7 +133,8 @@ create table public.metal_purchases (
 add_metal_purchase(
   p_account_id uuid, p_purity text, p_occurred_at timestamptz,
   p_quantity_grams numeric, p_cost_per_unit numeric,
-  p_funding_mode text, p_funding_account_id uuid, p_fees numeric
+  p_funding_mode text, p_funding_account_id uuid, p_fees numeric,
+  p_notes text default null
 ) returns financial_accounts
 ```
 
@@ -127,19 +142,18 @@ Logic (must be replicated exactly, either by calling this same RPC from mobile o
 
 1. Requires authenticated user; locks (`FOR UPDATE`) the target account — must be an active, owned, `account_type_code = 'gold'` account with a valid `metal_type`.
 2. Validates `quantity_grams > 0`, `cost_per_unit > 0`, `fees >= 0`, and `purity` against the metal-specific enum.
-3. `total = quantity_grams * cost_per_unit`; `payment_total = total + fees`.
+3. `subtotal = quantity_grams * cost_per_unit`; `cost_basis = subtotal + fees`.
 4. **Funding**:
-   - `funding_mode = 'cash_account'`: funding account must be active, owned, type `cash` or `bank`, **same currency** as the gold account, and have `opening_balance >= payment_total`. Debits the funding account: `opening_balance -= payment_total`.
+   - `funding_mode = 'cash_account'`: funding account must be active, owned, type `cash` or `bank`, **same currency** as the gold account, and have `opening_balance >= cost_basis`. Debits the funding account: `opening_balance -= cost_basis`.
    - `funding_mode = 'external'`: no debit; `funding_account_id` forced to `null`.
 5. **Weighted-average cost update** (core valuation formula):
    ```
    new_balance_grams   = old_balance_grams + quantity_grams
-   new_cost_per_unit    = (old_balance_grams * old_cost_per_unit + total) / new_balance_grams
+   new_cost_per_unit    = (old_balance_grams * old_cost_per_unit + cost_basis) / new_balance_grams
    ```
-   Note: **fees are excluded from the cost-basis average** (only affect the cash debit), even though they reduce the funding account's balance.
+   Fees are part of acquisition cost and therefore the weighted-average cost.
 6. Updates the account: `balance_grams`, `cost_per_unit` (both per formula above), `purity` and `purchase_date` are overwritten with the latest purchase's values.
-7. Inserts an immutable `metal_purchases` row with the original (non-averaged) purchase details.
-8. Client always sends `p_fees: "0"` today — **there is no fee input field in the UI**, even though schema/RPC/table fully support fees. Adding fee UI on mobile would be a net-new feature, not parity.
+7. Inserts an immutable `metal_purchases` row with the actual UTC timestamp, original purchase details, and an optional trimmed note.
 
 ### 2.4 TypeScript domain types
 
@@ -185,6 +199,7 @@ type MetalPurchaseRecord = {
   quantity_grams: Decimal
   cost_per_unit: Decimal
   fees: Decimal
+  notes: string | null
   funding_mode: "external" | "cash_account"
   funding_account_id: string | null
   created_at: string
@@ -238,10 +253,12 @@ type MetalPurchaseFormValues = {
   purchaseDate: string
   unitsGrams: string
   costPerUnit: string
+  fees: string
   paidFromAccount: boolean
   fundingAccountId: string
+  notes: string
 }
-// getMetalPurchaseTotal(values) = multiplyDecimals(unitsGrams, costPerUnit)  — live preview, excludes fees
+// subtotal = unitsGrams * costPerUnit; total cost / cost basis = subtotal + fees
 ```
 
 ## 3. Validation rules
@@ -262,10 +279,13 @@ Per-type, on submit (Zod schema, errors shown only after first submit attempt):
 Metal purchase form:
 
 - `purity` — must be a valid option for the account's `metalType`.
-- `purchaseDate` — required.
+- `purchaseDate` — required local date and time; converted to UTC before storage.
 - `unitsGrams` — pattern `^\d{1,18}(\.\d{1,3})?$`, must be `> 0`.
 - `costPerUnit` — pattern `^\d{1,18}(\.\d{1,2})?$`, must be `> 0`.
+- `fees` — optional, defaults to `0`, and must be a non-negative decimal amount.
 - `fundingAccountId` — required only if `paidFromAccount = true`.
+
+The Add Metal Record dialog shows purity, date and time, grams, cost per gram, optional fees, read-only purchase subtotal, read-only total cost/cost basis, optional Cash/Bank funding, and optional notes. Funding is limited to active same-currency Cash or Bank accounts; the RPC validates ownership and available balance.
 
 ## 4. Business logic (create/update/archive/delete)
 
@@ -291,7 +311,7 @@ class AccountsRepository {
 
 class MetalPurchasesRepository {
   addPurchase(accountId, values: MetalPurchaseFormValues): Promise<void> // calls RPC add_metal_purchase
-  getPurchaseHistoryRows(accountIds): Promise<MetalPurchaseRecord[]> // reads metal_purchases, ordered by purchased_at desc, created_at desc
+  getPurchaseHistoryRows(accountIds): Promise<MetalPurchaseRecord[]> // calls get_effective_metal_purchases, ordered by purchased_at desc, created_at desc
 }
 
 class AccountRecordsRepository {
@@ -308,7 +328,7 @@ Account-record history embeds the matched entry's `financial_accounts.currency_c
 
 Normal Account Record history uses `get_account_record_history(accountId, cursor, pageSize, timeZone, filters)` rather than loading the ledger directly. The authenticated RPC returns only effective posted records for the owned Cash/Bank account: reversal audit rows, reversed originals, and corrected originals are excluded; correction replacements remain. All filters apply server-side before paging: case-insensitive search across Notes and the current displayed main/subcategory names, inclusive local-calendar From/To dates using the caller's IANA device timezone, type, main category or subcategory, and optional absolute account-native minimum/maximum amount. Transfers are category-free and therefore do not match a category filter. It uses the stable keyset cursor `(occurred_at, id)` in descending order, defaults to 50 rows, and clamps requested pages to 100. The RPC resolves the cursor page first, identifies only that page's local calendar dates, converts each local midnight boundary to its DST-safe UTC timestamp range, and calculates each returned record's complete signed **filtered** Daily Net across all effective movements in those ranges. Therefore a displayed date spanning pages never shows a partial net without aggregating unrelated historical dates. The web page automatically loads the next page near the end of the current list using a viewport observer that re-arms after each append; it also provides a subtle Load more fallback. A failed page load stops automatic retry and shows a small retry action.
 
-Purchase-history numeric columns are requested with `::text` casts, then normalized from either a text or finite numeric Supabase response into validated decimal strings before any totals are calculated. The deployed RPC returns the updated `financial_accounts` row; the client ignores that response and reloads immutable `metal_purchases` records for history.
+Purchase-history numeric columns are normalized from either a text or finite numeric Supabase response into validated decimal strings before any totals are calculated. The Add RPC returns the updated `financial_accounts` row; the client ignores that response and reloads effective immutable purchases for history.
 
 `CreateAccountInput`/`UpdateAccountInput`: camelCase mirror of the type-specific DB columns (`accountTypeCode, name, currencyCode, openingBalance, notes, bankSubtype, creditCardLimit, dueDayOfMonth, investmentType, balanceGrams, propertyType, ownershipPercentage, businessType, industry, metalType, purity, purchaseDate, costPerUnit`, plus `isActive` on update).
 
@@ -344,7 +364,7 @@ Row actions:
 - **Archive/Restore** (icon+label toggles based on `is_active`) → opens confirm dialog.
 - **Delete** (always visible, disabled when ineligible — currently never disabled) → opens confirm dialog.
 
-The entire account row/card is selectable (including keyboard Enter/Space) and navigates to `/accounts/:accountId`. Row action controls stop propagation, so Edit, Archive/Restore, Delete, and Gold/Silver-specific actions do not trigger navigation. Cash, Bank Debit, and Bank Credit reuse their full Account Records page with Back navigation; account creation/opening balance is excluded because it is not a ledger transaction. A compact filter area sits above the grouped history: Search is prominent, while local date range, record type, main/subcategory, and native amount range remain compact. Active filters are shown as removable chips and Clear all resets the server-side query and cursor. Existing records appear newest first and are grouped by the device-local calendar date. Each date header shows that account's signed Daily Net in its account currency; with filters active it represents all matching effective movements for that date, including movements not yet loaded by pagination. Rows show Time, Category, Notes, and account-native signed Amount. Income/Expense use the current visible subcategory name when linked (with a legacy description fallback), Transfers display “Transfer,” and empty notes display an em dash. Income rows are green, Expense rows red, and Transfers neutral; Daily Net follows the same positive/negative/zero styling. Each effective row is keyboard/click selectable and opens Edit Record with account sides, native transfer amounts, categories, local Date & Time, and notes prefilled. Saving submits an immutable correction; Delete requires confirmation and submits an immutable reversal. Linked audit rows and their superseded originals are filtered from normal history, while correction replacements remain visible. An empty state appears when no records exist, and a visible Add Record action opens the Expense/Income/Transfer form. Gold/Silver opens its account-details page with the dedicated purchase-history content in §6.7. Brokerage, Real Estate, Business, and Other currently show their account-details header only; no new transaction flow is introduced.
+The entire account row/card is selectable (including keyboard Enter/Space) and navigates to `/accounts/:accountId`. Row action controls stop propagation, so Edit, Archive/Restore, Delete, and Gold/Silver-specific actions do not trigger navigation. Every Account Details header shows a prominent, label-free resolved amount in that account’s own currency; the standalone currency line is omitted because the amount already includes it. The shared Accounts value layer uses ledger balances for Cash/Bank (including Bank Credit available credit), transaction-derived grams × live price for Gold/Silver, and the existing stored `opening_balance` snapshot for Brokerage, Real Estate, Business, and Other. Cash, Bank Debit, and Bank Credit reuse their full Account Records page with Back navigation; account creation/opening balance is excluded because it is not a ledger transaction. A compact filter area sits above the grouped history: Search is prominent, while local date range, record type, main/subcategory, and native amount range remain compact. Active filters are shown as removable chips and Clear all resets the server-side query and cursor. Existing records appear newest first and are grouped by the device-local calendar date. Each date header shows that account's signed Daily Net in its account currency; with filters active it represents all matching effective movements for that date, including movements not yet loaded by pagination. Rows show Time, Category, Notes, and account-native signed Amount. Income/Expense use the current visible subcategory name when linked (with a legacy description fallback), Transfers display “Transfer,” and empty notes display an em dash. Income rows are green, Expense rows red, and Transfers neutral; Daily Net follows the same positive/negative/zero styling. Each effective row is keyboard/click selectable and opens Edit Record with account sides, native transfer amounts, categories, local Date & Time, and notes prefilled. Saving submits an immutable correction; Delete requires confirmation and submits an immutable reversal. Linked audit rows and their superseded originals are filtered from normal history, while correction replacements remain visible. An empty state appears when no records exist, and a visible Add Record action opens the Expense/Income/Transfer form. Gold/Silver opens its account-details page with the dedicated purchase-history content in §6.7. Brokerage, Real Estate, Business, and Other currently show their account-details header only; no new transaction flow is introduced.
 
 The Add Record form presents the Record Type as three responsive, visible buttons rather than a dropdown: Income (green), Expense (red), and Transfer (neutral gray). Selecting one keeps the existing record type value and all conditional fields/validation unchanged. Expense and Income require Amount, selected Account, Category, and Date & Time; Notes are optional and Currency is read-only from the account. Category is a compact field that opens a separate, internally scrollable searchable popover, so it never expands the form. In normal browsing, main categories are subtly colored accordion sections and only their indented subcategories are selectable; configured main/subcategory `sort_order` is retained. Search matches either level and displays the complete path (for example, `Life & Entertainment → Gym & Sport`). A selection closes the popover and is shown in that same path format, with a checkmark in the list. Its Manage Categories dialog lets the current user add custom main/subcategories, rename system or custom items, hide and restore system defaults, and archive custom items; those changes use the user-scoped catalog/override data and never affect another user. Transfer does not render or submit a category. Expense decreases value and Income increases it. Transfer requires different owned From/To accounts, Amount Sent, and Date & Time. Same-currency transfers use the same amount on both sides. Different-currency transfers show a current-rate estimate from the shared FX service, allow the received amount to be overridden, and persist the final native received amount without writing to the app's FX-rate source. Transfers remain transfer transactions, not income or expense. History formats each side with its own account currency, so the destination displays the received amount in the destination currency. The Add Record form defaults Date & Time from the current device/browser local time and explicitly converts the submitted local `datetime-local` value to UTC for storage. The Records table shows separate Date and Time columns from that stored timestamp in the current device/browser local timezone (never raw UTC); Income rows are green, Expense rows are red, and Transfer rows retain neutral styling.
 
@@ -384,11 +404,11 @@ Fields: `purity` (options depend on account's `metal_type`), `purchaseDate`, `un
 
 The history flow has three transaction-derived layers:
 
-1. **Account list** — Gold/Silver, currency, and current value only. Current value is transaction-derived total grams multiplied by the existing live price per gram for the metal and account currency.
-2. **Purity summary** — opening a metal account navigates to its account-details page and shows a responsive four-column table with one header row: **Purity | Total quantity | Total cost | Current value**. Total quantity is summed from the purchases at that purity. Total cost is the sum of each immutable historical purchase cost (`quantity × historical cost per unit`). Current value is the sum of those purchases' live values, using the same current price per gram as Layer 3; it shows unavailable rather than falling back to historical cost. Each selectable purity row shows only those values; it does not list individual purchases.
-3. **Purity transactions** — opening a purity shows a compact responsive table, newest first, with one header row: **Date | Quantity | Cost per unit | Total cost | Current value**. Total cost is the immutable purchase quantity multiplied by its historical cost per unit. Current value is that purchase quantity multiplied by the existing live current price per gram for the account's metal and currency; if the price is unavailable, no historical-cost fallback is shown. Each purchase remains one row, and its stored purchase data is unchanged. Dates are displayed as `DD-MM-YYYY` without changing their stored value.
+1. **Account list** — Gold/Silver, currency, and current value only. Current value is the sum of each purchase's grams multiplied by the existing live price per gram for the metal and account currency, adjusted by its purity factor.
+2. **Purity summary** — opening a metal account navigates to its account-details page and shows a responsive four-column table with one header row: **Purity | Total quantity | Total cost | Current value**. Total quantity is summed from the purchases at that purity. Total cost is the sum of each immutable historical purchase cost (`quantity × historical cost per unit`). Current value is the sum of those purchases' live values after applying the purity factor to the shared live metal price; it shows unavailable rather than falling back to historical cost. Each selectable purity row shows only those values; it does not list individual purchases.
+3. **Purity details** — selecting a purity navigates to `/accounts/:accountId/purities/:purity`; it is not a dialog. Both the Gold/Silver account page and purity details page expose the existing Add purchase dialog; the purity page preselects its route purity while retaining the editable purity field. A successful purchase closes the dialog and refreshes the account value and visible purchase history. The page has Back navigation to the Gold/Silver account and shows the purity plus its existing resolved purity-adjusted `Price / gram` in the account currency, without another price fetch. Total quantity, Total cost, and Total current value remain below. Purchases are grouped by the device-local calendar date, newest first, with each date displayed once. Rows show local Time, Quantity, Cost / gram, stored Fees, and fee-inclusive Total cost. Each row is keyboard/click selectable and opens the purchase editor, prefilled with purity, local date/time, quantity, cost, fees, derived subtotal/total cost, optional paid-from account, and notes. Save calls `correct_metal_purchase`; Delete opens the shared confirmation and calls `reverse_metal_purchase`. The overflow action has the same Edit and Delete behavior without opening the row. Successful edits/deletes reload history and account values. The mobile layout keeps the five history values in one compact row per purchase with a single column-label row rather than repeated labels. Per-purchase Current value is intentionally omitted because the page-level summary already derives it from the purity-adjusted live current price. Gold uses karat/24; Silver uses the stored decimal fineness. `other` has no assumed fineness, so its current price and current value are unavailable while its quantity and historical cost remain visible.
 
-The web client reloads `metal_purchases` after a successful RPC call. These records remain the source of truth for purchase quantities and historical costs; purchases are never merged or persisted as a summary. Current values are derived at read time from those quantities and the shared live metal-price service. Each layer has loading, error, and empty states as applicable.
+The web client reloads effective metal purchases after a successful RPC call. These records remain the source of truth for purchase quantities and historical costs; purchase reversals and corrections are represented by immutable lifecycle events rather than updating or deleting historical rows. Current values are derived at read time from those effective quantities and the shared live metal-price service. Each layer has loading, error, and empty states as applicable.
 
 ## 7. Number formatting & decimal safety (critical — apply throughout)
 

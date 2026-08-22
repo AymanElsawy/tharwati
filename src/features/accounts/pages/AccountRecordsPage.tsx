@@ -3,9 +3,11 @@ import { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } f
 import { useNavigate, useParams } from "react-router-dom"
 
 import { Button } from "@/components/ui/button"
+import { AccountValue } from "@/features/accounts/components/AccountValue"
 import { AccountRecordFormDialog } from "@/features/accounts/components/AccountRecordFormDialog"
 import { DeleteAccountRecordDialog } from "@/features/accounts/components/DeleteAccountRecordDialog"
 import { useAccounts } from "@/features/accounts/hooks/useAccounts"
+import { useAccountCurrentValues } from "@/features/accounts/hooks/useAccountCurrentValues"
 import {
   addAccountRecord,
   correctAccountRecord,
@@ -30,6 +32,7 @@ import {
   type EditableAccountRecord,
 } from "../types/account-record"
 import type { VisibleRecordMainCategory } from "../types/record-category"
+import type { Decimal } from "@/lib/supabase/types"
 
 const historyPageSize = 50
 
@@ -51,14 +54,22 @@ function MobileAccountRecordRow({
   onEdit: () => void
 }) {
   const dateTime = formatLocalDateTime(record.occurredAt, locale)
-  return <button type="button" onClick={onEdit} className={`block w-full border-b border-[var(--color-border)] px-3 py-2.5 text-start outline-none transition-colors hover:bg-[var(--color-surface-muted)] focus-visible:bg-[var(--color-surface-muted)] ${recordColor(record.type)}`} aria-label={editLabel}>
+  const content = <>
     <span className="flex items-center justify-between gap-3 whitespace-nowrap" dir="ltr"><span className="shrink-0 tabular-nums">{dateTime.time}</span><span className="shrink-0 text-end font-medium tabular-nums">{formatPortfolioAmount(record.amount, record.currencyCode, locale)}</span></span>
     <span className="mt-1 block whitespace-normal break-words font-medium text-start">{category}</span>
     <span className="mt-0.5 block break-words text-sm text-[var(--color-text-secondary)]">{record.notes || "—"}</span>
-  </button>
+  </>
+  const className = `block w-full border-b border-[var(--color-border)] px-3 py-2.5 text-start ${recordColor(record.type)}`
+  return record.isEditable ? <button type="button" onClick={onEdit} className={`${className} outline-none transition-colors hover:bg-[var(--color-surface-muted)] focus-visible:bg-[var(--color-surface-muted)]`} aria-label={editLabel}>{content}</button> : <div className={className}>{content}</div>
 }
 
-export function AccountRecordsPage() {
+export function AccountRecordsPage({
+  accountValue,
+  isAccountValueLoading,
+}: {
+  accountValue?: Decimal | null
+  isAccountValueLoading?: boolean
+} = {}) {
   const { accountId = "" } = useParams()
   const navigate = useNavigate()
   const { t, language } = useTranslation()
@@ -85,6 +96,13 @@ export function AccountRecordsPage() {
   const locale = language === "ar" ? "ar-SA" : "en-US"
   const deferredFilters = useDeferredValue(filters)
   const account = accounts.accounts.find((item) => item.id === accountId) ?? null
+  const accountsToValue = useMemo(
+    () => accountValue === undefined && account ? [account] : [],
+    [account, accountValue]
+  )
+  const resolvedAccountValues = useAccountCurrentValues(accountsToValue)
+  const resolvedAccountValue = accountValue === undefined ? account ? resolvedAccountValues.values.get(account.id) ?? null : null : accountValue
+  const resolvedAccountValueLoading = accountValue === undefined ? resolvedAccountValues.isLoading : isAccountValueLoading ?? false
   const recordAccounts = useMemo(() => getRecordAccounts(accounts.accounts), [accounts.accounts])
   const groups = useMemo(() => groupAccountRecordsByLocalDate(records), [records])
   const availableSubcategories = useMemo(() => {
@@ -177,13 +195,14 @@ export function AccountRecordsPage() {
   }, [])
 
   const openRecordEditor = useCallback(async (recordId: string) => {
+    if (!records.find((record) => record.id === recordId)?.isEditable) return
     setFormError(null)
     try {
       setEditingRecord(await getEditableAccountRecord(recordId))
     } catch (error) {
       setFormError(errorMessage(error, t("accounts.records.error")))
     }
-  }, [t])
+  }, [records, t])
 
   const submitRecord = useCallback(async (values: AccountRecordFormValues) => {
     setIsSaving(true)
@@ -221,7 +240,7 @@ export function AccountRecordsPage() {
   if (!account || !["cash", "bank"].includes(account.account_type_code)) return <div className="pb-12"><Button variant="secondary" onClick={() => navigate("/accounts")}><ArrowLeft size={16} />{t("common.back")}</Button></div>
 
   return <div className="pb-12">
-    <header className="flex flex-wrap items-end justify-between gap-4 border-b border-[var(--color-border)] pb-7"><div><Button variant="ghost" className="-ms-3 mb-3" onClick={() => navigate("/accounts")}><ArrowLeft size={16} />{t("common.back")}</Button><p className="tharwati-eyebrow">{t("accounts.records.title")}</p><h1 className="tharwati-page-title mt-2">{account.name}</h1><p className="tharwati-page-description mt-2">{account.currency_code}</p></div><Button onClick={() => { setFormError(null); setIsFormOpen(true) }} disabled={!account.is_active}><Plus size={16} />{t("accounts.records.add")}</Button></header>
+    <header className="flex flex-wrap items-end justify-between gap-4 border-b border-[var(--color-border)] pb-7"><div><Button variant="ghost" className="-ms-3 mb-3" onClick={() => navigate("/accounts")}><ArrowLeft size={16} />{t("common.back")}</Button><p className="tharwati-eyebrow">{t("accounts.records.title")}</p><h1 className="tharwati-page-title mt-2">{account.name}</h1><AccountValue value={resolvedAccountValue} currencyCode={account.currency_code} locale={locale} isLoading={resolvedAccountValueLoading} /></div><Button onClick={() => { setFormError(null); setIsFormOpen(true) }} disabled={!account.is_active}><Plus size={16} />{t("accounts.records.add")}</Button></header>
     {formError && !editingRecord && <p role="alert" className="mt-4 text-sm text-red-600">{formError}</p>}
     <section className="mt-6 rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-4 shadow-sm">
       <div className="flex flex-wrap items-center gap-2"><label className="relative min-w-[14rem] flex-1"><span className="sr-only">{t("accounts.records.search")}</span><Filter aria-hidden="true" size={16} className="pointer-events-none absolute start-3 top-1/2 -translate-y-1/2 text-muted-foreground"/><input type="search" value={filters.search} onChange={(event) => updateFilters({ search: event.target.value })} placeholder={t("accounts.records.search")} className="h-10 w-full rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] ps-9 pe-3 text-sm outline-none transition-colors focus:border-emerald-600 focus:ring-2 focus:ring-emerald-600/20"/></label><Button type="button" size="sm" variant="ghost" className="text-xs" disabled={activeFilterChips.length === 0} onClick={() => setFilters(emptyAccountRecordHistoryFilters)}>{t("accounts.records.clearAll")}</Button></div>

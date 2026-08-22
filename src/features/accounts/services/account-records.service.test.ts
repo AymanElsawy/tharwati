@@ -26,15 +26,17 @@ function historyRow(overrides: Partial<AccountRecordHistoryRow> = {}): AccountRe
 }
 
 describe("Account Record history paging", () => {
-  it("maps Income, Expense, and Transfer rows using the account-native signed amount", () => {
+  it("maps Income, Expense, Transfer, and linked metal funding rows using the account-native signed amount", () => {
     expect(mapAccountRecordHistoryRows([
       historyRow(),
       historyRow({ id: "expense", transaction_type_code: "expense", entry_side: "credit", account_amount: "25" }),
       historyRow({ id: "transfer", transaction_type_code: "transfer", entry_side: "debit", account_amount: "50100", currency_code: "EGP" }),
+      historyRow({ id: "metal", transaction_type_code: "investment_purchase", description: "Gold purchase", entry_side: "credit", account_amount: "1050", daily_net: "-1050" }),
     ])).toMatchObject([
       { id: "transaction-1", amount: "100", currencyCode: "USD" },
       { id: "expense", amount: "-25", currencyCode: "USD" },
       { id: "transfer", amount: "50100", currencyCode: "EGP" },
+      { id: "metal", amount: "-1050", description: "Gold purchase", dailyNet: "-1050", isEditable: false },
     ])
   })
 

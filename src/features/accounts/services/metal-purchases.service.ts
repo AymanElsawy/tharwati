@@ -1,9 +1,11 @@
 import {
   addDecimals,
+  divideDecimals,
   multiplyDecimals,
 } from "@/lib/financial-calculations/decimal"
 import type { AccountSummary } from "@/lib/supabase/types"
 import type { Decimal } from "@/lib/supabase/types"
+import { localDateTimeInputToIso } from "@/lib/formatting/local-date-time"
 import { getMetalPricePerGram } from "@/services/metalPriceService"
 import {
   metalPurchasesRepository,
@@ -32,12 +34,13 @@ export function buildAddMetalPurchaseCommand(
   return {
     accountId,
     purity: values.purity.trim(),
-    occurredAt: `${values.purchaseDate}T12:00:00.000Z`,
+    occurredAt: localDateTimeInputToIso(values.purchaseDate),
     quantityGrams: values.unitsGrams.trim(),
     costPerUnit: values.costPerUnit.trim(),
     fundingMode: values.paidFromAccount ? "cash_account" : "external",
     fundingAccountId: values.paidFromAccount ? values.fundingAccountId : null,
-    fees: "0",
+    fees: values.fees.trim() || "0",
+    notes: values.notes.trim() || null,
   }
 }
 
@@ -50,13 +53,30 @@ export async function addMetalPurchase(
   )
 }
 
+export async function reverseMetalPurchase(purchaseId: string): Promise<void> {
+  await metalPurchasesRepository.reversePurchase(purchaseId)
+}
+
+export async function correctMetalPurchase(
+  purchaseId: string,
+  accountId: string,
+  values: MetalPurchaseFormValues
+): Promise<void> {
+  await metalPurchasesRepository.correctPurchase(
+    purchaseId,
+    buildAddMetalPurchaseCommand(accountId, values)
+  )
+}
+
 export function getEligibleMetalFundingAccounts(
-  accounts: readonly AccountSummary[]
+  accounts: readonly AccountSummary[],
+  currencyCode?: AccountSummary["currency_code"]
 ): AccountSummary[] {
   return accounts.filter(
     (account) =>
       account.is_active &&
-      ["cash", "bank", "deposit"].includes(account.account_type_code)
+      ["cash", "bank"].includes(account.account_type_code) &&
+      (currencyCode === undefined || account.currency_code === currencyCode)
   )
 }
 
@@ -77,10 +97,16 @@ export function mapMetalPurchaseHistoryRows(
     purchaseDate: row.purchased_at,
     unitsGrams: row.quantity_grams,
     costPerUnit: row.cost_per_unit,
-    totalAmount: multiplyOrThrow(row.quantity_grams, row.cost_per_unit),
+    fees: row.fees,
+    totalAmount: addOrThrow(
+      multiplyOrThrow(row.quantity_grams, row.cost_per_unit),
+      row.fees
+    ),
     currencyCode: "",
-    fundingMode: row.funding_mode,
-    fundingAccountId: row.funding_account_id,
+      fundingMode: row.funding_mode,
+      fundingAccountId: row.funding_account_id,
+      fundingTransactionId: row.funding_transaction_id,
+      notes: row.notes,
     createdAt: row.created_at,
   }))
 }
@@ -114,17 +140,63 @@ export function getMetalCurrentValue(
   return multiplyDecimals(unitsGrams, currentPricePerGram)
 }
 
+export function getMetalPurityFactor(purity: string): Decimal | null {
+  const goldKarat = /^([0-9]+)k$/.exec(purity)?.[1]
+  if (goldKarat && ["24", "22", "21", "18", "14", "10", "9"].includes(goldKarat)) {
+    return divideDecimals(goldKarat, "24", 18)
+  }
+
+  const silverFactors: Record<string, Decimal> = {
+    "999": "0.999",
+    "958": "0.958",
+    "950": "0.950",
+    "925": "0.925",
+    "900": "0.900",
+    "835": "0.835",
+    "800": "0.800",
+  }
+  return silverFactors[purity] ?? null
+}
+
+export function getPurityAdjustedMetalPricePerGram(
+  currentPricePerGram: Decimal | null,
+  purity: string
+): Decimal | null {
+  if (currentPricePerGram === null) return null
+  const factor = getMetalPurityFactor(purity)
+  if (factor === null) return null
+  return multiplyDecimals(currentPricePerGram, factor)
+}
+
 export function valueMetalPurchases(
   purchases: readonly MetalPurchaseTransaction[],
   currentPricePerGram: Decimal | null
 ): ValuedMetalPurchaseTransaction[] {
-  return purchases.map((purchase) => ({
-    ...purchase,
-    currentValue: getMetalCurrentValue(
-      purchase.unitsGrams,
-      currentPricePerGram
-    ),
-  }))
+  return purchases.map((purchase) => {
+    const adjustedPricePerGram = getPurityAdjustedMetalPricePerGram(
+      currentPricePerGram,
+      purchase.purity
+    )
+    return {
+      ...purchase,
+      currentPricePerGram: adjustedPricePerGram,
+      currentValue: getMetalCurrentValue(
+        purchase.unitsGrams,
+        adjustedPricePerGram
+      ),
+    }
+  })
+}
+
+export function getValuedMetalPurchasesCurrentValue(
+  purchases: readonly ValuedMetalPurchaseTransaction[]
+): Decimal | null {
+  let total = "0"
+  for (const purchase of purchases) {
+    if (purchase.currentValue === null) return null
+    total = addOrThrow(total, purchase.currentValue)
+  }
+  return total
 }
 
 export function aggregateMetalPurchases(
@@ -186,6 +258,10 @@ export function aggregateValuedMetalPurchasesByPurity(
         current?.totalAmount ?? "0",
         purchase.totalAmount
       ),
+      currentPricePerGram:
+        current?.currentPricePerGram === null || purchase.currentPricePerGram === null
+          ? null
+          : (current?.currentPricePerGram ?? purchase.currentPricePerGram),
       currentValue:
         current?.currentValue === null || purchase.currentValue === null
           ? null

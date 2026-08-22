@@ -7,11 +7,13 @@ const t = ((key: string) => key) as Translate
 
 describe("createMetalPurchaseSchema", () => {
   const base = {
-    purchaseDate: "2026-08-17",
+    purchaseDate: "2026-08-17T12:30",
     unitsGrams: "10.250",
     costPerUnit: "100.00",
+    fees: "0",
     paidFromAccount: false,
     fundingAccountId: "",
+    notes: "",
   }
 
   it("accepts purity values for the selected metal", () => {
@@ -53,6 +55,23 @@ describe("createMetalPurchaseSchema", () => {
         ...base,
         purity: "24k",
         costPerUnit: "-1",
+      }).success
+    ).toBe(false)
+  })
+
+  it("accepts optional fees and rejects a negative fee", () => {
+    expect(
+      createMetalPurchaseSchema("gold", t).safeParse({
+        ...base,
+        purity: "24k",
+        fees: "",
+      }).success
+    ).toBe(true)
+    expect(
+      createMetalPurchaseSchema("gold", t).safeParse({
+        ...base,
+        purity: "24k",
+        fees: "-1",
       }).success
     ).toBe(false)
   })
