@@ -277,6 +277,7 @@ export const en = {
   "accounts.records.dailyNet": "Daily net",
   "accounts.records.search": "Search notes and categories",
   "accounts.records.clearAll": "Clear all",
+  "accounts.records.filters": "Filters",
   "accounts.records.allTypes": "All types",
   "accounts.records.from": "From",
   "accounts.records.to": "To",

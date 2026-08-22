@@ -275,20 +275,14 @@ export function AccountInventory({
       </div>
       <div className="mt-2 divide-y divide-[var(--color-border)] rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-sm lg:hidden">
         {items.map((item) => (
-          <div key={item.account.id} className="grid cursor-pointer gap-3 px-4 py-4 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--color-primary)]" tabIndex={0} role="button" onClick={() => onOpenAccount(item.account)} onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); onOpenAccount(item.account) } }}>
+          <div key={item.account.id} className="grid cursor-pointer gap-2.5 px-4 py-3 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--color-primary)]" tabIndex={0} role="button" onClick={() => onOpenAccount(item.account)} onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); onOpenAccount(item.account) } }}>
             <div className="flex items-start justify-between gap-3">
-              <span>
-                <strong className="block">{item.account.name}</strong>
-                <span className="mt-1 block text-xs text-muted-foreground">
-                  {typeLabel(item.account, t)}
-                </span>
-              </span>
+              <strong className="min-w-0 flex-1 break-words">{item.account.name}</strong>
+              <strong className="max-w-[52%] shrink-0 break-words text-end tabular-nums" dir="ltr">{balanceCell(item, locale)}</strong>
             </div>
-            <div className="flex items-center justify-between">
-              <strong className="tabular-nums" dir="ltr">
-                {balanceCell(item, locale)}
-              </strong>
-              <div className="flex gap-1">
+            <div className="flex items-center justify-between gap-3">
+              <span className="min-w-0 break-words text-xs text-muted-foreground">{typeLabel(item.account, t)}</span>
+              <div className="flex shrink-0 gap-1">
                 {item.account.account_type_code === "gold" &&
                 item.account.is_active ? (
                   <ActionButton

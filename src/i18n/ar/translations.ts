@@ -267,6 +267,7 @@ export const ar: Record<TranslationKey, string> = {
   "accounts.records.dailyNet": "صافي اليوم",
   "accounts.records.search": "البحث في الملاحظات والفئات",
   "accounts.records.clearAll": "مسح الكل",
+  "accounts.records.filters": "عوامل التصفية",
   "accounts.records.allTypes": "كل الأنواع",
   "accounts.records.from": "من",
   "accounts.records.to": "إلى",
