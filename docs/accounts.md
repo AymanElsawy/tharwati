@@ -354,7 +354,7 @@ For Bank Credit, value means available credit: Expense/transfer-out decreases it
 
 ### 6.4 Create/edit flow (form dialog)
 
-The Account Records grouped-history table has no repeated column header. Its compact date-group header displays only the local date and signed, account-currency net amount; rows reserve 10%/25%/45%/20% for Time, Category, Notes, and Amount, with time and amounts kept on one line.
+The Account Records grouped-history table has no repeated column header. Its compact date-group header displays only the local date and signed, account-currency net amount; at tablet/desktop widths rows reserve 10%/25%/45%/20% for Time, Category, Notes, and Amount, with time and amounts kept on one line. Below 480px in a mobile browser, the same clickable records use a compact stacked layout: Time and Amount share the first line, Category has the full second line and can wrap, and Notes use the third line (or an em dash when empty). Date groups, Daily Net, colors, local-time formatting, and edit behavior are unchanged.
 
 The Add Record Category popover is viewport-aware: it is anchored to its field, opens below when space permits, flips above when it does not, and constrains its internal results list to the visible viewport.
 
