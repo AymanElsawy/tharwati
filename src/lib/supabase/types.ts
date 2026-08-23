@@ -644,6 +644,56 @@ export type Database = {
           current_balance: Decimal
         }>
       }
+      get_brokerage_available_cash: {
+        Args: {
+          p_account_id: string
+          p_required_cash?: Decimal | null
+          p_lock_account?: boolean | null
+        }
+        Returns: Decimal
+      }
+      add_brokerage_cash_transfer: {
+        Args: {
+          p_source_account_id: string
+          p_destination_account_id: string
+          p_amount: Decimal
+          p_received_amount: Decimal | null
+          p_occurred_at: string
+          p_notes?: string | null
+        }
+        Returns: Json
+      }
+      reverse_brokerage_cash_transfer: {
+        Args: { p_transaction_id: string }
+        Returns: Json
+      }
+      add_existing_holding: {
+        Args: {
+          p_account_id: string
+          p_asset_id: string
+          p_quantity: Decimal
+          p_average_cost: Decimal
+          p_occurred_at?: string | null
+          p_notes?: string | null
+          p_account_fx_rate?: Decimal | null
+        }
+        Returns: Json
+      }
+      correct_existing_holding: {
+        Args: {
+          p_original_transaction_id: string
+          p_quantity: Decimal
+          p_average_cost: Decimal
+          p_occurred_at: string
+          p_notes: string | null
+          p_account_fx_rate: Decimal | null
+        }
+        Returns: Json
+      }
+      reverse_existing_holding: {
+        Args: { p_transaction_id: string }
+        Returns: Json
+      }
       get_account_record_history: {
         Args: {
           p_account_id: string

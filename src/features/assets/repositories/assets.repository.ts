@@ -6,7 +6,7 @@ import {
   requireAuthenticatedUserId,
   requireQueryData,
 } from "../../../lib/supabase/repository"
-import type { AssetSummary } from "../../../lib/supabase/types"
+import type { AssetSummary, TableRow } from "../../../lib/supabase/types"
 import { RepositoryError } from "../../../lib/supabase/types"
 import type { TableUpdate } from "../../../lib/supabase/types"
 
@@ -32,6 +32,8 @@ export type AssetReferenceCount = {
   holdingCount: number
   transactionEntryCount: number
 }
+
+export type AssetTypeSummary = TableRow<"asset_types">
 
 function escapeLikePattern(value: string): string {
   return value.replace(/[\\%_]/g, "\\$&")
@@ -106,6 +108,18 @@ export class AssetsRepository {
       .from("assets")
       .select("*")
       .order("is_custom")
+      .order("name")
+
+    return requireQueryData(data, error, operation)
+  }
+
+  async getActiveAssetTypes(): Promise<AssetTypeSummary[]> {
+    const operation = "assets.getActiveAssetTypes"
+    await requireAuthenticatedUserId(this.client, operation)
+    const { data, error } = await this.client
+      .from("asset_types")
+      .select("*")
+      .eq("is_active", true)
       .order("name")
 
     return requireQueryData(data, error, operation)

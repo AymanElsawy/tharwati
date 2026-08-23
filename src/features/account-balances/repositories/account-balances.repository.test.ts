@@ -43,6 +43,72 @@ describe("AccountBalancesRepository", () => {
     })
   })
 
+  it("preserves Brokerage available-cash projections returned by PostgreSQL", async () => {
+    const rpc = vi.fn().mockResolvedValue({
+      data: [
+        {
+          account_id: "brokerage-opening",
+          account_type_code: "brokerage",
+          account_name: "Opening only",
+          currency_code: "USD",
+          is_active: true,
+          opening_balance: "1000",
+          ledger_effect: "0",
+          current_balance: "1000",
+        },
+        {
+          account_id: "brokerage-posted-debit",
+          account_type_code: "brokerage",
+          account_name: "Brokerage debit",
+          currency_code: "USD",
+          is_active: true,
+          opening_balance: "1000",
+          ledger_effect: "250",
+          current_balance: "1250",
+        },
+        {
+          account_id: "brokerage-posted-credit",
+          account_type_code: "brokerage",
+          account_name: "Brokerage credit",
+          currency_code: "USD",
+          is_active: true,
+          opening_balance: "1000",
+          ledger_effect: "-400",
+          current_balance: "600",
+        },
+        {
+          account_id: "cash",
+          account_type_code: "cash",
+          account_name: "Cash",
+          currency_code: "USD",
+          is_active: true,
+          opening_balance: "500",
+          ledger_effect: "-25",
+          current_balance: "475",
+        },
+      ],
+      error: null,
+    })
+    const client = {
+      auth: {
+        getUser: vi.fn().mockResolvedValue({
+          data: { user: { id: "user-1" } },
+          error: null,
+        }),
+      },
+      rpc,
+    } as unknown as TypedSupabaseClient
+
+    const balances = await new AccountBalancesRepository(client).getAccountBalances()
+
+    expect(balances).toEqual(expect.arrayContaining([
+      expect.objectContaining({ accountId: "brokerage-opening", currentBalance: "1000" }),
+      expect.objectContaining({ accountId: "brokerage-posted-debit", ledgerEffect: "250", currentBalance: "1250" }),
+      expect.objectContaining({ accountId: "brokerage-posted-credit", ledgerEffect: "-400", currentBalance: "600" }),
+      expect.objectContaining({ accountId: "cash", ledgerEffect: "-25", currentBalance: "475" }),
+    ]))
+  })
+
   it("rejects lossy non-string numeric projection values", async () => {
     const client = {
       auth: {

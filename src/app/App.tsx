@@ -15,6 +15,7 @@ import { AccountsPage } from "../features/accounts/pages/AccountsPage"
 import { AccountRecordsPage } from "../features/accounts/pages/AccountRecordsPage"
 import { AccountDetailsPage } from "../features/accounts/pages/AccountDetailsPage"
 import { MetalPurityDetailsPage } from "../features/accounts/pages/MetalPurityDetailsPage"
+import { BrokerageHoldingDetailsPage } from "../features/accounts/pages/BrokerageHoldingDetailsPage"
 import CountryPage from "../features/onboarding/pages/CountryPage"
 import CurrencyPage from "../features/onboarding/pages/CurrencyPage"
 import OnboardingGoalsPage from "../features/onboarding/pages/GoalsPage"
@@ -34,7 +35,9 @@ import { canPreserveAuthenticatedTree } from "../features/auth/auth-session-life
 export default function App() {
   const { t } = useTranslation()
   const [session, setSession] = useState<Session | null>(null)
-  const [onboardingCompleted, setOnboardingCompleted] = useState<boolean | null>(null)
+  const [onboardingCompleted, setOnboardingCompleted] = useState<
+    boolean | null
+  >(null)
   const [isLoading, setIsLoading] = useState(true)
   const [startupError, setStartupError] = useState<string | null>(null)
   const authenticatedUserId = useRef<string | null>(null)
@@ -56,7 +59,7 @@ export default function App() {
       setStartupError(
         error instanceof Error
           ? error.message
-          : "We couldn't load your account. Please try again.",
+          : "We couldn't load your account. Please try again."
       )
     } finally {
       setIsLoading(false)
@@ -82,7 +85,10 @@ export default function App() {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, currentSession) => {
       if (
-        canPreserveAuthenticatedTree(authenticatedUserId.current, currentSession)
+        canPreserveAuthenticatedTree(
+          authenticatedUserId.current,
+          currentSession
+        )
       ) {
         setSession(currentSession)
         return
@@ -98,7 +104,7 @@ export default function App() {
 
   if (isLoading) {
     return (
-      <main className="min-h-screen flex items-center justify-center">
+      <main className="flex min-h-screen items-center justify-center">
         <p>{t("common.loading")}</p>
       </main>
     )
@@ -129,7 +135,9 @@ export default function App() {
     )
   }
 
-  const authenticatedDestination = onboardingCompleted ? "/dashboard" : "/onboarding"
+  const authenticatedDestination = onboardingCompleted
+    ? "/dashboard"
+    : "/onboarding"
 
   return (
     <BrowserRouter>
@@ -192,9 +200,19 @@ export default function App() {
         >
           <Route path="/dashboard" element={<DashboardPage />} />
           <Route path="/accounts" element={<AccountsPage />} />
-          <Route path="/accounts/:accountId/purities/:purity" element={<MetalPurityDetailsPage />} />
+          <Route
+            path="/accounts/:accountId/purities/:purity"
+            element={<MetalPurityDetailsPage />}
+          />
+          <Route
+            path="/accounts/:accountId/holdings/:assetId"
+            element={<BrokerageHoldingDetailsPage />}
+          />
           <Route path="/accounts/:accountId" element={<AccountDetailsPage />} />
-          <Route path="/accounts/:accountId/records" element={<AccountRecordsPage />} />
+          <Route
+            path="/accounts/:accountId/records"
+            element={<AccountRecordsPage />}
+          />
           <Route path="/design-lab" element={<DesignLabPage />} />
         </Route>
 

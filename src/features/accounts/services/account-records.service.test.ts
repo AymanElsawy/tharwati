@@ -31,11 +31,13 @@ describe("Account Record history paging", () => {
       historyRow(),
       historyRow({ id: "expense", transaction_type_code: "expense", entry_side: "credit", account_amount: "25" }),
       historyRow({ id: "transfer", transaction_type_code: "transfer", entry_side: "debit", account_amount: "50100", currency_code: "EGP" }),
+      historyRow({ id: "brokerage-transfer", transaction_type_code: "transfer", description: "Brokerage cash transfer", entry_side: "credit", account_amount: "125", daily_net: "-125" }),
       historyRow({ id: "metal", transaction_type_code: "investment_purchase", description: "Gold purchase", entry_side: "credit", account_amount: "1050", daily_net: "-1050" }),
     ])).toMatchObject([
       { id: "transaction-1", amount: "100", currencyCode: "USD" },
       { id: "expense", amount: "-25", currencyCode: "USD" },
       { id: "transfer", amount: "50100", currencyCode: "EGP" },
+      { id: "brokerage-transfer", amount: "-125", dailyNet: "-125", isEditable: false },
       { id: "metal", amount: "-1050", description: "Gold purchase", dailyNet: "-1050", isEditable: false },
     ])
   })

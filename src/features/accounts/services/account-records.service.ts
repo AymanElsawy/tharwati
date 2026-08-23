@@ -27,7 +27,7 @@ export function mapAccountRecordHistoryRows(rows: readonly AccountRecordHistoryR
         type: row.transaction_type_code,
         isEditable: ["income", "expense", "transfer"].includes(
           row.transaction_type_code
-        ),
+        ) && row.description !== "Brokerage cash transfer",
         description: row.description,
         notes: row.notes,
         mainCategoryId: row.main_category_id,

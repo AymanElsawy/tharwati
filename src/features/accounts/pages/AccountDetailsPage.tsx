@@ -9,6 +9,7 @@ import { MetalPurchaseEntryDialog } from "@/features/accounts/components/MetalPu
 import { useAccounts } from "@/features/accounts/hooks/useAccounts"
 import { useAccountCurrentValues } from "@/features/accounts/hooks/useAccountCurrentValues"
 import { AccountRecordsPage } from "@/features/accounts/pages/AccountRecordsPage"
+import { BrokerageAccountDetailsPage } from "@/features/accounts/pages/BrokerageAccountDetailsPage"
 import {
   aggregateValuedMetalPurchasesByPurity,
   getMetalAccountCurrentPrices,
@@ -34,6 +35,7 @@ export function AccountDetailsPage() {
   if (!account) return <div className="pb-12"><Button variant="secondary" onClick={() => navigate("/accounts")}><ArrowLeft size={16} />{t("common.back")}</Button></div>
   if (account.account_type_code === "cash" || account.account_type_code === "bank") return <AccountRecordsPage accountValue={accountValue} isAccountValueLoading={accountValues.isLoading} />
   if (account.account_type_code === "gold") return <MetalAccountDetailsPage accountId={account.id} accountValue={accountValue} isAccountValueLoading={accountValues.isLoading} onAccountValueRefresh={accountValues.refresh} />
+  if (account.account_type_code === "brokerage") return <BrokerageAccountDetailsPage account={account} />
 
   return <div className="pb-12">
     <Button variant="ghost" className="-ms-3 mb-3" onClick={() => navigate("/accounts")}><ArrowLeft size={16} />{t("common.back")}</Button>
