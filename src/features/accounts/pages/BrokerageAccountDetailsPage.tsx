@@ -5,6 +5,7 @@ import { useNavigate } from "react-router-dom"
 
 import { Button } from "@/components/ui/button"
 import { accountBalancesRepository } from "@/features/account-balances/repositories/account-balances.repository"
+import { BrokerageBuyDialog } from "@/features/accounts/components/BrokerageBuyDialog"
 import { currencyOptions } from "@/features/accounts/types/account-form"
 import {
   assetsRepository,
@@ -56,6 +57,7 @@ export function BrokerageAccountDetailsPage({
   const [holdingsError, setHoldingsError] = useState(false)
   const [cashError, setCashError] = useState(false)
   const [isExistingHoldingOpen, setIsExistingHoldingOpen] = useState(false)
+  const [isBuyOpen, setIsBuyOpen] = useState(false)
 
   const load = useCallback(async () => {
     setIsHoldingsLoading(true)
@@ -117,10 +119,16 @@ export function BrokerageAccountDetailsPage({
               </p>
             ) : null}
           </div>
-          <Button onClick={() => setIsExistingHoldingOpen(true)}>
-            <Plus size={16} />
-            {t("brokerage.addExistingHolding")}
-          </Button>
+          <div className="flex flex-wrap gap-2">
+            <Button variant="secondary" onClick={() => setIsExistingHoldingOpen(true)}>
+              <Plus size={16} />
+              {t("brokerage.addExistingHolding")}
+            </Button>
+            <Button onClick={() => setIsBuyOpen(true)}>
+              <Plus size={16} />
+              {t("brokerage.buy")}
+            </Button>
+          </div>
         </div>
       </header>
 
@@ -167,6 +175,16 @@ export function BrokerageAccountDetailsPage({
         onSaved={async () => {
           setIsExistingHoldingOpen(false)
           await load()
+        }}
+      />
+      <BrokerageBuyDialog
+        account={isBuyOpen ? account : null}
+        availableCash={cash}
+        onClose={() => setIsBuyOpen(false)}
+        onSaved={async () => {
+          setIsBuyOpen(false)
+          await load()
+          window.dispatchEvent(new Event("tharwati:data-changed"))
         }}
       />
     </div>

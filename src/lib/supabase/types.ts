@@ -690,6 +690,19 @@ export type Database = {
         }
         Returns: Json
       }
+      add_brokerage_buy: {
+        Args: {
+          p_account_id: string
+          p_asset_id: string
+          p_quantity: Decimal
+          p_unit_price: Decimal
+          p_occurred_at?: string | null
+          p_notes?: string | null
+          p_fees?: Decimal | null
+          p_account_fx_rate?: Decimal | null
+        }
+        Returns: Json
+      }
       reverse_existing_holding: {
         Args: { p_transaction_id: string }
         Returns: Json

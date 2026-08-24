@@ -33,7 +33,7 @@ export function normalizeHoldingRow(
 export type ExistingHoldingHistoryItem = {
   id: string
   occurred_at: string
-  transaction_type_code: "opening_position" | "opening_position_reversal"
+  transaction_type_code: "opening_position" | "opening_position_reversal" | "buy"
   transaction_currency_code: string
   notes: string | null
   reverses_transaction_id: string | null
@@ -48,6 +48,49 @@ export type ExistingHoldingHistoryItem = {
     unit_price: Decimal | null
     memo: string | null
   }>
+}
+
+type ExistingHoldingHistoryRuntimeItem = Omit<
+  ExistingHoldingHistoryItem,
+  "entries"
+> & {
+  entries: Array<
+    Omit<ExistingHoldingHistoryItem["entries"][number],
+      | "quantity_delta"
+      | "cost_basis_delta"
+      | "account_cost_basis_delta"
+      | "account_fx_rate"
+      | "unit_price"
+    > & {
+      quantity_delta: string | number | null
+      cost_basis_delta: string | number | null
+      account_cost_basis_delta: string | number | null
+      account_fx_rate: string | number | null
+      unit_price: string | number | null
+    }
+  >
+}
+
+function normalizeHistoryDecimal(value: string | number | null): Decimal | null {
+  return value === null ? null : String(value)
+}
+
+export function normalizeExistingHoldingHistoryItem(
+  item: ExistingHoldingHistoryRuntimeItem
+): ExistingHoldingHistoryItem {
+  return {
+    ...item,
+    entries: item.entries.map((entry) => ({
+      ...entry,
+      quantity_delta: normalizeHistoryDecimal(entry.quantity_delta),
+      cost_basis_delta: normalizeHistoryDecimal(entry.cost_basis_delta),
+      account_cost_basis_delta: normalizeHistoryDecimal(
+        entry.account_cost_basis_delta
+      ),
+      account_fx_rate: normalizeHistoryDecimal(entry.account_fx_rate),
+      unit_price: normalizeHistoryDecimal(entry.unit_price),
+    })),
+  }
 }
 
 export type CorrectExistingHoldingInput = {
@@ -128,6 +171,7 @@ export class HoldingsRepository {
       .in("transaction_type_code", [
         "opening_position",
         "opening_position_reversal",
+        "buy",
       ])
       .eq("transaction_entries.account_id", accountId)
       .eq("transaction_entries.asset_id", assetId)
@@ -142,13 +186,15 @@ export class HoldingsRepository {
       notes: string | null
       reverses_transaction_id: string | null
       corrects_transaction_id: string | null
-      transaction_entries: ExistingHoldingHistoryItem["entries"]
+      transaction_entries: ExistingHoldingHistoryRuntimeItem["entries"]
     }>
 
-    return rows.map(({ transaction_entries, ...transaction }) => ({
-      ...transaction,
-      entries: transaction_entries,
-    }))
+    return rows.map(({ transaction_entries, ...transaction }) =>
+      normalizeExistingHoldingHistoryItem({
+        ...transaction,
+        entries: transaction_entries,
+      })
+    )
   }
 
   async reverseExistingHolding(transactionId: string): Promise<void> {
