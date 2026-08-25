@@ -33,7 +33,7 @@ export function normalizeHoldingRow(
 export type ExistingHoldingHistoryItem = {
   id: string
   occurred_at: string
-  transaction_type_code: "opening_position" | "opening_position_reversal" | "buy"
+  transaction_type_code: "opening_position" | "opening_position_reversal" | "buy" | "sell"
   transaction_currency_code: string
   notes: string | null
   reverses_transaction_id: string | null
@@ -46,6 +46,9 @@ export type ExistingHoldingHistoryItem = {
     account_cost_basis_delta: Decimal | null
     account_fx_rate: Decimal | null
     unit_price: Decimal | null
+    transaction_amount: Decimal
+    account_amount: Decimal
+    entry_side?: "debit" | "credit" | null
     memo: string | null
   }>
 }
@@ -61,12 +64,16 @@ type ExistingHoldingHistoryRuntimeItem = Omit<
       | "account_cost_basis_delta"
       | "account_fx_rate"
       | "unit_price"
+      | "transaction_amount"
+      | "account_amount"
     > & {
       quantity_delta: string | number | null
       cost_basis_delta: string | number | null
       account_cost_basis_delta: string | number | null
       account_fx_rate: string | number | null
       unit_price: string | number | null
+      transaction_amount: string | number
+      account_amount: string | number
     }
   >
 }
@@ -89,6 +96,8 @@ export function normalizeExistingHoldingHistoryItem(
       ),
       account_fx_rate: normalizeHistoryDecimal(entry.account_fx_rate),
       unit_price: normalizeHistoryDecimal(entry.unit_price),
+      transaction_amount: String(entry.transaction_amount),
+      account_amount: String(entry.account_amount),
     })),
   }
 }
@@ -100,6 +109,40 @@ export type CorrectExistingHoldingInput = {
   occurredAt: string
   notes: string | null
   accountFxRate: string | null
+}
+
+export type BrokerageActivityItem = Omit<ExistingHoldingHistoryItem, "transaction_type_code" | "entries"> & {
+  transaction_type_code: ExistingHoldingHistoryItem["transaction_type_code"] | "transfer" | "dividend"
+  entries: Array<ExistingHoldingHistoryItem["entries"][number] & {
+    asset: {
+      id: string
+      name: string
+      symbol: string | null
+      exchange: string | null
+      currency_code: string
+    } | null
+  }>
+}
+
+type BrokerageActivityRuntimeItem = Omit<BrokerageActivityItem, "entries"> & {
+  entries: ExistingHoldingHistoryRuntimeItem["entries"]
+}
+
+function normalizeBrokerageActivityItem(
+  item: BrokerageActivityRuntimeItem,
+  assetsById: Map<string, BrokerageActivityItem["entries"][number]["asset"]>
+): BrokerageActivityItem {
+  const normalized = normalizeExistingHoldingHistoryItem(
+    item as unknown as ExistingHoldingHistoryRuntimeItem
+  )
+  return {
+    ...normalized,
+    transaction_type_code: item.transaction_type_code,
+    entries: normalized.entries.map((entry) => ({
+      ...entry,
+      asset: entry.asset_id ? assetsById.get(entry.asset_id) ?? null : null,
+    })),
+  }
 }
 
 export class HoldingsRepository {
@@ -160,9 +203,11 @@ export class HoldingsRepository {
         `
           id, occurred_at, transaction_type_code, transaction_currency_code,
           notes, reverses_transaction_id, corrects_transaction_id,
-          transaction_entries!inner(
+          asset_entries:transaction_entries!inner(account_id, asset_id),
+          transaction_entries(
             account_id, asset_id, quantity_delta, cost_basis_delta,
-            account_cost_basis_delta, account_fx_rate, unit_price, memo
+            account_cost_basis_delta, account_fx_rate, unit_price, memo,
+            transaction_amount, account_amount, entry_side
           )
         `
       )
@@ -171,17 +216,17 @@ export class HoldingsRepository {
       .in("transaction_type_code", [
         "opening_position",
         "opening_position_reversal",
-        "buy",
+        "buy", "sell",
       ])
-      .eq("transaction_entries.account_id", accountId)
-      .eq("transaction_entries.asset_id", assetId)
+      .eq("asset_entries.account_id", accountId)
+      .eq("asset_entries.asset_id", assetId)
       .order("occurred_at", { ascending: false })
       .order("id", { ascending: false })
 
     const rows = requireQueryData(data, error, operation) as Array<{
       id: string
       occurred_at: string
-      transaction_type_code: "opening_position" | "opening_position_reversal"
+      transaction_type_code: ExistingHoldingHistoryItem["transaction_type_code"]
       transaction_currency_code: string
       notes: string | null
       reverses_transaction_id: string | null
@@ -194,6 +239,70 @@ export class HoldingsRepository {
         ...transaction,
         entries: transaction_entries,
       })
+    )
+  }
+
+  async getBrokerageAccountActivity(
+    accountId: string
+  ): Promise<BrokerageActivityItem[]> {
+    const operation = "holdings.getBrokerageAccountActivity"
+    const userId = await requireAuthenticatedUserId(this.client, operation)
+    const { data, error } = await this.client
+      .from("financial_transactions")
+      .select(
+        `
+          id, occurred_at, transaction_type_code, transaction_currency_code,
+          notes, reverses_transaction_id, corrects_transaction_id,
+          account_entries:transaction_entries!inner(account_id),
+          transaction_entries(
+            account_id, asset_id, quantity_delta, cost_basis_delta,
+            account_cost_basis_delta, account_fx_rate, unit_price, memo,
+            transaction_amount, account_amount, entry_side
+          )
+        `
+      )
+      .eq("user_id", userId)
+      .eq("status", "posted")
+      .in("transaction_type_code", [
+        "transfer",
+        "opening_position",
+        "opening_position_reversal",
+        "buy",
+        "sell",
+        "dividend",
+      ])
+      .eq("account_entries.account_id", accountId)
+      .order("occurred_at", { ascending: false })
+      .order("id", { ascending: false })
+
+    const rows = requireQueryData(data, error, operation) as Array<{
+      id: string
+      occurred_at: string
+      transaction_type_code: BrokerageActivityItem["transaction_type_code"]
+      transaction_currency_code: string
+      notes: string | null
+      reverses_transaction_id: string | null
+      corrects_transaction_id: string | null
+      transaction_entries: ExistingHoldingHistoryRuntimeItem["entries"]
+    }>
+    const assetIds = [...new Set(rows.flatMap((row) =>
+      row.transaction_entries.flatMap((entry) => entry.asset_id ? [entry.asset_id] : [])
+    ))]
+    const assetsById = new Map<string, BrokerageActivityItem["entries"][number]["asset"]>()
+
+    if (assetIds.length > 0) {
+      const { data: assets, error: assetsError } = await this.client
+        .from("assets")
+        .select("id, name, symbol, exchange, currency_code")
+        .in("id", assetIds)
+      const visibleAssets = requireQueryData(assets, assetsError, operation)
+      for (const asset of visibleAssets) {
+        assetsById.set(asset.id, asset)
+      }
+    }
+
+    return rows.map(({ transaction_entries, ...transaction }) =>
+      normalizeBrokerageActivityItem({ ...transaction, entries: transaction_entries }, assetsById)
     )
   }
 

@@ -33,13 +33,14 @@ function account(id: string, type: AccountSummary["account_type_code"], openingB
 }
 
 describe("resolveAccountCurrentValues", () => {
-  it("uses ledger balances for Cash/Bank, live transaction-derived value for metals, and stored values otherwise", () => {
+  it("uses Available Cash for Brokerage accounts without positive holdings while preserving the existing fallback for open holdings", () => {
     const values = resolveAccountCurrentValues({
       accounts: [
         account("cash", "cash", "100"),
         account("credit", "bank", "8000", { bank_subtype: "credit", credit_card_limit: "10000" }),
         account("gold", "gold", "0", { metal_type: "gold", balance_grams: "999" }),
-        account("brokerage", "brokerage", "400"),
+        account("brokerage-cash-only", "brokerage", "400"),
+        account("brokerage-open-holding", "brokerage", "500"),
         account("property", "real_estate", "500"),
         account("business", "business", "600"),
         account("other", "other", "700"),
@@ -62,13 +63,19 @@ describe("resolveAccountCurrentValues", () => {
         createdAt: "2026-08-01T00:00:00Z",
       }],
       metalCurrentPrices: new Map([["gold", "60"]]),
+      brokerageAvailableCash: new Map([
+        ["brokerage-cash-only", "11150"],
+        ["brokerage-open-holding", "70"],
+      ]),
+      brokerageAccountsWithPositiveHoldings: new Set(["brokerage-open-holding"]),
     })
 
     expect(values).toEqual(new Map([
       ["cash", "125"],
       ["credit", "7500"],
       ["gold", "600"],
-      ["brokerage", "400"],
+      ["brokerage-cash-only", "11150"],
+      ["brokerage-open-holding", "500"],
       ["property", "500"],
       ["business", "600"],
       ["other", "700"],
@@ -114,6 +121,8 @@ describe("resolveAccountCurrentValues", () => {
         },
       ],
       metalCurrentPrices: new Map([["gold", "60"]]),
+      brokerageAvailableCash: new Map(),
+      brokerageAccountsWithPositiveHoldings: new Set(),
     })
 
     expect(values.get("gold")).toBe("1260.00000000000000024")

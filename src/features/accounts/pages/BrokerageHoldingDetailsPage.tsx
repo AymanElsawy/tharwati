@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react"
 import { useNavigate, useParams } from "react-router-dom"
 
 import { Button } from "@/components/ui/button"
+import { BrokerageSellDialog } from "@/features/accounts/components/BrokerageSellDialog"
 import { useAccounts } from "@/features/accounts/hooks/useAccounts"
 import {
   holdingsRepository,
@@ -41,11 +42,14 @@ function localDateKey(timestamp: string) {
 
 type HistoryEntry = ExistingHoldingHistoryItem["entries"][number] & {
   buyFees: string | null
+  sellFees: string | null
+  cashProceeds: string | null
+  netAssetProceeds: string | null
 }
 
 function sumEntryField(
   entries: ExistingHoldingHistoryItem["entries"],
-  field: "cost_basis_delta" | "account_cost_basis_delta"
+  field: "cost_basis_delta" | "account_cost_basis_delta" | "transaction_amount"
 ) {
   return entries.reduce<string | null>((total, entry) => {
     const value = entry[field]
@@ -59,20 +63,37 @@ function entryFor(
   assetId: string
 ): HistoryEntry | null {
   const assetEntries = item.entries.filter((entry) => entry.asset_id === assetId)
-  const primary = assetEntries.find((entry) => entry.memo === "brokerage_buy_asset") ?? assetEntries[0]
+  const primary = assetEntries.find((entry) =>
+    entry.memo === "brokerage_buy_asset" || entry.memo === "brokerage_sell_asset"
+  ) ?? assetEntries[0]
   if (!primary) return null
-  if (item.transaction_type_code !== "buy") return { ...primary, buyFees: null }
+  if (item.transaction_type_code !== "buy" && item.transaction_type_code !== "sell") {
+    return { ...primary, buyFees: null, sellFees: null, cashProceeds: null, netAssetProceeds: null }
+  }
 
-  const feeEntries = assetEntries.filter((entry) => entry.memo === "brokerage_buy_fee")
+  const isBuy = item.transaction_type_code === "buy"
+  const feeEntries = assetEntries.filter((entry) =>
+    entry.memo === (isBuy ? "brokerage_buy_fee" : "brokerage_sell_fee")
+  )
+  const cashEntry = item.entries.find((entry) => entry.memo === "brokerage_sell_cash")
   return {
     ...primary,
-    account_cost_basis_delta: sumEntryField(assetEntries, "account_cost_basis_delta"),
-    buyFees: sumEntryField(feeEntries, "cost_basis_delta"),
+    account_cost_basis_delta: isBuy
+      ? sumEntryField(assetEntries, "account_cost_basis_delta")
+      : primary.account_cost_basis_delta,
+    buyFees: isBuy ? sumEntryField(feeEntries, "cost_basis_delta") : null,
+    sellFees: isBuy ? null : sumEntryField(feeEntries, "transaction_amount"),
+    cashProceeds: cashEntry?.account_amount ?? null,
+    netAssetProceeds: cashEntry?.transaction_amount ?? null,
   }
 }
 
 function hasPositiveValue(value: string | null) {
   return value !== null && compareDecimals(value, "0") === 1
+}
+
+function absoluteDecimal(value: string) {
+  return value.startsWith("-") ? value.slice(1) : value
 }
 
 type PresentedHistoryItem = ExistingHoldingHistoryItem & {
@@ -104,6 +125,7 @@ export function BrokerageHoldingDetailsPage() {
     useState<PresentedHistoryItem | null>(null)
   const [isDeleting, setIsDeleting] = useState(false)
   const [deleteError, setDeleteError] = useState<string | null>(null)
+  const [isSellOpen, setIsSellOpen] = useState(false)
 
   const load = useCallback(async () => {
     if (!account || account.account_type_code !== "brokerage") return
@@ -313,7 +335,10 @@ export function BrokerageHoldingDetailsPage() {
         <ArrowLeft size={16} />
         {t("common.back")}
       </Button>
-      <header className="border-b border-[var(--color-border)] pb-7">
+      <header className="relative pe-24 border-b border-[var(--color-border)] pb-7">
+        <Button className="absolute end-0 top-0" onClick={() => setIsSellOpen(true)}>
+          {t("brokerage.sell")}
+        </Button>
         <p className="tharwati-eyebrow">{t("brokerage.holdingDetails")}</p>
         <h1 className="tharwati-page-title mt-2">{asset.name}</h1>
         <p className="mt-2 text-sm text-muted-foreground" dir="ltr">
@@ -382,6 +407,8 @@ export function BrokerageHoldingDetailsPage() {
                             <strong className="block">
                               {item.transaction_type_code === "buy"
                                 ? t("brokerage.buy")
+                                : item.transaction_type_code === "sell"
+                                  ? t("brokerage.sell")
                                 : t("brokerage.existingHolding")}
                             </strong>
                             {isDeleted ? (
@@ -401,14 +428,14 @@ export function BrokerageHoldingDetailsPage() {
                           </span>
                         </span>
                         <span className="text-end text-sm tabular-nums">
-                          {entry?.quantity_delta ?? "--"}
+                          {entry?.quantity_delta ? absoluteDecimal(entry.quantity_delta) : "--"}
                         </span>
                       </span>
                       {entry ? (
                         <span className="mt-3 grid grid-cols-2 gap-x-4 gap-y-2 text-xs text-muted-foreground sm:grid-cols-4">
                           <span>
                             <span className="block">
-                              {item.transaction_type_code === "buy"
+                              {item.transaction_type_code === "buy" || item.transaction_type_code === "sell"
                                 ? t("brokerage.unitPrice")
                                 : t("brokerage.historicalAverageCost")}
                             </span>
@@ -433,18 +460,34 @@ export function BrokerageHoldingDetailsPage() {
                               </strong>
                             </span>
                           ) : null}
+                          {item.transaction_type_code === "sell" && hasPositiveValue(entry.sellFees) ? (
+                            <span>
+                              <span className="block">{t("investment.fees")}</span>
+                              <strong className="block tabular-nums text-[var(--color-text-primary)]" dir="ltr">
+                                {formatAmount(entry.sellFees!, asset.currency_code, locale)}
+                              </strong>
+                            </span>
+                          ) : null}
+                          {item.transaction_type_code === "sell" ? (
+                            <span>
+                              <span className="block">{t("brokerage.netProceeds")}</span>
+                              <strong className="block tabular-nums text-[var(--color-text-primary)]" dir="ltr">
+                                {entry.netAssetProceeds === null ? "--" : formatAmount(entry.netAssetProceeds, asset.currency_code, locale)}
+                              </strong>
+                            </span>
+                          ) : null}
                           <span>
                             <span className="block">
-                              {t("brokerage.accountCostEffect")}
+                              {item.transaction_type_code === "sell" ? t("brokerage.cashProceeds") : t("brokerage.accountCostEffect")}
                             </span>
                             <strong
                               className={`block tabular-nums ${isDeleted ? "text-muted-foreground" : "text-[var(--color-text-primary)]"}`}
                               dir="ltr"
                             >
-                              {entry.account_cost_basis_delta === null
+                              {(item.transaction_type_code === "sell" ? entry.cashProceeds : entry.account_cost_basis_delta) === null
                                 ? "--"
                                 : formatAmount(
-                                    entry.account_cost_basis_delta,
+                                    item.transaction_type_code === "sell" ? entry.cashProceeds! : entry.account_cost_basis_delta!,
                                     holding.cost_currency_code,
                                     locale
                                   )}
@@ -553,6 +596,18 @@ export function BrokerageHoldingDetailsPage() {
         }}
         onConfirm={() => void deleteTransaction()}
       />
+      <BrokerageSellDialog
+        account={isSellOpen ? account : null}
+        asset={isSellOpen ? asset : null}
+        holdingQuantity={holding.quantity}
+        onClose={() => setIsSellOpen(false)}
+        onSaved={async () => {
+          setIsSellOpen(false)
+          const nextHolding = await load()
+          window.dispatchEvent(new Event("tharwati:data-changed"))
+          if (nextHolding === null) navigate(`/accounts/${accountId}`)
+        }}
+      />
     </div>
   )
 }
@@ -608,6 +663,8 @@ function HoldingTransactionDialog({
             <Dialog.Title className="font-heading text-xl">
               {transaction?.transaction_type_code === "buy"
                 ? t("brokerage.buy")
+                : transaction?.transaction_type_code === "sell"
+                  ? t("brokerage.sell")
                 : t("brokerage.existingHolding")}
             </Dialog.Title>
             <Button
@@ -632,10 +689,10 @@ function HoldingTransactionDialog({
               />
               <Detail
                 label={t("holdings.table.quantity")}
-                value={entry.quantity_delta ?? "--"}
+                value={entry.quantity_delta === null ? "--" : absoluteDecimal(entry.quantity_delta)}
               />
               <Detail
-                label={transaction.transaction_type_code === "buy" ? t("brokerage.unitPrice") : t("brokerage.historicalAverageCost")}
+                label={transaction.transaction_type_code === "buy" || transaction.transaction_type_code === "sell" ? t("brokerage.unitPrice") : t("brokerage.historicalAverageCost")}
                 value={
                   entry.unit_price === null
                     ? "--"
@@ -645,13 +702,19 @@ function HoldingTransactionDialog({
               {transaction.transaction_type_code === "buy" && hasPositiveValue(entry.buyFees) ? (
                 <Detail label={t("investment.fees")} value={formatAmount(entry.buyFees!, assetCurrency, locale)} />
               ) : null}
+              {transaction.transaction_type_code === "sell" && hasPositiveValue(entry.sellFees) ? (
+                <Detail label={t("investment.fees")} value={formatAmount(entry.sellFees!, assetCurrency, locale)} />
+              ) : null}
+              {transaction.transaction_type_code === "sell" ? (
+                <Detail label={t("brokerage.netProceeds")} value={entry.netAssetProceeds === null ? "--" : formatAmount(entry.netAssetProceeds, assetCurrency, locale)} />
+              ) : null}
               <Detail
-                label={t("brokerage.accountCostEffect")}
+                label={transaction.transaction_type_code === "sell" ? t("brokerage.cashProceeds") : t("brokerage.accountCostEffect")}
                 value={
-                  entry.account_cost_basis_delta === null
+                  (transaction.transaction_type_code === "sell" ? entry.cashProceeds : entry.account_cost_basis_delta) === null
                     ? "--"
                     : formatAmount(
-                        entry.account_cost_basis_delta,
+                        transaction.transaction_type_code === "sell" ? entry.cashProceeds! : entry.account_cost_basis_delta!,
                         accountCurrency,
                         locale
                       )

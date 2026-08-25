@@ -12,11 +12,15 @@ import {
   type AssetTypeSummary,
 } from "@/features/assets/repositories/assets.repository"
 import { holdingsRepository } from "@/features/holdings/repositories/holdings.repository"
+import type { BrokerageActivityItem } from "@/features/holdings/repositories/holdings.repository"
 import type { HoldingDetails } from "@/features/holdings/types/holding"
 import { useTranslation } from "@/i18n/useTranslation"
+import type { TranslationKey } from "@/i18n/en/translations"
 import { formatLocalDateTimeInput } from "@/lib/formatting/local-date-time"
 import { supabase } from "@/lib/supabase/client"
 import type { AccountSummary, AssetSummary } from "@/lib/supabase/types"
+import { addDecimals, compareDecimals } from "@/lib/financial-calculations/decimal"
+import { formatLocalDateTime } from "@/lib/formatting/local-date-time"
 
 const fieldClass =
   "mt-1 w-full rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2 text-sm"
@@ -42,6 +46,42 @@ function formatAmount(
   }).format(Number(value))
 }
 
+type PresentedActivity = BrokerageActivityItem & {
+  presentation: "current" | "updated" | "deleted"
+}
+
+function localDateKey(timestamp: string) {
+  const date = new Date(timestamp)
+  if (Number.isNaN(date.getTime())) return timestamp
+  return [date.getFullYear(), String(date.getMonth() + 1).padStart(2, "0"), String(date.getDate()).padStart(2, "0")].join("-")
+}
+
+function hasPositive(value: string | null) {
+  return value !== null && compareDecimals(value, "0") === 1
+}
+
+function absolute(value: string) {
+  return value.startsWith("-") ? value.slice(1) : value
+}
+
+function sumEntries(
+  entries: BrokerageActivityItem["entries"],
+  memo: string,
+  field: "transaction_amount" | "account_amount" | "cost_basis_delta" | "account_cost_basis_delta"
+) {
+  return entries.filter((entry) => entry.memo === memo).reduce<string | null>((total, entry) => {
+    const value = entry[field]
+    if (value === null) return total
+    return total === null ? value : addDecimals(total, value)
+  }, null)
+}
+
+function activityAssetEntry(activity: BrokerageActivityItem) {
+  return activity.entries.find((entry) =>
+    entry.memo === "brokerage_buy_asset" || entry.memo === "brokerage_sell_asset"
+  ) ?? activity.entries.find((entry) => entry.asset_id !== null && entry.quantity_delta !== null && compareDecimals(entry.quantity_delta, "0") !== 0)
+}
+
 export function BrokerageAccountDetailsPage({
   account,
 }: {
@@ -56,6 +96,10 @@ export function BrokerageAccountDetailsPage({
   const [isCashLoading, setIsCashLoading] = useState(true)
   const [holdingsError, setHoldingsError] = useState(false)
   const [cashError, setCashError] = useState(false)
+  const [activity, setActivity] = useState<BrokerageActivityItem[]>([])
+  const [isActivityLoading, setIsActivityLoading] = useState(true)
+  const [activityError, setActivityError] = useState(false)
+  const [selectedActivity, setSelectedActivity] = useState<PresentedActivity | null>(null)
   const [isExistingHoldingOpen, setIsExistingHoldingOpen] = useState(false)
   const [isBuyOpen, setIsBuyOpen] = useState(false)
 
@@ -64,6 +108,8 @@ export function BrokerageAccountDetailsPage({
     setIsCashLoading(true)
     setHoldingsError(false)
     setCashError(false)
+    setIsActivityLoading(true)
+    setActivityError(false)
 
     await Promise.all([
       holdingsRepository
@@ -82,12 +128,50 @@ export function BrokerageAccountDetailsPage({
           setCashError(true)
         })
         .finally(() => setIsCashLoading(false)),
+      holdingsRepository
+        .getBrokerageAccountActivity(account.id)
+        .then(setActivity)
+        .catch(() => {
+          setActivity([])
+          setActivityError(true)
+        })
+        .finally(() => setIsActivityLoading(false)),
     ])
   }, [account.id])
 
   useEffect(() => {
     void load()
   }, [load])
+
+  const presentedActivity = useMemo<PresentedActivity[]>(() => {
+    const reversedIds = new Set(activity.flatMap((item) =>
+      item.reverses_transaction_id ? [item.reverses_transaction_id] : []
+    ))
+    const correctedOriginalIds = new Set(activity.flatMap((item) =>
+      item.corrects_transaction_id ? [item.corrects_transaction_id] : []
+    ))
+
+    return activity.flatMap((item) => {
+      if (item.transaction_type_code === "opening_position_reversal") return []
+      if (reversedIds.has(item.id) && correctedOriginalIds.has(item.id)) return []
+      return [{
+        ...item,
+        presentation: reversedIds.has(item.id)
+          ? "deleted"
+          : item.corrects_transaction_id
+            ? "updated"
+            : "current",
+      }]
+    })
+  }, [activity])
+  const activityGroups = useMemo(() => {
+    const groups = new Map<string, PresentedActivity[]>()
+    for (const item of presentedActivity) {
+      const key = localDateKey(item.occurred_at)
+      groups.set(key, [...(groups.get(key) ?? []), item])
+    }
+    return [...groups.entries()].map(([date, items]) => ({ date, items }))
+  }, [presentedActivity])
 
   return (
     <div className="pb-12">
@@ -169,6 +253,41 @@ export function BrokerageAccountDetailsPage({
         )}
       </section>
 
+      <section className="mt-8">
+        <h2 className="font-heading mb-3 text-xl">{t("brokerage.activity")}</h2>
+        {isActivityLoading ? (
+          <div className="h-28 animate-pulse rounded-lg bg-muted" />
+        ) : activityError ? (
+          <div className="border border-dashed border-[var(--color-border)] px-5 py-8 text-center">
+            <p className="text-sm text-muted-foreground">{t("brokerage.activityError")}</p>
+            <Button variant="secondary" className="mt-3" onClick={() => void load()}>{t("assets.actions.tryAgain")}</Button>
+          </div>
+        ) : activityGroups.length === 0 ? (
+          <p className="border border-dashed border-[var(--color-border)] px-5 py-8 text-center text-sm text-muted-foreground">{t("brokerage.noActivity")}</p>
+        ) : (
+          <div className="overflow-hidden rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)]">
+            {activityGroups.map((group) => (
+              <section key={group.date}>
+                <header className="border-b border-[var(--color-border)] bg-[var(--color-surface-muted)] px-4 py-2 text-sm font-semibold">
+                  {formatLocalDateTime(`${group.date}T12:00:00.000Z`, locale).date}
+                </header>
+                {group.items.map((item) => (
+                  <BrokerageActivityRow
+                    key={item.id}
+                    item={item}
+                    accountId={account.id}
+                    accountCurrency={account.currency_code}
+                    locale={locale}
+                    t={t}
+                    onOpen={() => setSelectedActivity(item)}
+                  />
+                ))}
+              </section>
+            ))}
+          </div>
+        )}
+      </section>
+
       <ExistingHoldingDialog
         account={isExistingHoldingOpen ? account : null}
         onClose={() => setIsExistingHoldingOpen(false)}
@@ -186,6 +305,12 @@ export function BrokerageAccountDetailsPage({
           await load()
           window.dispatchEvent(new Event("tharwati:data-changed"))
         }}
+      />
+      <BrokerageActivityDialog
+        activity={selectedActivity}
+        accountCurrency={account.currency_code}
+        locale={locale}
+        onClose={() => setSelectedActivity(null)}
       />
     </div>
   )
@@ -249,6 +374,113 @@ function HoldingRow({
       </span>
     </button>
   )
+}
+
+function activityLabel(item: BrokerageActivityItem, accountId: string, t: (key: TranslationKey) => string) {
+  if (item.transaction_type_code === "buy") return t("brokerage.buy")
+  if (item.transaction_type_code === "sell") return t("brokerage.sell")
+  if (item.transaction_type_code === "opening_position") return t("brokerage.existingHolding")
+  if (item.transaction_type_code === "dividend") return t("brokerage.dividend")
+  const accountEntry = item.entries.find((entry) => entry.account_id === accountId && entry.asset_id === null)
+  return accountEntry?.entry_side === "debit" ? t("brokerage.transferIn") : t("brokerage.transferOut")
+}
+
+function BrokerageActivityRow({
+  item,
+  accountId,
+  accountCurrency,
+  locale,
+  t,
+  onOpen,
+}: {
+  item: PresentedActivity
+  accountId: string
+  accountCurrency: string
+  locale: string
+  t: (key: TranslationKey) => string
+  onOpen: () => void
+}) {
+  const assetEntry = activityAssetEntry(item)
+  const isDeleted = item.presentation === "deleted"
+  const transferEntry = item.entries.find((entry) => entry.account_id === accountId && entry.asset_id === null)
+  const label = activityLabel(item, accountId, t)
+  const hasDetails = assetEntry !== undefined
+  const content = <>
+    <span className="min-w-0">
+      <span className="flex flex-wrap items-center gap-2">
+        <strong>{label}</strong>
+        {item.presentation === "updated" ? <span className="text-xs font-medium text-muted-foreground">{t("brokerage.holdingUpdated")}</span> : null}
+        {isDeleted ? <span className="rounded border border-[var(--color-border)] bg-[var(--color-surface)] px-1.5 py-0.5 text-xs font-medium text-muted-foreground">{t("brokerage.holdingDeleted")}</span> : null}
+      </span>
+      {assetEntry?.asset ? <span className="mt-1 block text-sm text-muted-foreground" dir="ltr">{[assetEntry.asset.symbol, assetEntry.asset.exchange].filter(Boolean).join(" · ") || assetEntry.asset.name}</span> : null}
+      <span className="mt-1 block text-sm text-muted-foreground">
+        {isDeleted ? `${t("brokerage.holdingDeleted")} · ${formatLocalDateTime(item.occurred_at, locale).time}` : formatLocalDateTime(item.occurred_at, locale).time}
+      </span>
+    </span>
+    <span className="text-end text-sm tabular-nums" dir="ltr">
+      {assetEntry?.quantity_delta ? absolute(assetEntry.quantity_delta) : transferEntry ? formatAmount(transferEntry.account_amount, accountCurrency, locale) : "--"}
+    </span>
+  </>
+
+  if (isDeleted || !hasDetails) {
+    return <div className={`flex items-start justify-between gap-3 border-b border-[var(--color-border)] px-4 py-3 last:border-b-0 ${isDeleted ? "bg-muted/50 text-muted-foreground" : ""}`}>{content}</div>
+  }
+  return <button type="button" onClick={onOpen} className="flex w-full items-start justify-between gap-3 border-b border-[var(--color-border)] px-4 py-3 text-start transition-colors last:border-b-0 hover:bg-[var(--color-surface-muted)] focus-visible:bg-[var(--color-surface-muted)]">{content}</button>
+}
+
+function BrokerageActivityDialog({
+  activity,
+  accountCurrency,
+  locale,
+  onClose,
+}: {
+  activity: PresentedActivity | null
+  accountCurrency: string
+  locale: string
+  onClose: () => void
+}) {
+  const { t } = useTranslation()
+  const assetEntry = activity ? activityAssetEntry(activity) : undefined
+  const isSell = activity?.transaction_type_code === "sell"
+  const isBuy = activity?.transaction_type_code === "buy"
+  const fees = activity && (isBuy || isSell)
+    ? sumEntries(activity.entries, isBuy ? "brokerage_buy_fee" : "brokerage_sell_fee", "transaction_amount")
+    : null
+  const cash = activity && isSell
+    ? sumEntries(activity.entries, "brokerage_sell_cash", "account_amount")
+    : null
+  const accountCost = activity && isBuy
+    ? activity.entries.filter((entry) => entry.asset_id === assetEntry?.asset_id).reduce<string | null>((total, entry) => entry.account_cost_basis_delta === null ? total : total === null ? entry.account_cost_basis_delta : addDecimals(total, entry.account_cost_basis_delta), null)
+    : assetEntry?.account_cost_basis_delta ?? null
+  const asset = assetEntry?.asset ?? null
+  const isCrossCurrency = !!asset && asset.currency_code !== accountCurrency
+
+  return <Dialog.Root open={activity !== null} onOpenChange={(open) => !open && onClose()}>
+    <Dialog.Portal>
+      <Dialog.Backdrop className="fixed inset-0 z-[70] bg-black/50" />
+      <Dialog.Popup className="fixed inset-x-3 top-1/2 z-[80] mx-auto max-h-[calc(100vh-2rem)] w-auto max-w-lg -translate-y-1/2 overflow-y-auto rounded-xl bg-background p-5 shadow-xl sm:inset-x-0">
+        <div className="flex items-center justify-between gap-3">
+          <Dialog.Title className="font-heading text-xl">{activity ? activityLabel(activity, activity.entries.find((entry) => entry.account_id)?.account_id ?? "", t) : ""}</Dialog.Title>
+          <Button variant="ghost" size="icon" aria-label={t("common.close")} onClick={onClose}><X size={18} /></Button>
+        </div>
+        {activity && assetEntry ? <div className="mt-5 space-y-4 text-sm">
+          {asset ? <ActivityDetail label={t("investment.asset.section")} value={[asset.name, asset.symbol, asset.exchange].filter(Boolean).join(" · ")} /> : null}
+          <ActivityDetail label={t("accounts.records.dateTime")} value={[formatLocalDateTime(activity.occurred_at, locale).date, formatLocalDateTime(activity.occurred_at, locale).time].join(", ")} />
+          <ActivityDetail label={t("holdings.table.quantity")} value={assetEntry.quantity_delta === null ? "--" : absolute(assetEntry.quantity_delta)} />
+          <ActivityDetail label={isBuy || isSell ? t("brokerage.unitPrice") : t("brokerage.historicalAverageCost")} value={assetEntry.unit_price === null || !asset ? "--" : formatAmount(assetEntry.unit_price, asset.currency_code, locale)} />
+          {hasPositive(fees) && asset ? <ActivityDetail label={t("investment.fees")} value={formatAmount(fees!, asset.currency_code, locale)} /> : null}
+          {isSell && asset ? <ActivityDetail label={t("brokerage.netProceeds")} value={cash === null ? "--" : formatAmount(sumEntries(activity.entries, "brokerage_sell_cash", "transaction_amount")!, asset.currency_code, locale)} /> : null}
+          <ActivityDetail label={isSell ? t("brokerage.cashProceeds") : t("brokerage.accountCostEffect")} value={(isSell ? cash : accountCost) === null ? "--" : formatAmount((isSell ? cash : accountCost)!, accountCurrency, locale)} />
+          {isCrossCurrency && assetEntry.account_fx_rate !== null ? <ActivityDetail label={t("brokerage.historicalFxRate")} value={assetEntry.account_fx_rate} /> : null}
+          {activity.notes ? <ActivityDetail label={t("investment.notes")} value={activity.notes} /> : null}
+        </div> : null}
+      </Dialog.Popup>
+    </Dialog.Portal>
+  </Dialog.Root>
+}
+
+function ActivityDetail({ label, value }: { label: string; value: string }) {
+  return <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-4"><span className="text-muted-foreground">{label}</span><strong className="max-w-60 text-end break-words tabular-nums" dir="ltr">{value}</strong></div>
 }
 
 function ExistingHoldingDialog({

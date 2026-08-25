@@ -71,6 +71,8 @@ describe("normalizeExistingHoldingHistoryItem", () => {
           account_cost_basis_delta: 5000,
           account_fx_rate: 50,
           unit_price: 50,
+          transaction_amount: 100,
+          account_amount: 5000,
           memo: "brokerage_buy_asset",
         },
         {
@@ -81,6 +83,8 @@ describe("normalizeExistingHoldingHistoryItem", () => {
           account_cost_basis_delta: 250,
           account_fx_rate: 50,
           unit_price: null,
+          transaction_amount: 5,
+          account_amount: 250,
           memo: "brokerage_buy_fee",
         },
       ],
@@ -110,6 +114,8 @@ describe("normalizeExistingHoldingHistoryItem", () => {
           account_cost_basis_delta: 200,
           account_fx_rate: null,
           unit_price: 100,
+          transaction_amount: 200,
+          account_amount: 200,
           memo: "brokerage_buy_asset",
         },
         {
@@ -120,6 +126,8 @@ describe("normalizeExistingHoldingHistoryItem", () => {
           account_cost_basis_delta: 5,
           account_fx_rate: null,
           unit_price: null,
+          transaction_amount: 5,
+          account_amount: 5,
           memo: "brokerage_buy_fee",
         },
       ],
@@ -128,6 +136,31 @@ describe("normalizeExistingHoldingHistoryItem", () => {
     expect(item.entries).toMatchObject([
       { quantity_delta: "2", cost_basis_delta: "200", account_cost_basis_delta: "200", unit_price: "100" },
       { quantity_delta: "0", cost_basis_delta: "5", account_cost_basis_delta: "5", unit_price: null },
+    ])
+  })
+
+  it("normalizes all posted Sell entries needed for user-facing history", () => {
+    const item = normalizeExistingHoldingHistoryItem({
+      id: "sell-id",
+      occurred_at: "2026-08-24T10:00:00Z",
+      transaction_type_code: "sell",
+      transaction_currency_code: "USD",
+      notes: null,
+      reverses_transaction_id: null,
+      corrects_transaction_id: null,
+      entries: [
+        { account_id: "brokerage", asset_id: "asset", quantity_delta: -2, cost_basis_delta: 0, account_cost_basis_delta: null, account_fx_rate: 50, unit_price: 50, transaction_amount: 100, account_amount: 5000, memo: "brokerage_sell_asset" },
+        { account_id: "brokerage", asset_id: "asset", quantity_delta: 0, cost_basis_delta: -70, account_cost_basis_delta: -3500, account_fx_rate: 50, unit_price: null, transaction_amount: 0, account_amount: 0, memo: "brokerage_sell_cost_basis" },
+        { account_id: "brokerage", asset_id: "asset", quantity_delta: 0, cost_basis_delta: 0, account_cost_basis_delta: null, account_fx_rate: 50, unit_price: null, transaction_amount: 5, account_amount: 250, memo: "brokerage_sell_fee" },
+        { account_id: "brokerage", asset_id: null, quantity_delta: null, cost_basis_delta: null, account_cost_basis_delta: null, account_fx_rate: null, unit_price: null, transaction_amount: 95, account_amount: 4750, memo: "brokerage_sell_cash" },
+      ],
+    })
+
+    expect(item.entries).toMatchObject([
+      { quantity_delta: "-2", transaction_amount: "100", account_amount: "5000" },
+      { cost_basis_delta: "-70", account_cost_basis_delta: "-3500", transaction_amount: "0", account_amount: "0" },
+      { transaction_amount: "5", account_amount: "250" },
+      { transaction_amount: "95", account_amount: "4750" },
     ])
   })
 })
