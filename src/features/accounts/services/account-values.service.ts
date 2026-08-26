@@ -14,6 +14,11 @@ import type { HoldingDetails } from "@/features/holdings/types/holding"
 import type { HoldingValuationResult } from "@/features/portfolio-valuation/types/portfolio-valuation"
 import { addDecimals, compareDecimals } from "@/lib/financial-calculations/decimal"
 
+function requireDecimal(value: Decimal | null, message: string): Decimal {
+  if (value === null) throw new Error(message)
+  return value
+}
+
 export type AccountCurrentValueStatus = "complete" | "incomplete"
 
 export type BrokerageCurrentValue = {
@@ -33,14 +38,8 @@ export async function calculateBrokerageCurrentValue(input: {
 }): Promise<BrokerageCurrentValue> {
   const valuation = await portfolioValuationService.calculate({
     baseCurrency: input.accountCurrencyCode,
-    holdings: input.holdings,
+    holdings: [...input.holdings],
   })
-  const positiveHoldings = input.holdings.filter(
-    (holding) => compareDecimals(holding.quantity, "0") === 1,
-  )
-  const positiveValuations = valuation.holdings.filter((item) =>
-    positiveHoldings.some((holding) => holding.id === item.holdingId),
-  )
   const resolved = resolveBrokerageCurrentValue({
     availableCash: input.availableCash,
     holdings: input.holdings,
@@ -49,13 +48,7 @@ export async function calculateBrokerageCurrentValue(input: {
   return {
     ...resolved,
     availableCash: input.availableCash,
-    holdingsMarketValue:
-      resolved.status === "complete"
-        ? positiveValuations.reduce<Decimal>(
-            (total, item) => addDecimals(total, item.marketValueBase!),
-            "0",
-          )
-        : null,
+    holdingsMarketValue: resolved.holdingsMarketValue,
     valuations: valuation.holdings,
   }
 }
@@ -107,10 +100,14 @@ export function resolveBrokerageCurrentValue(input: {
     }
   }
 
-  const holdingsValue = positiveValuations.reduce<Decimal>(
-    (total, valuation) => addDecimals(total, valuation!.marketValueBase!),
-    "0",
-  )
+  const holdingsValue = positiveValuations.reduce<Decimal>((total, valuation) => {
+    const marketValue = valuation?.marketValueBase
+    if (marketValue === null || marketValue === undefined) return total
+    return requireDecimal(
+      addDecimals(total, marketValue),
+      "Unable to aggregate Brokerage holding market values",
+    )
+  }, "0")
   return {
     value: addDecimals(input.availableCash, holdingsValue),
     availableCash: input.availableCash,
