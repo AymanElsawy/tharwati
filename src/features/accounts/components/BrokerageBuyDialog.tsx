@@ -1,5 +1,5 @@
 import { Dialog } from "@base-ui/react/dialog"
-import { X } from "lucide-react"
+import { Search, X } from "lucide-react"
 import { useEffect, useMemo, useState } from "react"
 
 import { Button } from "@/components/ui/button"
@@ -9,6 +9,7 @@ import { getBrokerageBuyPreview } from "@/features/investments/services/brokerag
 import { useTranslation } from "@/i18n/useTranslation"
 import { formatLocalDateTimeInput, localDateTimeInputToIso } from "@/lib/formatting/local-date-time"
 import type { AccountSummary, AssetSummary } from "@/lib/supabase/types"
+import { assetSearchService, type ExternalAssetSearchResult } from "@/services/asset-search/asset-search.service"
 
 const fieldClass = "mt-1 w-full rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2 text-sm"
 
@@ -39,16 +40,77 @@ export function BrokerageBuyDialog({ account, availableCash, onClose, onSaved }:
   const [rate, setRate] = useState("")
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [externalSearchQuery, setExternalSearchQuery] = useState("")
+  const [externalResults, setExternalResults] = useState<ExternalAssetSearchResult[]>([])
+  const [isExternalSearchLoading, setIsExternalSearchLoading] = useState(false)
+  const [isExternalSearchUnavailable, setIsExternalSearchUnavailable] = useState(false)
+  const [selectedExternalResult, setSelectedExternalResult] = useState<ExternalAssetSearchResult | null>(null)
+  const [resolvingExternalIdentity, setResolvingExternalIdentity] = useState<string | null>(null)
+  const [externalResolutionError, setExternalResolutionError] = useState(false)
 
   useEffect(() => {
     if (!account) return
     void assetsRepository.searchAssets("", 100).then(setAssets).catch(() => setAssets([]))
   }, [account])
 
+  useEffect(() => {
+    const query = externalSearchQuery.trim()
+    if (query.length < 2) {
+      return
+    }
+    let cancelled = false
+    const timer = window.setTimeout(() => {
+      setIsExternalSearchLoading(true)
+      setIsExternalSearchUnavailable(false)
+      void assetSearchService.search(query)
+        .then((results) => {
+          if (!cancelled) setExternalResults(results)
+        })
+        .catch(() => {
+          if (!cancelled) {
+            setExternalResults([])
+            setIsExternalSearchUnavailable(true)
+          }
+        })
+        .finally(() => {
+          if (!cancelled) setIsExternalSearchLoading(false)
+        })
+    }, 300)
+    return () => {
+      cancelled = true
+      window.clearTimeout(timer)
+    }
+  }, [externalSearchQuery])
+
   const asset = useMemo(() => assets.find((item) => item.id === assetId) ?? null, [assets, assetId])
   const isCrossCurrency = !!asset && asset.currency_code !== account?.currency_code
   const preview = getBrokerageBuyPreview({ quantity, unitPrice, fees, accountFxRate: isCrossCurrency ? rate || null : null })
   const valid = !!account && !!asset && isPositiveDecimal(quantity) && isPositiveDecimal(unitPrice) && isNonNegativeDecimal(fees) && !!occurredAt && (!isCrossCurrency || isPositiveDecimal(rate))
+
+  const handleExternalResultSelected = async (result: ExternalAssetSearchResult) => {
+    const identity = `${result.micCode}:${result.symbol}`
+    setSelectedExternalResult(result)
+    setResolvingExternalIdentity(identity)
+    setExternalResolutionError(false)
+
+    try {
+      const resolvedAsset = await assetSearchService.resolve(result)
+      setAssets((current) => {
+        const next = current.filter((candidate) => candidate.id !== resolvedAsset.id)
+        return [...next, resolvedAsset].sort((left, right) => left.name.localeCompare(right.name))
+      })
+      setAssetId(resolvedAsset.id)
+      setExternalSearchQuery("")
+      setExternalResults([])
+      setIsExternalSearchLoading(false)
+      setIsExternalSearchUnavailable(false)
+      setSelectedExternalResult(null)
+    } catch {
+      setExternalResolutionError(true)
+    } finally {
+      setResolvingExternalIdentity(null)
+    }
+  }
 
   const save = async () => {
     if (!account || !asset || !valid) return
@@ -70,6 +132,27 @@ export function BrokerageBuyDialog({ account, availableCash, onClose, onSaved }:
       <Dialog.Popup className="fixed inset-x-3 top-1/2 z-50 mx-auto max-h-[calc(100vh-1.5rem)] w-auto max-w-lg -translate-y-1/2 overflow-y-auto rounded-xl bg-background p-5 shadow-xl sm:inset-x-0">
         <div className="flex items-center justify-between gap-3"><Dialog.Title className="font-heading text-xl">{t("brokerage.buy")}</Dialog.Title><Button variant="ghost" size="icon" aria-label={t("common.close")} onClick={onClose}><X size={18} /></Button></div>
         <div className="mt-5 space-y-4">
+          <label>{t("brokerage.searchExternalAssets")}
+            <div className="relative mt-1">
+              <Search className="pointer-events-none absolute start-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+              <input className={`${fieldClass} mt-0 ps-9`} type="search" value={externalSearchQuery} onChange={(event) => { setExternalSearchQuery(event.target.value); setExternalResults([]); setIsExternalSearchLoading(false); setIsExternalSearchUnavailable(false); setSelectedExternalResult(null); setExternalResolutionError(false) }} placeholder={t("brokerage.searchExternalAssetsPlaceholder")} autoComplete="off" />
+            </div>
+          </label>
+          {externalSearchQuery.trim().length > 0 && externalSearchQuery.trim().length < 2 ? <p className="text-xs text-muted-foreground">{t("brokerage.searchExternalAssetsMinimum")}</p> : null}
+          {externalSearchQuery.trim().length >= 2 && isExternalSearchLoading ? <p className="text-sm text-muted-foreground">{t("brokerage.searchExternalAssetsLoading")}</p> : null}
+          {externalSearchQuery.trim().length >= 2 && isExternalSearchUnavailable ? <p className="text-sm text-muted-foreground">{t("brokerage.searchExternalAssetsUnavailable")}</p> : null}
+          {externalSearchQuery.trim().length >= 2 && externalResults.length > 0 ? <div className="divide-y rounded-lg border border-[var(--color-border)]">
+            {externalResults.map((result) => {
+              const isSelected = selectedExternalResult?.symbol === result.symbol && selectedExternalResult.micCode === result.micCode
+              return <button key={`${result.micCode}:${result.symbol}`} type="button" className={`w-full px-3 py-2.5 text-start transition-colors hover:bg-muted/50 disabled:cursor-wait disabled:opacity-60 ${isSelected ? "bg-muted/50" : ""}`} disabled={resolvingExternalIdentity !== null} onClick={() => void handleExternalResultSelected(result)}>
+                <div className="flex items-start justify-between gap-3"><strong className="min-w-0 break-words">{result.name}</strong><span className="shrink-0 text-xs font-medium text-muted-foreground" dir="ltr">{result.instrumentType}</span></div>
+                <div className="mt-2 grid grid-cols-2 gap-x-3 gap-y-1 text-xs text-muted-foreground"><span dir="ltr"><span className="font-medium">{t("assets.table.symbol")}: </span>{result.symbol}</span><span><span className="font-medium">{t("assets.table.exchange")}: </span>{result.exchange}</span><span><span className="font-medium">{t("brokerage.externalAssetCountry")}: </span>{result.country}</span><span dir="ltr"><span className="font-medium">{t("assets.table.currency")}: </span>{result.currencyCode}</span></div>
+              </button>
+            })}
+          </div> : null}
+          {resolvingExternalIdentity ? <p className="text-xs text-muted-foreground">{t("brokerage.externalAssetResolving")}</p> : null}
+          {!resolvingExternalIdentity && selectedExternalResult && assetId ? <p className="text-xs text-muted-foreground">{t("brokerage.externalAssetSelected")}</p> : null}
+          {externalResolutionError ? <p className="text-xs text-destructive">{t("brokerage.externalAssetResolveError")}</p> : null}
           <label>{t("investment.asset.section")}<select className={fieldClass} value={assetId} onChange={(event) => setAssetId(event.target.value)}><option value="">{t("investment.common.choose")}</option>{assets.map((item) => <option key={item.id} value={item.id}>{item.name}{item.symbol ? ` (${item.symbol})` : ""}</option>)}</select></label>
           <div className="grid gap-4 sm:grid-cols-2"><label>{t("investment.quantity")}<input className={fieldClass} dir="ltr" inputMode="decimal" value={quantity} onChange={(event) => setQuantity(event.target.value)} /></label><label>{t("brokerage.unitPrice")}{asset ? ` (${asset.currency_code})` : ""}<input className={fieldClass} dir="ltr" inputMode="decimal" value={unitPrice} onChange={(event) => setUnitPrice(event.target.value)} /></label></div>
           <label>{t("investment.fees")}{asset ? ` (${asset.currency_code})` : ""}<input className={fieldClass} dir="ltr" inputMode="decimal" value={fees} onChange={(event) => setFees(event.target.value)} /></label>
