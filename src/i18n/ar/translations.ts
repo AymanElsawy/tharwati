@@ -467,6 +467,7 @@ export const ar: Record<TranslationKey, string> = {
   "brokerage.searchExternalAssetsLoading": "جارٍ البحث عن أصول خارجية...",
   "brokerage.searchExternalAssetsUnavailable": "البحث عن الأصول الخارجية غير متاح مؤقتًا.",
   "brokerage.externalAssetCountry": "البلد",
+  "brokerage.searchExternalAssetsAllCountries": "كل الدول",
   "brokerage.externalAssetNotSaved": "لم تتم إضافة هذه النتيجة إلى قائمة أصولك بعد.",
   "brokerage.externalAssetResolving": "جارٍ إضافة الأصل إلى قائمتك...",
   "brokerage.externalAssetSelected": "تم اختيار الأصل. أكمل تفاصيل الحيازة للمتابعة.",

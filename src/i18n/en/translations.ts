@@ -481,6 +481,7 @@ export const en = {
   "brokerage.searchExternalAssetsLoading": "Searching external assets...",
   "brokerage.searchExternalAssetsUnavailable": "External asset search is temporarily unavailable.",
   "brokerage.externalAssetCountry": "Country",
+  "brokerage.searchExternalAssetsAllCountries": "All countries",
   "brokerage.externalAssetNotSaved": "This result has not been added to your asset catalog yet.",
   "brokerage.externalAssetResolving": "Adding asset to your catalog...",
   "brokerage.externalAssetSelected": "Asset selected. Complete the holding details to continue.",

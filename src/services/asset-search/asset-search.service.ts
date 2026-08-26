@@ -115,12 +115,12 @@ export class AssetSearchService {
     this.client = client
   }
 
-  async search(query: string): Promise<ExternalAssetSearchResult[]> {
+  async search(query: string, country?: string | null): Promise<ExternalAssetSearchResult[]> {
     const normalizedQuery = normalizeAssetSearchQuery(query)
     if (normalizedQuery.length < minimumQueryLength) return []
     const { data, error } = await this.client.functions.invoke<EdgeSearchResponse>(
       "asset-search",
-      { body: { query: normalizedQuery } },
+      { body: { query: normalizedQuery, country: country?.trim() || undefined } },
     )
     if (error) throw new AssetSearchUnavailableError()
     return rankAssetSearchResults(parseAssetSearchResponse(data ?? {}), normalizedQuery)

@@ -7,6 +7,7 @@ import { assetsRepository } from "@/features/assets/repositories/assets.reposito
 import { brokerageBuysRepository } from "@/features/investments/repositories/brokerage-buys.repository"
 import { getBrokerageBuyPreview } from "@/features/investments/services/brokerage-buy.service"
 import { useTranslation } from "@/i18n/useTranslation"
+import { countries } from "@/lib/countries"
 import { formatLocalDateTimeInput, localDateTimeInputToIso } from "@/lib/formatting/local-date-time"
 import type { AccountSummary, AssetSummary } from "@/lib/supabase/types"
 import { assetSearchService, type ExternalAssetSearchResult } from "@/services/asset-search/asset-search.service"
@@ -41,6 +42,7 @@ export function BrokerageBuyDialog({ account, availableCash, onClose, onSaved }:
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [externalSearchQuery, setExternalSearchQuery] = useState("")
+  const [externalSearchCountry, setExternalSearchCountry] = useState("")
   const [externalResults, setExternalResults] = useState<ExternalAssetSearchResult[]>([])
   const [isExternalSearchLoading, setIsExternalSearchLoading] = useState(false)
   const [isExternalSearchUnavailable, setIsExternalSearchUnavailable] = useState(false)
@@ -62,7 +64,7 @@ export function BrokerageBuyDialog({ account, availableCash, onClose, onSaved }:
     const timer = window.setTimeout(() => {
       setIsExternalSearchLoading(true)
       setIsExternalSearchUnavailable(false)
-      void assetSearchService.search(query)
+      void assetSearchService.search(query, externalSearchCountry)
         .then((results) => {
           if (!cancelled) setExternalResults(results)
         })
@@ -80,7 +82,7 @@ export function BrokerageBuyDialog({ account, availableCash, onClose, onSaved }:
       cancelled = true
       window.clearTimeout(timer)
     }
-  }, [externalSearchQuery])
+  }, [externalSearchQuery, externalSearchCountry])
 
   const asset = useMemo(() => assets.find((item) => item.id === assetId) ?? null, [assets, assetId])
   const isCrossCurrency = !!asset && asset.currency_code !== account?.currency_code
@@ -129,22 +131,30 @@ export function BrokerageBuyDialog({ account, availableCash, onClose, onSaved }:
 
   return <Dialog.Root open={account !== null} onOpenChange={(open) => { if (!open && !saving) onClose() }}>
     <Dialog.Portal><Dialog.Backdrop className="fixed inset-0 z-50 bg-black/40" />
-      <Dialog.Popup className="fixed inset-x-3 top-1/2 z-50 mx-auto max-h-[calc(100vh-1.5rem)] w-auto max-w-lg -translate-y-1/2 overflow-y-auto rounded-xl bg-background p-5 shadow-xl sm:inset-x-0">
+      <Dialog.Popup className="fixed inset-x-3 top-1/2 z-50 mx-auto max-h-[90vh] w-auto max-w-4xl -translate-y-1/2 overflow-y-auto rounded-xl bg-background p-5 shadow-xl sm:inset-x-0">
         <div className="flex items-center justify-between gap-3"><Dialog.Title className="font-heading text-xl">{t("brokerage.buy")}</Dialog.Title><Button variant="ghost" size="icon" aria-label={t("common.close")} onClick={onClose}><X size={18} /></Button></div>
         <div className="mt-5 space-y-4">
-          <label>{t("brokerage.searchExternalAssets")}
-            <div className="relative mt-1">
-              <Search className="pointer-events-none absolute start-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-              <input className={`${fieldClass} mt-0 ps-9`} type="search" value={externalSearchQuery} onChange={(event) => { setExternalSearchQuery(event.target.value); setExternalResults([]); setIsExternalSearchLoading(false); setIsExternalSearchUnavailable(false); setSelectedExternalResult(null); setExternalResolutionError(false) }} placeholder={t("brokerage.searchExternalAssetsPlaceholder")} autoComplete="off" />
-            </div>
-          </label>
+          <div className="flex items-end gap-2">
+            <label className="min-w-0 flex-1 basis-2/3">{t("brokerage.searchExternalAssets")}
+              <div className="relative mt-1">
+                <Search className="pointer-events-none absolute start-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+                <input className={`${fieldClass} mt-0 ps-9`} type="search" value={externalSearchQuery} onChange={(event) => { setExternalSearchQuery(event.target.value); setExternalResults([]); setIsExternalSearchLoading(false); setIsExternalSearchUnavailable(false); setSelectedExternalResult(null); setExternalResolutionError(false) }} placeholder={t("brokerage.searchExternalAssetsPlaceholder")} autoComplete="off" />
+              </div>
+            </label>
+            <label className="w-40 shrink-0" title={t("brokerage.externalAssetCountry")}>{t("brokerage.externalAssetCountry")}
+              <select className={`${fieldClass} ps-3`} value={externalSearchCountry} onChange={(event) => { setExternalSearchCountry(event.target.value); setSelectedExternalResult(null); setExternalResolutionError(false) }}>
+                <option value="">🌐 {t("brokerage.searchExternalAssetsAllCountries")}</option>
+                {countries.map((country) => <option key={country.code} value={country.name}>{country.flag} {country.name}</option>)}
+              </select>
+            </label>
+          </div>
           {externalSearchQuery.trim().length > 0 && externalSearchQuery.trim().length < 2 ? <p className="text-xs text-muted-foreground">{t("brokerage.searchExternalAssetsMinimum")}</p> : null}
           {externalSearchQuery.trim().length >= 2 && isExternalSearchLoading ? <p className="text-sm text-muted-foreground">{t("brokerage.searchExternalAssetsLoading")}</p> : null}
           {externalSearchQuery.trim().length >= 2 && isExternalSearchUnavailable ? <p className="text-sm text-muted-foreground">{t("brokerage.searchExternalAssetsUnavailable")}</p> : null}
-          {externalSearchQuery.trim().length >= 2 && externalResults.length > 0 ? <div className="divide-y rounded-lg border border-[var(--color-border)]">
+          {externalSearchQuery.trim().length >= 2 && externalResults.length > 0 ? <div className="mt-1 max-h-72 space-y-1.5 overflow-y-auto rounded-xl border border-[var(--color-border)] bg-[var(--color-surface-subtle)] p-1.5 shadow-md">
             {externalResults.map((result) => {
               const isSelected = selectedExternalResult?.symbol === result.symbol && selectedExternalResult.micCode === result.micCode
-              return <button key={`${result.micCode}:${result.symbol}`} type="button" className={`w-full px-3 py-2.5 text-start transition-colors hover:bg-muted/50 disabled:cursor-wait disabled:opacity-60 ${isSelected ? "bg-muted/50" : ""}`} disabled={resolvingExternalIdentity !== null} onClick={() => void handleExternalResultSelected(result)}>
+              return <button key={`${result.micCode}:${result.symbol}`} type="button" className={`w-full rounded-lg border px-3 py-2.5 text-start transition-colors disabled:cursor-wait disabled:opacity-60 ${isSelected ? "border-[var(--color-primary)] bg-[var(--color-primary-soft)]" : "border-transparent bg-[var(--color-surface)] hover:border-[var(--color-border)] hover:bg-[var(--color-primary-soft)]"}`} disabled={resolvingExternalIdentity !== null} onClick={() => void handleExternalResultSelected(result)}>
                 <div className="flex items-start justify-between gap-3"><strong className="min-w-0 break-words">{result.name}</strong><span className="shrink-0 text-xs font-medium text-muted-foreground" dir="ltr">{result.instrumentType}</span></div>
                 <div className="mt-2 grid grid-cols-2 gap-x-3 gap-y-1 text-xs text-muted-foreground"><span dir="ltr"><span className="font-medium">{t("assets.table.symbol")}: </span>{result.symbol}</span><span><span className="font-medium">{t("assets.table.exchange")}: </span>{result.exchange}</span><span><span className="font-medium">{t("brokerage.externalAssetCountry")}: </span>{result.country}</span><span dir="ltr"><span className="font-medium">{t("assets.table.currency")}: </span>{result.currencyCode}</span></div>
               </button>

@@ -105,8 +105,9 @@ Deno.serve(async (request) => {
     const body = await request.json()
     const query = normalizeQuery(body?.query)
     if (!query) return json({ error: "invalid_query" }, 400)
+    const country = nonEmptyString(body?.country)
 
-    const cacheKey = query.toLocaleLowerCase()
+    const cacheKey = `${query.toLocaleLowerCase()}|${country?.toLocaleLowerCase() ?? ""}`
     const cached = cache.get(cacheKey)
     if (cached && cached.expiresAt > Date.now()) {
       return json({ available: true, results: cached.results })
@@ -120,7 +121,8 @@ Deno.serve(async (request) => {
 
     const url = new URL("https://api.twelvedata.com/symbol_search")
     url.searchParams.set("symbol", query)
-    url.searchParams.set("outputsize", String(maximumResults))
+    url.searchParams.set("outputsize", String(country ? maximumResults * 10 : maximumResults))
+    if (country) url.searchParams.set("country", country)
     url.searchParams.set("apikey", apiKey)
     const response = await fetch(url)
     if (!response.ok) {
@@ -133,9 +135,12 @@ Deno.serve(async (request) => {
       return json({ available: false, results: [] })
     }
 
+    const normalizedCountry = country?.toLocaleLowerCase()
     const results = payload.data
       .flatMap((item) => item && typeof item === "object" ? [normalizeResult(item as TwelveDataSearchItem)] : [])
       .filter((item): item is AssetSearchResult => item !== null)
+      // Twelve Data's symbol_search does not reliably filter by the `country` param, so re-filter here.
+      .filter((item) => !normalizedCountry || item.country.toLocaleLowerCase() === normalizedCountry)
       .slice(0, maximumResults)
     cache.set(cacheKey, { results, expiresAt: Date.now() + cacheDurationMs })
     return json({ available: true, results })

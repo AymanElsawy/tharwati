@@ -16,6 +16,7 @@ import type { BrokerageActivityItem } from "@/features/holdings/repositories/hol
 import type { HoldingDetails } from "@/features/holdings/types/holding"
 import { useTranslation } from "@/i18n/useTranslation"
 import type { TranslationKey } from "@/i18n/en/translations"
+import { countries } from "@/lib/countries"
 import { formatLocalDateTimeInput } from "@/lib/formatting/local-date-time"
 import { supabase } from "@/lib/supabase/client"
 import type { AccountSummary, AssetSummary } from "@/lib/supabase/types"
@@ -462,7 +463,7 @@ function BrokerageActivityDialog({
   return <Dialog.Root open={activity !== null} onOpenChange={(open) => !open && onClose()}>
     <Dialog.Portal>
       <Dialog.Backdrop className="fixed inset-0 z-[70] bg-black/50" />
-      <Dialog.Popup className="fixed inset-x-3 top-1/2 z-[80] mx-auto max-h-[calc(100vh-2rem)] w-auto max-w-lg -translate-y-1/2 overflow-y-auto rounded-xl bg-background p-5 shadow-xl sm:inset-x-0">
+      <Dialog.Popup className="fixed inset-x-3 top-1/2 z-[80] mx-auto max-h-[calc(100vh-2rem)] w-auto max-w-lg -translate-y-1/2 overflow-y-auto rounded-xl bg-[var(--color-surface)] p-5 shadow-xl sm:inset-x-0">
         <div className="flex items-center justify-between gap-3">
           <Dialog.Title className="font-heading text-xl">{activity ? activityLabel(activity, activity.entries.find((entry) => entry.account_id)?.account_id ?? "", t) : ""}</Dialog.Title>
           <Button variant="ghost" size="icon" aria-label={t("common.close")} onClick={onClose}><X size={18} /></Button>
@@ -509,6 +510,7 @@ function ExistingHoldingDialog({
   const [error, setError] = useState<string | null>(null)
   const [isAssetDialogOpen, setIsAssetDialogOpen] = useState(false)
   const [externalSearchQuery, setExternalSearchQuery] = useState("")
+  const [externalSearchCountry, setExternalSearchCountry] = useState("")
   const [externalResults, setExternalResults] = useState<ExternalAssetSearchResult[]>([])
   const [isExternalSearchLoading, setIsExternalSearchLoading] = useState(false)
   const [isExternalSearchUnavailable, setIsExternalSearchUnavailable] = useState(false)
@@ -546,7 +548,7 @@ function ExistingHoldingDialog({
     const timer = window.setTimeout(() => {
       setIsExternalSearchLoading(true)
       setIsExternalSearchUnavailable(false)
-      void assetSearchService.search(query)
+      void assetSearchService.search(query, externalSearchCountry)
         .then((results) => {
           if (!cancelled) setExternalResults(results)
         })
@@ -564,7 +566,7 @@ function ExistingHoldingDialog({
       cancelled = true
       window.clearTimeout(timer)
     }
-  }, [externalSearchQuery])
+  }, [externalSearchQuery, externalSearchCountry])
 
   const selected = useMemo(
     () => assets.find((asset) => asset.id === assetId) ?? null,
@@ -636,6 +638,11 @@ function ExistingHoldingDialog({
       })
       setAssetId(asset.id)
       setResolvedExternalAssetId(asset.id)
+      setExternalSearchQuery("")
+      setExternalResults([])
+      setIsExternalSearchLoading(false)
+      setIsExternalSearchUnavailable(false)
+      setSelectedExternalResult(null)
     } catch {
       setExternalResolutionError(true)
     } finally {
@@ -653,7 +660,7 @@ function ExistingHoldingDialog({
       >
         <Dialog.Portal>
           <Dialog.Backdrop className="fixed inset-0 z-50 bg-black/40" />
-          <Dialog.Popup className="fixed inset-x-3 top-1/2 z-50 mx-auto max-h-[calc(100vh-1.5rem)] w-auto max-w-lg -translate-y-1/2 overflow-y-auto rounded-xl bg-background p-5 shadow-xl sm:inset-x-0">
+          <Dialog.Popup className="fixed inset-x-3 top-1/2 z-50 mx-auto max-h-[90vh] w-auto max-w-4xl -translate-y-1/2 overflow-y-auto rounded-xl bg-background p-5 shadow-xl sm:inset-x-0">
             <div className="flex items-center justify-between gap-3">
               <Dialog.Title className="font-heading text-xl">
                 {t("brokerage.addExistingHolding")}
@@ -670,25 +677,46 @@ function ExistingHoldingDialog({
 
             <div className="mt-5 space-y-4">
               <section className="space-y-3 border-b border-[var(--color-border)] pb-4">
-                <label className="block">
-                  {t("brokerage.searchExternalAssets")}
-                  <div className="relative mt-1">
-                    <Search className="pointer-events-none absolute start-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-                    <input
-                      className={`${fieldClass} mt-0 ps-9`}
-                      type="search"
-                      value={externalSearchQuery}
+                <div className="flex items-end gap-2">
+                  <label className="block min-w-0 flex-1 basis-2/3">
+                    {t("brokerage.searchExternalAssets")}
+                    <div className="relative mt-1">
+                      <Search className="pointer-events-none absolute start-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+                      <input
+                        className={`${fieldClass} mt-0 ps-9`}
+                        type="search"
+                        value={externalSearchQuery}
+                        onChange={(event) => {
+                          setExternalSearchQuery(event.target.value)
+                          setSelectedExternalResult(null)
+                          setResolvedExternalAssetId(null)
+                          setExternalResolutionError(false)
+                        }}
+                        placeholder={t("brokerage.searchExternalAssetsPlaceholder")}
+                        autoComplete="off"
+                      />
+                    </div>
+                  </label>
+                  <label className="w-40 shrink-0" title={t("brokerage.externalAssetCountry")}>
+                    {t("brokerage.externalAssetCountry")}
+                    <select
+                      className={`${fieldClass} ps-3`}
+                      value={externalSearchCountry}
                       onChange={(event) => {
-                        setExternalSearchQuery(event.target.value)
+                        setExternalSearchCountry(event.target.value)
                         setSelectedExternalResult(null)
-                        setResolvedExternalAssetId(null)
                         setExternalResolutionError(false)
                       }}
-                      placeholder={t("brokerage.searchExternalAssetsPlaceholder")}
-                      autoComplete="off"
-                    />
-                  </div>
-                </label>
+                    >
+                      <option value="">🌐 {t("brokerage.searchExternalAssetsAllCountries")}</option>
+                      {countries.map((country) => (
+                        <option key={country.code} value={country.name}>
+                          {country.flag} {country.name}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                </div>
                 {externalSearchQuery.trim().length > 0 && externalSearchQuery.trim().length < 2 ? (
                   <p className="text-xs text-muted-foreground">{t("brokerage.searchExternalAssetsMinimum")}</p>
                 ) : null}
@@ -699,14 +727,14 @@ function ExistingHoldingDialog({
                   <p className="text-sm text-muted-foreground">{t("brokerage.searchExternalAssetsUnavailable")}</p>
                 ) : null}
                 {externalResults.length > 0 ? (
-                  <div className="divide-y rounded-lg border border-[var(--color-border)]">
+                  <div className="mt-1 max-h-72 space-y-1.5 overflow-y-auto rounded-xl border border-[var(--color-border)] bg-[var(--color-surface-subtle)] p-1.5 shadow-md">
                     {externalResults.map((result) => {
                       const isSelected = selectedExternalResult?.symbol === result.symbol && selectedExternalResult.micCode === result.micCode
                       return (
                         <button
                           key={`${result.micCode}:${result.symbol}`}
                           type="button"
-                          className={`w-full px-3 py-2.5 text-start transition-colors hover:bg-muted/50 disabled:cursor-wait disabled:opacity-60 ${isSelected ? "bg-muted/50" : ""}`}
+                          className={`w-full rounded-lg border px-3 py-2.5 text-start transition-colors disabled:cursor-wait disabled:opacity-60 ${isSelected ? "border-[var(--color-primary)] bg-[var(--color-primary-soft)]" : "border-transparent bg-[var(--color-surface)] hover:border-[var(--color-border)] hover:bg-[var(--color-primary-soft)]"}`}
                           disabled={resolvingExternalIdentity !== null}
                           onClick={() => void handleExternalResultSelected(result)}
                         >
