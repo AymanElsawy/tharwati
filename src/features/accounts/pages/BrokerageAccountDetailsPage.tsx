@@ -1,5 +1,5 @@
 import { Dialog } from "@base-ui/react/dialog"
-import { ArrowLeft, Plus, X } from "lucide-react"
+import { ArrowLeft, Plus, Search, X } from "lucide-react"
 import { useCallback, useEffect, useMemo, useState } from "react"
 import { useNavigate } from "react-router-dom"
 
@@ -21,6 +21,10 @@ import { supabase } from "@/lib/supabase/client"
 import type { AccountSummary, AssetSummary } from "@/lib/supabase/types"
 import { addDecimals, compareDecimals } from "@/lib/financial-calculations/decimal"
 import { formatLocalDateTime } from "@/lib/formatting/local-date-time"
+import {
+  assetSearchService,
+  type ExternalAssetSearchResult,
+} from "@/services/asset-search/asset-search.service"
 
 const fieldClass =
   "mt-1 w-full rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2 text-sm"
@@ -504,6 +508,14 @@ function ExistingHoldingDialog({
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [isAssetDialogOpen, setIsAssetDialogOpen] = useState(false)
+  const [externalSearchQuery, setExternalSearchQuery] = useState("")
+  const [externalResults, setExternalResults] = useState<ExternalAssetSearchResult[]>([])
+  const [isExternalSearchLoading, setIsExternalSearchLoading] = useState(false)
+  const [isExternalSearchUnavailable, setIsExternalSearchUnavailable] = useState(false)
+  const [selectedExternalResult, setSelectedExternalResult] = useState<ExternalAssetSearchResult | null>(null)
+  const [resolvingExternalIdentity, setResolvingExternalIdentity] = useState<string | null>(null)
+  const [resolvedExternalAssetId, setResolvedExternalAssetId] = useState<string | null>(null)
+  const [externalResolutionError, setExternalResolutionError] = useState(false)
 
   useEffect(() => {
     if (!account) return
@@ -521,6 +533,38 @@ function ExistingHoldingDialog({
         setAssetTypes([])
       })
   }, [account])
+
+  useEffect(() => {
+    const query = externalSearchQuery.trim()
+    if (query.length < 2) {
+      setExternalResults([])
+      setIsExternalSearchLoading(false)
+      setIsExternalSearchUnavailable(false)
+      return
+    }
+    let cancelled = false
+    const timer = window.setTimeout(() => {
+      setIsExternalSearchLoading(true)
+      setIsExternalSearchUnavailable(false)
+      void assetSearchService.search(query)
+        .then((results) => {
+          if (!cancelled) setExternalResults(results)
+        })
+        .catch(() => {
+          if (!cancelled) {
+            setExternalResults([])
+            setIsExternalSearchUnavailable(true)
+          }
+        })
+        .finally(() => {
+          if (!cancelled) setIsExternalSearchLoading(false)
+        })
+    }, 300)
+    return () => {
+      cancelled = true
+      window.clearTimeout(timer)
+    }
+  }, [externalSearchQuery])
 
   const selected = useMemo(
     () => assets.find((asset) => asset.id === assetId) ?? null,
@@ -577,6 +621,28 @@ function ExistingHoldingDialog({
     setIsAssetDialogOpen(false)
   }
 
+  const handleExternalResultSelected = async (result: ExternalAssetSearchResult) => {
+    const identity = `${result.micCode}:${result.symbol}`
+    setSelectedExternalResult(result)
+    setResolvingExternalIdentity(identity)
+    setResolvedExternalAssetId(null)
+    setExternalResolutionError(false)
+
+    try {
+      const asset = await assetSearchService.resolve(result)
+      setAssets((current) => {
+        const next = current.filter((candidate) => candidate.id !== asset.id)
+        return [...next, asset].sort((left, right) => left.name.localeCompare(right.name))
+      })
+      setAssetId(asset.id)
+      setResolvedExternalAssetId(asset.id)
+    } catch {
+      setExternalResolutionError(true)
+    } finally {
+      setResolvingExternalIdentity(null)
+    }
+  }
+
   return (
     <>
       <Dialog.Root
@@ -603,6 +669,81 @@ function ExistingHoldingDialog({
             </div>
 
             <div className="mt-5 space-y-4">
+              <section className="space-y-3 border-b border-[var(--color-border)] pb-4">
+                <label className="block">
+                  {t("brokerage.searchExternalAssets")}
+                  <div className="relative mt-1">
+                    <Search className="pointer-events-none absolute start-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+                    <input
+                      className={`${fieldClass} mt-0 ps-9`}
+                      type="search"
+                      value={externalSearchQuery}
+                      onChange={(event) => {
+                        setExternalSearchQuery(event.target.value)
+                        setSelectedExternalResult(null)
+                        setResolvedExternalAssetId(null)
+                        setExternalResolutionError(false)
+                      }}
+                      placeholder={t("brokerage.searchExternalAssetsPlaceholder")}
+                      autoComplete="off"
+                    />
+                  </div>
+                </label>
+                {externalSearchQuery.trim().length > 0 && externalSearchQuery.trim().length < 2 ? (
+                  <p className="text-xs text-muted-foreground">{t("brokerage.searchExternalAssetsMinimum")}</p>
+                ) : null}
+                {isExternalSearchLoading ? (
+                  <p className="text-sm text-muted-foreground">{t("brokerage.searchExternalAssetsLoading")}</p>
+                ) : null}
+                {isExternalSearchUnavailable ? (
+                  <p className="text-sm text-muted-foreground">{t("brokerage.searchExternalAssetsUnavailable")}</p>
+                ) : null}
+                {externalResults.length > 0 ? (
+                  <div className="divide-y rounded-lg border border-[var(--color-border)]">
+                    {externalResults.map((result) => {
+                      const isSelected = selectedExternalResult?.symbol === result.symbol && selectedExternalResult.micCode === result.micCode
+                      return (
+                        <button
+                          key={`${result.micCode}:${result.symbol}`}
+                          type="button"
+                          className={`w-full px-3 py-2.5 text-start transition-colors hover:bg-muted/50 disabled:cursor-wait disabled:opacity-60 ${isSelected ? "bg-muted/50" : ""}`}
+                          disabled={resolvingExternalIdentity !== null}
+                          onClick={() => void handleExternalResultSelected(result)}
+                        >
+                          <div className="flex items-start justify-between gap-3">
+                            <strong className="min-w-0 break-words">{result.name}</strong>
+                            <span className="shrink-0 text-xs font-medium text-muted-foreground" dir="ltr">
+                              {result.instrumentType}
+                            </span>
+                          </div>
+                          <div className="mt-2 grid grid-cols-2 gap-x-3 gap-y-1 text-xs text-muted-foreground">
+                            <span dir="ltr"><span className="font-medium">{t("assets.table.symbol")}: </span>{result.symbol}</span>
+                            <span><span className="font-medium">{t("assets.table.exchange")}: </span>{result.exchange}</span>
+                            <span><span className="font-medium">{t("brokerage.externalAssetCountry")}: </span>{result.country}</span>
+                            <span dir="ltr"><span className="font-medium">{t("assets.table.currency")}: </span>{result.currencyCode}</span>
+                          </div>
+                        </button>
+                      )
+                    })}
+                  </div>
+                ) : null}
+                {resolvingExternalIdentity ? (
+                  <p className="text-xs text-muted-foreground">
+                    {t("brokerage.externalAssetResolving")}
+                  </p>
+                ) : null}
+                {!resolvingExternalIdentity && resolvedExternalAssetId ? (
+                  <p className="text-xs text-muted-foreground">
+                    {t("brokerage.externalAssetSelected")}
+                  </p>
+                ) : null}
+                {externalResolutionError ? (
+                  <p className="text-xs text-destructive">
+                    {t("brokerage.externalAssetResolveError")}
+                  </p>
+                ) : null}
+              </section>
+
               {assets.length === 0 ? (
                 <div className="border border-dashed border-[var(--color-border)] px-4 py-6 text-center">
                   <p className="text-sm text-muted-foreground">

@@ -720,6 +720,18 @@ export type Database = {
         Args: { p_transaction_id: string }
         Returns: Json
       }
+      resolve_external_brokerage_asset: {
+        Args: {
+          p_symbol: string
+          p_name: string
+          p_mic_code: string
+          p_display_exchange: string
+          p_country: string
+          p_currency_code: string
+          p_instrument_type: string
+        }
+        Returns: AssetRow
+      }
       get_account_record_history: {
         Args: {
           p_account_id: string

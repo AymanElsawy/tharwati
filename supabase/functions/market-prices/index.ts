@@ -1,4 +1,8 @@
 import { createClient } from "npm:@supabase/supabase-js@2"
+import {
+  resolveTwelveDataInstrument,
+  type TwelveDataIdentifier,
+} from "../_shared/twelve-data-identity.ts"
 
 const provider = "twelve_data"
 const freshnessMs = 15 * 60 * 1000
@@ -32,11 +36,6 @@ type ResolvedPrice = {
   fetchedAt: string | null
   priceType: StoredPrice["price_type"] | null
   stale: boolean
-}
-
-const usProofInstruments: Record<string, { assetType: string; exchanges: string[] }> = {
-  AAPL: { assetType: "stock", exchanges: ["XNAS", "NASDAQ"] },
-  VOO: { assetType: "etf", exchanges: ["XNAS", "NYSEARCA", "ARCX"] },
 }
 
 function json(body: unknown, status = 200) {
@@ -74,16 +73,17 @@ function toResolved(price: StoredPrice, stale = false): ResolvedPrice {
   }
 }
 
-function instrumentFor(asset: Asset): string | null {
-  const symbol = asset.symbol?.trim().toUpperCase() ?? ""
-  const exchange = asset.exchange?.trim().toUpperCase() ?? ""
-  const instrument = usProofInstruments[symbol]
-  if (!instrument || asset.asset_type_code !== instrument.assetType) return null
-  return instrument.exchanges.includes(exchange) ? symbol : null
-}
-
-function quoteUrl(path: "price" | "quote", symbols: string[], apiKey: string) {
-  const query = new URLSearchParams({ symbol: symbols.join(","), apikey: apiKey })
+function quoteUrl(
+  path: "price" | "quote",
+  symbols: string[],
+  micCode: string,
+  apiKey: string,
+) {
+  const query = new URLSearchParams({
+    symbol: symbols.join(","),
+    mic_code: micCode,
+    apikey: apiKey,
+  })
   return `https://api.twelvedata.com/${path}?${query}`
 }
 
@@ -149,33 +149,78 @@ Deno.serve(async (request) => {
     const results = new Map<string, ResolvedPrice>()
     for (const price of fresh.values()) results.set(price.asset_id, toResolved(price))
     const pending = assets.filter((asset) => !results.has(asset.id))
+    const { data: providerIdentifierRows, error: providerIdentifiersError } = pending.length === 0
+      ? { data: [], error: null }
+      : await admin
+        .from("asset_identifiers")
+        .select("asset_id,namespace,normalized_value")
+        .in("asset_id", pending.map((asset) => asset.id))
+        .eq("scheme", "provider")
+        .eq("provider", provider)
+    if (providerIdentifiersError) throw providerIdentifiersError
+
+    const identifiers = (providerIdentifierRows ?? []) as TwelveDataIdentifier[]
     const mapped = pending.flatMap((asset) => {
-      const symbol = instrumentFor(asset)
-      return symbol ? [{ asset, symbol }] : []
+      const instrument = resolveTwelveDataInstrument(asset, identifiers)
+      return instrument ? [{ asset, instrument }] : []
     })
     const apiKey = Deno.env.get("TWELVE_DATA_API_KEY")
     if (mapped.length > 0 && apiKey) {
       try {
-        const symbols = [...new Set(mapped.map((item) => item.symbol))]
-        const current = await getJson(quoteUrl("price", symbols, apiKey))
-        const missingCurrent = mapped.filter(({ asset, symbol }) => {
-          const item = itemFor(current, symbol)
-          const price = item ? validPrice(item.price) : null
-          if (!price) return true
-          const fetchedAt = new Date().toISOString()
-          const resolved: ResolvedPrice = { assetId: asset.id, available: true, provider, price, currencyCode: "USD", effectiveAt: fetchedAt, fetchedAt, priceType: "realtime", stale: false }
-          results.set(asset.id, resolved)
-          return false
-        })
-        if (missingCurrent.length > 0) {
-          const quotes = await getJson(quoteUrl("quote", missingCurrent.map((item) => item.symbol), apiKey))
-          for (const { asset, symbol } of missingCurrent) {
-            const quote = itemFor(quotes, symbol)
-            const price = quote ? validPrice(quote.previous_close) : null
-            if (!price) continue
+        const byMicCode = new Map<string, typeof mapped>()
+        for (const item of mapped) {
+          const instruments = byMicCode.get(item.instrument.micCode) ?? []
+          instruments.push(item)
+          byMicCode.set(item.instrument.micCode, instruments)
+        }
+        for (const [micCode, instruments] of byMicCode) {
+          if (!micCode || !instruments) continue
+          const symbols = [...new Set(instruments.map(({ instrument }) => instrument.symbol))]
+          const current = await getJson(quoteUrl("price", symbols, micCode, apiKey))
+          const missingCurrent = instruments.filter(({ asset, instrument }) => {
+            const item = itemFor(current, instrument.symbol)
+            const price = item ? validPrice(item.price) : null
+            if (!price) return true
             const fetchedAt = new Date().toISOString()
-            const effectiveAt = typeof quote.datetime === "string" ? quote.datetime : fetchedAt
-            results.set(asset.id, { assetId: asset.id, available: true, provider, price, currencyCode: "USD", effectiveAt, fetchedAt, priceType: "previous_close", stale: false })
+            const resolved: ResolvedPrice = {
+              assetId: asset.id,
+              available: true,
+              provider,
+              price,
+              currencyCode: asset.currency_code,
+              effectiveAt: fetchedAt,
+              fetchedAt,
+              priceType: "realtime",
+              stale: false,
+            }
+            results.set(asset.id, resolved)
+            return false
+          })
+          if (missingCurrent.length > 0) {
+            const quotes = await getJson(quoteUrl(
+              "quote",
+              missingCurrent.map(({ instrument }) => instrument.symbol),
+              micCode,
+              apiKey,
+            ))
+            for (const { asset, instrument } of missingCurrent) {
+              const quote = itemFor(quotes, instrument.symbol)
+              const price = quote ? validPrice(quote.previous_close) : null
+              if (!price) continue
+              const fetchedAt = new Date().toISOString()
+              const effectiveAt = typeof quote.datetime === "string" ? quote.datetime : fetchedAt
+              results.set(asset.id, {
+                assetId: asset.id,
+                available: true,
+                provider,
+                price,
+                currencyCode: asset.currency_code,
+                effectiveAt,
+                fetchedAt,
+                priceType: "previous_close",
+                stale: false,
+              })
+            }
           }
         }
         const cacheRows = [...results.values()]
