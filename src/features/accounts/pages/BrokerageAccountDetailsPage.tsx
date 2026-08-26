@@ -23,6 +23,7 @@ import { supabase } from "@/lib/supabase/client"
 import type { AccountSummary, AssetSummary } from "@/lib/supabase/types"
 import { addDecimals, compareDecimals, multiplyDecimals } from "@/lib/financial-calculations/decimal"
 import { formatLocalDateTime } from "@/lib/formatting/local-date-time"
+import { formatPortfolioPercent } from "@/features/portfolio/utils/portfolio-formatters"
 import {
   assetSearchService,
   type ExternalAssetSearchResult,
@@ -379,7 +380,7 @@ function HoldingRow({
           {[asset.symbol, asset.exchange].filter(Boolean).join(" · ")}
         </span>
       </span>
-      <span className="grid grid-cols-2 gap-3 text-end text-sm tabular-nums sm:grid-cols-4 sm:gap-4">
+      <span className="grid grid-cols-2 gap-3 text-end text-sm tabular-nums sm:grid-cols-6 sm:gap-4">
         <span>
           <b className="block break-words">{holding.quantity}</b>
           <small>{t("holdings.table.quantity")}</small>
@@ -411,6 +412,22 @@ function HoldingRow({
               : formatAmount(marketValue, asset.currency_code, locale)}
           </b>
           <small>{t("brokerage.marketValue")} ({asset.currency_code})</small>
+        </span>
+        <span>
+          <b className="block break-words">
+            {valuation?.unrealizedGainLossNative === null || valuation === null
+              ? t("brokerage.currentValueUnavailable")
+              : formatAmount(valuation.unrealizedGainLossNative, holding.cost_currency_code, locale)}
+          </b>
+          <small>{t("brokerage.unrealizedPnl")} ({holding.cost_currency_code})</small>
+        </span>
+        <span>
+          <b className="block break-words">
+            {valuation?.unrealizedReturnPercent === null || valuation === null
+              ? t("brokerage.currentValueUnavailable")
+              : formatPortfolioPercent(valuation.unrealizedReturnPercent, locale)}
+          </b>
+          <small>{t("brokerage.unrealizedPnlPercent")}</small>
         </span>
       </span>
     </button>

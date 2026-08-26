@@ -512,6 +512,8 @@ export const en = {
   "brokerage.accountCurrency": "Account currency",
   "brokerage.currentPrice": "Current price",
   "brokerage.marketValue": "Market value",
+  "brokerage.unrealizedPnl": "Unrealized P/L",
+  "brokerage.unrealizedPnlPercent": "Unrealized P/L %",
   "brokerage.marketValueUnavailable": "Unavailable",
   "brokerage.marketValueStale": "stale",
   "brokerage.accountCurrencyMarketValue": "Account-currency market value",

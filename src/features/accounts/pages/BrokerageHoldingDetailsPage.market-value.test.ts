@@ -8,6 +8,8 @@ describe("Brokerage holding market value contract", () => {
     expect(page).toContain("multiplyDecimals(holding.quantity, valuation.marketPrice)")
     expect(page).toContain('t("brokerage.currentPrice")')
     expect(page).toContain('t("brokerage.marketValue")')
+    expect(page).toContain("valuation.unrealizedGainLossNative")
+    expect(page).toContain("valuation.unrealizedReturnPercent")
   })
 
   it("shows one shared Brokerage snapshot for holdings and totals", () => {
@@ -16,6 +18,8 @@ describe("Brokerage holding market value contract", () => {
     expect(accountPage).toContain("brokerageValue.value")
     expect(accountPage).toContain("valuation={brokerageValue?.valuations.find")
     expect(accountPage).toContain('t("brokerage.totalHoldingsMarketValue")')
+    expect(accountPage).toContain('t("brokerage.unrealizedPnl")')
+    expect(accountPage).toContain('t("brokerage.unrealizedPnlPercent")')
   })
 
   it("discloses unavailable and cross-currency valuation states", () => {

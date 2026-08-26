@@ -15,6 +15,7 @@ import {
 import type { HoldingDetails } from "@/features/holdings/types/holding"
 import { useTranslation } from "@/i18n/useTranslation"
 import { addDecimals, compareDecimals, multiplyDecimals } from "@/lib/financial-calculations/decimal"
+import { formatPortfolioPercent } from "@/features/portfolio/utils/portfolio-formatters"
 import {
   formatLocalDateTime,
   formatLocalDateTimeInput,
@@ -415,6 +416,22 @@ export function BrokerageHoldingDetailsPage() {
             marketValueAsset === null
               ? t("brokerage.marketValueUnavailable")
               : formatAmount(marketValueAsset, asset.currency_code, locale)
+          }
+        />
+        <Value
+          label={t("brokerage.unrealizedPnl")}
+          value={
+            valuation?.unrealizedGainLossNative === null || valuation === null
+              ? t("brokerage.currentValueUnavailable")
+              : formatAmount(valuation.unrealizedGainLossNative, holding.cost_currency_code, locale)
+          }
+        />
+        <Value
+          label={t("brokerage.unrealizedPnlPercent")}
+          value={
+            valuation?.unrealizedReturnPercent === null || valuation === null
+              ? t("brokerage.currentValueUnavailable")
+              : formatPortfolioPercent(valuation.unrealizedReturnPercent, locale)
           }
         />
         {asset.currency_code !== holding.cost_currency_code ? (

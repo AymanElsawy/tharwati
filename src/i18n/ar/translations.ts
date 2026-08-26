@@ -498,6 +498,8 @@ export const ar: Record<TranslationKey, string> = {
   "brokerage.accountCurrency": "عملة الحساب",
   "brokerage.currentPrice": "السعر الحالي",
   "brokerage.marketValue": "القيمة السوقية",
+  "brokerage.unrealizedPnl": "الربح/الخسارة غير المحققة",
+  "brokerage.unrealizedPnlPercent": "نسبة الربح/الخسارة غير المحققة %",
   "brokerage.marketValueUnavailable": "غير متاحة",
   "brokerage.marketValueStale": "قديمة",
   "brokerage.accountCurrencyMarketValue": "القيمة السوقية بعملة الحساب",
