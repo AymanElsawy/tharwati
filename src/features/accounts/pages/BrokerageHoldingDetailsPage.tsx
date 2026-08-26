@@ -6,13 +6,15 @@ import { useNavigate, useParams } from "react-router-dom"
 import { Button } from "@/components/ui/button"
 import { BrokerageSellDialog } from "@/features/accounts/components/BrokerageSellDialog"
 import { useAccounts } from "@/features/accounts/hooks/useAccounts"
+import { portfolioValuationService } from "@/features/portfolio-valuation/services/portfolio-valuation.service"
+import type { HoldingValuationResult } from "@/features/portfolio-valuation/types/portfolio-valuation"
 import {
   holdingsRepository,
   type ExistingHoldingHistoryItem,
 } from "@/features/holdings/repositories/holdings.repository"
 import type { HoldingDetails } from "@/features/holdings/types/holding"
 import { useTranslation } from "@/i18n/useTranslation"
-import { addDecimals, compareDecimals } from "@/lib/financial-calculations/decimal"
+import { addDecimals, compareDecimals, multiplyDecimals } from "@/lib/financial-calculations/decimal"
 import {
   formatLocalDateTime,
   formatLocalDateTimeInput,
@@ -114,6 +116,8 @@ export function BrokerageHoldingDetailsPage() {
   const account =
     accounts.accounts.find((item) => item.id === accountId) ?? null
   const [holding, setHolding] = useState<HoldingDetails | null>(null)
+  const [valuation, setValuation] = useState<HoldingValuationResult | null>(null)
+  const [valuationError, setValuationError] = useState(false)
   const [history, setHistory] = useState<ExistingHoldingHistoryItem[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [hasError, setHasError] = useState(false)
@@ -138,10 +142,27 @@ export function BrokerageHoldingDetailsPage() {
       ])
       setHolding(nextHolding)
       setHistory(nextHistory)
+      setValuationError(false)
+      if (nextHolding) {
+        try {
+          const result = await portfolioValuationService.calculate({
+            baseCurrency: nextHolding.cost_currency_code,
+            holdings: [nextHolding],
+          })
+          setValuation(result.holdings[0] ?? null)
+        } catch {
+          setValuation(null)
+          setValuationError(true)
+        }
+      } else {
+        setValuation(null)
+      }
       return nextHolding
     } catch {
       setHolding(null)
       setHistory([])
+      setValuation(null)
+      setValuationError(false)
       setHasError(true)
       return undefined
     } finally {
@@ -324,6 +345,10 @@ export function BrokerageHoldingDetailsPage() {
   const asset = holding.asset as HoldingDetails["asset"] & {
     exchange?: string | null
   }
+  const marketValueAsset = valuation?.marketPrice
+    ? multiplyDecimals(holding.quantity, valuation.marketPrice)
+    : null
+  const hasStalePrice = valuation?.stalePrice === true || valuation?.marketPriceType === "stale"
 
   return (
     <div className="pb-12">
@@ -376,6 +401,32 @@ export function BrokerageHoldingDetailsPage() {
           label={t("brokerage.accountCurrency")}
           value={holding.cost_currency_code}
         />
+        <Value
+          label={t("brokerage.currentPrice")}
+          value={
+            valuation?.marketPrice === null || valuation === null
+              ? t("brokerage.marketValueUnavailable")
+              : `${formatAmount(valuation.marketPrice, valuation.marketPriceCurrency ?? asset.currency_code, locale)}${hasStalePrice ? ` (${t("brokerage.marketValueStale")})` : ""}`
+          }
+        />
+        <Value
+          label={t("brokerage.marketValue")}
+          value={
+            marketValueAsset === null
+              ? t("brokerage.marketValueUnavailable")
+              : formatAmount(marketValueAsset, asset.currency_code, locale)
+          }
+        />
+        {asset.currency_code !== holding.cost_currency_code ? (
+          <Value
+            label={t("brokerage.accountCurrencyMarketValue")}
+            value={
+              valuationError || valuation?.marketValueBase === null || valuation === null
+                ? t("brokerage.accountCurrencyMarketValueUnavailable")
+                : formatAmount(valuation.marketValueBase, holding.cost_currency_code, locale)
+            }
+          />
+        ) : null}
       </section>
 
       <section className="mt-8">

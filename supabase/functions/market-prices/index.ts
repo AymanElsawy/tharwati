@@ -6,6 +6,11 @@ import {
 
 const provider = "twelve_data"
 const freshnessMs = 15 * 60 * 1000
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
+}
 
 type Asset = {
   id: string
@@ -41,8 +46,12 @@ type ResolvedPrice = {
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
     status,
-    headers: { "Content-Type": "application/json" },
+    headers: { "Content-Type": "application/json", ...corsHeaders },
   })
+}
+
+function preflightResponse() {
+  return new Response(null, { status: 204, headers: corsHeaders })
 }
 
 function errorDetails(error: unknown) {
@@ -101,6 +110,7 @@ function itemFor(response: Record<string, unknown>, symbol: string): Record<stri
 }
 
 Deno.serve(async (request) => {
+  if (request.method === "OPTIONS") return preflightResponse()
   if (request.method !== "POST") return json({ error: "method_not_allowed" }, 405)
   const authorization = request.headers.get("Authorization")
   if (!authorization) return json({ error: "authentication_required" }, 401)
