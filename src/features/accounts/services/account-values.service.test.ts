@@ -1,7 +1,10 @@
 import { describe, expect, it } from "vitest"
 
-import { resolveAccountCurrentValues } from "./account-values.service"
+import { resolveAccountCurrentValues, resolveBrokerageCurrentValue } from "./account-values.service"
 import type { AccountSummary } from "@/lib/supabase/types"
+import type { HoldingDetails } from "@/features/holdings/types/holding"
+import type { HoldingValuationResult } from "@/features/portfolio-valuation/types/portfolio-valuation"
+import inventory from "../components/AccountInventory.tsx?raw"
 
 function account(id: string, type: AccountSummary["account_type_code"], openingBalance: string, extras: Partial<AccountSummary> = {}): AccountSummary {
   return {
@@ -33,7 +36,7 @@ function account(id: string, type: AccountSummary["account_type_code"], openingB
 }
 
 describe("resolveAccountCurrentValues", () => {
-  it("uses Available Cash for Brokerage accounts without positive holdings while preserving the existing fallback for open holdings", () => {
+  it("uses Available Cash for Brokerage accounts without positive holdings", () => {
     const values = resolveAccountCurrentValues({
       accounts: [
         account("cash", "cash", "100"),
@@ -75,7 +78,7 @@ describe("resolveAccountCurrentValues", () => {
       ["credit", "7500"],
       ["gold", "600"],
       ["brokerage-cash-only", "11150"],
-      ["brokerage-open-holding", "500"],
+      ["brokerage-open-holding", null],
       ["property", "500"],
       ["business", "600"],
       ["other", "700"],
@@ -126,5 +129,79 @@ describe("resolveAccountCurrentValues", () => {
     })
 
     expect(values.get("gold")).toBe("1260.00000000000000024")
+  })
+})
+
+describe("Brokerage incomplete Accounts-list fallback", () => {
+  it("keeps incomplete Brokerage values unavailable instead of using opening balance", () => {
+    const values = resolveAccountCurrentValues({
+      accounts: [account("brokerage", "brokerage", "999")],
+      recordBalances: new Map(),
+      metalPurchases: [],
+      metalCurrentPrices: new Map(),
+      brokerageAvailableCash: new Map([["brokerage", "100"]]),
+      brokerageAccountsWithPositiveHoldings: new Set(["brokerage"]),
+      brokerageCurrentValues: new Map([[
+        "brokerage",
+        {
+          value: null,
+          availableCash: "100",
+          holdingsMarketValue: null,
+          valuations: [],
+          status: "incomplete",
+          missingMarketPrice: true,
+          missingExchangeRate: false,
+        },
+      ]]),
+    })
+
+    expect(values.get("brokerage")).toBeNull()
+    expect(inventory).toContain('item.currentValueStatus === "incomplete" ? unavailableLabel : "—"')
+    expect(inventory).not.toContain("currentValueStatus === \"incomplete\" ? unavailableLabel : item.account.opening_balance")
+  })
+})
+
+function holding(id: string, quantity: string): HoldingDetails {
+  return { id, account_id: "brokerage", asset_id: id, quantity } as HoldingDetails
+}
+
+function valuation(holdingId: string, overrides: Partial<HoldingValuationResult> = {}): HoldingValuationResult {
+  return {
+    holdingId, assetId: holdingId, symbol: "TEST", assetName: "Test", assetType: "stock",
+    quantity: "1", averageCost: "1", costBasisNative: "1", costBasisCurrency: "USD",
+    marketPrice: "1", marketPriceCurrency: "USD", marketPriceTimestamp: "2026-08-26T00:00:00Z",
+    marketPriceSource: "twelve_data", marketValueNative: "1", unrealizedGainLossNative: null,
+    unrealizedReturnPercent: null, marketValueBase: "1", costBasisBase: "1", unrealizedGainLossBase: null,
+    baseCurrency: "USD", missingMarketPrice: false, missingExchangeRate: [], stalePrice: false, ...overrides,
+  }
+}
+
+describe("resolveBrokerageCurrentValue", () => {
+  it("returns cash only when there are no positive holdings", () => {
+    expect(resolveBrokerageCurrentValue({ availableCash: "100", holdings: [holding("zero", "0")], valuations: [] })).toMatchObject({ value: "100", status: "complete" })
+  })
+
+  it("adds one same-currency holding value", () => {
+    expect(resolveBrokerageCurrentValue({ availableCash: "100", holdings: [holding("one", "2")], valuations: [valuation("one", { marketValueBase: "25" })] }).value).toBe("125")
+  })
+
+  it("adds multiple holdings without using cost basis", () => {
+    expect(resolveBrokerageCurrentValue({ availableCash: "10", holdings: [holding("one", "1"), holding("two", "2")], valuations: [valuation("one", { marketValueBase: "12" }), valuation("two", { marketValueBase: "23" })] }).value).toBe("45")
+  })
+
+  it("supports cross-currency values when existing FX valuation is available", () => {
+    expect(resolveBrokerageCurrentValue({ availableCash: "100", holdings: [holding("eur", "1")], valuations: [valuation("eur", { marketValueNative: "10", marketValueBase: "37.5", marketPriceCurrency: "EUR" })] }).value).toBe("137.5")
+  })
+
+  it("marks a missing market price incomplete instead of treating it as zero", () => {
+    expect(resolveBrokerageCurrentValue({ availableCash: "100", holdings: [holding("missing", "1")], valuations: [valuation("missing", { marketPrice: null, marketValueBase: null, missingMarketPrice: true })] })).toMatchObject({ value: null, status: "incomplete", missingMarketPrice: true })
+  })
+
+  it("marks a missing FX rate incomplete", () => {
+    expect(resolveBrokerageCurrentValue({ availableCash: "100", holdings: [holding("fx", "1")], valuations: [valuation("fx", { marketValueBase: null, missingExchangeRate: [{ sourceCurrencyCode: "EUR", destinationCurrencyCode: "USD" }] })] })).toMatchObject({ value: null, status: "incomplete", missingExchangeRate: true })
+  })
+
+  it("preserves decimal precision during aggregation", () => {
+    expect(resolveBrokerageCurrentValue({ availableCash: "0.0000000001", holdings: [holding("precise", "1")], valuations: [valuation("precise", { marketValueBase: "0.2000000002" })] }).value).toBe("0.2000000003")
   })
 })

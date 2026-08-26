@@ -101,12 +101,16 @@ export function AccountsPage() {
     })
 
     const withBalance = filtered.map((account) => {
+      const brokerageStatus = accountCurrentValues.statuses.get(account.id)
       return {
         account,
         currentBalance:
           account.account_type_code === "gold"
             ? null
+            : account.account_type_code === "brokerage" && brokerageStatus === "incomplete"
+              ? null
             : accountCurrentValues.values.get(account.id) ?? account.opening_balance,
+        currentValueStatus: brokerageStatus ?? "complete",
         metalCurrentValue:
           account.account_type_code === "gold"
             ? accountCurrentValues.values.get(account.id) ?? null
@@ -145,6 +149,7 @@ export function AccountsPage() {
     filters,
     metalFilter,
     accountCurrentValues.values,
+    accountCurrentValues.statuses,
     sort,
   ])
 

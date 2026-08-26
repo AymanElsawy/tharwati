@@ -35,7 +35,7 @@ export function AccountDetailsPage() {
   if (!account) return <div className="pb-12"><Button variant="secondary" onClick={() => navigate("/accounts")}><ArrowLeft size={16} />{t("common.back")}</Button></div>
   if (account.account_type_code === "cash" || account.account_type_code === "bank") return <AccountRecordsPage accountValue={accountValue} isAccountValueLoading={accountValues.isLoading} />
   if (account.account_type_code === "gold") return <MetalAccountDetailsPage accountId={account.id} accountValue={accountValue} isAccountValueLoading={accountValues.isLoading} onAccountValueRefresh={accountValues.refresh} />
-  if (account.account_type_code === "brokerage") return <BrokerageAccountDetailsPage account={account} />
+  if (account.account_type_code === "brokerage") return <BrokerageAccountDetailsPage account={account} brokerageValue={accountValues.brokerageValues.get(account.id) ?? null} isBrokerageValueLoading={accountValues.isLoading} />
 
   return <div className="pb-12">
     <Button variant="ghost" className="-ms-3 mb-3" onClick={() => navigate("/accounts")}><ArrowLeft size={16} />{t("common.back")}</Button>

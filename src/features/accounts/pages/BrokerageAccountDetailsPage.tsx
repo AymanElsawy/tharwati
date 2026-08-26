@@ -4,9 +4,9 @@ import { useCallback, useEffect, useMemo, useState } from "react"
 import { useNavigate } from "react-router-dom"
 
 import { Button } from "@/components/ui/button"
-import { accountBalancesRepository } from "@/features/account-balances/repositories/account-balances.repository"
 import { BrokerageBuyDialog } from "@/features/accounts/components/BrokerageBuyDialog"
 import { currencyOptions } from "@/features/accounts/types/account-form"
+import type { BrokerageCurrentValue } from "@/features/accounts/services/account-values.service"
 import {
   assetsRepository,
   type AssetTypeSummary,
@@ -14,13 +14,14 @@ import {
 import { holdingsRepository } from "@/features/holdings/repositories/holdings.repository"
 import type { BrokerageActivityItem } from "@/features/holdings/repositories/holdings.repository"
 import type { HoldingDetails } from "@/features/holdings/types/holding"
+import type { HoldingValuationResult } from "@/features/portfolio-valuation/types/portfolio-valuation"
 import { useTranslation } from "@/i18n/useTranslation"
 import type { TranslationKey } from "@/i18n/en/translations"
 import { countries } from "@/lib/countries"
 import { formatLocalDateTimeInput } from "@/lib/formatting/local-date-time"
 import { supabase } from "@/lib/supabase/client"
 import type { AccountSummary, AssetSummary } from "@/lib/supabase/types"
-import { addDecimals, compareDecimals } from "@/lib/financial-calculations/decimal"
+import { addDecimals, compareDecimals, multiplyDecimals } from "@/lib/financial-calculations/decimal"
 import { formatLocalDateTime } from "@/lib/formatting/local-date-time"
 import {
   assetSearchService,
@@ -89,18 +90,19 @@ function activityAssetEntry(activity: BrokerageActivityItem) {
 
 export function BrokerageAccountDetailsPage({
   account,
+  brokerageValue,
+  isBrokerageValueLoading,
 }: {
   account: AccountSummary
+  brokerageValue: BrokerageCurrentValue | null
+  isBrokerageValueLoading: boolean
 }) {
   const navigate = useNavigate()
   const { language, t } = useTranslation()
   const locale = language === "ar" ? "ar-SA" : "en-US"
   const [holdings, setHoldings] = useState<HoldingDetails[]>([])
-  const [cash, setCash] = useState<string | null>(null)
   const [isHoldingsLoading, setIsHoldingsLoading] = useState(true)
-  const [isCashLoading, setIsCashLoading] = useState(true)
   const [holdingsError, setHoldingsError] = useState(false)
-  const [cashError, setCashError] = useState(false)
   const [activity, setActivity] = useState<BrokerageActivityItem[]>([])
   const [isActivityLoading, setIsActivityLoading] = useState(true)
   const [activityError, setActivityError] = useState(false)
@@ -110,35 +112,33 @@ export function BrokerageAccountDetailsPage({
 
   const load = useCallback(async () => {
     setIsHoldingsLoading(true)
-    setIsCashLoading(true)
     setHoldingsError(false)
-    setCashError(false)
     setIsActivityLoading(true)
     setActivityError(false)
 
     await Promise.all([
       holdingsRepository
         .getHoldingsForAccount(account.id)
-        .then(setHoldings)
+        .then((value) => {
+          setHoldings(value)
+          return value
+        })
         .catch(() => {
           setHoldings([])
           setHoldingsError(true)
+          return null
         })
         .finally(() => setIsHoldingsLoading(false)),
-      accountBalancesRepository
-        .getAccountBalances([account.id])
-        .then((balances) => setCash(balances[0]?.currentBalance ?? null))
-        .catch(() => {
-          setCash(null)
-          setCashError(true)
-        })
-        .finally(() => setIsCashLoading(false)),
       holdingsRepository
         .getBrokerageAccountActivity(account.id)
-        .then(setActivity)
+        .then((value) => {
+          setActivity(value)
+          return value
+        })
         .catch(() => {
           setActivity([])
           setActivityError(true)
+          return null
         })
         .finally(() => setIsActivityLoading(false)),
     ])
@@ -198,13 +198,33 @@ export function BrokerageAccountDetailsPage({
               {t("brokerage.availableCash")}
             </p>
             <p className="mt-1 text-2xl font-semibold tabular-nums" dir="ltr">
-              {isCashLoading || cash === null
+              {isBrokerageValueLoading || brokerageValue === null
                 ? "--"
-                : formatAmount(cash, account.currency_code, locale)}
+                : formatAmount(brokerageValue.availableCash, account.currency_code, locale)}
             </p>
-            {cashError ? (
+            <p className="mt-3 text-sm text-muted-foreground">
+              {t("brokerage.totalHoldingsMarketValue")}
+            </p>
+            <p className="mt-1 text-2xl font-semibold tabular-nums" dir="ltr">
+              {isBrokerageValueLoading || isHoldingsLoading || brokerageValue === null
+                ? "--"
+                : brokerageValue?.holdingsMarketValue === null || brokerageValue === null
+                  ? t("brokerage.currentValueUnavailable")
+                  : formatAmount(brokerageValue.holdingsMarketValue, account.currency_code, locale)}
+            </p>
+            <p className="mt-3 text-sm text-muted-foreground">
+              {t("brokerage.currentValue")}
+            </p>
+            <p className="mt-1 text-2xl font-semibold tabular-nums" dir="ltr">
+              {isBrokerageValueLoading || isHoldingsLoading || brokerageValue === null
+                ? "--"
+                : brokerageValue?.status !== "complete" || brokerageValue.value === null
+                  ? t("brokerage.currentValueUnavailable")
+                  : formatAmount(brokerageValue.value, account.currency_code, locale)}
+            </p>
+            {brokerageValue?.status === "incomplete" ? (
               <p className="mt-1 text-xs text-muted-foreground">
-                {t("brokerage.availableCashError")}
+                {t("brokerage.currentValueIncomplete")}
               </p>
             ) : null}
           </div>
@@ -251,8 +271,13 @@ export function BrokerageAccountDetailsPage({
           </div>
         ) : (
           <div className="divide-y border-y border-[var(--color-border)]">
-            {holdings.map((holding) => (
-              <HoldingRow key={holding.id} holding={holding} locale={locale} />
+            {holdings.filter((holding) => compareDecimals(holding.quantity, "0") === 1).map((holding) => (
+              <HoldingRow
+                key={holding.id}
+                holding={holding}
+                valuation={brokerageValue?.valuations.find((item) => item.holdingId === holding.id) ?? null}
+                locale={locale}
+              />
             ))}
           </div>
         )}
@@ -303,7 +328,7 @@ export function BrokerageAccountDetailsPage({
       />
       <BrokerageBuyDialog
         account={isBuyOpen ? account : null}
-        availableCash={cash}
+        availableCash={brokerageValue?.availableCash ?? null}
         onClose={() => setIsBuyOpen(false)}
         onSaved={async () => {
           setIsBuyOpen(false)
@@ -323,9 +348,11 @@ export function BrokerageAccountDetailsPage({
 
 function HoldingRow({
   holding,
+  valuation,
   locale,
 }: {
   holding: HoldingDetails
+  valuation: HoldingValuationResult | null
   locale: string
 }) {
   const navigate = useNavigate()
@@ -333,11 +360,14 @@ function HoldingRow({
   const asset = holding.asset as HoldingDetails["asset"] & {
     exchange?: string | null
   }
+  const marketValue = valuation?.marketPrice
+    ? multiplyDecimals(holding.quantity, valuation.marketPrice)
+    : null
 
   return (
     <button
       type="button"
-      className="grid w-full gap-3 py-4 text-start hover:bg-muted/40 sm:grid-cols-[minmax(0,1fr)_auto]"
+      className="grid w-full gap-3 py-4 text-start hover:bg-muted/40 sm:grid-cols-[minmax(0,1fr)_minmax(0,2fr)]"
       aria-label={asset.name}
       onClick={() =>
         navigate(`/accounts/${holding.account_id}/holdings/${holding.asset_id}`)
@@ -349,7 +379,7 @@ function HoldingRow({
           {[asset.symbol, asset.exchange].filter(Boolean).join(" · ")}
         </span>
       </span>
-      <span className="grid grid-cols-3 gap-2 text-end text-sm tabular-nums sm:gap-4">
+      <span className="grid grid-cols-2 gap-3 text-end text-sm tabular-nums sm:grid-cols-4 sm:gap-4">
         <span>
           <b className="block break-words">{holding.quantity}</b>
           <small>{t("holdings.table.quantity")}</small>
@@ -368,13 +398,19 @@ function HoldingRow({
         </span>
         <span>
           <b className="block break-words">
-            {formatAmount(
-              holding.total_cost_basis,
-              holding.cost_currency_code,
-              locale
-            )}
+            {valuation?.marketPrice === null || valuation === null
+              ? t("brokerage.currentValueUnavailable")
+              : formatAmount(valuation.marketPrice, asset.currency_code, locale)}
           </b>
-          <small>{t("holdings.table.totalCost")}</small>
+          <small>{t("brokerage.currentPrice")} ({asset.currency_code})</small>
+        </span>
+        <span>
+          <b className="block break-words">
+            {marketValue === null
+              ? t("brokerage.currentValueUnavailable")
+              : formatAmount(marketValue, asset.currency_code, locale)}
+          </b>
+          <small>{t("brokerage.marketValue")} ({asset.currency_code})</small>
         </span>
       </span>
     </button>

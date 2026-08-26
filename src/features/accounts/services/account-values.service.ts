@@ -9,6 +9,118 @@ import {
 import type { MetalPurchaseTransaction } from "../types/metal-purchase"
 import { accountBalancesRepository } from "@/features/account-balances/repositories/account-balances.repository"
 import { holdingsRepository } from "@/features/holdings/repositories/holdings.repository"
+import { portfolioValuationService } from "@/features/portfolio-valuation/services/portfolio-valuation.service"
+import type { HoldingDetails } from "@/features/holdings/types/holding"
+import type { HoldingValuationResult } from "@/features/portfolio-valuation/types/portfolio-valuation"
+import { addDecimals, compareDecimals } from "@/lib/financial-calculations/decimal"
+
+export type AccountCurrentValueStatus = "complete" | "incomplete"
+
+export type BrokerageCurrentValue = {
+  value: Decimal | null
+  availableCash: Decimal
+  holdingsMarketValue: Decimal | null
+  valuations: readonly HoldingValuationResult[]
+  status: AccountCurrentValueStatus
+  missingMarketPrice: boolean
+  missingExchangeRate: boolean
+}
+
+export async function calculateBrokerageCurrentValue(input: {
+  availableCash: Decimal
+  accountCurrencyCode: string
+  holdings: readonly HoldingDetails[]
+}): Promise<BrokerageCurrentValue> {
+  const valuation = await portfolioValuationService.calculate({
+    baseCurrency: input.accountCurrencyCode,
+    holdings: input.holdings,
+  })
+  const positiveHoldings = input.holdings.filter(
+    (holding) => compareDecimals(holding.quantity, "0") === 1,
+  )
+  const positiveValuations = valuation.holdings.filter((item) =>
+    positiveHoldings.some((holding) => holding.id === item.holdingId),
+  )
+  const resolved = resolveBrokerageCurrentValue({
+    availableCash: input.availableCash,
+    holdings: input.holdings,
+    valuations: valuation.holdings,
+  })
+  return {
+    ...resolved,
+    availableCash: input.availableCash,
+    holdingsMarketValue:
+      resolved.status === "complete"
+        ? positiveValuations.reduce<Decimal>(
+            (total, item) => addDecimals(total, item.marketValueBase!),
+            "0",
+          )
+        : null,
+    valuations: valuation.holdings,
+  }
+}
+
+export function resolveBrokerageCurrentValue(input: {
+  availableCash: Decimal
+  holdings: readonly HoldingDetails[]
+  valuations: readonly HoldingValuationResult[]
+}): BrokerageCurrentValue {
+  const positiveHoldings = input.holdings.filter(
+    (holding) => compareDecimals(holding.quantity, "0") === 1,
+  )
+  if (positiveHoldings.length === 0) {
+    return {
+      value: input.availableCash,
+      availableCash: input.availableCash,
+      holdingsMarketValue: "0",
+      valuations: [],
+      status: "complete",
+      missingMarketPrice: false,
+      missingExchangeRate: false,
+    }
+  }
+
+  const valuationByHoldingId = new Map(
+    input.valuations.map((valuation) => [valuation.holdingId, valuation]),
+  )
+  const positiveValuations = positiveHoldings.map((holding) =>
+    valuationByHoldingId.get(holding.id),
+  )
+  const missingMarketPrice = positiveValuations.some(
+    (valuation) => !valuation || valuation.missingMarketPrice,
+  )
+  const missingExchangeRate = positiveValuations.some(
+    (valuation) => !valuation || valuation.missingExchangeRate.length > 0,
+  )
+  const hasUnvaluedHolding = positiveValuations.some(
+    (valuation) => !valuation || valuation.marketValueBase === null,
+  )
+  if (missingMarketPrice || missingExchangeRate || hasUnvaluedHolding) {
+    return {
+      value: null,
+      availableCash: input.availableCash,
+      holdingsMarketValue: null,
+      valuations: input.valuations,
+      status: "incomplete",
+      missingMarketPrice,
+      missingExchangeRate,
+    }
+  }
+
+  const holdingsValue = positiveValuations.reduce<Decimal>(
+    (total, valuation) => addDecimals(total, valuation!.marketValueBase!),
+    "0",
+  )
+  return {
+    value: addDecimals(input.availableCash, holdingsValue),
+    availableCash: input.availableCash,
+    holdingsMarketValue: holdingsValue,
+    valuations: input.valuations,
+    status: "complete",
+    missingMarketPrice: false,
+    missingExchangeRate: false,
+  }
+}
 
 export type AccountCurrentValuesInput = {
   accounts: readonly AccountSummary[]
@@ -17,6 +129,7 @@ export type AccountCurrentValuesInput = {
   metalCurrentPrices: ReadonlyMap<string, Decimal | null>
   brokerageAvailableCash: ReadonlyMap<string, Decimal>
   brokerageAccountsWithPositiveHoldings: ReadonlySet<string>
+  brokerageCurrentValues?: ReadonlyMap<string, BrokerageCurrentValue>
 }
 
 /** Selects the exact value source already used by the Accounts list for each account type. */
@@ -27,6 +140,7 @@ export function resolveAccountCurrentValues({
   metalCurrentPrices,
   brokerageAvailableCash,
   brokerageAccountsWithPositiveHoldings,
+  brokerageCurrentValues,
 }: AccountCurrentValuesInput): Map<string, Decimal | null> {
   return new Map(accounts.map((account) => {
     if (account.account_type_code === "gold") {
@@ -43,13 +157,15 @@ export function resolveAccountCurrentValues({
             ),
       ] as const
     }
-    if (
-      account.account_type_code === "brokerage" &&
-      !brokerageAccountsWithPositiveHoldings.has(account.id)
-    ) {
+    if (account.account_type_code === "brokerage") {
+      const brokerageValue = brokerageCurrentValues?.get(account.id)
       return [
         account.id,
-        brokerageAvailableCash.get(account.id) ?? account.opening_balance,
+        brokerageValue
+          ? brokerageValue.value
+          : !brokerageAccountsWithPositiveHoldings.has(account.id)
+            ? brokerageAvailableCash.get(account.id) ?? account.opening_balance
+            : null,
       ] as const
     }
     return [account.id, recordBalances.get(account.id) ?? account.opening_balance] as const
@@ -57,7 +173,8 @@ export function resolveAccountCurrentValues({
 }
 
 export async function getAccountCurrentValues(
-  accounts: readonly AccountSummary[]
+  accounts: readonly AccountSummary[],
+  onBrokerageValues?: (values: ReadonlyMap<string, BrokerageCurrentValue>) => void,
 ): Promise<Map<string, Decimal | null>> {
   const metalAccounts = accounts.filter((account) => account.account_type_code === "gold")
   const recordAccounts = getRecordAccounts(accounts)
@@ -72,6 +189,31 @@ export async function getAccountCurrentValues(
     holdingsRepository.getHoldings(),
   ])
 
+  const brokerageCurrentValues = new Map<string, BrokerageCurrentValue>()
+  await Promise.all(brokerageAccounts.map(async (account) => {
+    const accountHoldings = holdings.filter((holding) => holding.account_id === account.id)
+    const balance = brokerageBalances.find((item) => item.accountId === account.id)
+    if (!balance) return
+    try {
+      brokerageCurrentValues.set(account.id, await calculateBrokerageCurrentValue({
+        availableCash: balance.currentBalance,
+        accountCurrencyCode: account.currency_code,
+        holdings: accountHoldings,
+      }))
+    } catch {
+      brokerageCurrentValues.set(account.id, {
+        value: null,
+        availableCash: balance.currentBalance,
+        holdingsMarketValue: null,
+        valuations: [],
+        status: "incomplete",
+        missingMarketPrice: true,
+        missingExchangeRate: true,
+      })
+    }
+  }))
+  onBrokerageValues?.(brokerageCurrentValues)
+
   return resolveAccountCurrentValues({
     accounts,
     recordBalances,
@@ -83,5 +225,6 @@ export async function getAccountCurrentValues(
     brokerageAccountsWithPositiveHoldings: new Set(
       holdings.map((holding) => holding.account_id).filter((accountId): accountId is string => accountId !== null)
     ),
+    brokerageCurrentValues,
   })
 }
