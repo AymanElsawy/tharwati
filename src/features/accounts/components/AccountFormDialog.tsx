@@ -1,5 +1,5 @@
 import { Dialog } from "@base-ui/react/dialog"
-import { X } from "lucide-react"
+import { AlertTriangle, X } from "lucide-react"
 import { useMemo, useState } from "react"
 
 import { Button } from "@/components/ui/button"
@@ -42,6 +42,7 @@ export function AccountFormDialog({
   const [selectedType, setSelectedType] = useState<AccountTypeCode | null>(null)
   const [sessionId, setSessionId] = useState(0)
   const [wasOpen, setWasOpen] = useState(isOpen)
+  const [submitError, setSubmitError] = useState<string | null>(null)
 
   if (isOpen !== wasOpen) {
     setWasOpen(isOpen)
@@ -49,6 +50,7 @@ export function AccountFormDialog({
       setCreationStep("type")
       setSelectedType(null)
       setSessionId((id) => id + 1)
+      setSubmitError(null)
     }
   }
 
@@ -143,16 +145,38 @@ export function AccountFormDialog({
                   })}
                 </div>
               </fieldset>
-            ) : <AccountForm
-              key={sessionId}
-              defaultValues={effectiveDefaults}
-              formId={formId}
-              isSaving={isSaving}
-              isCurrencyLocked={isCurrencyLocked}
-              isOpeningBalanceLocked={isOpeningBalanceLocked}
-              onSubmit={onSubmit}
-              onDirtyChange={onDirtyChange}
-            />}
+            ) : <>
+              {submitError ? (
+                <div
+                  role="alert"
+                  className="mb-4 flex items-start gap-2.5 rounded-xl border border-amber-600/35 bg-amber-500/10 px-4 py-3 text-sm text-amber-800 dark:text-amber-300"
+                >
+                  <AlertTriangle size={16} className="mt-0.5 shrink-0" />
+                  <span>{submitError}</span>
+                </div>
+              ) : null}
+              <AccountForm
+                key={sessionId}
+                defaultValues={effectiveDefaults}
+                formId={formId}
+                isSaving={isSaving}
+                isCurrencyLocked={isCurrencyLocked}
+                isOpeningBalanceLocked={isOpeningBalanceLocked}
+                onSubmit={async (values) => {
+                  setSubmitError(null)
+                  try {
+                    await onSubmit(values)
+                  } catch (cause) {
+                    setSubmitError(
+                      cause instanceof Error
+                        ? cause.message
+                        : t("accounts.error.unexpected"),
+                    )
+                  }
+                }}
+                onDirtyChange={onDirtyChange}
+              />
+            </>}
           </div>
 
           <footer className="flex shrink-0 flex-col-reverse gap-2 border-t border-[var(--color-border)] bg-[var(--color-surface-muted)] px-5 py-4 sm:flex-row sm:justify-end sm:px-7">

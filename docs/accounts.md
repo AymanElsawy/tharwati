@@ -65,7 +65,7 @@ Triggers (immutability guards once financial history exists):
 
 - Changing `currency_code` on an account with existing `transaction_entries` raises Postgres error `23514` ("This account already contains financial history. Its currency cannot be changed.").
 - Changing `opening_balance` similarly raises `23514` for opening balance.
-- **Current caveat**: `getAccountDeletionEligibility()` in the repository always returns `hasFinancialHistory: false` today (this deployment has no populated ledger), so these locked-field UI states never actually trigger yet — but the UI pattern (read-only field + explanatory caption) should still be built for forward compatibility.
+- `getAccountDeletionEligibility()` queries `transaction_entries`, `holdings`, and `metal_purchases` for rows referencing the given account ids (all scoped to the authenticated user); an account is `hasFinancialHistory: true` (and therefore `canDelete: false`) if any of the three has a matching row. This drives both the locked-field UI states above and the Delete button's disabled state in the Accounts list.
 
 `account_types` reference table (seed data only, not queried dynamically by the client — types are hardcoded client-side):
 `cash, bank, brokerage, gold, real_estate, business, other`.
@@ -300,8 +300,9 @@ The Add Metal Record dialog shows purity, date and time, grams, cost per gram, o
 
 - **Create**: for `gold`-type accounts, `name` is force-set to `"Silver"` if `metalType === "silver"`, else `"Gold"` (ignores any user input, since the field is hidden). If the form's `isActive` is `false`, creation requires a create-then-immediately-update round trip (insert always creates active, then a second call sets `is_active = false`).
 - **Update**: same name-forcing logic for gold accounts; otherwise updates all provided fields.
-- **Archive**: soft-deactivate only — `updateAccount(id, { isActive: false })`. There is **no separate DB flag**; archived = `is_active = false`.
-- **Delete**: hard delete, gated by `getAccountDeletionEligibility()` (currently a no-op stub always returning `canDelete: true`).
+- **Friendly constraint errors**: both `createAccount()` and `updateAccount()` translate specific Postgres constraint violations into readable `RepositoryError` messages instead of surfacing the raw database error: the gold/silver singleton-per-currency unique index (`financial_accounts_user_currency_metal_type_key`, `23505`) becomes "You already have this type of Gold/Silver account in this currency. Go to that account and add a purchase instead of creating a new one."; the non-metal case-insensitive name uniqueness (`financial_accounts_non_metal_user_name_lower_key`, `23505`) becomes a duplicate-name message; the two immutability triggers (§2.1) keep their existing messages. `AccountFormDialog` catches whatever `onSubmit` throws and renders it as a visible alert inside the dialog (the dialog stays open so the user can correct the field) — previously a create/update failure only surfaced as a generic "Account action failed" banner on the page behind the dialog, or an unhandled rejection in the console, with no readable message shown to the user.
+- **Archive**: soft-deactivate only — `updateAccount(id, { isActive: false })`. There is **no separate DB flag**; archived = `is_active = false`. Note the gold/silver singleton unique index has no `is_active` predicate, so an archived Gold/Silver account still occupies its `(user_id, currency_code, metal_type)` slot — creating a replacement in the same currency hits the same friendly duplicate-account error above; the existing archived account must be restored or the new one created in a different currency.
+- **Delete**: hard delete, gated by `getAccountDeletionEligibility()`.
 - **Mutation guard**: only one mutation may be in flight at a time; a concurrent attempt throws `RepositoryError({code: "conflict"})`.
 - **Cross-feature refresh**: after any mutation (including metal purchases), the web app dispatches a global `window` event `"tharwati:data-changed"`, which other hooks (`useAccounts`, `useCashBalances`) listen for to silently refresh their data. **Mobile needs an equivalent global invalidation mechanism** (event emitter, or query-cache invalidation by shared key).
 
@@ -314,7 +315,7 @@ class AccountsRepository {
   createAccount(input: CreateAccountInput): Promise<AccountSummary>
   updateAccount(id, input: UpdateAccountInput): Promise<AccountSummary>
   archiveAccount(id): Promise<AccountSummary> // = updateAccount(id, {isActive:false})
-  getAccountDeletionEligibility(ids): Promise<AccountDeletionEligibility[]> // stub: always canDelete:true
+  getAccountDeletionEligibility(ids): Promise<AccountDeletionEligibility[]> // checks transaction_entries, holdings, metal_purchases
   deleteAccount(id): Promise<void> // throws constraint_violation if ineligible
 }
 
@@ -397,8 +398,9 @@ For Income and Expense, Add Record uses a wide two-column grid on tablet/desktop
 - Balance field label varies by type: `brokerage` → "Starting cash balance"; `real_estate`/`business` → "Current value"; `cash`/`bank`/`other` → "Starting balance"; hidden entirely for `gold`.
 - Bank Debit shows Name, Currency, Type, Current Balance, and Active account. Bank Credit additionally shows a required Credit Card Limit and an optional Due Day of Month dropdown (`Unset`, then 1-31). For Bank Credit, Current Balance means available credit, and Amount Due is derived outside the form as `Credit Card Limit - Current Balance`; Amount Due is never entered manually.
 - "Active account" toggle shown for all types except `gold` (gold accounts can't be created inactive from this form).
-- Locked-field states (currency/opening balance read-only with explanatory caption) exist in the UI for when `hasFinancialHistory` is true — currently never triggered live (see §2.1 caveat), but should be built for forward compatibility.
+- Locked-field states (currency/opening balance read-only with explanatory caption) exist in the UI for when `hasFinancialHistory` is true (per §2.1, driven by real `transaction_entries`/`holdings`/`metal_purchases` checks).
 - Validation errors only render after the first submit attempt, then update live.
+- A create/update failure (e.g. a constraint violation) renders as a dismissible alert inside the dialog, above the form fields; the dialog stays open so the user can correct the offending field and resubmit.
 - Closing a dirty form should prompt an "unsaved changes" confirmation.
 
 ### 6.5 Archive / Delete confirm dialogs
@@ -442,7 +444,7 @@ Display formatting:
 2. **Gold account `openingBalance` is always `"0"`** on create/update — real balance only accrues via metal purchases.
 3. **Weighted-average cost formula** excludes fees; must be replicated exactly (§2.3 step 5).
 4. **"Restore" is effectively broken** in the current web app (§6.3) — recommend fixing on mobile, but note the deviation.
-5. **Delete eligibility / locked-field checks are stubbed to always pass** today — the DB-level immutability triggers exist but never fire in this deployment (no populated ledger yet). Build the UI pattern anyway for forward compatibility.
+5. **The gold/silver singleton-per-currency unique index does not exclude archived (`is_active = false`) accounts.** Archiving a Gold or Silver account permanently occupies its `(user_id, currency_code, metal_type)` slot for that user — creating a new one in the same currency fails with the same friendly duplicate-account message as a genuine duplicate, and the only way out is to restore the archived account (currently broken, see #4) or delete it (only possible if it has no purchase history) or use a different currency. This is a known rough edge, not yet resolved at the schema level.
 6. Cash and Bank values are ledger-adjusted through `get_account_balances`. Active Brokerage accounts also have a ledger-projected Available Cash balance for shared financial reads, while the Accounts list still displays raw `opening_balance` until Brokerage holdings aggregation is introduced; other non-metal account types display raw `opening_balance`.
 7. A `"deposit"` account type appears in one funding-account filter but is **not a real type** — dead code; only `cash`/`bank` are valid metal-purchase funding sources.
 8. **Metal purchase fees are hardcoded to `"0"`** from the client — no fee input UI exists yet, despite full schema/RPC support. Adding it on mobile is net-new, not parity.

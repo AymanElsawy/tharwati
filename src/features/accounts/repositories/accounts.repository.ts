@@ -67,6 +67,10 @@ const immutableCurrencyMessage =
   "This account already contains financial history. Its currency cannot be changed."
 const immutableOpeningBalanceMessage =
   "This account already contains financial history. Its opening balance cannot be changed."
+const duplicateMetalAccountMessage =
+  "You already have this type of Gold/Silver account in this currency. Go to that account and add a purchase instead of creating a new one."
+const duplicateAccountNameMessage =
+  "You already have an account with this name. Choose a different name."
 
 type DatabaseError = {
   code?: string
@@ -135,12 +139,36 @@ function mapAccountSummary(
   }
 }
 
-function throwAccountUpdateError(
+function throwAccountConstraintError(
   error: DatabaseError | null,
   operation: string
 ): void {
   if (!error) {
     return
+  }
+
+  if (
+    error.code === "23505" &&
+    error.message.includes("financial_accounts_user_currency_metal_type_key")
+  ) {
+    throw new RepositoryError({
+      code: "conflict",
+      message: duplicateMetalAccountMessage,
+      operation,
+      cause: error,
+    })
+  }
+
+  if (
+    error.code === "23505" &&
+    error.message.includes("financial_accounts_non_metal_user_name_lower_key")
+  ) {
+    throw new RepositoryError({
+      code: "conflict",
+      message: duplicateAccountNameMessage,
+      operation,
+      cause: error,
+    })
   }
 
   if (
@@ -234,6 +262,7 @@ export class AccountsRepository {
       .select(accountSelect)
       .single()
 
+    throwAccountConstraintError(error, operation)
     return mapAccountSummary(
       requireQueryData(data, error, operation),
       operation
@@ -314,7 +343,7 @@ export class AccountsRepository {
       .select(accountSelect)
       .single()
 
-    throwAccountUpdateError(error, operation)
+    throwAccountConstraintError(error, operation)
     return mapAccountSummary(
       requireQueryData(data, error, operation),
       operation
@@ -328,12 +357,48 @@ export class AccountsRepository {
   async getAccountDeletionEligibility(
     accountIds: string[]
   ): Promise<AccountDeletionEligibility[]> {
-    // This deployment scopes financial_accounts as a standalone table with no
-    // ledger/holdings schema, so no account can carry financial history yet.
+    const operation = "accounts.getAccountDeletionEligibility"
+    if (accountIds.length === 0) return []
+
+    const userId = await requireAuthenticatedUserId(this.client, operation)
+    const [entriesResult, holdingsResult, metalPurchasesResult] =
+      await Promise.all([
+        this.client
+          .from("transaction_entries")
+          .select("account_id")
+          .eq("user_id", userId)
+          .in("account_id", accountIds),
+        this.client
+          .from("holdings")
+          .select("account_id")
+          .eq("user_id", userId)
+          .in("account_id", accountIds),
+        this.client
+          .from("metal_purchases")
+          .select("account_id")
+          .eq("user_id", userId)
+          .in("account_id", accountIds),
+      ])
+    const referencedIds = new Set([
+      ...requireQueryData(entriesResult.data, entriesResult.error, operation)
+        .map((entry) => entry.account_id)
+        .filter((id): id is string => id !== null),
+      ...requireQueryData(
+        holdingsResult.data,
+        holdingsResult.error,
+        operation
+      ).map((holding) => holding.account_id),
+      ...requireQueryData(
+        metalPurchasesResult.data,
+        metalPurchasesResult.error,
+        operation
+      ).map((purchase) => purchase.account_id),
+    ])
+
     return accountIds.map((accountId) => ({
       accountId,
-      canDelete: true,
-      hasFinancialHistory: false,
+      canDelete: !referencedIds.has(accountId),
+      hasFinancialHistory: referencedIds.has(accountId),
     }))
   }
 
