@@ -1,7 +1,5 @@
 import { useCallback, useEffect, useState } from "react"
 
-import { accountBalancesRepository } from "@/features/account-balances/repositories/account-balances.repository"
-import { getAccountCurrentValues } from "@/features/accounts/services/account-values.service"
 import { accountsRepository } from "@/features/accounts/repositories/accounts.repository"
 import {
   calculateDashboardAggregate,
@@ -9,7 +7,11 @@ import {
 } from "@/features/dashboard/services/dashboard-aggregate.service"
 import { getCurrentUserBaseCurrency } from "@/features/profile/repositories/profile.repository"
 import { RepositoryError } from "@/lib/supabase/types"
-import { exchangeRateService } from "@/services/exchange-rates"
+import {
+  getDashboardValuationSnapshot,
+  snapshotAccountBalances,
+  snapshotRateResolver,
+} from "@/features/dashboard/services/dashboard-valuation-snapshot.service"
 
 export function useDashboardAggregate() {
   const [result, setResult] = useState<DashboardAggregate | null>(null)
@@ -29,17 +31,15 @@ export function useDashboardAggregate() {
         return
       }
       const activeAccounts = accounts.filter((account) => account.is_active)
-      const [currentValues, accountBalances] = await Promise.all([
-        getAccountCurrentValues(activeAccounts),
-        accountBalancesRepository.getAccountBalances(activeAccounts.map((account) => account.id)),
-      ])
-      setResult(await calculateDashboardAggregate({
+      const snapshot = await getDashboardValuationSnapshot()
+      const aggregate = await calculateDashboardAggregate({
         baseCurrencyCode,
         accounts: activeAccounts,
-        currentValues,
-        accountBalances,
-        rates: exchangeRateService,
-      }))
+        currentValues: snapshot.currentValues,
+        accountBalances: snapshotAccountBalances(snapshot, activeAccounts),
+        rates: snapshotRateResolver(snapshot),
+      })
+      setResult({ ...aggregate, asOf: snapshot.asOf, freshness: snapshot.freshness })
       setError(null)
     } catch (cause) {
       setError(cause instanceof RepositoryError ? cause : new RepositoryError({

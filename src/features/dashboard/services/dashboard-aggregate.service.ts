@@ -23,6 +23,8 @@ export type DashboardAssetGroup = (typeof dashboardAssetGroups)[number]
 export type DashboardAggregate = {
   baseCurrencyCode: string
   status: "complete" | "incomplete"
+  asOf?: string
+  freshness?: "fresh" | "stale" | "unavailable"
   totalAssets: Decimal | null
   totalLiabilities: Decimal | null
   netWorth: Decimal | null

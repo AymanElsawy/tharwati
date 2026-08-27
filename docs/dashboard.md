@@ -178,6 +178,7 @@ Portfolio totals: sum market value / cost basis / gain-loss only over holdings t
 - Bank Credit is never an asset: `amount_due = credit_card_limit - get_account_balances.current_balance`; it is converted through the current FX service and summed as liabilities. `netWorth = totalAssets - totalLiabilities`.
 - Any missing current value, missing/invalid Bank Credit limit or ledger balance, or unavailable FX rate makes the aggregate `incomplete`; totals and Net Worth are unavailable rather than treating a source as zero.
 - The live Dashboard page loads this aggregate once and passes the same snapshot to Net Worth and Assets Breakdown; Assets Breakdown never performs its own valuation, FX lookup, or aggregation.
+- Market-dependent account values and FX rates come from the authenticated `dashboard-valuation` server snapshot. A per-user/base-currency persisted snapshot is reused for 15 minutes and returns one `asOf`, expiry, and `fresh`/`stale`/`unavailable` freshness state. It batches Brokerage assets through the persisted `market_prices` flow, resolves FX through the existing provider cache with the existing user-rate fallback, and resolves Gold/Silver once per metal symbol. Dashboard totals therefore do not use browser-local FX or metal caches.
 
 ### 2.3 Portfolio allocation grouping
 Group = `"stocks"` if asset type is `stock`, `"etfs"` if `etf`, else `"other"`; plus a synthetic `"cash"` group entry if cash assets > 0. Percentages are computed per group as `groupValue / totalPositiveValue * 100`, **except the last group, which receives the residual `100 − sum(others)`** — this guarantees percentages always sum to exactly 100 despite floating-point/rounding drift. Non-positive-value groups are excluded.
@@ -242,7 +243,11 @@ Intended composition, top to bottom:
 
 ## 4. API / data layer
 
-No dedicated server-side dashboard aggregation exists (no Supabase view/RPC named for dashboard/net-worth/portfolio-valuation) — **all aggregation math happens client-side** in TypeScript services, built from a few plain table reads plus two RPCs:
+The live Dashboard aggregate consumes an authenticated `dashboard-valuation` Edge Function snapshot. Its `dashboard_valuation_snapshots` table stores one unexpired snapshot per user and supported base currency (`USD`, `SAR`, `EGP`, `EUR`, or `GBP`), and `store_dashboard_valuation_snapshot(...)` atomically preserves the first valid snapshot in the 15-minute window. The final base-currency grouping and liability arithmetic remains in the shared decimal-safe TypeScript aggregate.
+
+When the Edge Function cannot build or persist a snapshot, its 500 response contains only a fixed diagnostic `reason` stage code (including account-value construction, FX conversion, snapshot persistence, or response serialization); it never returns provider, database, account, or secret details.
+
+Raw Brokerage holding quantities and effective metal-purchase gram quantities are normalized to decimal strings at the Edge boundary before valuation, so PostgreSQL numeric JSON representation does not affect decimal-safe valuation.
 
 - **`get_account_balances(p_account_ids?)`** — ledger-adjusted balance read model: `current_balance = opening_balance + Σ(posted debit − posted credit account-side entries)`, excluding asset-side entries and draft/void transactions. Used by the rich net-worth path (not by the production `useNetWorth`, which reads raw `opening_balance` directly).
 - **`resolve_historical_exchange_rate(source, destination, requested_at)`** — for historical-rate lookups (not used by current-value dashboard calculations, which resolve *current* rates via a live external FX call with a stored-table fallback).

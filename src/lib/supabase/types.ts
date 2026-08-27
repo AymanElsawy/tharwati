@@ -98,6 +98,16 @@ type MarketPriceRow = {
   updated_at: string
 }
 
+type DashboardValuationSnapshotRow = {
+  user_id: string
+  base_currency_code: string
+  snapshot: Json
+  as_of: string
+  expires_at: string
+  created_at: string
+  updated_at: string
+}
+
 type AccountTypeRow = {
   code: string
   name: string
@@ -353,6 +363,18 @@ export type Database = {
           fetched_at?: string
           price_type?:
             "realtime" | "delayed" | "previous_close" | "stale" | "manual"
+          created_at?: string
+          updated_at?: string
+        }
+      >
+      dashboard_valuation_snapshots: TableDefinition<
+        DashboardValuationSnapshotRow,
+        {
+          user_id: string
+          base_currency_code: string
+          snapshot: Json
+          as_of: string
+          expires_at: string
           created_at?: string
           updated_at?: string
         }
@@ -643,6 +665,15 @@ export type Database = {
           ledger_effect: Decimal
           current_balance: Decimal
         }>
+      }
+      store_dashboard_valuation_snapshot: {
+        Args: {
+          p_base_currency_code: string
+          p_snapshot: Json
+          p_as_of: string
+          p_expires_at: string
+        }
+        Returns: Json
       }
       get_brokerage_available_cash: {
         Args: {
