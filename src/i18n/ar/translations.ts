@@ -437,6 +437,8 @@ export const ar: Record<TranslationKey, string> = {
   "brokerage.availableCash": "النقد المتاح",
   "brokerage.currentValue": "القيمة الحالية",
   "brokerage.totalHoldingsMarketValue": "إجمالي القيمة السوقية للحيازات",
+  "brokerage.totalUnrealizedPnl": "إجمالي الربح/الخسارة غير المحققة",
+  "brokerage.totalUnrealizedPnlPercent": "إجمالي نسبة الربح/الخسارة غير المحققة %",
   "brokerage.currentValueUnavailable": "غير متاحة",
   "brokerage.currentValueIncomplete": "القيمة الحالية غير مكتملة لأن بيانات السوق غير متاحة.",
   "brokerage.availableCashError": "تعذر تحميل النقد المتاح.",

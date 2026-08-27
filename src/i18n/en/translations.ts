@@ -451,6 +451,8 @@ export const en = {
   "brokerage.availableCash": "Available Cash",
   "brokerage.currentValue": "Current Value",
   "brokerage.totalHoldingsMarketValue": "Total holdings market value",
+  "brokerage.totalUnrealizedPnl": "Total Unrealized P/L",
+  "brokerage.totalUnrealizedPnlPercent": "Total Unrealized P/L %",
   "brokerage.currentValueUnavailable": "Unavailable",
   "brokerage.currentValueIncomplete": "Current value is incomplete because market data is unavailable.",
   "brokerage.availableCashError": "Unable to load available cash.",

@@ -204,6 +204,24 @@ export function BrokerageAccountDetailsPage({
                 : formatAmount(brokerageValue.availableCash, account.currency_code, locale)}
             </p>
             <p className="mt-3 text-sm text-muted-foreground">
+              {t("brokerage.totalUnrealizedPnl")}
+            </p>
+            <p className="mt-1 text-2xl font-semibold tabular-nums" dir="ltr">
+              {isBrokerageValueLoading
+                ? "--"
+                : brokerageValue === null || brokerageValue.unrealizedPnl === null
+                  ? t("brokerage.currentValueUnavailable")
+                  : formatAmount(brokerageValue.unrealizedPnl, account.currency_code, locale)}
+            </p>
+            <p className="mt-3 text-sm text-muted-foreground">
+              {t("brokerage.totalUnrealizedPnlPercent")}
+            </p>
+            <p className="mt-1 text-2xl font-semibold tabular-nums" dir="ltr">
+              {isBrokerageValueLoading || brokerageValue === null || brokerageValue.unrealizedPnlPercent === null
+                ? t("brokerage.currentValueUnavailable")
+                : formatPortfolioPercent(brokerageValue.unrealizedPnlPercent, locale)}
+            </p>
+            <p className="mt-3 text-sm text-muted-foreground">
               {t("brokerage.totalHoldingsMarketValue")}
             </p>
             <p className="mt-1 text-2xl font-semibold tabular-nums" dir="ltr">

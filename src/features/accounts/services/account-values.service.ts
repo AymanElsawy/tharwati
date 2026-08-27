@@ -12,7 +12,12 @@ import { holdingsRepository } from "@/features/holdings/repositories/holdings.re
 import { portfolioValuationService } from "@/features/portfolio-valuation/services/portfolio-valuation.service"
 import type { HoldingDetails } from "@/features/holdings/types/holding"
 import type { HoldingValuationResult } from "@/features/portfolio-valuation/types/portfolio-valuation"
-import { addDecimals, compareDecimals } from "@/lib/financial-calculations/decimal"
+import {
+  addDecimals,
+  compareDecimals,
+  divideDecimals,
+  multiplyDecimals,
+} from "@/lib/financial-calculations/decimal"
 
 function requireDecimal(value: Decimal | null, message: string): Decimal {
   if (value === null) throw new Error(message)
@@ -25,6 +30,9 @@ export type BrokerageCurrentValue = {
   value: Decimal | null
   availableCash: Decimal
   holdingsMarketValue: Decimal | null
+  totalCurrentCostBasis: Decimal | null
+  unrealizedPnl: Decimal | null
+  unrealizedPnlPercent: Decimal | null
   valuations: readonly HoldingValuationResult[]
   status: AccountCurrentValueStatus
   missingMarketPrice: boolean
@@ -66,6 +74,9 @@ export function resolveBrokerageCurrentValue(input: {
       value: input.availableCash,
       availableCash: input.availableCash,
       holdingsMarketValue: "0",
+      totalCurrentCostBasis: "0",
+      unrealizedPnl: "0",
+      unrealizedPnlPercent: null,
       valuations: [],
       status: "complete",
       missingMarketPrice: false,
@@ -93,6 +104,9 @@ export function resolveBrokerageCurrentValue(input: {
       value: null,
       availableCash: input.availableCash,
       holdingsMarketValue: null,
+      totalCurrentCostBasis: null,
+      unrealizedPnl: null,
+      unrealizedPnlPercent: null,
       valuations: input.valuations,
       status: "incomplete",
       missingMarketPrice,
@@ -108,10 +122,41 @@ export function resolveBrokerageCurrentValue(input: {
       "Unable to aggregate Brokerage holding market values",
     )
   }, "0")
+  const totalCurrentCostBasis = positiveValuations.reduce<Decimal>((total, valuation) => {
+    const costBasis = valuation?.costBasisBase
+    if (costBasis === null || costBasis === undefined) return total
+    return requireDecimal(
+      addDecimals(total, costBasis),
+      "Unable to aggregate Brokerage holding cost basis",
+    )
+  }, "0")
+  const unrealizedPnl = positiveValuations.reduce<Decimal>((total, valuation) => {
+    const pnl = valuation?.unrealizedGainLossBase
+    if (pnl === null || pnl === undefined) return total
+    return requireDecimal(
+      addDecimals(total, pnl),
+      "Unable to aggregate Brokerage unrealized P/L",
+    )
+  }, "0")
+  const unrealizedPnlPercent = compareDecimals(totalCurrentCostBasis, "0") === 1
+    ? requireDecimal(
+        multiplyDecimals(
+          requireDecimal(
+            divideDecimals(unrealizedPnl, totalCurrentCostBasis),
+            "Unable to calculate Brokerage unrealized P/L percentage",
+          ),
+          "100",
+        ),
+        "Unable to calculate Brokerage unrealized P/L percentage",
+      )
+    : null
   return {
     value: addDecimals(input.availableCash, holdingsValue),
     availableCash: input.availableCash,
     holdingsMarketValue: holdingsValue,
+    totalCurrentCostBasis,
+    unrealizedPnl,
+    unrealizedPnlPercent,
     valuations: input.valuations,
     status: "complete",
     missingMarketPrice: false,
@@ -202,6 +247,9 @@ export async function getAccountCurrentValues(
         value: null,
         availableCash: balance.currentBalance,
         holdingsMarketValue: null,
+        totalCurrentCostBasis: null,
+        unrealizedPnl: null,
+        unrealizedPnlPercent: null,
         valuations: [],
         status: "incomplete",
         missingMarketPrice: true,

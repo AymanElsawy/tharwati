@@ -147,6 +147,9 @@ describe("Brokerage incomplete Accounts-list fallback", () => {
           value: null,
           availableCash: "100",
           holdingsMarketValue: null,
+          totalCurrentCostBasis: null,
+          unrealizedPnl: null,
+          unrealizedPnlPercent: null,
           valuations: [],
           status: "incomplete",
           missingMarketPrice: true,
@@ -203,5 +206,32 @@ describe("resolveBrokerageCurrentValue", () => {
 
   it("preserves decimal precision during aggregation", () => {
     expect(resolveBrokerageCurrentValue({ availableCash: "0.0000000001", holdings: [holding("precise", "1")], valuations: [valuation("precise", { marketValueBase: "0.2000000002" })] }).value).toBe("0.2000000003")
+  })
+
+  it("aggregates mixed holding gains and losses in account currency", () => {
+    const result = resolveBrokerageCurrentValue({
+      availableCash: "100",
+      holdings: [holding("gain", "1"), holding("loss", "1")],
+      valuations: [
+        valuation("gain", { unrealizedGainLossBase: "25", costBasisBase: "100" }),
+        valuation("loss", { unrealizedGainLossBase: "-10", costBasisBase: "50" }),
+      ],
+    })
+    expect(result).toMatchObject({ unrealizedPnl: "15", totalCurrentCostBasis: "150", unrealizedPnlPercent: "10" })
+  })
+
+  it("aggregates total loss and leaves percentage unavailable for zero cost basis", () => {
+    const loss = resolveBrokerageCurrentValue({ availableCash: "100", holdings: [holding("loss", "1")], valuations: [valuation("loss", { unrealizedGainLossBase: "-10", costBasisBase: "50" })] })
+    const zeroBasis = resolveBrokerageCurrentValue({ availableCash: "100", holdings: [holding("zero", "1")], valuations: [valuation("zero", { unrealizedGainLossBase: "10", costBasisBase: "0" })] })
+    expect(loss.unrealizedPnl).toBe("-10")
+    expect(loss.unrealizedPnlPercent).toBe("-20")
+    expect(zeroBasis).toMatchObject({ unrealizedPnl: "10", unrealizedPnlPercent: null })
+  })
+
+  it("does not aggregate total P/L when price or FX is missing and preserves precision", () => {
+    const missing = resolveBrokerageCurrentValue({ availableCash: "100", holdings: [holding("missing", "1")], valuations: [valuation("missing", { unrealizedGainLossBase: null, costBasisBase: null, marketValueBase: null, missingMarketPrice: true })] })
+    const precise = resolveBrokerageCurrentValue({ availableCash: "0.1", holdings: [holding("precise", "1"), holding("precise-2", "1")], valuations: [valuation("precise", { unrealizedGainLossBase: "0.2000000001", costBasisBase: "1.1" }), valuation("precise-2", { unrealizedGainLossBase: "0.3000000002", costBasisBase: "2.2" })] })
+    expect(missing).toMatchObject({ unrealizedPnl: null, status: "incomplete" })
+    expect(precise).toMatchObject({ unrealizedPnl: "0.5000000003", totalCurrentCostBasis: "3.3", unrealizedPnlPercent: "15.15151516" })
   })
 })
