@@ -49,9 +49,20 @@ describe("AssetsBreakdownCard", () => {
     expect(componentSource).toContain("aggregate.totalLiabilities")
   })
 
+  it("uses the existing chart library for a donut with Total Assets in its center", () => {
+    expect(componentSource).toContain('from "recharts"')
+    expect(componentSource).toContain("innerRadius={58}")
+    expect(componentSource).toContain('t("dashboard.assetsBreakdown.totalAssets")')
+    expect(componentSource).toContain("chartValue: Number(item.percentage)")
+    expect(componentSource).toContain('dataKey="chartValue"')
+    expect(componentSource).toContain("min-h-52")
+    expect(componentSource).not.toContain('flex h-4 overflow-hidden')
+  })
+
   it("uses one aligned list at every breakpoint rather than a desktop two-column legend", () => {
     expect(componentSource).toContain('grid-cols-[auto_minmax(0,1fr)_auto_auto]')
     expect(componentSource).not.toContain("sm:grid-cols-2")
+    expect(componentSource).toContain("md:grid-cols-[12rem_minmax(0,1fr)]")
   })
 
   it("returns no slices for an incomplete aggregate", () => {

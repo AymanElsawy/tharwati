@@ -1,5 +1,6 @@
 import { AccountsOverviewCard } from "@/features/dashboard/components/AccountsOverviewCard"
 import { AssetsBreakdownCard } from "@/features/dashboard/components/AssetsBreakdownCard"
+import { DashboardPortfolioAllocationCard } from "@/features/dashboard/components/DashboardPortfolioAllocationCard"
 import { NetWorthCard } from "@/features/dashboard/components/NetWorthCard"
 import { useDashboardAggregate } from "@/features/dashboard/hooks/useDashboardAggregate"
 import { useTranslation } from "@/i18n/useTranslation"
@@ -23,7 +24,14 @@ export function DashboardPage() {
       </header>
 
       <NetWorthCard {...aggregate} />
-      <AssetsBreakdownCard aggregate={aggregate.result} isLoading={aggregate.isLoading} />
+      <div className="grid gap-6 lg:grid-cols-2 lg:items-stretch">
+        <AssetsBreakdownCard aggregate={aggregate.result} isLoading={aggregate.isLoading} />
+        <DashboardPortfolioAllocationCard
+          allocation={aggregate.portfolioAllocation}
+          baseCurrencyCode={aggregate.result?.baseCurrencyCode ?? null}
+          isLoading={aggregate.isLoading}
+        />
+      </div>
       <AccountsOverviewCard />
     </section>
   )

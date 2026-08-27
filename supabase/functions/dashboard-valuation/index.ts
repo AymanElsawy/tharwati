@@ -35,6 +35,10 @@ type Snapshot = {
   accountBalances: Record<string, Decimal>
   rates: Record<string, Decimal | null>
   unavailableSources: string[]
+  portfolioAllocation: {
+    status: "complete" | "incomplete"
+    holdings: Array<{ assetId: string; assetTypeCode: string; marketValueBaseCurrency: Decimal }>
+  }
 }
 
 type Parsed = { coefficient: bigint; scale: number }
@@ -108,7 +112,7 @@ Deno.serve(async (request) => {
     const brokerageAccounts = accounts.filter((account) => account.account_type_code === "brokerage")
     const metalAccounts = accounts.filter((account) => account.account_type_code === "gold")
     stage = "holdings_query"
-    const { data: holdingRows, error: holdingsError } = brokerageAccounts.length === 0 ? { data: [], error: null } : await userClient.from("holdings").select("account_id,asset_id,quantity,asset:assets(currency_code)").in("account_id", brokerageAccounts.map((account) => account.id)).gt("quantity", "0")
+    const { data: holdingRows, error: holdingsError } = brokerageAccounts.length === 0 ? { data: [], error: null } : await userClient.from("holdings").select("account_id,asset_id,quantity,asset:assets(currency_code,asset_type_code)").in("account_id", brokerageAccounts.map((account) => account.id)).gt("quantity", "0")
     if (holdingsError) throw holdingsError
     stage = "metal_purchases"
     const { data: purchaseRows, error: purchasesError } = metalAccounts.length === 0 ? { data: [], error: null } : await userClient.rpc("get_effective_metal_purchases", { p_account_ids: metalAccounts.map((account) => account.id) })
@@ -118,6 +122,8 @@ Deno.serve(async (request) => {
     const purchases = ((purchaseRows ?? []) as DashboardValuationMetalPurchaseRuntime[])
       .map(normalizeDashboardValuationMetalPurchase) as DashboardValuationMetalPurchase[]
     const rateCache = new Map<string, Decimal | null>(); let usedStale = false
+    const portfolioAllocationHoldings: Snapshot["portfolioAllocation"]["holdings"] = []
+    let portfolioAllocationIncomplete = false
     const resolveRate = async (from: string, to: string): Promise<Decimal | null> => {
       if (from === to) return "1"; const key = `${from}/${to}`; if (rateCache.has(key)) return rateCache.get(key)!
       try {
@@ -159,14 +165,21 @@ Deno.serve(async (request) => {
         const values: Decimal[] = []; let unavailable = false
         for (const holding of accountHoldings) {
           const price = prices.get(holding.asset_id); const currency = price?.currencyCode ?? holding.asset?.currency_code ?? null
-          if (!price?.available || price.price === null || !currency) { unavailable = true; break }
+          if (!price?.available || price.price === null || !currency || !holding.asset?.asset_type_code) { unavailable = true; portfolioAllocationIncomplete = true; break }
           if (price.stale) usedStale = true
           stage = "fx_conversion"
           const rate = await resolveRate(currency, account.currency_code)
           stage = "build_brokerage_values"
           const marketValue = rate ? multiply(String(price.price), holding.quantity) : null
           const converted = marketValue && rate ? multiply(marketValue, rate) : null
-          if (!converted) { unavailable = true; break }; values.push(converted)
+          if (!converted) { unavailable = true; portfolioAllocationIncomplete = true; break }
+          stage = "fx_conversion"
+          const baseRate = await resolveRate(account.currency_code, baseCurrencyCode)
+          stage = "build_brokerage_values"
+          const marketValueBaseCurrency = baseRate ? multiply(converted, baseRate) : null
+          if (!marketValueBaseCurrency) { unavailable = true; portfolioAllocationIncomplete = true; break }
+          portfolioAllocationHoldings.push({ assetId: holding.asset_id, assetTypeCode: holding.asset.asset_type_code, marketValueBaseCurrency })
+          values.push(converted)
         }
         const holdingsValue = unavailable ? null : sum(values); const cash = balances.get(account.id)
         currentValues[account.id] = holdingsValue === null || !cash ? null : add(cash, holdingsValue)
@@ -189,7 +202,7 @@ Deno.serve(async (request) => {
     stage = "fx_conversion"
     for (const account of accounts) await resolveRate(account.currency_code, baseCurrencyCode)
     stage = "build_snapshot_payload"
-    const asOf = new Date(); const snapshot: Snapshot = { asOf: asOf.toISOString(), expiresAt: new Date(asOf.getTime() + snapshotTtlMs).toISOString(), freshness: unavailableSources.length ? "unavailable" : usedStale ? "stale" : "fresh", currentValues, accountBalances: Object.fromEntries(balances), rates: Object.fromEntries(rateCache), unavailableSources }
+    const asOf = new Date(); const snapshot: Snapshot = { asOf: asOf.toISOString(), expiresAt: new Date(asOf.getTime() + snapshotTtlMs).toISOString(), freshness: unavailableSources.length ? "unavailable" : usedStale ? "stale" : "fresh", currentValues, accountBalances: Object.fromEntries(balances), rates: Object.fromEntries(rateCache), unavailableSources, portfolioAllocation: { status: portfolioAllocationIncomplete ? "incomplete" : "complete", holdings: portfolioAllocationHoldings } }
     stage = "snapshot_persistence"
     const { data: stored, error: storeError } = await userClient.rpc("store_dashboard_valuation_snapshot" as never, { p_base_currency_code: baseCurrencyCode, p_snapshot: snapshot, p_as_of: snapshot.asOf, p_expires_at: snapshot.expiresAt } as never)
     if (storeError) throw storeError

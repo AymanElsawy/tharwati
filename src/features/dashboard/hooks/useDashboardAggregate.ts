@@ -11,12 +11,14 @@ import {
   getDashboardValuationSnapshot,
   snapshotAccountBalances,
   snapshotRateResolver,
+  type DashboardPortfolioAllocation,
 } from "@/features/dashboard/services/dashboard-valuation-snapshot.service"
 
 export function useDashboardAggregate() {
   const [result, setResult] = useState<DashboardAggregate | null>(null)
   const [error, setError] = useState<RepositoryError | null>(null)
   const [isLoading, setIsLoading] = useState(true)
+  const [portfolioAllocation, setPortfolioAllocation] = useState<DashboardPortfolioAllocation | null>(null)
 
   const load = useCallback(async (showLoading: boolean) => {
     if (showLoading) setIsLoading(true)
@@ -27,6 +29,7 @@ export function useDashboardAggregate() {
       ])
       if (!baseCurrencyCode) {
         setResult(null)
+        setPortfolioAllocation(null)
         setError(null)
         return
       }
@@ -40,6 +43,7 @@ export function useDashboardAggregate() {
         rates: snapshotRateResolver(snapshot),
       })
       setResult({ ...aggregate, asOf: snapshot.asOf, freshness: snapshot.freshness })
+      setPortfolioAllocation(snapshot.portfolioAllocation)
       setError(null)
     } catch (cause) {
       setError(cause instanceof RepositoryError ? cause : new RepositoryError({
@@ -65,5 +69,5 @@ export function useDashboardAggregate() {
     return () => window.removeEventListener("tharwati:data-changed", reload)
   }, [load])
 
-  return { result, error, isLoading, refresh: () => load(true) }
+  return { result, portfolioAllocation, error, isLoading, refresh: () => load(true) }
 }

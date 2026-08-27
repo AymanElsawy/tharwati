@@ -13,6 +13,10 @@ const payload = {
   accountBalances: { cash: "1.0000000002" },
   rates: { "EUR/USD": "1.2345678901" },
   unavailableSources: [],
+  portfolioAllocation: {
+    status: "complete",
+    holdings: [{ assetId: "asset-1", assetTypeCode: "stock", marketValueBaseCurrency: "10.25" }],
+  },
 }
 
 describe("Dashboard valuation snapshot", () => {
@@ -21,6 +25,7 @@ describe("Dashboard valuation snapshot", () => {
     expect(snapshot.asOf).toBe(payload.asOf)
     expect(snapshot.expiresAt).toBe(payload.expiresAt)
     expect(snapshot.currentValues.get("cash")).toBe("1.0000000002")
+    expect(snapshot.portfolioAllocation.holdings[0]).toEqual({ assetId: "asset-1", assetTypeCode: "stock", marketValueBaseCurrency: "10.25" })
   })
 
   it("uses only the snapshot FX rates", async () => {
@@ -42,7 +47,18 @@ describe("Dashboard valuation snapshot", () => {
     expect(unavailable.unavailableSources).toEqual(["Cash"])
   })
 
+  it("keeps one persisted allocation snapshot reusable by every client", () => {
+    const desktop = parseDashboardValuationSnapshot(payload)
+    const mobile = parseDashboardValuationSnapshot(payload)
+    expect(desktop.asOf).toBe(mobile.asOf)
+    expect(desktop.portfolioAllocation).toEqual(mobile.portfolioAllocation)
+  })
+
   it("rejects malformed snapshot numbers", () => {
     expect(() => parseDashboardValuationSnapshot({ ...payload, rates: { "EUR/USD": 1.2 } })).toThrow("invalid")
+  })
+
+  it("rejects malformed allocation values instead of treating them as zero", () => {
+    expect(() => parseDashboardValuationSnapshot({ ...payload, portfolioAllocation: { status: "complete", holdings: [{ assetId: "asset", assetTypeCode: "stock", marketValueBaseCurrency: 10 }] } })).toThrow("invalid")
   })
 })

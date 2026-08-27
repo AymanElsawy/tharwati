@@ -3,6 +3,17 @@ import { supabase } from "@/lib/supabase/client"
 import type { AccountSummary, Decimal } from "@/lib/supabase/types"
 import { ExchangeRateError } from "@/services/exchange-rates"
 
+export type DashboardPortfolioAllocationHolding = {
+  assetId: string
+  assetTypeCode: string
+  marketValueBaseCurrency: Decimal
+}
+
+export type DashboardPortfolioAllocation = {
+  status: "complete" | "incomplete"
+  holdings: readonly DashboardPortfolioAllocationHolding[]
+}
+
 export type DashboardValuationSnapshot = {
   asOf: string
   expiresAt: string
@@ -11,6 +22,7 @@ export type DashboardValuationSnapshot = {
   accountBalances: ReadonlyMap<string, Decimal>
   rates: ReadonlyMap<string, Decimal | null>
   unavailableSources: readonly string[]
+  portfolioAllocation: DashboardPortfolioAllocation
 }
 
 type SnapshotResponse = {
@@ -21,6 +33,7 @@ type SnapshotResponse = {
   accountBalances?: unknown
   rates?: unknown
   unavailableSources?: unknown
+  portfolioAllocation?: unknown
 }
 
 function decimal(value: unknown): Decimal | null {
@@ -38,16 +51,34 @@ function decimalMap(value: unknown, nullable: boolean): Map<string, Decimal | nu
   return result
 }
 
+function portfolioAllocation(value: unknown): DashboardPortfolioAllocation | null {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return null
+  const candidate = value as { status?: unknown; holdings?: unknown }
+  if (!['complete', 'incomplete'].includes(String(candidate.status)) || !Array.isArray(candidate.holdings)) return null
+  const holdings: DashboardPortfolioAllocationHolding[] = []
+  for (const holding of candidate.holdings) {
+    if (!holding || typeof holding !== "object" || Array.isArray(holding)) return null
+    const row = holding as Record<string, unknown>
+    const marketValueBaseCurrency = decimal(row.marketValueBaseCurrency)
+    if (typeof row.assetId !== "string" || typeof row.assetTypeCode !== "string" || marketValueBaseCurrency === null) return null
+    holdings.push({ assetId: row.assetId, assetTypeCode: row.assetTypeCode, marketValueBaseCurrency })
+  }
+  return { status: candidate.status as DashboardPortfolioAllocation["status"], holdings }
+}
+
 export function parseDashboardValuationSnapshot(value: unknown): DashboardValuationSnapshot {
   const response = value as SnapshotResponse
   const currentValues = decimalMap(response.currentValues, true)
   const accountBalances = decimalMap(response.accountBalances, false)
   const rates = decimalMap(response.rates, true)
+  const allocation = response.portfolioAllocation === undefined
+    ? { status: "incomplete" as const, holdings: [] }
+    : portfolioAllocation(response.portfolioAllocation)
   if (
     typeof response.asOf !== "string" || Number.isNaN(Date.parse(response.asOf)) ||
     typeof response.expiresAt !== "string" || Number.isNaN(Date.parse(response.expiresAt)) ||
     !["fresh", "stale", "unavailable"].includes(String(response.freshness)) ||
-    !currentValues || !accountBalances || !rates || !Array.isArray(response.unavailableSources) ||
+    !currentValues || !accountBalances || !rates || !allocation || !Array.isArray(response.unavailableSources) ||
     !response.unavailableSources.every((source) => typeof source === "string")
   ) throw new Error("Dashboard valuation snapshot is invalid")
   return {
@@ -58,6 +89,7 @@ export function parseDashboardValuationSnapshot(value: unknown): DashboardValuat
     accountBalances: accountBalances as Map<string, Decimal>,
     rates,
     unavailableSources: response.unavailableSources,
+    portfolioAllocation: allocation,
   }
 }
 
