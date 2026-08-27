@@ -5,6 +5,7 @@ import { useNavigate, useParams } from "react-router-dom"
 import { Button } from "@/components/ui/button"
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet"
 import { AccountValue } from "@/features/accounts/components/AccountValue"
+import { BankCreditSummary } from "@/features/accounts/components/BankCreditSummary"
 import { AccountRecordFormDialog } from "@/features/accounts/components/AccountRecordFormDialog"
 import { DeleteAccountRecordDialog } from "@/features/accounts/components/DeleteAccountRecordDialog"
 import { useAccounts } from "@/features/accounts/hooks/useAccounts"
@@ -178,7 +179,12 @@ export function AccountRecordsPage({
     }
   }, [accountId, deferredFilters, hasMore, isLoadingMore, nextCursor, pageError, t])
 
-  useEffect(() => { void loadInitialRecords() }, [loadInitialRecords])
+  useEffect(() => {
+    async function initialize() {
+      await loadInitialRecords()
+    }
+    void initialize()
+  }, [loadInitialRecords])
   useEffect(() => {
     if (!loadMoreTarget || !hasMore || isLoadingMore || pageError || isPageRequestInFlight.current || typeof IntersectionObserver === "undefined") return
     return observeAccountRecordsHistoryEnd(
@@ -252,8 +258,9 @@ export function AccountRecordsPage({
   if (accounts.isLoading) return <div className="pb-12"><div className="h-9 w-56 animate-pulse rounded-lg bg-muted" /></div>
   if (!account || !["cash", "bank"].includes(account.account_type_code)) return <div className="pb-12"><Button variant="secondary" onClick={() => navigate("/accounts")}><ArrowLeft size={16} />{t("common.back")}</Button></div>
 
+  const isBankCredit = account.account_type_code === "bank" && account.bank_subtype === "credit"
   return <div className="pb-12">
-    <header className="flex flex-wrap items-end justify-between gap-4 border-b border-[var(--color-border)] pb-7"><div><Button variant="ghost" className="-ms-3 mb-3" onClick={() => navigate("/accounts")}><ArrowLeft size={16} />{t("common.back")}</Button><p className="tharwati-eyebrow">{t("accounts.records.title")}</p><h1 className="tharwati-page-title mt-2">{account.name}</h1><AccountValue value={resolvedAccountValue} currencyCode={account.currency_code} locale={locale} isLoading={resolvedAccountValueLoading} /></div><Button onClick={() => { setFormError(null); setIsFormOpen(true) }} disabled={!account.is_active}><Plus size={16} />{t("accounts.records.add")}</Button></header>
+    <header className="flex flex-wrap items-end justify-between gap-4 border-b border-[var(--color-border)] pb-7"><div><Button variant="ghost" className="-ms-3 mb-3" onClick={() => navigate("/accounts")}><ArrowLeft size={16} />{t("common.back")}</Button><p className="tharwati-eyebrow">{t("accounts.records.title")}</p><h1 className="tharwati-page-title mt-2">{account.name}</h1>{isBankCredit ? <BankCreditSummary creditCardLimit={account.credit_card_limit} currentBalance={resolvedAccountValue} dueDayOfMonth={account.due_day_of_month} currencyCode={account.currency_code} locale={locale} isLoading={resolvedAccountValueLoading} /> : <AccountValue value={resolvedAccountValue} currencyCode={account.currency_code} locale={locale} isLoading={resolvedAccountValueLoading} />}</div><Button onClick={() => { setFormError(null); setIsFormOpen(true) }} disabled={!account.is_active}><Plus size={16} />{t("accounts.records.add")}</Button></header>
     {formError && !editingRecord && <p role="alert" className="mt-4 text-sm text-red-600">{formError}</p>}
     <div className="mt-6 min-[1180px]:grid min-[1180px]:grid-cols-[15rem_minmax(0,1fr)] min-[1180px]:gap-6">
       <aside className="hidden min-[1180px]:block"><div className="sticky top-6 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-4 shadow-sm"><h2 className="text-sm font-semibold">{t("accounts.records.filters")}</h2><div className="mt-4">{filterControls}</div></div></aside>

@@ -1,0 +1,70 @@
+import { describe, expect, it } from "vitest"
+
+import { getDashboardBreakdownItems } from "@/features/dashboard/utils/assets-breakdown"
+import type { DashboardAggregate } from "@/features/dashboard/services/dashboard-aggregate.service"
+import { addDecimals } from "@/lib/financial-calculations/decimal"
+import componentSource from "./AssetsBreakdownCard.tsx?raw"
+
+function aggregate(overrides: Partial<DashboardAggregate> = {}): DashboardAggregate {
+  return {
+    baseCurrencyCode: "USD",
+    status: "complete",
+    totalAssets: "100",
+    totalLiabilities: "25",
+    netWorth: "75",
+    assetBreakdown: {
+      cashAndBank: "20",
+      brokerage: "30",
+      goldAndSilver: "10",
+      realEstate: "40",
+      business: "0",
+      certificates: "0",
+      other: "0",
+    },
+    accountCount: 4,
+    unavailablePairs: [],
+    unavailableSources: [],
+    ...overrides,
+  }
+}
+
+describe("AssetsBreakdownCard", () => {
+  it("uses shared aggregate category totals and percentages that sum to 100", () => {
+    const items = getDashboardBreakdownItems(aggregate())
+    expect(items.map((item) => [item.group, item.value])).toEqual([
+      ["cashAndBank", "20"], ["brokerage", "30"], ["goldAndSilver", "10"], ["realEstate", "40"],
+    ])
+    expect(items.reduce((total, item) => addDecimals(total, item.percentage) ?? total, "0")).toBe("100")
+  })
+
+  it("hides zero categories and does not turn liabilities into an asset slice", () => {
+    const items = getDashboardBreakdownItems(aggregate())
+    expect(items.map((item) => item.group)).not.toContain("business")
+    expect(items.map((item) => item.group)).not.toContain("certificates")
+    expect(items.map((item) => item.value)).not.toContain("25")
+  })
+
+  it("keeps total liabilities separate from the visual asset categories", () => {
+    expect(componentSource).toContain('t("dashboard.assetsBreakdown.totalLiabilities")')
+    expect(componentSource).toContain("aggregate.totalLiabilities")
+  })
+
+  it("uses one aligned list at every breakpoint rather than a desktop two-column legend", () => {
+    expect(componentSource).toContain('grid-cols-[auto_minmax(0,1fr)_auto_auto]')
+    expect(componentSource).not.toContain("sm:grid-cols-2")
+  })
+
+  it("returns no slices for an incomplete aggregate", () => {
+    expect(getDashboardBreakdownItems(aggregate({
+      status: "incomplete",
+      totalAssets: null,
+      totalLiabilities: null,
+      netWorth: null,
+      assetBreakdown: {
+        cashAndBank: null, brokerage: null, goldAndSilver: null, realEstate: null,
+        business: null, certificates: null, other: null,
+      },
+    }))).toEqual([])
+    expect(componentSource).toContain('aggregate.status === "incomplete"')
+  })
+})

@@ -1,9 +1,12 @@
 import { AccountsOverviewCard } from "@/features/dashboard/components/AccountsOverviewCard"
+import { AssetsBreakdownCard } from "@/features/dashboard/components/AssetsBreakdownCard"
 import { NetWorthCard } from "@/features/dashboard/components/NetWorthCard"
+import { useDashboardAggregate } from "@/features/dashboard/hooks/useDashboardAggregate"
 import { useTranslation } from "@/i18n/useTranslation"
 
 export function DashboardPage() {
   const { t } = useTranslation()
+  const aggregate = useDashboardAggregate()
 
   return (
     <section className="tharwati-page-stack">
@@ -19,7 +22,8 @@ export function DashboardPage() {
         </p>
       </header>
 
-      <NetWorthCard />
+      <NetWorthCard {...aggregate} />
+      <AssetsBreakdownCard aggregate={aggregate.result} isLoading={aggregate.isLoading} />
       <AccountsOverviewCard />
     </section>
   )

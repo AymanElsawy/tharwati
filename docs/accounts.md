@@ -382,6 +382,8 @@ The Add Record form presents the Record Type as three responsive, visible button
 
 For Bank Credit, value means available credit: Expense/transfer-out decreases it; Income/payment/transfer-in increases it without exceeding the credit limit. Amount Due remains `credit_card_limit - current_balance`.
 
+On a Bank Credit Account Details/Records header, the generic large account-value amount is not shown because it could be mistaken for owned cash. A responsive Credit Summary instead labels Credit Limit, Available Credit (the ledger-projected `current_balance`), Amount Due (`credit_card_limit - current_balance` using decimal-safe subtraction), and optional Due Day. If the limit or projected balance is missing or invalid, the summary is unavailable rather than displaying zero. Bank Debit keeps the existing generic current-value header, and Account Records posting/history behavior is unchanged.
+
 > **Known web-app bug to decide on for mobile**: the "Restore" action for an archived account reuses the _same_ archive confirmation flow and repository call (`archiveAccount`, which always sets `is_active: false`) — so restoring currently does nothing (no-op). There is no working un-archive path in the current app despite the UI implying one. **Recommendation**: fix this on mobile with a distinct `restoreAccount = updateAccount(id, {isActive: true})` call and matching "Restore this account?" dialog copy, but be aware this is a deliberate deviation from current web behavior.
 
 ### 6.4 Create/edit flow (form dialog)
