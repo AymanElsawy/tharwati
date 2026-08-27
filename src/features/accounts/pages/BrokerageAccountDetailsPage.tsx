@@ -5,6 +5,7 @@ import { useNavigate } from "react-router-dom"
 
 import { Button } from "@/components/ui/button"
 import { BrokerageBuyDialog } from "@/features/accounts/components/BrokerageBuyDialog"
+import { BrokerageDividendDialog } from "@/features/accounts/components/BrokerageDividendDialog"
 import { currencyOptions } from "@/features/accounts/types/account-form"
 import type { BrokerageCurrentValue } from "@/features/accounts/services/account-values.service"
 import {
@@ -85,7 +86,7 @@ function sumEntries(
 
 function activityAssetEntry(activity: BrokerageActivityItem) {
   return activity.entries.find((entry) =>
-    entry.memo === "brokerage_buy_asset" || entry.memo === "brokerage_sell_asset"
+    entry.memo === "brokerage_buy_asset" || entry.memo === "brokerage_sell_asset" || entry.memo === "brokerage_dividend_gross"
   ) ?? activity.entries.find((entry) => entry.asset_id !== null && entry.quantity_delta !== null && compareDecimals(entry.quantity_delta, "0") !== 0)
 }
 
@@ -110,6 +111,7 @@ export function BrokerageAccountDetailsPage({
   const [selectedActivity, setSelectedActivity] = useState<PresentedActivity | null>(null)
   const [isExistingHoldingOpen, setIsExistingHoldingOpen] = useState(false)
   const [isBuyOpen, setIsBuyOpen] = useState(false)
+  const [isDividendOpen, setIsDividendOpen] = useState(false)
 
   const load = useCallback(async () => {
     setIsHoldingsLoading(true)
@@ -256,6 +258,7 @@ export function BrokerageAccountDetailsPage({
               <Plus size={16} />
               {t("brokerage.buy")}
             </Button>
+            <Button variant="secondary" onClick={() => setIsDividendOpen(true)}><Plus size={16} />{t("brokerage.dividend")}</Button>
           </div>
         </div>
       </header>
@@ -355,6 +358,7 @@ export function BrokerageAccountDetailsPage({
           window.dispatchEvent(new Event("tharwati:data-changed"))
         }}
       />
+      <BrokerageDividendDialog account={isDividendOpen ? account : null} onClose={() => setIsDividendOpen(false)} onSaved={async () => { setIsDividendOpen(false); await load(); window.dispatchEvent(new Event("tharwati:data-changed")) }} />
       <BrokerageActivityDialog
         activity={selectedActivity}
         accountCurrency={account.currency_code}
@@ -481,6 +485,9 @@ function BrokerageActivityRow({
   const transferEntry = item.entries.find((entry) => entry.account_id === accountId && entry.asset_id === null)
   const label = activityLabel(item, accountId, t)
   const hasDetails = assetEntry !== undefined
+  const dividendNet = item.transaction_type_code === "dividend"
+    ? sumEntries(item.entries, "brokerage_dividend_cash", "account_amount")
+    : null
   const content = <>
     <span className="min-w-0">
       <span className="flex flex-wrap items-center gap-2">
@@ -494,7 +501,9 @@ function BrokerageActivityRow({
       </span>
     </span>
     <span className="text-end text-sm tabular-nums" dir="ltr">
-      {assetEntry?.quantity_delta ? absolute(assetEntry.quantity_delta) : transferEntry ? formatAmount(transferEntry.account_amount, accountCurrency, locale) : "--"}
+      {dividendNet !== null
+        ? formatAmount(dividendNet, accountCurrency, locale)
+        : assetEntry?.quantity_delta ? absolute(assetEntry.quantity_delta) : transferEntry ? formatAmount(transferEntry.account_amount, accountCurrency, locale) : "--"}
     </span>
   </>
 
@@ -519,6 +528,7 @@ function BrokerageActivityDialog({
   const assetEntry = activity ? activityAssetEntry(activity) : undefined
   const isSell = activity?.transaction_type_code === "sell"
   const isBuy = activity?.transaction_type_code === "buy"
+  const isDividend = activity?.transaction_type_code === "dividend"
   const fees = activity && (isBuy || isSell)
     ? sumEntries(activity.entries, isBuy ? "brokerage_buy_fee" : "brokerage_sell_fee", "transaction_amount")
     : null
@@ -542,11 +552,18 @@ function BrokerageActivityDialog({
         {activity && assetEntry ? <div className="mt-5 space-y-4 text-sm">
           {asset ? <ActivityDetail label={t("investment.asset.section")} value={[asset.name, asset.symbol, asset.exchange].filter(Boolean).join(" · ")} /> : null}
           <ActivityDetail label={t("accounts.records.dateTime")} value={[formatLocalDateTime(activity.occurred_at, locale).date, formatLocalDateTime(activity.occurred_at, locale).time].join(", ")} />
+          {isDividend ? <>
+            <ActivityDetail label={t("brokerage.grossDividend")} value={formatAmount(sumEntries(activity.entries, "brokerage_dividend_gross", "transaction_amount")!, accountCurrency, locale)} />
+            <ActivityDetail label={t("brokerage.withholdingTax")} value={formatAmount(sumEntries(activity.entries, "brokerage_dividend_tax", "transaction_amount") ?? "0", accountCurrency, locale)} />
+            <ActivityDetail label={t("investment.fees")} value={formatAmount(sumEntries(activity.entries, "brokerage_dividend_fee", "transaction_amount") ?? "0", accountCurrency, locale)} />
+            <ActivityDetail label={t("brokerage.netDividend")} value={formatAmount(sumEntries(activity.entries, "brokerage_dividend_cash", "account_amount")!, accountCurrency, locale)} />
+          </> : <>
           <ActivityDetail label={t("holdings.table.quantity")} value={assetEntry.quantity_delta === null ? "--" : absolute(assetEntry.quantity_delta)} />
           <ActivityDetail label={isBuy || isSell ? t("brokerage.unitPrice") : t("brokerage.historicalAverageCost")} value={assetEntry.unit_price === null || !asset ? "--" : formatAmount(assetEntry.unit_price, asset.currency_code, locale)} />
           {hasPositive(fees) && asset ? <ActivityDetail label={t("investment.fees")} value={formatAmount(fees!, asset.currency_code, locale)} /> : null}
           {isSell && asset ? <ActivityDetail label={t("brokerage.netProceeds")} value={cash === null ? "--" : formatAmount(sumEntries(activity.entries, "brokerage_sell_cash", "transaction_amount")!, asset.currency_code, locale)} /> : null}
           <ActivityDetail label={isSell ? t("brokerage.cashProceeds") : t("brokerage.accountCostEffect")} value={(isSell ? cash : accountCost) === null ? "--" : formatAmount((isSell ? cash : accountCost)!, accountCurrency, locale)} />
+          </>}
           {isCrossCurrency && assetEntry.account_fx_rate !== null ? <ActivityDetail label={t("brokerage.historicalFxRate")} value={assetEntry.account_fx_rate} /> : null}
           {activity.notes ? <ActivityDetail label={t("investment.notes")} value={activity.notes} /> : null}
         </div> : null}

@@ -716,6 +716,10 @@ export type Database = {
         }
         Returns: Json
       }
+      add_brokerage_cash_dividend: {
+        Args: { p_account_id: string; p_asset_id: string; p_gross_dividend: Decimal; p_withholding_tax?: Decimal | null; p_fees?: Decimal | null; p_occurred_at?: string | null; p_notes?: string | null }
+        Returns: Json
+      }
       reverse_existing_holding: {
         Args: { p_transaction_id: string }
         Returns: Json
