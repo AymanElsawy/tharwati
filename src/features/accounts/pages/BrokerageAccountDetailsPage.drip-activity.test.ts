@@ -1,3 +1,5 @@
 import { describe, expect, it } from "vitest"
 import page from "./BrokerageAccountDetailsPage.tsx?raw"
 describe("DRIP activity",()=>it("uses the reinvestment entry for the stored price, quantity, and net dividend",()=>{expect(page).toContain("const reinvestmentEntry = activity.entries.find");expect(page).toContain("if (reinvestmentEntry) return reinvestmentEntry");expect(page).toContain('t("brokerage.dividendReinvested")');expect(page).toContain('"brokerage.netDividendReinvested"');expect(page).toContain('t("brokerage.reinvestmentUnitPrice")');expect(page).toContain('t("brokerage.quantityAdded")')}))
+
+describe("partial DRIP activity",()=>it("uses the partial reinvestment and cash-remainder entries",()=>{expect(page).toContain("const partialReinvestmentEntry = activity.entries.find");expect(page).toContain("if (partialReinvestmentEntry) return partialReinvestmentEntry");expect(page).toContain('t("brokerage.dividendPartiallyReinvested")');expect(page).toContain('"brokerage_dividend_partial_cash"');expect(page).toContain('t("brokerage.reinvestedAmount")');expect(page).toContain('t("brokerage.cashRemainder")')}))
