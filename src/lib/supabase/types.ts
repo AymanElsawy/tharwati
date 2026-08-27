@@ -720,6 +720,7 @@ export type Database = {
         Args: { p_account_id: string; p_asset_id: string; p_gross_dividend: Decimal; p_withholding_tax?: Decimal | null; p_fees?: Decimal | null; p_occurred_at?: string | null; p_notes?: string | null }
         Returns: Json
       }
+      add_brokerage_dividend_reinvestment: { Args: { p_account_id: string; p_asset_id: string; p_gross_dividend: Decimal; p_withholding_tax?: Decimal | null; p_fees?: Decimal | null; p_unit_price: Decimal; p_occurred_at?: string | null; p_notes?: string | null }; Returns: Json }
       reverse_existing_holding: {
         Args: { p_transaction_id: string }
         Returns: Json

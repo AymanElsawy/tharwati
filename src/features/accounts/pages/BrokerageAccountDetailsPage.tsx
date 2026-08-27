@@ -85,6 +85,11 @@ function sumEntries(
 }
 
 function activityAssetEntry(activity: BrokerageActivityItem) {
+  const reinvestmentEntry = activity.entries.find((entry) =>
+    entry.memo === "brokerage_dividend_reinvestment"
+  )
+  if (reinvestmentEntry) return reinvestmentEntry
+
   return activity.entries.find((entry) =>
     entry.memo === "brokerage_buy_asset" || entry.memo === "brokerage_sell_asset" || entry.memo === "brokerage_dividend_gross"
   ) ?? activity.entries.find((entry) => entry.asset_id !== null && entry.quantity_delta !== null && compareDecimals(entry.quantity_delta, "0") !== 0)
@@ -460,7 +465,7 @@ function activityLabel(item: BrokerageActivityItem, accountId: string, t: (key: 
   if (item.transaction_type_code === "buy") return t("brokerage.buy")
   if (item.transaction_type_code === "sell") return t("brokerage.sell")
   if (item.transaction_type_code === "opening_position") return t("brokerage.existingHolding")
-  if (item.transaction_type_code === "dividend") return t("brokerage.dividend")
+  if (item.transaction_type_code === "dividend") return item.entries.some((entry) => entry.memo === "brokerage_dividend_reinvestment") ? t("brokerage.dividendReinvested") : t("brokerage.dividend")
   const accountEntry = item.entries.find((entry) => entry.account_id === accountId && entry.asset_id === null)
   return accountEntry?.entry_side === "debit" ? t("brokerage.transferIn") : t("brokerage.transferOut")
 }
@@ -486,7 +491,7 @@ function BrokerageActivityRow({
   const label = activityLabel(item, accountId, t)
   const hasDetails = assetEntry !== undefined
   const dividendNet = item.transaction_type_code === "dividend"
-    ? sumEntries(item.entries, "brokerage_dividend_cash", "account_amount")
+    ? sumEntries(item.entries, item.entries.some((entry) => entry.memo === "brokerage_dividend_reinvestment") ? "brokerage_dividend_reinvestment" : "brokerage_dividend_cash", "account_amount")
     : null
   const content = <>
     <span className="min-w-0">
@@ -529,6 +534,7 @@ function BrokerageActivityDialog({
   const isSell = activity?.transaction_type_code === "sell"
   const isBuy = activity?.transaction_type_code === "buy"
   const isDividend = activity?.transaction_type_code === "dividend"
+  const isDrip = !!activity?.entries.some((entry) => entry.memo === "brokerage_dividend_reinvestment")
   const fees = activity && (isBuy || isSell)
     ? sumEntries(activity.entries, isBuy ? "brokerage_buy_fee" : "brokerage_sell_fee", "transaction_amount")
     : null
@@ -556,7 +562,8 @@ function BrokerageActivityDialog({
             <ActivityDetail label={t("brokerage.grossDividend")} value={formatAmount(sumEntries(activity.entries, "brokerage_dividend_gross", "transaction_amount")!, accountCurrency, locale)} />
             <ActivityDetail label={t("brokerage.withholdingTax")} value={formatAmount(sumEntries(activity.entries, "brokerage_dividend_tax", "transaction_amount") ?? "0", accountCurrency, locale)} />
             <ActivityDetail label={t("investment.fees")} value={formatAmount(sumEntries(activity.entries, "brokerage_dividend_fee", "transaction_amount") ?? "0", accountCurrency, locale)} />
-            <ActivityDetail label={t("brokerage.netDividend")} value={formatAmount(sumEntries(activity.entries, "brokerage_dividend_cash", "account_amount")!, accountCurrency, locale)} />
+            <ActivityDetail label={t(isDrip ? "brokerage.netDividendReinvested" : "brokerage.netDividend")} value={formatAmount(sumEntries(activity.entries, isDrip ? "brokerage_dividend_reinvestment" : "brokerage_dividend_cash", "account_amount")!, accountCurrency, locale)} />
+            {isDrip ? <><ActivityDetail label={t("brokerage.reinvestmentUnitPrice")} value={assetEntry.unit_price === null ? "--" : formatAmount(assetEntry.unit_price, accountCurrency, locale)} /><ActivityDetail label={t("brokerage.quantityAdded")} value={assetEntry.quantity_delta ?? "--"} /></> : null}
           </> : <>
           <ActivityDetail label={t("holdings.table.quantity")} value={assetEntry.quantity_delta === null ? "--" : absolute(assetEntry.quantity_delta)} />
           <ActivityDetail label={isBuy || isSell ? t("brokerage.unitPrice") : t("brokerage.historicalAverageCost")} value={assetEntry.unit_price === null || !asset ? "--" : formatAmount(assetEntry.unit_price, asset.currency_code, locale)} />

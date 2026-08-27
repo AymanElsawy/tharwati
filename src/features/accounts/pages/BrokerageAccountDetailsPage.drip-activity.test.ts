@@ -1,0 +1,3 @@
+import { describe, expect, it } from "vitest"
+import page from "./BrokerageAccountDetailsPage.tsx?raw"
+describe("DRIP activity",()=>it("uses the reinvestment entry for the stored price, quantity, and net dividend",()=>{expect(page).toContain("const reinvestmentEntry = activity.entries.find");expect(page).toContain("if (reinvestmentEntry) return reinvestmentEntry");expect(page).toContain('t("brokerage.dividendReinvested")');expect(page).toContain('"brokerage.netDividendReinvested"');expect(page).toContain('t("brokerage.reinvestmentUnitPrice")');expect(page).toContain('t("brokerage.quantityAdded")')}))
