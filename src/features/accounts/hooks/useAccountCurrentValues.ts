@@ -7,6 +7,7 @@ import type { AccountSummary, Decimal } from "@/lib/supabase/types"
 export function useAccountCurrentValues(accounts: readonly AccountSummary[]) {
   const [values, setValues] = useState<Map<string, Decimal | null>>(new Map())
   const [isLoading, setIsLoading] = useState(accounts.length > 0)
+  const [hasResolutionError, setHasResolutionError] = useState(false)
   const [statuses, setStatuses] = useState<Map<string, AccountCurrentValueStatus>>(new Map())
   const [brokerageValues, setBrokerageValues] = useState<Map<string, BrokerageCurrentValue>>(new Map())
   const requestVersion = useRef(0)
@@ -15,6 +16,7 @@ export function useAccountCurrentValues(accounts: readonly AccountSummary[]) {
     const version = ++requestVersion.current
     if (accounts.length === 0) {
       setValues(new Map())
+      setHasResolutionError(false)
       setIsLoading(false)
       return
     }
@@ -28,20 +30,31 @@ export function useAccountCurrentValues(accounts: readonly AccountSummary[]) {
         setValues(nextValues)
         setStatuses(new Map([...nextBrokerageValues].map(([id, value]) => [id, value.status])))
         setBrokerageValues(nextBrokerageValues)
+        setHasResolutionError(false)
       }
     } catch {
-      // Keep the last resolved values; callers preserve their existing fallback display.
+      if (version === requestVersion.current) setHasResolutionError(true)
     } finally {
       if (version === requestVersion.current) setIsLoading(false)
     }
   }, [accounts])
 
-  useEffect(() => { void refresh() }, [refresh])
+  useEffect(() => {
+    const timeoutId = window.setTimeout(() => void refresh(), 0)
+    return () => window.clearTimeout(timeoutId)
+  }, [refresh])
   useEffect(() => {
     const reload = () => void refresh()
     window.addEventListener("tharwati:data-changed", reload)
     return () => window.removeEventListener("tharwati:data-changed", reload)
   }, [refresh])
 
-  return { values, statuses, brokerageValues, isLoading, refresh }
+  return {
+    values,
+    statuses,
+    brokerageValues,
+    isLoading,
+    hasResolutionError,
+    refresh,
+  }
 }

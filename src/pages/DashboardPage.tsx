@@ -32,7 +32,12 @@ export function DashboardPage() {
           isLoading={aggregate.isLoading}
         />
       </div>
-      <AccountsOverviewCard />
+      <AccountsOverviewCard
+        overview={aggregate.accountsOverview}
+        baseCurrencyCode={aggregate.result?.baseCurrencyCode ?? null}
+        error={aggregate.error}
+        isLoading={aggregate.isLoading}
+      />
     </section>
   )
 }

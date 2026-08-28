@@ -13,12 +13,17 @@ import {
   snapshotRateResolver,
   type DashboardPortfolioAllocation,
 } from "@/features/dashboard/services/dashboard-valuation-snapshot.service"
+import {
+  buildDashboardAccountsOverview,
+  type DashboardAccountsOverviewItem,
+} from "@/features/dashboard/utils/accounts-overview"
 
 export function useDashboardAggregate() {
   const [result, setResult] = useState<DashboardAggregate | null>(null)
   const [error, setError] = useState<RepositoryError | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [portfolioAllocation, setPortfolioAllocation] = useState<DashboardPortfolioAllocation | null>(null)
+  const [accountsOverview, setAccountsOverview] = useState<DashboardAccountsOverviewItem[]>([])
 
   const load = useCallback(async (showLoading: boolean) => {
     if (showLoading) setIsLoading(true)
@@ -30,6 +35,7 @@ export function useDashboardAggregate() {
       if (!baseCurrencyCode) {
         setResult(null)
         setPortfolioAllocation(null)
+        setAccountsOverview([])
         setError(null)
         return
       }
@@ -44,6 +50,12 @@ export function useDashboardAggregate() {
       })
       setResult({ ...aggregate, asOf: snapshot.asOf, freshness: snapshot.freshness })
       setPortfolioAllocation(snapshot.portfolioAllocation)
+      setAccountsOverview(buildDashboardAccountsOverview({
+        accounts: activeAccounts,
+        baseCurrencyCode,
+        currentValues: snapshot.currentValues,
+        rates: snapshot.rates,
+      }))
       setError(null)
     } catch (cause) {
       setError(cause instanceof RepositoryError ? cause : new RepositoryError({
@@ -69,5 +81,5 @@ export function useDashboardAggregate() {
     return () => window.removeEventListener("tharwati:data-changed", reload)
   }, [load])
 
-  return { result, portfolioAllocation, error, isLoading, refresh: () => load(true) }
+  return { result, portfolioAllocation, accountsOverview, error, isLoading, refresh: () => load(true) }
 }

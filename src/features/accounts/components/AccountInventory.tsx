@@ -73,6 +73,7 @@ export type AccountInventoryItem = {
   currentBalance: string | null
   metalCurrentValue: string | null
   currentValueStatus: "complete" | "incomplete"
+  isCurrentValueLoading: boolean
 }
 
 const columns: Array<[AccountInventorySort, TranslationKey]> = [
@@ -101,27 +102,30 @@ function typeLabel(
   return getAccountTypeLabel(account.account_type_code, t)
 }
 
-function balanceCell(item: AccountInventoryItem, locale: string, unavailableLabel: string) {
-  if (item.account.account_type_code === "gold") {
-    return item.metalCurrentValue === null ? (
-      "—"
-    ) : (
-      <span className="tabular-nums" dir="ltr">
-        {formatPortfolioAmount(
-          item.metalCurrentValue,
-          item.account.currency_code,
-          locale
-        )}
-      </span>
+function balanceCell(
+  item: AccountInventoryItem,
+  locale: string,
+  unavailableLabel: string,
+  loadingLabel: string
+) {
+  if (item.isCurrentValueLoading) {
+    return (
+      <span
+        aria-label={loadingLabel}
+        className="inline-block h-4 w-24 animate-pulse rounded bg-muted"
+      />
     )
   }
-  return item.currentBalance === null
-    ? item.currentValueStatus === "incomplete" ? unavailableLabel : "—"
-    : formatPortfolioAmount(
-        item.currentBalance,
-        item.account.currency_code,
-        locale
-      )
+
+  const value =
+    item.account.account_type_code === "gold"
+      ? item.metalCurrentValue
+      : item.currentBalance
+  if (value === null || item.currentValueStatus === "incomplete") {
+    return unavailableLabel
+  }
+
+  return formatPortfolioAmount(value, item.account.currency_code, locale)
 }
 
 export function AccountInventory({
@@ -206,7 +210,12 @@ export function AccountInventory({
                 </td>
                 <td className="px-4 py-4">{typeLabel(item.account, t)}</td>
                 <td className="px-4 py-4 tabular-nums" dir="ltr">
-                  {balanceCell(item, locale, t("accounts.currentValueUnavailable"))}
+                  {balanceCell(
+                    item,
+                    locale,
+                    t("accounts.currentValueUnavailable"),
+                    t("common.loading")
+                  )}
                 </td>
                 <td className="px-4 py-4 tabular-nums" dir="ltr">
                   {item.account.ownership_percentage === null
@@ -279,7 +288,7 @@ export function AccountInventory({
           <div key={item.account.id} className="grid cursor-pointer gap-2.5 px-4 py-3 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--color-primary)]" tabIndex={0} role="button" onClick={() => onOpenAccount(item.account)} onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); onOpenAccount(item.account) } }}>
             <div className="flex items-start justify-between gap-3">
               <strong className="min-w-0 flex-1 break-words">{item.account.name}</strong>
-              <strong className="max-w-[52%] shrink-0 break-words text-end tabular-nums" dir="ltr">{balanceCell(item, locale, t("accounts.currentValueUnavailable"))}</strong>
+              <strong className="max-w-[52%] shrink-0 break-words text-end tabular-nums" dir="ltr">{balanceCell(item, locale, t("accounts.currentValueUnavailable"), t("common.loading"))}</strong>
             </div>
             <div className="flex items-center justify-between gap-3">
               <span className="min-w-0 break-words text-xs text-muted-foreground">{typeLabel(item.account, t)}</span>

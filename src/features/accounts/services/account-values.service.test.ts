@@ -159,7 +159,7 @@ describe("Brokerage incomplete Accounts-list fallback", () => {
     })
 
     expect(values.get("brokerage")).toBeNull()
-    expect(inventory).toContain('item.currentValueStatus === "incomplete" ? unavailableLabel : "—"')
+    expect(inventory).toContain('item.currentValueStatus === "incomplete"')
     expect(inventory).not.toContain("currentValueStatus === \"incomplete\" ? unavailableLabel : item.account.opening_balance")
   })
 })

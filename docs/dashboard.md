@@ -6,7 +6,7 @@ This document describes the **data model, business logic, and UI/UX flow** of th
 
 The codebase contains **two distinct dashboard designs**, and only one is currently live:
 
-1. **Production dashboard** (what actually renders today at `/dashboard`): just `<NetWorthCard />` + `<AccountsOverviewCard />`. These use their own lightweight hooks (`useNetWorth`, `useAccountsOverview`) that read `financial_accounts` more or less directly (raw `opening_balance`, not ledger-adjusted).
+1. **Production dashboard** (what actually renders today at `/dashboard`): `<NetWorthCard />`, Assets Breakdown, Portfolio Allocation, and `<AccountsOverviewCard />`, all driven by the shared Dashboard valuation snapshot.
 2. **Orphaned "rich" dashboard** — a fully-built but currently unused composite: `DashboardSummary` (Net Worth / Cash / Investments metric grid), `MissingDataCards`, `PerformanceCard`, `PortfolioAllocationCard`, `RecentActivityCard`, `DashboardEmptyState`, driven by a single `useDashboard()` hook / `dashboardService.load()` returning a `DashboardViewModel`. No route or page currently renders these components (confirmed via repo-wide search — only a design-mockup page references similarly-named components with fully separate, hardcoded mock data). This richer design is clearly the more complete product intent (net worth + cash + investment performance + allocation + recent activity + missing-data warnings), but it is not wired up.
 
 **Recommendation**: build the mobile dashboard against the richer `DashboardViewModel` design (§2–§4 below cover it fully), since it's the more complete and clearly-intended experience — but confirm with the product owner first, since it is unused in production today and its strings aren't even localized yet (see §6). Both are documented in full below so the decision is informed either way.
@@ -101,34 +101,11 @@ interface NetWorthResult {
 }
 ```
 
-### 1.4 Production `AccountsOverviewCard` types (`useAccountsOverview.ts`)
+### 1.4 Production `AccountsOverviewCard` snapshot groups
 
-```ts
-type AccountTypeCurrencyTotal = { currencyCode: string; total: Decimal }
+The live Accounts Overview consumes the same Dashboard valuation snapshot already loaded for Net Worth and allocation; it makes no independent account, market-price, metal-price, or FX request. Active accounts are grouped as Cash, Bank Debit, Brokerage, Gold, Silver, Real Estate, Business, and Other. Each card shows its active account count and one decimal-safe Total Current Value in the profile base currency. Snapshot `currentValues` supply each account's current native value and the snapshot rate map converts it to base currency; any unavailable value or rate makes that whole group unavailable rather than partial.
 
-type AccountTypeOverview = {
-  kind: "type"
-  accountTypeCode: "cash" | "bank" | "brokerage" | "real_estate" | "business" | "other"
-  accountCount: number
-  currencyTotals: AccountTypeCurrencyTotal[]
-}
-
-type MetalOverview = {
-  kind: "metal"
-  metalType: "gold" | "silver"
-  accountCount: number
-  totalValueBase: Decimal | null      // null if base currency unset or live metal price fetch failed
-  costBasisBase: Decimal | null       // null if base currency unset or an FX pair for a held currency is unavailable
-  baseCurrencyCode: string | null
-}
-
-type OverviewCard = AccountTypeOverview | MetalOverview
-```
-`financial_accounts` rows with `account_type_code === "gold"` are split by their `metal_type` column into two separate cards — one for `gold`, one for `silver` — instead of one combined "gold" card. Each metal card shows only a single **total value converted into the user's onboarding base currency** (`profiles.base_currency_code`): sum of that metal's grams across all its accounts, multiplied by the live price-per-gram in the base currency (`getMetalPricePerGram(symbol, baseCurrencyCode)`, which itself does the USD→base FX conversion). Per-account name/units/cost-per-unit/current-price detail rows (previously shown per metal sub-account) are no longer rendered on the dashboard.
-
-**Increase/decrease indicator**: `costBasisBase` is `Σ(balance_grams × cost_per_unit)` per account (that account's weighted-average purchase cost, from `financial_accounts`, not `metal_purchases` history), grouped by the account's own `currency_code` and converted into the base currency via `convertCurrency` (same live-FX-then-manual-fallback resolution as everywhere else, §2.7) — summed across every account of that metal. When both `totalValueBase` and `costBasisBase` resolve, the card renders a colored trend icon (up/emerald if `totalValueBase > costBasisBase`, down/red if less, a dash if equal) next to the total, with a signed `±return%` computed as `(totalValueBase − costBasisBase) / costBasisBase × 100` (only when `costBasisBase > 0`) and a tooltip stating whether the current value is above or below what the user paid. The icon is omitted entirely if either value is `null` (no base currency, or a live price/FX lookup failed).
-
-Non-metal groups are output in fixed order `["cash","bank","brokerage","real_estate","business","other"]`; a type with zero accounts is omitted entirely. The gold/silver metal cards (present only when at least one account of that metal exists) are inserted into the card list immediately after the `brokerage` slot (or at the front if there's no brokerage card), matching the metal group's old position in the order.
+Bank Credit is excluded from the Bank asset group: Available Credit is never shown as positive wealth and its Amount Due remains represented only by Dashboard liabilities. Gold and Silver use snapshot live per-account valuations. Every card links to the matching Accounts type filter; Gold and Silver retain `/accounts?type=gold&metal=gold|silver` navigation.
 
 ### 1.5 Portfolio valuation model (feeds `investments`/`performance`/`allocation` in the rich dashboard)
 
@@ -225,7 +202,7 @@ Page = header (eyebrow/title/description) + `NetWorthCard` + `AccountsOverviewCa
 
 **`DashboardPortfolioAllocationCard`** follows Assets Breakdown. It uses only the positive Brokerage holding rows embedded in the same server snapshot and renders a responsive donut with exact total Brokerage investments in its center plus an aligned category, amount, and percentage list. It does not include Brokerage cash or non-Brokerage wealth, and is unavailable if any positive Brokerage holding could not be valued. The two allocation cards share one desktop two-column row with equal-height cards; mobile stacks them. Within each card, a fixed, non-zero chart box keeps the donut visible and desktop places it left of the legend while mobile centers it above the compact legend.
 
-**`AccountsOverviewCard`** states: loading (3 skeleton tiles) / error / empty ("add an account" prompt) / success (a responsive grid of per-account-type cards, plus separate gold/silver metal cards — see below). Each type card shows an icon, localized type label, and account count, with one row per currency held showing the summed total. **Gold** and **silver** are each rendered as their own card (not part of `typeOrder`, and no longer combined into one "gold" card): title is the metal's localized label, subtitle is the account count, and the body shows a single total-value line — that metal's total grams across all its accounts converted into the user's base currency (or "Current price unavailable" if the base currency isn't set or the live price fetch failed) — next to a trend icon comparing that current value against what the user paid for it (see §1.4's "Increase/decrease indicator"). No other per-account detail (name, units, cost-per-unit, live price-per-unit) is shown on the dashboard for metal accounts anymore. Every card, including the metal cards, is a `<Link>`; clicking a type card goes to `/accounts`, and clicking the gold or silver card goes to `/accounts?type=gold&metal=gold` or `/accounts?type=gold&metal=silver` respectively — the Accounts page reads those query params on mount to pre-filter its list to just that metal type.
+**`AccountsOverviewCard`** states: loading (3 skeleton tiles) / error / empty ("add an account" prompt) / success (a responsive grid). Every card shows its type, active account count, and one base-currency Total Current Value from the shared snapshot; unavailable groups show an explicit unavailable state. Every card links to its matching `/accounts?type=…` filter, while Gold and Silver retain their metal-specific filters.
 
 ### 3.2 Rich dashboard (unused in production, but the more complete design)
 

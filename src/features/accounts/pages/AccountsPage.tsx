@@ -19,6 +19,7 @@ import { DeleteAccountDialog } from "@/features/accounts/components/DeleteAccoun
 import { MetalPurchaseEntryDialog } from "@/features/accounts/components/MetalPurchaseDialog"
 import { useAccounts } from "@/features/accounts/hooks/useAccounts"
 import { useAccountCurrentValues } from "@/features/accounts/hooks/useAccountCurrentValues"
+import { resolveAccountListCurrentValue } from "@/features/accounts/utils/account-list-current-value"
 import {
   accountToFormValues,
   emptyAccountFormValues,
@@ -101,19 +102,24 @@ export function AccountsPage() {
     })
 
     const withBalance = filtered.map((account) => {
-      const brokerageStatus = accountCurrentValues.statuses.get(account.id)
+      const currentValue = resolveAccountListCurrentValue({
+        account,
+        values: accountCurrentValues.values,
+        statuses: accountCurrentValues.statuses,
+        isLoading: accountCurrentValues.isLoading,
+        hasResolutionError: accountCurrentValues.hasResolutionError,
+      })
       return {
         account,
         currentBalance:
           account.account_type_code === "gold"
             ? null
-            : account.account_type_code === "brokerage" && brokerageStatus === "incomplete"
-              ? null
-            : accountCurrentValues.values.get(account.id) ?? account.opening_balance,
-        currentValueStatus: brokerageStatus ?? "complete",
+            : currentValue.value,
+        currentValueStatus: currentValue.status,
+        isCurrentValueLoading: currentValue.isLoading,
         metalCurrentValue:
           account.account_type_code === "gold"
-            ? accountCurrentValues.values.get(account.id) ?? null
+            ? currentValue.value
             : null,
       }
     })
@@ -150,6 +156,8 @@ export function AccountsPage() {
     metalFilter,
     accountCurrentValues.values,
     accountCurrentValues.statuses,
+    accountCurrentValues.isLoading,
+    accountCurrentValues.hasResolutionError,
     sort,
   ])
 

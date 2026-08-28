@@ -1,6 +1,8 @@
 import type { TranslationKey } from "../en/translations"
 
 export const ar: Record<TranslationKey, string> = {
+  "dashboard.accountsOverview.totalCurrentValue": "إجمالي القيمة الحالية",
+  "dashboard.accountsOverview.currentValueUnavailable": "القيمة الحالية غير متاحة",
   "language.english": "English",
   "language.arabic": "العربية",
   "language.switchTo": "تغيير اللغة إلى {{language}}",

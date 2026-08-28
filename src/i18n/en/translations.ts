@@ -44,6 +44,8 @@ export const en = {
   "dashboard.accountsOverview.empty":
     "Add an account to see balances grouped by type.",
   "dashboard.accountsOverview.accountCount": "{{count}} accounts",
+  "dashboard.accountsOverview.totalCurrentValue": "Total current value",
+  "dashboard.accountsOverview.currentValueUnavailable": "Current value unavailable",
   "dashboard.accountsOverview.metalUnits": "{{units}} g",
   "dashboard.accountsOverview.costPerUnit":
     "Bought at {{price}} {{currency}}/g",
