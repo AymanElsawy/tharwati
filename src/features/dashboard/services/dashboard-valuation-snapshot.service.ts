@@ -93,10 +93,15 @@ export function parseDashboardValuationSnapshot(value: unknown): DashboardValuat
   }
 }
 
-export async function getDashboardValuationSnapshot(): Promise<DashboardValuationSnapshot> {
+/** Requests the unchanged Edge Function payload so callers can time transport separately from parsing. */
+export async function requestDashboardValuationSnapshot(): Promise<unknown> {
   const { data, error } = await supabase.functions.invoke("dashboard-valuation")
   if (error) throw error
-  return parseDashboardValuationSnapshot(data)
+  return data
+}
+
+export async function getDashboardValuationSnapshot(): Promise<DashboardValuationSnapshot> {
+  return parseDashboardValuationSnapshot(await requestDashboardValuationSnapshot())
 }
 
 export function snapshotAccountBalances(

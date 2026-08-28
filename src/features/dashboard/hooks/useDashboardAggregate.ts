@@ -8,11 +8,14 @@ import {
 import { getCurrentUserBaseCurrency } from "@/features/profile/repositories/profile.repository"
 import { RepositoryError } from "@/lib/supabase/types"
 import {
-  getDashboardValuationSnapshot,
+  parseDashboardValuationSnapshot,
+  requestDashboardValuationSnapshot,
   snapshotAccountBalances,
   snapshotRateResolver,
   type DashboardPortfolioAllocation,
 } from "@/features/dashboard/services/dashboard-valuation-snapshot.service"
+import { DashboardLoadCoordinator } from "@/features/dashboard/services/dashboard-load-coordinator"
+import { createDashboardLoadPerformance } from "@/features/dashboard/services/dashboard-load-performance"
 import {
   buildDashboardAccountsOverview,
   type DashboardAccountsOverviewItem,
@@ -26,11 +29,20 @@ export function useDashboardAggregate() {
   const [accountsOverview, setAccountsOverview] = useState<DashboardAccountsOverviewItem[]>([])
 
   const load = useCallback(async (showLoading: boolean) => {
+    const performance = createDashboardLoadPerformance()
     if (showLoading) setIsLoading(true)
+    const snapshotRequest = performance.measurePromise(
+      "edge-snapshot-request",
+      requestDashboardValuationSnapshot(),
+    ).then(
+      (data) => ({ data }),
+      (cause) => ({ cause }),
+    )
+    let isReady = false
     try {
       const [baseCurrencyCode, accounts] = await Promise.all([
-        getCurrentUserBaseCurrency(),
-        accountsRepository.getAccounts(),
+        performance.measurePromise("profile-load", getCurrentUserBaseCurrency()),
+        performance.measurePromise("accounts-load", accountsRepository.getAccounts()),
       ])
       if (!baseCurrencyCode) {
         setResult(null)
@@ -40,23 +52,29 @@ export function useDashboardAggregate() {
         return
       }
       const activeAccounts = accounts.filter((account) => account.is_active)
-      const snapshot = await getDashboardValuationSnapshot()
-      const aggregate = await calculateDashboardAggregate({
-        baseCurrencyCode,
-        accounts: activeAccounts,
-        currentValues: snapshot.currentValues,
-        accountBalances: snapshotAccountBalances(snapshot, activeAccounts),
-        rates: snapshotRateResolver(snapshot),
+      const snapshotResult = await snapshotRequest
+      if ("cause" in snapshotResult) throw snapshotResult.cause
+
+      await performance.measure("snapshot-parsing-aggregation", async () => {
+        const snapshot = parseDashboardValuationSnapshot(snapshotResult.data)
+        const aggregate = await calculateDashboardAggregate({
+          baseCurrencyCode,
+          accounts: activeAccounts,
+          currentValues: snapshot.currentValues,
+          accountBalances: snapshotAccountBalances(snapshot, activeAccounts),
+          rates: snapshotRateResolver(snapshot),
+        })
+        setResult({ ...aggregate, asOf: snapshot.asOf, freshness: snapshot.freshness })
+        setPortfolioAllocation(snapshot.portfolioAllocation)
+        setAccountsOverview(buildDashboardAccountsOverview({
+          accounts: activeAccounts,
+          baseCurrencyCode,
+          currentValues: snapshot.currentValues,
+          rates: snapshot.rates,
+        }))
       })
-      setResult({ ...aggregate, asOf: snapshot.asOf, freshness: snapshot.freshness })
-      setPortfolioAllocation(snapshot.portfolioAllocation)
-      setAccountsOverview(buildDashboardAccountsOverview({
-        accounts: activeAccounts,
-        baseCurrencyCode,
-        currentValues: snapshot.currentValues,
-        rates: snapshot.rates,
-      }))
       setError(null)
+      isReady = true
     } catch (cause) {
       setError(cause instanceof RepositoryError ? cause : new RepositoryError({
         code: "database_error",
@@ -65,21 +83,25 @@ export function useDashboardAggregate() {
         cause,
       }))
     } finally {
+      if (isReady) performance.finish()
       if (showLoading) setIsLoading(false)
     }
   }, [])
 
+  const [loadCoordinator] = useState(() => new DashboardLoadCoordinator(load))
+  const requestLoad = useCallback((showLoading: boolean) => loadCoordinator.request(showLoading), [loadCoordinator])
+
   useEffect(() => {
     async function initialize() {
-      await load(true)
+      await loadCoordinator.requestInitial()
     }
     void initialize()
-  }, [load])
+  }, [loadCoordinator])
   useEffect(() => {
-    const reload = () => void load(false)
+    const reload = () => void requestLoad(false)
     window.addEventListener("tharwati:data-changed", reload)
     return () => window.removeEventListener("tharwati:data-changed", reload)
-  }, [load])
+  }, [requestLoad])
 
-  return { result, portfolioAllocation, accountsOverview, error, isLoading, refresh: () => load(true) }
+  return { result, portfolioAllocation, accountsOverview, error, isLoading, refresh: () => requestLoad(true) }
 }
