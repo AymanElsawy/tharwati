@@ -1,6 +1,6 @@
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useEffect, useMemo } from "react"
-import { useForm, useWatch } from "react-hook-form"
+import { Controller, useForm, useWatch } from "react-hook-form"
 
 import { useTranslation } from "../../../i18n/useTranslation"
 import { createAccountSchema } from "../schemas/account.schema"
@@ -10,14 +10,17 @@ import {
 } from "../utils/account-form-state"
 import {
   bankSubtypeOptions,
+  businessTypeOptions,
   currencyOptions,
   dueDayOfMonthOptions,
   getBalanceLabelKey,
   investmentTypeOptions,
+  industryOptions,
   metalTypeOptions,
   propertyTypeOptions,
   type AccountFormValues,
 } from "../types/account-form"
+import { BusinessIndustrySelector } from "./BusinessIndustrySelector"
 
 type AccountFormProps = {
   defaultValues: AccountFormValues
@@ -25,6 +28,7 @@ type AccountFormProps = {
   isSaving: boolean
   isCurrencyLocked: boolean
   isOpeningBalanceLocked: boolean
+  mode: "create" | "edit"
   onSubmit: (values: AccountFormValues) => Promise<void>
   onDirtyChange: (dirty: boolean) => void
 }
@@ -40,17 +44,19 @@ export function AccountForm({
   isSaving,
   isCurrencyLocked,
   isOpeningBalanceLocked,
+  mode,
   onSubmit,
   onDirtyChange,
 }: AccountFormProps) {
   const { t } = useTranslation()
-  const accountSchema = useMemo(() => createAccountSchema(t), [t])
+  const accountSchema = useMemo(() => createAccountSchema(t, mode), [mode, t])
   const {
     formState: { errors, isSubmitting, isSubmitted },
     handleSubmit,
     register,
     reset,
     control,
+    setValue,
   } = useForm<AccountFormValues>({
     resolver: zodResolver(accountSchema),
     defaultValues,
@@ -78,6 +84,7 @@ export function AccountForm({
   const bankSubtype = values.bankSubtype ?? defaultValues.bankSubtype
   const isDisabled = isSaving || isSubmitting
   const showBalance = accountTypeCode !== "gold"
+  const isValuedAccount = accountTypeCode === "real_estate" || accountTypeCode === "business"
 
   return (
     <form
@@ -182,7 +189,7 @@ export function AccountForm({
             <input
               id={`${formId}-credit-card-limit`}
               className={fieldClassName}
-              disabled={isDisabled}
+              disabled={isDisabled || (mode === "edit" && isOpeningBalanceLocked)}
               inputMode="decimal"
               dir="ltr"
               placeholder="0.00"
@@ -249,6 +256,7 @@ export function AccountForm({
       ) : null}
 
       {accountTypeCode === "real_estate" ? (
+        <>
         <div>
           <label htmlFor={`${formId}-property-type`} className={labelClassName}>
             {t("accounts.form.propertyType.label")}
@@ -270,6 +278,11 @@ export function AccountForm({
             <p className={errorClassName}>{errors.propertyType?.message}</p>
           ) : null}
         </div>
+        <div>
+          <label htmlFor={`${formId}-location`} className={labelClassName}>{t("accounts.form.location")} <span className="font-normal text-muted-foreground">({t("common.optional")})</span></label>
+          <input id={`${formId}-location`} className={fieldClassName} disabled={isDisabled} {...register("location")} />
+        </div>
+        </>
       ) : null}
 
       {accountTypeCode === "business" ? (
@@ -281,31 +294,50 @@ export function AccountForm({
             >
               {t("accounts.form.businessType")}
             </label>
-            <input
+            <select
               id={`${formId}-business-type`}
               className={fieldClassName}
               disabled={isDisabled}
-              autoComplete="off"
               {...register("businessType")}
-            />
+              onChange={(event) => {
+                register("businessType").onChange(event)
+                if (event.target.value !== "other") setValue("businessTypeOther", "")
+              }}
+            >
+              <option value="">{t("accounts.form.selectPlaceholder")}</option>
+              {businessTypeOptions.map((option) => (
+                <option key={option.value} value={option.value}>{t(option.labelKey)}</option>
+              ))}
+            </select>
             {showError("businessType") ? (
               <p className={errorClassName}>{errors.businessType?.message}</p>
             ) : null}
+            {values.businessType === "other" ? <>
+              <label htmlFor={`${formId}-business-type-other`} className={`mt-3 block ${labelClassName}`}>{t("accounts.form.businessTypeOther")}</label>
+              <input id={`${formId}-business-type-other`} className={fieldClassName} disabled={isDisabled} autoComplete="off" {...register("businessTypeOther")} />
+              {showError("businessTypeOther") ? <p className={errorClassName}>{errors.businessTypeOther?.message}</p> : null}
+            </> : null}
           </div>
           <div>
             <label htmlFor={`${formId}-industry`} className={labelClassName}>
               {t("accounts.form.industry")}
             </label>
-            <input
-              id={`${formId}-industry`}
-              className={fieldClassName}
-              disabled={isDisabled}
-              autoComplete="off"
-              {...register("industry")}
+            <Controller
+              control={control}
+              name="industry"
+              render={({ field }) => <BusinessIndustrySelector id={`${formId}-industry`} value={field.value} options={industryOptions} disabled={isDisabled} onChange={(nextValue) => {
+                field.onChange(nextValue)
+                if (nextValue !== "other") setValue("industryOther", "")
+              }} />}
             />
             {showError("industry") ? (
               <p className={errorClassName}>{errors.industry?.message}</p>
             ) : null}
+            {values.industry === "other" ? <>
+              <label htmlFor={`${formId}-industry-other`} className={`mt-3 block ${labelClassName}`}>{t("accounts.form.industryOther")}</label>
+              <input id={`${formId}-industry-other`} className={fieldClassName} disabled={isDisabled} autoComplete="off" {...register("industryOther")} />
+              {showError("industryOther") ? <p className={errorClassName}>{errors.industryOther?.message}</p> : null}
+            </> : null}
           </div>
         </div>
       ) : null}
@@ -319,7 +351,7 @@ export function AccountForm({
             <input
               id={`${formId}-ownership`}
               className={`${fieldClassName} mt-0 pe-9`}
-              disabled={isDisabled}
+              disabled={isDisabled || (mode === "edit" && isOpeningBalanceLocked)}
               inputMode="decimal"
               dir="ltr"
               placeholder="100"
@@ -361,7 +393,7 @@ export function AccountForm({
         </div>
       ) : null}
 
-      {showBalance ? (
+      {showBalance && !isValuedAccount ? (
         <div>
           <label
             htmlFor={`${formId}-opening-balance`}
@@ -401,7 +433,24 @@ export function AccountForm({
         </div>
       ) : null}
 
-      {accountTypeCode === "other" ? (
+      {isValuedAccount && mode === "create" ? (
+        <>
+          <div>
+            <label htmlFor={`${formId}-valuation-amount`} className={labelClassName}>{t(getBalanceLabelKey(accountTypeCode))}</label>
+            <input id={`${formId}-valuation-amount`} className={fieldClassName} disabled={isDisabled} inputMode="decimal" dir="ltr" placeholder="0.00" {...register("openingBalance")} />
+            {showError("openingBalance") ? <p className={errorClassName}>{errors.openingBalance?.message}</p> : null}
+          </div>
+          <div>
+            <label htmlFor={`${formId}-valuation-date`} className={labelClassName}>{t("accounts.form.valuationDate")}</label>
+            <input id={`${formId}-valuation-date`} type="date" max={new Date().toISOString().slice(0, 10)} className={fieldClassName} disabled={isDisabled} {...register("valuationDate")} />
+            {showError("valuationDate") ? <p className={errorClassName}>{errors.valuationDate?.message}</p> : null}
+          </div>
+          {accountTypeCode === "business" ? <div><label htmlFor={`${formId}-valuation-method`} className={labelClassName}>{t("accounts.form.valuationMethod")} <span className="font-normal text-muted-foreground">({t("common.optional")})</span></label><input id={`${formId}-valuation-method`} className={fieldClassName} disabled={isDisabled} {...register("valuationMethod")} /></div> : null}
+          <div><label htmlFor={`${formId}-valuation-notes`} className={labelClassName}>{t("accounts.form.valuationNotes")} <span className="font-normal text-muted-foreground">({t("common.optional")})</span></label><textarea id={`${formId}-valuation-notes`} className={`${fieldClassName} min-h-20 resize-y`} disabled={isDisabled} {...register("valuationNotes")} /></div>
+        </>
+      ) : null}
+
+      {accountTypeCode !== "gold" ? (
         <div>
           <label htmlFor={`${formId}-notes`} className={labelClassName}>
             {t("accounts.form.notes")}

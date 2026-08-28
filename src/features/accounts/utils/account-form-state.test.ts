@@ -1,9 +1,14 @@
 import { describe, expect, it } from "vitest"
 import {
+  accountToFormValues,
   emptyAccountFormValues,
+  getBusinessTypeLabel,
   getCreditCardAmountDue,
+  getIndustryLabel,
+  getPropertyTypeLabel,
   toAccountTypeSpecificFields,
 } from "@/features/accounts/types/account-form"
+import type { AccountSummary } from "@/lib/supabase/types"
 import {
   hasMeaningfulAccountChanges,
   mergeWatchedAccountForm,
@@ -68,4 +73,54 @@ describe("account form state", () => {
       dueDayOfMonth: null,
     })
   })
+
+  it("stores stable Business classification codes and preserves Other custom values", () => {
+    expect(toAccountTypeSpecificFields({
+      ...emptyAccountFormValues,
+      accountTypeCode: "business",
+      businessType: "llc",
+      industry: "technology",
+    })).toMatchObject({ businessType: "llc", industry: "technology" })
+
+    expect(toAccountTypeSpecificFields({
+      ...emptyAccountFormValues,
+      accountTypeCode: "business",
+      businessType: "other",
+      businessTypeOther: "Community cooperative",
+      industry: "other",
+      industryOther: "Clean energy",
+    })).toMatchObject({
+      businessType: "other:Community cooperative",
+      industry: "other:Clean energy",
+    })
+  })
+
+  it("restores stored standard and custom Business values for edit mode", () => {
+    const standard = accountToFormValues(account({ business_type: "partnership", industry: "retail" }))
+    expect(standard).toMatchObject({ businessType: "partnership", businessTypeOther: "", industry: "retail", industryOther: "" })
+
+    const custom = accountToFormValues(account({ business_type: "other:Family office", industry: "other:Media" }))
+    expect(custom).toMatchObject({ businessType: "other", businessTypeOther: "Family office", industry: "other", industryOther: "Media" })
+  })
+
+  it("uses localized labels for stored standard codes and clean text for custom values", () => {
+    const t = (key: string) => `label:${key}`
+    expect(getBusinessTypeLabel("llc", t)).toBe("label:accounts.form.businessType.llc")
+    expect(getIndustryLabel("technology", t)).toBe("label:accounts.form.industry.technology")
+    expect(getIndustryLabel("other:Creative services", t)).toBe("Creative services")
+    expect(getPropertyTypeLabel("villa", t)).toBe("label:accounts.form.propertyType.villa")
+  })
 })
+
+function account(overrides: Partial<AccountSummary>): AccountSummary {
+  return {
+    id: "business-1", user_id: "user-1", account_type_code: "business", name: "Business",
+    currency_code: "SAR", opening_balance: "0", notes: null, is_active: true,
+    bank_subtype: null, credit_card_limit: null, due_day_of_month: null, investment_type: null,
+    balance_grams: null, property_type: null, ownership_percentage: "100",
+    initial_ownership_percentage: "100", closed_on: null, closed_reason: null,
+    business_type: null, industry: null, location: null, metal_type: null, purity: null,
+    purchase_date: null, cost_per_unit: null, created_at: "2026-08-28T00:00:00Z",
+    updated_at: "2026-08-28T00:00:00Z", ...overrides,
+  }
+}

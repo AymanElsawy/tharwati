@@ -79,8 +79,8 @@ describe("resolveAccountCurrentValues", () => {
       ["gold", "600"],
       ["brokerage-cash-only", "11150"],
       ["brokerage-open-holding", null],
-      ["property", "500"],
-      ["business", "600"],
+      ["property", null],
+      ["business", null],
       ["other", "700"],
     ]))
   })
@@ -129,6 +129,67 @@ describe("resolveAccountCurrentValues", () => {
     })
 
     expect(values.get("gold")).toBe("1260.00000000000000024")
+  })
+
+  it("uses Real Estate and Business valuations adjusted by current ownership", () => {
+    const values = resolveAccountCurrentValues({
+      accounts: [
+        account("property", "real_estate", "0"),
+        account("business", "business", "0"),
+      ],
+      recordBalances: new Map(),
+      metalPurchases: [],
+      metalCurrentPrices: new Map(),
+      brokerageAvailableCash: new Map(),
+      brokerageAccountsWithPositiveHoldings: new Set(),
+      accountValuations: new Map([
+        ["property", {
+          id: "property-valuation", accountId: "property", valuationAmount: "250000",
+          valuedOn: "2026-08-28", valuationMethod: null, notes: null,
+          correctsValuationId: null, createdAt: "2026-08-28T00:00:00Z",
+        }],
+        ["business", {
+          id: "business-valuation", accountId: "business", valuationAmount: "1234.56",
+          valuedOn: "2026-08-28", valuationMethod: null, notes: null,
+          correctsValuationId: null, createdAt: "2026-08-28T00:00:00Z",
+        }],
+      ]),
+      accountOwnership: new Map([
+        ["property", { accountId: "property", ownershipPercentage: "40", isSold: false }],
+        ["business", { accountId: "business", ownershipPercentage: "12.5", isSold: false }],
+      ]),
+    })
+
+    expect(values.get("property")).toBe("100000")
+    expect(values.get("business")).toBe("154.32")
+  })
+
+  it("keeps a missing valuation unavailable while preserving an explicit zero valuation", () => {
+    const values = resolveAccountCurrentValues({
+      accounts: [
+        account("property-missing", "real_estate", "0"),
+        account("business-zero", "business", "0"),
+      ],
+      recordBalances: new Map(),
+      metalPurchases: [],
+      metalCurrentPrices: new Map(),
+      brokerageAvailableCash: new Map(),
+      brokerageAccountsWithPositiveHoldings: new Set(),
+      accountValuations: new Map([[
+        "business-zero", {
+          id: "zero-valuation", accountId: "business-zero", valuationAmount: "0",
+          valuedOn: "2026-08-28", valuationMethod: null, notes: null,
+          correctsValuationId: null, createdAt: "2026-08-28T00:00:00Z",
+        },
+      ]]),
+      accountOwnership: new Map([
+        ["property-missing", { accountId: "property-missing", ownershipPercentage: "100", isSold: false }],
+        ["business-zero", { accountId: "business-zero", ownershipPercentage: "100", isSold: false }],
+      ]),
+    })
+
+    expect(values.get("property-missing")).toBeNull()
+    expect(values.get("business-zero")).toBe("0")
   })
 })
 

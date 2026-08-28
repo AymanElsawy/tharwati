@@ -182,6 +182,19 @@ export function useAccounts(): UseAccountsResult {
               : values.name.trim(),
           currencyCode: values.currencyCode,
           notes: nullableText(values.notes),
+          valuationAmount:
+            values.accountTypeCode === "real_estate" || values.accountTypeCode === "business"
+              ? values.openingBalance.trim()
+              : undefined,
+          valuedOn:
+            values.accountTypeCode === "real_estate" || values.accountTypeCode === "business"
+              ? values.valuationDate
+              : undefined,
+          valuationMethod: values.accountTypeCode === "business" ? nullableText(values.valuationMethod) : null,
+          valuationNotes:
+            values.accountTypeCode === "real_estate" || values.accountTypeCode === "business"
+              ? nullableText(values.valuationNotes)
+              : null,
           ...toAccountTypeSpecificFields(values),
         }
         const createdAccount = await accountsRepository.createAccount(input)
@@ -200,6 +213,7 @@ export function useAccounts(): UseAccountsResult {
   const updateAccount = useCallback(
     async (accountId: string, values: AccountFormValues) =>
       runMutation("accounts.update", () => {
+        const typeFields = toAccountTypeSpecificFields(values)
         const input: UpdateAccountInput = {
           accountTypeCode: values.accountTypeCode,
           name:
@@ -211,7 +225,10 @@ export function useAccounts(): UseAccountsResult {
           currencyCode: values.currencyCode,
           notes: nullableText(values.notes),
           isActive: values.isActive,
-          ...toAccountTypeSpecificFields(values),
+          ...typeFields,
+        }
+        if (values.accountTypeCode === "real_estate" || values.accountTypeCode === "business") {
+          input.openingBalance = undefined
         }
 
         return accountsRepository.updateAccount(accountId, input)

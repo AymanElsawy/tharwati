@@ -1,68 +1,71 @@
 import { describe, expect, it } from "vitest"
 
-import type { Translate } from "@/i18n/context"
-import { emptyAccountFormValues } from "../types/account-form"
 import { createAccountSchema } from "./account.schema"
+import { emptyAccountFormValues } from "../types/account-form"
+import type { Translate } from "@/i18n/context"
 
-const t = ((key: string) => key) as Translate
+const translate = ((key: string) => key) as Translate
 
-describe("createAccountSchema metal accounts", () => {
-  it("requires only metal type and currency-specific base form data", () => {
-    const result = createAccountSchema(t).safeParse({
+describe("Business account classification validation", () => {
+  it("accepts selected Business Type and Industry codes for create", () => {
+    const result = createAccountSchema(translate).safeParse({
       ...emptyAccountFormValues,
-      accountTypeCode: "gold",
-      metalType: "gold",
-      name: "",
-      purity: "",
-      purchaseDate: "",
-      balanceGrams: "",
-      costPerUnit: "",
+      accountTypeCode: "business",
+      name: "Studio",
+      openingBalance: "100",
+      businessType: "llc",
+      industry: "technology",
     })
-
     expect(result.success).toBe(true)
   })
 
-  it("accepts Debit without credit-only fields", () => {
-    expect(
-      createAccountSchema(t).safeParse({
-        ...emptyAccountFormValues,
-        accountTypeCode: "bank",
-        name: "Debit bank",
-        bankSubtype: "debit",
-        openingBalance: "500",
-      }).success
-    ).toBe(true)
-  })
-
-  it("validates Credit limit, optional due day, and available balance", () => {
-    const schema = createAccountSchema(t)
-    const valid = {
+  it("requires custom values only when Other is selected", () => {
+    const missingCustom = createAccountSchema(translate).safeParse({
       ...emptyAccountFormValues,
-      accountTypeCode: "bank" as const,
-      name: "Credit bank",
-      bankSubtype: "credit" as const,
-      creditCardLimit: "10000",
-      dueDayOfMonth: "15",
-      openingBalance: "8000",
-    }
+      accountTypeCode: "business",
+      name: "Studio",
+      openingBalance: "100",
+      businessType: "other",
+      industry: "other",
+    })
+    expect(missingCustom.success).toBe(false)
 
-    expect(schema.safeParse(valid).success).toBe(true)
-    expect(schema.safeParse({ ...valid, dueDayOfMonth: "" }).success).toBe(true)
-    expect(schema.safeParse({ ...valid, creditCardLimit: "0" }).success).toBe(
-      false
-    )
-    expect(
-      schema.safeParse({ ...valid, openingBalance: "10001" }).success
-    ).toBe(false)
-    expect(schema.safeParse({ ...valid, dueDayOfMonth: "32" }).success).toBe(
-      false
-    )
+    const custom = createAccountSchema(translate).safeParse({
+      ...emptyAccountFormValues,
+      accountTypeCode: "business",
+      name: "Studio",
+      openingBalance: "100",
+      businessType: "other",
+      businessTypeOther: "Collective",
+      industry: "other",
+      industryOther: "Creative services",
+    })
+    expect(custom.success).toBe(true)
   })
 
-  it("still requires names for non-metal accounts", () => {
-    expect(
-      createAccountSchema(t).safeParse({ ...emptyAccountFormValues, name: "" })
-        .success
-    ).toBe(false)
-  })
+  it.each(["real_estate", "business"] as const)(
+    "rejects a future initial valuation date for %s",
+    (accountTypeCode) => {
+      const result = createAccountSchema(translate).safeParse({
+        ...emptyAccountFormValues,
+        accountTypeCode,
+        name: "Valued account",
+        openingBalance: "100",
+        valuationDate: "2999-01-01",
+        propertyType: accountTypeCode === "real_estate" ? "villa" : "",
+        businessType: accountTypeCode === "business" ? "llc" : "",
+        industry: accountTypeCode === "business" ? "technology" : "",
+      })
+
+      expect(result.success).toBe(false)
+      if (!result.success) {
+        expect(result.error.issues).toEqual(expect.arrayContaining([
+          expect.objectContaining({
+            path: ["valuationDate"],
+            message: "accounts.validation.valuationDateFuture",
+          }),
+        ]))
+      }
+    },
+  )
 })

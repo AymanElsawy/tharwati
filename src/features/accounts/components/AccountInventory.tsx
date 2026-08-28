@@ -26,6 +26,7 @@ import {
 import type { AccountSummary } from "@/lib/supabase/types"
 import type { TranslationKey } from "@/i18n/en/translations"
 import { useTranslation } from "@/i18n/useTranslation"
+import { isSoldAccount } from "@/features/accounts/utils/account-lifecycle"
 
 function ActionButton({
   ariaLabel,
@@ -129,6 +130,7 @@ function balanceCell(
 }
 
 export function AccountInventory({
+  sectionTitle,
   items,
   sort,
   direction,
@@ -140,6 +142,7 @@ export function AccountInventory({
   onOpenAccount,
   canDelete,
 }: {
+  sectionTitle?: string
   items: AccountInventoryItem[]
   sort: AccountInventorySort
   direction: "asc" | "desc"
@@ -156,6 +159,7 @@ export function AccountInventory({
 
   return (
     <section aria-labelledby="account-inventory-title" className="mt-8">
+      {sectionTitle ? <h2 className="mb-3 font-heading text-lg font-semibold text-muted-foreground">{sectionTitle}</h2> : null}
       <div className="mt-2 hidden max-h-[44rem] overflow-auto rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-sm lg:block">
         <table className="w-full min-w-[900px] text-sm">
           <thead className="sticky top-0 z-10 bg-[var(--color-surface-muted)]">
@@ -192,10 +196,11 @@ export function AccountInventory({
             </tr>
           </thead>
           <tbody>
-            {items.map((item) => (
-              <tr
+            {items.map((item) => {
+              const sold = isSoldAccount(item.account)
+              return <tr
                 key={item.account.id}
-                className="cursor-pointer border-b border-[var(--color-border)] last:border-b-0 hover:bg-[var(--color-surface-hover)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--color-primary)]"
+                className={`cursor-pointer border-b border-[var(--color-border)] last:border-b-0 hover:bg-[var(--color-surface-hover)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--color-primary)] ${sold ? "bg-[var(--color-surface-muted)]/60 text-muted-foreground" : ""}`}
                 tabIndex={0}
                 onClick={() => onOpenAccount(item.account)}
                 onKeyDown={(event) => {
@@ -206,7 +211,7 @@ export function AccountInventory({
                 }}
               >
                 <td className="px-4 py-4 font-medium">
-                  {item.account.name}
+                  <span className="inline-flex flex-wrap items-center gap-2">{item.account.name}{sold ? <span className="rounded-full bg-muted px-2 py-0.5 text-[11px] font-semibold text-muted-foreground">{t("accounts.disposal.sold")}</span> : null}</span>
                 </td>
                 <td className="px-4 py-4">{typeLabel(item.account, t)}</td>
                 <td className="px-4 py-4 tabular-nums" dir="ltr">
@@ -239,7 +244,7 @@ export function AccountInventory({
                         <Coins size={15} />
                       </ActionButton>
                     ) : null}
-                    <ActionButton
+                    {!sold ? <ActionButton
                       ariaLabel={t("accounts.table.editLabel", {
                         name: item.account.name,
                       })}
@@ -247,8 +252,8 @@ export function AccountInventory({
                       onClick={() => onEdit(item.account)}
                     >
                       <Pencil size={15} />
-                    </ActionButton>
-                    <ActionButton
+                    </ActionButton> : null}
+                    {!sold ? <ActionButton
                       ariaLabel={t("accounts.table.archiveLabel", {
                         name: item.account.name,
                       })}
@@ -264,7 +269,7 @@ export function AccountInventory({
                       ) : (
                         <ArchiveRestore size={15} />
                       )}
-                    </ActionButton>
+                    </ActionButton> : null}
                     <ActionButton
                       ariaLabel={t("accounts.table.deleteLabel", {
                         name: item.account.name,
@@ -279,15 +284,16 @@ export function AccountInventory({
                   </div>
                 </td>
               </tr>
-            ))}
+            })}
           </tbody>
         </table>
       </div>
       <div className="mt-2 divide-y divide-[var(--color-border)] rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-sm lg:hidden">
-        {items.map((item) => (
-          <div key={item.account.id} className="grid cursor-pointer gap-2.5 px-4 py-3 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--color-primary)]" tabIndex={0} role="button" onClick={() => onOpenAccount(item.account)} onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); onOpenAccount(item.account) } }}>
+        {items.map((item) => {
+          const sold = isSoldAccount(item.account)
+          return <div key={item.account.id} className={`grid cursor-pointer gap-2.5 px-4 py-3 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--color-primary)] ${sold ? "bg-[var(--color-surface-muted)]/60 text-muted-foreground" : ""}`} tabIndex={0} role="button" onClick={() => onOpenAccount(item.account)} onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); onOpenAccount(item.account) } }}>
             <div className="flex items-start justify-between gap-3">
-              <strong className="min-w-0 flex-1 break-words">{item.account.name}</strong>
+              <strong className="min-w-0 flex-1 break-words">{item.account.name}{sold ? <span className="ms-2 inline-block rounded-full bg-muted px-2 py-0.5 text-[11px] font-semibold text-muted-foreground">{t("accounts.disposal.sold")}</span> : null}</strong>
               <strong className="max-w-[52%] shrink-0 break-words text-end tabular-nums" dir="ltr">{balanceCell(item, locale, t("accounts.currentValueUnavailable"), t("common.loading"))}</strong>
             </div>
             <div className="flex items-center justify-between gap-3">
@@ -305,7 +311,7 @@ export function AccountInventory({
                     <Coins size={15} />
                   </ActionButton>
                 ) : null}
-                <ActionButton
+                {!sold ? <ActionButton
                   ariaLabel={t("accounts.table.editLabel", {
                     name: item.account.name,
                   })}
@@ -313,8 +319,8 @@ export function AccountInventory({
                   onClick={() => onEdit(item.account)}
                 >
                   <Pencil size={15} />
-                </ActionButton>
-                <ActionButton
+                </ActionButton> : null}
+                {!sold ? <ActionButton
                   ariaLabel={t("accounts.table.archiveLabel", {
                     name: item.account.name,
                   })}
@@ -330,7 +336,7 @@ export function AccountInventory({
                   ) : (
                     <ArchiveRestore size={15} />
                   )}
-                </ActionButton>
+                </ActionButton> : null}
                 <ActionButton
                   ariaLabel={t("accounts.table.deleteLabel", {
                     name: item.account.name,
@@ -345,7 +351,7 @@ export function AccountInventory({
               </div>
             </div>
           </div>
-        ))}
+        })}
       </div>
     </section>
   )

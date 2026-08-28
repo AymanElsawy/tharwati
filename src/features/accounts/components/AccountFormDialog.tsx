@@ -155,13 +155,14 @@ export function AccountFormDialog({
                   <span>{submitError}</span>
                 </div>
               ) : null}
-              <AccountForm
+            <AccountForm
                 key={sessionId}
                 defaultValues={effectiveDefaults}
                 formId={formId}
                 isSaving={isSaving}
                 isCurrencyLocked={isCurrencyLocked}
-                isOpeningBalanceLocked={isOpeningBalanceLocked}
+              isOpeningBalanceLocked={isOpeningBalanceLocked}
+              mode={mode}
                 onSubmit={async (values) => {
                   setSubmitError(null)
                   try {

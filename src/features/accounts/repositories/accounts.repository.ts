@@ -29,6 +29,11 @@ export type CreateAccountInput = {
   ownershipPercentage?: Decimal | null
   businessType?: string | null
   industry?: string | null
+  location?: string | null
+  valuationAmount?: Decimal
+  valuedOn?: string
+  valuationMethod?: string | null
+  valuationNotes?: string | null
   metalType?: "gold" | "silver" | null
   purity?: string | null
   purchaseDate?: string | null
@@ -51,6 +56,7 @@ export type UpdateAccountInput = {
   ownershipPercentage?: Decimal | null
   businessType?: string | null
   industry?: string | null
+  location?: string | null
   metalType?: "gold" | "silver" | null
   purity?: string | null
   purchaseDate?: string | null
@@ -78,7 +84,7 @@ type DatabaseError = {
 }
 
 const accountSelect =
-  "id,user_id,account_type_code,name,currency_code,opening_balance::text,notes,is_active,bank_subtype,credit_card_limit::text,due_day_of_month,investment_type,balance_grams::text,property_type,ownership_percentage::text,business_type,industry,metal_type,purity,purchase_date,cost_per_unit::text,created_at,updated_at" as const
+  "id,user_id,account_type_code,name,currency_code,opening_balance::text,notes,is_active,bank_subtype,credit_card_limit::text,due_day_of_month,investment_type,balance_grams::text,property_type,ownership_percentage::text,initial_ownership_percentage::text,closed_on,closed_reason,business_type,industry,location,metal_type,purity,purchase_date,cost_per_unit::text,created_at,updated_at" as const
 
 export function requireAccountDecimalText(
   value: unknown,
@@ -129,6 +135,11 @@ function mapAccountSummary(
     ownership_percentage: requireNullableAccountDecimalText(
       row.ownership_percentage,
       "ownership_percentage",
+      operation
+    ),
+    initial_ownership_percentage: requireNullableAccountDecimalText(
+      row.initial_ownership_percentage ?? null,
+      "initial_ownership_percentage",
       operation
     ),
     cost_per_unit: requireNullableAccountDecimalText(
@@ -235,6 +246,28 @@ export class AccountsRepository {
 
   async createAccount(input: CreateAccountInput): Promise<AccountSummary> {
     const operation = "accounts.createAccount"
+    if (input.accountTypeCode === "real_estate" || input.accountTypeCode === "business") {
+      const { data, error } = await this.client.rpc("create_valued_account", {
+        p_account_type_code: input.accountTypeCode,
+        p_name: input.name,
+        p_currency_code: input.currencyCode,
+        p_property_type: input.propertyType ?? null,
+        p_business_type: input.businessType ?? null,
+        p_industry: input.industry ?? null,
+        p_ownership_percentage: input.ownershipPercentage ?? "100",
+        p_location: input.location ?? null,
+        p_account_notes: input.notes ?? null,
+        p_valuation_amount: input.valuationAmount ?? "0",
+        p_valued_on: input.valuedOn ?? new Date().toISOString().slice(0, 10),
+        p_valuation_method: input.valuationMethod ?? null,
+        p_valuation_notes: input.valuationNotes ?? null,
+      })
+      throwAccountConstraintError(error, operation)
+      const createdAccount = requireQueryData(data, error, operation)
+      // PostgreSQL numerics in an RPC composite return may be JSON numbers. Re-read
+      // through accountSelect so all decimal fields retain the repository's string contract.
+      return this.getAccount(createdAccount.id)
+    }
     const userId = await requireAuthenticatedUserId(this.client, operation)
     const { data, error } = await this.client
       .from("financial_accounts")
@@ -254,6 +287,7 @@ export class AccountsRepository {
         ownership_percentage: input.ownershipPercentage,
         business_type: input.businessType,
         industry: input.industry,
+        location: input.location,
         metal_type: input.metalType,
         purity: input.purity,
         purchase_date: input.purchaseDate,
@@ -322,6 +356,9 @@ export class AccountsRepository {
     if (input.industry !== undefined) {
       update.industry = input.industry
     }
+    if (input.location !== undefined) {
+      update.location = input.location
+    }
     if (input.metalType !== undefined) {
       update.metal_type = input.metalType
     }
@@ -361,10 +398,20 @@ export class AccountsRepository {
     if (accountIds.length === 0) return []
 
     const userId = await requireAuthenticatedUserId(this.client, operation)
-    const [entriesResult, holdingsResult, metalPurchasesResult] =
+    const [entriesResult, valuationsResult, disposalsResult, holdingsResult, metalPurchasesResult] =
       await Promise.all([
         this.client
           .from("transaction_entries")
+          .select("account_id")
+          .eq("user_id", userId)
+          .in("account_id", accountIds),
+        this.client
+          .from("account_valuations")
+          .select("account_id")
+          .eq("user_id", userId)
+          .in("account_id", accountIds),
+        this.client
+          .from("account_disposals")
           .select("account_id")
           .eq("user_id", userId)
           .in("account_id", accountIds),
@@ -393,6 +440,16 @@ export class AccountsRepository {
         metalPurchasesResult.error,
         operation
       ).map((purchase) => purchase.account_id),
+      ...requireQueryData(
+        valuationsResult.data,
+        valuationsResult.error,
+        operation
+      ).map((valuation) => valuation.account_id),
+      ...requireQueryData(
+        disposalsResult.data,
+        disposalsResult.error,
+        operation
+      ).map((disposal) => disposal.account_id),
     ])
 
     return accountIds.map((accountId) => ({

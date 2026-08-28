@@ -5,7 +5,9 @@ import { compareDecimals } from "../../../lib/financial-calculations/decimal"
 import {
   accountTypeCodes,
   bankSubtypeCodes,
+  businessTypeCodes,
   currencyCodes,
+  industryCodes,
   investmentTypeCodes,
   metalTypeCodes,
   propertyTypeCodes,
@@ -15,9 +17,33 @@ import {
 
 const decimalAmountPattern = /^\d{1,18}(?:\.\d{1,2})?$/
 const percentagePattern = /^\d{1,3}(?:\.\d{1,2})?$/
+const isoDatePattern = /^\d{4}-\d{2}-\d{2}$/
+
+function validateValuationDate(
+  value: string,
+  ctx: z.RefinementCtx,
+  t: Translate,
+) {
+  if (!isoDatePattern.test(value)) {
+    ctx.addIssue({
+      code: "custom",
+      path: ["valuationDate"],
+      message: t("accounts.validation.valuationDateRequired"),
+    })
+    return
+  }
+  if (value > new Date().toISOString().slice(0, 10)) {
+    ctx.addIssue({
+      code: "custom",
+      path: ["valuationDate"],
+      message: t("accounts.validation.valuationDateFuture"),
+    })
+  }
+}
 
 export function createAccountSchema(
-  t: Translate
+  t: Translate,
+  mode: "create" | "edit" = "create"
 ): z.ZodType<AccountFormValues, AccountFormValues> {
   return z
     .object({
@@ -32,8 +58,14 @@ export function createAccountSchema(
       balanceGrams: z.string().trim(),
       propertyType: z.union([z.enum(propertyTypeCodes), z.literal("")]),
       ownershipPercentage: z.string().trim(),
-      businessType: z.string().trim(),
-      industry: z.string().trim(),
+      businessType: z.union([z.enum(businessTypeCodes), z.literal("")]),
+      businessTypeOther: z.string().trim(),
+      industry: z.union([z.enum(industryCodes), z.literal("")]),
+      industryOther: z.string().trim(),
+      location: z.string().trim(),
+      valuationDate: z.string().trim(),
+      valuationMethod: z.string().trim(),
+      valuationNotes: z.string().trim(),
       metalType: z.union([z.enum(metalTypeCodes), z.literal("")]),
       purity: z.union([z.enum(purityCodes), z.literal("")]),
       purchaseDate: z.string().trim(),
@@ -155,7 +187,7 @@ export function createAccountSchema(
           break
         }
         case "real_estate": {
-          requireBalance(t("accounts.validation.balanceInvalid"))
+          if (mode === "create") requireBalance(t("accounts.validation.balanceInvalid"))
           requirePercentage()
           if (!values.propertyType) {
             ctx.addIssue({
@@ -164,16 +196,24 @@ export function createAccountSchema(
               message: t("accounts.validation.propertyTypeRequired"),
             })
           }
+          if (mode === "create") validateValuationDate(values.valuationDate, ctx, t)
           break
         }
         case "business": {
-          requireBalance(t("accounts.validation.balanceInvalid"))
+          if (mode === "create") requireBalance(t("accounts.validation.balanceInvalid"))
           requirePercentage()
           if (!values.businessType) {
             ctx.addIssue({
               code: "custom",
               path: ["businessType"],
               message: t("accounts.validation.businessTypeRequired"),
+            })
+          }
+          if (values.businessType === "other" && !values.businessTypeOther) {
+            ctx.addIssue({
+              code: "custom",
+              path: ["businessTypeOther"],
+              message: t("accounts.validation.businessTypeOtherRequired"),
             })
           }
           if (!values.industry) {
@@ -183,6 +223,14 @@ export function createAccountSchema(
               message: t("accounts.validation.industryRequired"),
             })
           }
+          if (values.industry === "other" && !values.industryOther) {
+            ctx.addIssue({
+              code: "custom",
+              path: ["industryOther"],
+              message: t("accounts.validation.industryOtherRequired"),
+            })
+          }
+          if (mode === "create") validateValuationDate(values.valuationDate, ctx, t)
           break
         }
       }

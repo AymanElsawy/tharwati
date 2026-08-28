@@ -132,8 +132,12 @@ type FinancialAccountRow = {
   balance_grams: Decimal | null
   property_type: "apartment" | "villa" | "land" | "office" | "other" | null
   ownership_percentage: Decimal | null
+  initial_ownership_percentage?: Decimal | null
+  closed_on?: string | null
+  closed_reason?: "sold" | null
   business_type: string | null
   industry: string | null
+  location?: string | null
   metal_type: "gold" | "silver" | null
   purity: string | null
   purchase_date: string | null
@@ -155,6 +159,31 @@ type MetalPurchaseRow = {
   funding_mode: "external" | "cash_account"
   funding_account_id: string | null
   funding_transaction_id: string | null
+  created_at: string
+}
+
+type AccountValuationRow = {
+  id: string
+  user_id: string
+  account_id: string
+  valuation_amount: Decimal
+  valued_on: string
+  valuation_method: string | null
+  notes: string | null
+  corrects_valuation_id: string | null
+  created_at: string
+}
+
+type AccountDisposalRow = {
+  id: string
+  user_id: string
+  account_id: string
+  disposed_on: string
+  sale_amount: Decimal
+  sale_currency_code: string
+  ownership_percentage_sold: Decimal
+  notes: string | null
+  corrects_disposal_id: string | null
   created_at: string
 }
 
@@ -410,6 +439,7 @@ export type Database = {
           ownership_percentage?: Decimal | null
           business_type?: string | null
           industry?: string | null
+          location?: string | null
           metal_type?: "gold" | "silver" | null
           purity?: string | null
           purchase_date?: string | null
@@ -433,6 +463,35 @@ export type Database = {
           funding_mode: "external" | "cash_account"
           funding_account_id?: string | null
           funding_transaction_id?: string | null
+          created_at?: string
+        }
+      >
+      account_valuations: TableDefinition<
+        AccountValuationRow,
+        {
+          id?: string
+          user_id: string
+          account_id: string
+          valuation_amount: Decimal
+          valued_on: string
+          valuation_method?: string | null
+          notes?: string | null
+          corrects_valuation_id?: string | null
+          created_at?: string
+        }
+      >
+      account_disposals: TableDefinition<
+        AccountDisposalRow,
+        {
+          id?: string
+          user_id: string
+          account_id: string
+          disposed_on: string
+          sale_amount: Decimal
+          sale_currency_code: string
+          ownership_percentage_sold: Decimal
+          notes?: string | null
+          corrects_disposal_id?: string | null
           created_at?: string
         }
       >
@@ -665,6 +724,38 @@ export type Database = {
           ledger_effect: Decimal
           current_balance: Decimal
         }>
+      }
+      get_effective_account_valuations: {
+        Args: { p_account_ids?: string[] | null }
+        Returns: Array<AccountValuationRow>
+      }
+      get_account_current_ownership: {
+        Args: { p_account_ids?: string[] | null }
+        Returns: Array<{ account_id: string; ownership_percentage: Decimal | null; is_sold: boolean }>
+      }
+      get_account_disposals: {
+        Args: { p_account_ids?: string[] | null }
+        Returns: Array<AccountDisposalRow & { is_effective: boolean }>
+      }
+      add_account_valuation: {
+        Args: { p_account_id: string; p_valuation_amount: Decimal; p_valued_on: string; p_valuation_method?: string | null; p_notes?: string | null }
+        Returns: AccountValuationRow
+      }
+      correct_account_valuation: {
+        Args: { p_valuation_id: string; p_valuation_amount: Decimal; p_valued_on: string; p_valuation_method?: string | null; p_notes?: string | null }
+        Returns: AccountValuationRow
+      }
+      add_account_disposal: {
+        Args: { p_account_id: string; p_disposed_on: string; p_sale_amount: Decimal; p_sale_currency_code: string; p_ownership_percentage_sold: Decimal; p_notes?: string | null }
+        Returns: AccountDisposalRow
+      }
+      correct_account_disposal: {
+        Args: { p_disposal_id: string; p_disposed_on: string; p_sale_amount: Decimal; p_sale_currency_code: string; p_ownership_percentage_sold: Decimal; p_notes?: string | null }
+        Returns: AccountDisposalRow
+      }
+      create_valued_account: {
+        Args: { p_account_type_code: string; p_name: string; p_currency_code: string; p_property_type: string | null; p_business_type: string | null; p_industry: string | null; p_ownership_percentage: Decimal; p_location: string | null; p_account_notes: string | null; p_valuation_amount: Decimal; p_valued_on: string; p_valuation_method: string | null; p_valuation_notes: string | null }
+        Returns: FinancialAccountRow
       }
       store_dashboard_valuation_snapshot: {
         Args: {

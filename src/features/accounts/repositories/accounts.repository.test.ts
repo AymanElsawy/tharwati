@@ -20,6 +20,7 @@ const account = {
   balance_grams: null,
   property_type: null,
   ownership_percentage: null,
+  initial_ownership_percentage: null,
   business_type: null,
   industry: null,
   metal_type: null,
@@ -127,5 +128,31 @@ describe("AccountsRepository.updateAccount", () => {
         "This account already contains financial history. Its opening balance cannot be changed.",
       operation: "accounts.updateAccount",
     } satisfies Partial<RepositoryError>)
+  })
+})
+
+describe("AccountsRepository.createAccount", () => {
+  it.each(["real_estate", "business"] as const)("re-reads a %s account after the valued-account RPC returns numeric legacy placeholder fields", async (accountTypeCode) => {
+    const rpc = vi.fn().mockResolvedValue({ data: { id: "valued-account", opening_balance: 0 }, error: null })
+    const single = vi.fn().mockResolvedValue({ data: { ...account, id: "valued-account", account_type_code: accountTypeCode, opening_balance: "0" }, error: null })
+    const builder = { eq: vi.fn(), select: vi.fn(), single }
+    builder.eq.mockReturnValue(builder)
+    builder.select.mockReturnValue(builder)
+    const client = {
+      auth: { getUser: vi.fn().mockResolvedValue({ data: { user: { id: "user-1" } }, error: null }) },
+      rpc,
+      from: vi.fn().mockReturnValue(builder),
+    } as unknown as TypedSupabaseClient
+
+    await expect(new AccountsRepository(client).createAccount({
+      accountTypeCode, name: "Valued account", currencyCode: "SAR", ownershipPercentage: "100",
+      valuationAmount: "500", valuedOn: "2026-08-28",
+      propertyType: accountTypeCode === "real_estate" ? "villa" : null,
+      businessType: accountTypeCode === "business" ? "Company" : null,
+      industry: accountTypeCode === "business" ? "Software" : null,
+    })).resolves.toMatchObject({ id: "valued-account", opening_balance: "0" })
+
+    expect(rpc).toHaveBeenCalledWith("create_valued_account", expect.objectContaining({ p_valuation_amount: "500" }))
+    expect(builder.select).toHaveBeenCalled()
   })
 })

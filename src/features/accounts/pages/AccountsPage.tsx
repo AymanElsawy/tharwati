@@ -20,6 +20,7 @@ import { MetalPurchaseEntryDialog } from "@/features/accounts/components/MetalPu
 import { useAccounts } from "@/features/accounts/hooks/useAccounts"
 import { useAccountCurrentValues } from "@/features/accounts/hooks/useAccountCurrentValues"
 import { resolveAccountListCurrentValue } from "@/features/accounts/utils/account-list-current-value"
+import { isSoldAccount, partitionSoldAccounts } from "@/features/accounts/utils/account-lifecycle"
 import {
   accountToFormValues,
   emptyAccountFormValues,
@@ -97,7 +98,7 @@ export function AccountsPage() {
       if (metalFilter && account.metal_type !== metalFilter) return false
       if (filters.currency && account.currency_code !== filters.currency)
         return false
-      if (!filters.showArchived && !account.is_active) return false
+      if (!filters.showArchived && !account.is_active && !isSoldAccount(account)) return false
       return true
     })
 
@@ -160,6 +161,11 @@ export function AccountsPage() {
     accountCurrentValues.hasResolutionError,
     sort,
   ])
+
+  const { activeItems, soldItems } = useMemo(
+    () => partitionSoldAccounts(items),
+    [items]
+  )
 
   const toggleSort = (nextSort: AccountInventorySort) => {
     if (nextSort === sort) {
@@ -250,18 +256,33 @@ export function AccountsPage() {
           </p>
         </div>
       ) : (
-        <AccountInventory
-          items={items}
-          sort={sort}
-          direction={direction}
-          onSort={toggleSort}
-          onEdit={(account) => setForm({ mode: "edit", account })}
-          onArchive={(account) => setConfirm({ mode: "archive", account })}
-          onDelete={(account) => setConfirm({ mode: "delete", account })}
-          onAddMetalPurchase={setMetalPurchaseAccount}
-          onOpenAccount={(account) => navigate(`/accounts/${account.id}`)}
-          canDelete={accounts.canDeleteAccount}
-        />
+        <>
+          {activeItems.length ? <AccountInventory
+            items={activeItems}
+            sort={sort}
+            direction={direction}
+            onSort={toggleSort}
+            onEdit={(account) => setForm({ mode: "edit", account })}
+            onArchive={(account) => setConfirm({ mode: "archive", account })}
+            onDelete={(account) => setConfirm({ mode: "delete", account })}
+            onAddMetalPurchase={setMetalPurchaseAccount}
+            onOpenAccount={(account) => navigate(`/accounts/${account.id}`)}
+            canDelete={accounts.canDeleteAccount}
+          /> : null}
+          {soldItems.length ? <AccountInventory
+            sectionTitle={t("accounts.soldSection.title")}
+            items={soldItems}
+            sort={sort}
+            direction={direction}
+            onSort={toggleSort}
+            onEdit={(account) => setForm({ mode: "edit", account })}
+            onArchive={(account) => setConfirm({ mode: "archive", account })}
+            onDelete={(account) => setConfirm({ mode: "delete", account })}
+            onAddMetalPurchase={setMetalPurchaseAccount}
+            onOpenAccount={(account) => navigate(`/accounts/${account.id}`)}
+            canDelete={accounts.canDeleteAccount}
+          /> : null}
+        </>
       )}
 
       {form ? (

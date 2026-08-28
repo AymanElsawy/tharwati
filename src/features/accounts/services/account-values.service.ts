@@ -18,6 +18,10 @@ import {
   divideDecimals,
   multiplyDecimals,
 } from "@/lib/financial-calculations/decimal"
+import { attributableValuation, getEffectiveAccountValuations } from "./account-valuations.service"
+import type { AccountValuation } from "../types/account-valuation"
+import { getAccountCurrentOwnership } from "./account-disposals.service"
+import type { AccountOwnershipProjection } from "../types/account-disposal"
 
 function requireDecimal(value: Decimal | null, message: string): Decimal {
   if (value === null) throw new Error(message)
@@ -172,6 +176,8 @@ export type AccountCurrentValuesInput = {
   brokerageAvailableCash: ReadonlyMap<string, Decimal>
   brokerageAccountsWithPositiveHoldings: ReadonlySet<string>
   brokerageCurrentValues?: ReadonlyMap<string, BrokerageCurrentValue>
+  accountValuations?: ReadonlyMap<string, AccountValuation>
+  accountOwnership?: ReadonlyMap<string, AccountOwnershipProjection>
 }
 
 /** Selects the exact value source already used by the Accounts list for each account type. */
@@ -183,6 +189,8 @@ export function resolveAccountCurrentValues({
   brokerageAvailableCash,
   brokerageAccountsWithPositiveHoldings,
   brokerageCurrentValues,
+  accountValuations,
+  accountOwnership,
 }: AccountCurrentValuesInput): Map<string, Decimal | null> {
   return new Map(accounts.map((account) => {
     if (account.account_type_code === "gold") {
@@ -210,6 +218,12 @@ export function resolveAccountCurrentValues({
             : null,
       ] as const
     }
+    if (account.account_type_code === "real_estate" || account.account_type_code === "business") {
+      return [account.id, attributableValuation(
+        accountValuations?.get(account.id) ?? null,
+        accountOwnership?.get(account.id)?.ownershipPercentage ?? null,
+      )] as const
+    }
     return [account.id, recordBalances.get(account.id) ?? account.opening_balance] as const
   }))
 }
@@ -223,12 +237,15 @@ export async function getAccountCurrentValues(
   const brokerageAccounts = accounts.filter((account) =>
     account.is_active && account.account_type_code === "brokerage"
   )
-  const [recordBalances, metalPurchases, metalCurrentPrices, brokerageBalances, holdings] = await Promise.all([
+  const valuedAccounts = accounts.filter((account) => account.account_type_code === "real_estate" || account.account_type_code === "business")
+  const [recordBalances, metalPurchases, metalCurrentPrices, brokerageBalances, holdings, valuations, ownership] = await Promise.all([
     getAccountRecordBalances(recordAccounts.map((account) => account.id)),
     getMetalPurchases(metalAccounts.map((account) => account.id)),
     getMetalAccountCurrentPrices(metalAccounts),
     accountBalancesRepository.getAccountBalances(brokerageAccounts.map((account) => account.id)),
     holdingsRepository.getHoldings(),
+    getEffectiveAccountValuations(valuedAccounts.map((account) => account.id)),
+    getAccountCurrentOwnership(valuedAccounts.map((account) => account.id)),
   ])
 
   const brokerageCurrentValues = new Map<string, BrokerageCurrentValue>()
@@ -271,5 +288,10 @@ export async function getAccountCurrentValues(
       holdings.map((holding) => holding.account_id).filter((accountId): accountId is string => accountId !== null)
     ),
     brokerageCurrentValues,
+    accountValuations: valuations.reduce<Map<string, AccountValuation>>((current, valuation) => {
+      if (!current.has(valuation.accountId)) current.set(valuation.accountId, valuation)
+      return current
+    }, new Map()),
+    accountOwnership: new Map(ownership.map((item) => [item.accountId, item] as const)),
   })
 }

@@ -96,14 +96,49 @@ describe("resolveAccountListCurrentValue", () => {
     })
   })
 
-  it.each(["real_estate", "business", "other"] as const)(
-    "%s remains an immediate stored current value",
+  it.each(["real_estate", "business"] as const)(
+    "%s never renders its legacy opening balance while valuation loads",
     (type) => {
       expect(resolve(account(type, type, "456"), new Map(), true)).toEqual({
-        value: "456",
+        value: null,
+        isLoading: true,
+        status: "complete",
+      })
+    }
+  )
+
+  it.each(["real_estate", "business"] as const)(
+    "%s renders its resolved attributable valuation, including explicit zero",
+    (type) => {
+      expect(resolve(account(type, type, "456"), new Map([[type, "123.45"]]))).toEqual({
+        value: "123.45",
+        isLoading: false,
+        status: "complete",
+      })
+      expect(resolve(account(type, type, "456"), new Map([[type, "0"]]))).toEqual({
+        value: "0",
         isLoading: false,
         status: "complete",
       })
     }
   )
+
+  it.each(["real_estate", "business"] as const)(
+    "%s shows unavailable when the shared valuation read has no effective value",
+    (type) => {
+      expect(resolve(account(type, type, "456"), new Map([[type, null]]))).toEqual({
+        value: null,
+        isLoading: false,
+        status: "incomplete",
+      })
+    }
+  )
+
+  it("keeps Other as an immediate stored current value", () => {
+    expect(resolve(account("other", "other", "456"), new Map(), true)).toEqual({
+      value: "456",
+      isLoading: false,
+      status: "complete",
+    })
+  })
 })

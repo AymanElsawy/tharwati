@@ -33,9 +33,12 @@ create table public.financial_accounts (
   investment_type text,                       -- 'stock_etf' | 'crypto' | 'other', only when type = brokerage
   balance_grams numeric(20, 3),               -- only when type = gold
   property_type text,                         -- 'apartment'|'villa'|'land'|'office'|'other', only when type = real_estate
-  ownership_percentage numeric(5, 2),         -- 0-100, only when type in (real_estate, business)
-  business_type text,                         -- only when type = business
-  industry text,                              -- only when type = business
+  ownership_percentage numeric(5, 2),         -- projected current ownership for Real Estate/Business
+  initial_ownership_percentage numeric(5, 2), -- immutable ownership baseline for their event timeline
+  closed_on date, closed_reason text,          -- `sold` is distinct from ordinary archive/inactive state
+  business_type text,                         -- stable Business Type code, or `other:<custom text>`
+  industry text,                              -- stable Industry code, or `other:<custom text>`
+  location text,                              -- optional, only when type = real_estate
   metal_type text,                            -- 'gold' | 'silver', required when type = gold
   purity text,                                -- enum depends on metal_type, only when type = gold
   purchase_date date,                         -- only when type = gold
@@ -60,6 +63,16 @@ Uniqueness:
 - **Gold/silver accounts**: unique on `(user_id, currency_code, metal_type)` where `account_type_code = 'gold'` — **only one Gold and one Silver account per currency, per user.** This is why gold/silver accounts are always auto-named "Gold"/"Silver" and the name field is hidden in the form.
 
 RLS: standard per-user CRUD (`auth.uid() = user_id`).
+
+### Real Estate / Business valuations and disposals
+
+`account_valuations` is append-only and stores full (100%) manual valuations. Its correction links preserve an immutable replacement chain; only the latest effective leaf participates in current value. `account_disposals` is likewise append-only and stores the actual gross consideration received by the user, sale currency, ownership percentage sold, sale date, optional note, and an optional correction link. Sale amounts are audit-only: they never create cash, FX, tax, fee, or realized-P/L entries.
+
+Ownership is event-driven: current attributable value is the latest effective full valuation × the server-derived remaining ownership percentage. Remaining ownership is calculated from `initial_ownership_percentage` less effective disposals in effective-date/creation order; it is never reconstructed from the editable container projection. Backdated additions or disposal corrections revalidate the whole effective timeline atomically, so no event can sell more than was held on that date. A Real Estate disposal must sell all remaining ownership; Business may sell a positive partial or full remaining stake. Future sale dates are rejected. A full exit sets `closed_reason = 'sold'` and removes the account from current wealth, while Archive remains a separate inactive state. Sold Real Estate and Business accounts stay reachable in a distinct **Sold / Closed** Accounts-list section with a Sold badge and de-emphasized styling; they are not presented as archived accounts.
+
+New Real Estate/Business accounts are created atomically with their first valuation and use `opening_balance = 0` only as an unused legacy placeholder. No legacy opening-balance demo data is backfilled. Missing valuation or initial ownership is unavailable; an explicit zero valuation remains a valid zero. After valuation/disposal history exists, currency, opening balance, and ordinary ownership edits are locked; ownership projection changes are only made by the disposal timeline. Hard delete is allowed only when no valuation, disposal, ledger, holding, or metal history exists.
+
+The create RPC's table-row response is immediately re-read through the standard account select, which casts all numeric fields to decimal strings. This preserves the client decimal contract without treating the legacy placeholder as a value source.
 
 Triggers (immutability guards once financial history exists):
 
@@ -253,8 +266,10 @@ type AccountFormValues = {
 - `bank` Credit: `openingBalance` (available credit) + `bankSubtype` + required `creditCardLimit` + optional `dueDayOfMonth`.
 - `brokerage`: `openingBalance` + `investmentType`.
 - `gold`: **`openingBalance` forced to `"0"`** + `metalType` (actual balance accrues only via metal purchases, never edited directly).
-- `real_estate`: `openingBalance` + `propertyType` + `ownershipPercentage`.
-- `business`: `openingBalance` + `businessType`/`industry` + `ownershipPercentage`.
+- `real_estate`: initial valuation input + `propertyType` + `ownershipPercentage` + optional `location`.
+- `business`: initial valuation input + `businessType`/`industry` + `ownershipPercentage`. Business Type is a standard selector; Industry is a searchable selector. Both use stable domain codes. Selecting `other` requires a custom field and stores `other:<custom text>` so edit mode restores the selector and custom text without a schema change. Business details display localized standard labels or the clean custom text, together with the valuation and disposal history.
+
+For Real Estate and Business, the create form's value is the first immutable valuation, not an opening balance. `financial_accounts.opening_balance` is written as unused legacy technical placeholder `0` only; it is never displayed or read as their current value.
 
 ### 2.6 Metal purchase form value shape
 
@@ -283,9 +298,11 @@ Per-type, on submit (Zod schema, errors shown only after first submit attempt):
 | `bank` Credit           | non-negative `openingBalance` + positive `creditCardLimit` + optional `dueDayOfMonth` from 1-31; `openingBalance <= creditCardLimit` |
 | `brokerage`             | above + `investmentType` required                                                                                                    |
 | `real_estate`           | above + `ownershipPercentage` (pattern `^\d{1,3}(\.\d{1,2})?$`, ≤ 100) + `propertyType` required                                     |
-| `business`              | above + `ownershipPercentage` + `businessType` required + `industry` required                                                        |
+| `business`              | above + `ownershipPercentage` + selected `businessType` and `industry`; each requires custom text when `other` is selected             |
 | `gold`                  | `metalType` required only (no balance field shown)                                                                                   |
 | all types except `gold` | `name` required                                                                                                                      |
+
+For `real_estate` and `business`, the value requirement above is the non-negative initial valuation (not `openingBalance`), and its valuation date must be today or earlier.
 
 Metal purchase form:
 
@@ -363,7 +380,7 @@ The page also reads two URL query params on mount (no UI control for either — 
 
 Sort columns: `name | type | balance` — the `balance` sort key is presented as **Current Value** and sorts numerically on the displayed non-metal value or live metal current value. For a Brokerage account, the list displays the shared Brokerage valuation: ledger-projected Available Cash plus all positively held assets valued in the Brokerage account currency. With no positive holdings this equals Available Cash; if any positive holding lacks a current price or required FX, the list displays an unavailable state rather than a stored-balance fallback. Clicking the active sort column flips direction; picking a new column resets to ascending.
 
-**Displayed "Current Value"**: Cash and Bank accounts use `get_account_balances`, so posted Account Records affect the displayed value. Brokerage accounts use the shared Brokerage valuation, adding ledger-projected Available Cash to positively held assets valued through `PortfolioValuationService` and the existing market-data/FX services. Gold/silver current value is current quantity in grams multiplied by the live current price per gram in the account currency. While any of those asynchronous values are loading, its list row shows an updating skeleton rather than `opening_balance` or an em dash; a failed or incomplete resolution shows unavailable. Other non-gold account types retain their immediate stored `opening_balance` current-value semantics.
+**Displayed "Current Value"**: Cash and Bank accounts use `get_account_balances`, so posted Account Records affect the displayed value. Brokerage accounts use the shared Brokerage valuation, adding ledger-projected Available Cash to positively held assets valued through `PortfolioValuationService` and the existing market-data/FX services. Gold/silver current value is current quantity in grams multiplied by the live current price per gram in the account currency. Real Estate and Business use their latest effective full valuation multiplied by ownership percentage; `opening_balance` is legacy storage only. While any asynchronous value is loading, its list row shows an updating skeleton rather than `opening_balance` or an em dash; a failed or incomplete resolution shows unavailable. Other non-gold account types retain their immediate stored `opening_balance` current-value semantics.
 
 ### 6.3 List/table row content
 

@@ -109,6 +109,21 @@ Deno.serve(async (request) => {
     const { data: balanceRows, error: balancesError } = await userClient.rpc("get_account_balances", { p_account_ids: null })
     if (balancesError) throw balancesError
     const accounts = (accountRows ?? []) as Account[]; const balances = new Map(((balanceRows ?? []) as Balance[]).map((row) => [row.account_id, String(row.current_balance)]))
+    const valuedAccountIds = accounts.filter((account) => account.account_type_code === "real_estate" || account.account_type_code === "business").map((account) => account.id)
+    const { data: valuationRows, error: valuationsError } = valuedAccountIds.length === 0
+      ? { data: [], error: null }
+      : await userClient.rpc("get_effective_account_valuations" as never, { p_account_ids: valuedAccountIds } as never)
+    if (valuationsError) throw valuationsError
+    const { data: ownershipRows, error: ownershipError } = valuedAccountIds.length === 0
+      ? { data: [], error: null }
+      : await userClient.rpc("get_account_current_ownership" as never, { p_account_ids: valuedAccountIds } as never)
+    if (ownershipError) throw ownershipError
+    const currentOwnership = new Map<string, Decimal | null>()
+    for (const row of (ownershipRows ?? []) as Array<{ account_id: string; ownership_percentage: unknown }>) currentOwnership.set(row.account_id, row.ownership_percentage === null ? null : String(row.ownership_percentage))
+    const latestValuations = new Map<string, Decimal>()
+    for (const row of (valuationRows ?? []) as Array<{ account_id: string; valuation_amount: unknown }>) {
+      if (!latestValuations.has(row.account_id) && typeof row.valuation_amount !== "undefined") latestValuations.set(row.account_id, String(row.valuation_amount))
+    }
     const brokerageAccounts = accounts.filter((account) => account.account_type_code === "brokerage")
     const metalAccounts = accounts.filter((account) => account.account_type_code === "gold")
     stage = "holdings_query"
@@ -195,7 +210,10 @@ Deno.serve(async (request) => {
       } else {
         stage = "build_account_values"
         if (account.account_type_code === "cash" || account.account_type_code === "bank") currentValues[account.id] = balances.get(account.id) ?? null
-        else currentValues[account.id] = account.opening_balance
+        else if (account.account_type_code === "real_estate" || account.account_type_code === "business") {
+          const valuation = latestValuations.get(account.id); const ownership = currentOwnership.get(account.id) ?? null
+          currentValues[account.id] = valuation && ownership !== null ? divide(multiply(valuation, ownership) ?? "", "100") : null
+        } else currentValues[account.id] = account.opening_balance
       }
       if (currentValues[account.id] === null) unavailableSources.push(account.name)
     }

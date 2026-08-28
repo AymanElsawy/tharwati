@@ -12,6 +12,8 @@ const asynchronouslyValuedAccountTypes = new Set([
   "bank",
   "brokerage",
   "gold",
+  "real_estate",
+  "business",
 ])
 
 /** Keeps stored-value accounts immediate while never presenting stored balances as live values. */

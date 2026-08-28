@@ -75,6 +75,34 @@ export const propertyTypeOptions = [
   { value: "other", labelKey: "accounts.form.propertyType.other" },
 ] as const
 
+export const businessTypeOptions = [
+  { value: "sole_proprietorship", labelKey: "accounts.form.businessType.soleProprietorship" },
+  { value: "partnership", labelKey: "accounts.form.businessType.partnership" },
+  { value: "llc", labelKey: "accounts.form.businessType.llc" },
+  { value: "private_company", labelKey: "accounts.form.businessType.privateCompany" },
+  { value: "family_owned", labelKey: "accounts.form.businessType.familyOwned" },
+  { value: "other", labelKey: "accounts.form.businessType.other" },
+] as const
+
+export const industryOptions = [
+  { value: "retail", labelKey: "accounts.form.industry.retail" },
+  { value: "ecommerce", labelKey: "accounts.form.industry.ecommerce" },
+  { value: "food_beverage", labelKey: "accounts.form.industry.foodBeverage" },
+  { value: "cosmetics_beauty", labelKey: "accounts.form.industry.cosmeticsBeauty" },
+  { value: "healthcare", labelKey: "accounts.form.industry.healthcare" },
+  { value: "technology", labelKey: "accounts.form.industry.technology" },
+  { value: "real_estate", labelKey: "accounts.form.industry.realEstate" },
+  { value: "construction", labelKey: "accounts.form.industry.construction" },
+  { value: "manufacturing", labelKey: "accounts.form.industry.manufacturing" },
+  { value: "education", labelKey: "accounts.form.industry.education" },
+  { value: "professional_services", labelKey: "accounts.form.industry.professionalServices" },
+  { value: "financial_services", labelKey: "accounts.form.industry.financialServices" },
+  { value: "logistics_transportation", labelKey: "accounts.form.industry.logisticsTransportation" },
+  { value: "hospitality_tourism", labelKey: "accounts.form.industry.hospitalityTourism" },
+  { value: "agriculture", labelKey: "accounts.form.industry.agriculture" },
+  { value: "other", labelKey: "accounts.form.industry.other" },
+] as const
+
 export const metalTypeOptions = [
   { value: "gold", labelKey: "accounts.form.metalType.gold" },
   { value: "silver", labelKey: "accounts.form.metalType.silver" },
@@ -138,6 +166,67 @@ export const propertyTypeCodes = propertyTypeOptions.map(
   ...(typeof propertyTypeOptions)[number]["value"][],
 ]
 
+export const businessTypeCodes = businessTypeOptions.map((option) => option.value) as [
+  (typeof businessTypeOptions)[number]["value"],
+  ...(typeof businessTypeOptions)[number]["value"][],
+]
+
+export const industryCodes = industryOptions.map((option) => option.value) as [
+  (typeof industryOptions)[number]["value"],
+  ...(typeof industryOptions)[number]["value"][],
+]
+
+const customBusinessClassificationPrefix = "other:"
+
+function classificationFormValue(
+  storedValue: string | null,
+  options: readonly { value: string }[],
+) {
+  if (!storedValue) return { value: "", customValue: "" }
+  if (storedValue.startsWith(customBusinessClassificationPrefix)) {
+    return { value: "other", customValue: storedValue.slice(customBusinessClassificationPrefix.length) }
+  }
+  if (options.some((option) => option.value === storedValue)) {
+    return { value: storedValue, customValue: "" }
+  }
+  return { value: "other", customValue: storedValue }
+}
+
+function storedBusinessClassification(value: string, customValue: string): string | null {
+  const normalizedValue = value.trim()
+  if (!normalizedValue) return null
+  if (normalizedValue !== "other") return normalizedValue
+  const normalizedCustomValue = customValue.trim()
+  return normalizedCustomValue ? `${customBusinessClassificationPrefix}${normalizedCustomValue}` : null
+}
+
+function businessClassificationLabel(
+  storedValue: string | null,
+  options: readonly { value: string; labelKey: TranslationKey }[],
+  t: Translate,
+): string {
+  const parsed = classificationFormValue(storedValue, options)
+  if (parsed.value === "other") {
+    const other = options.find((option) => option.value === "other")
+    return parsed.customValue || (other ? t(other.labelKey) : "—")
+  }
+  const option = options.find((item) => item.value === parsed.value)
+  return option ? t(option.labelKey) : "—"
+}
+
+export function getBusinessTypeLabel(value: string | null, t: Translate): string {
+  return businessClassificationLabel(value, businessTypeOptions, t)
+}
+
+export function getIndustryLabel(value: string | null, t: Translate): string {
+  return businessClassificationLabel(value, industryOptions, t)
+}
+
+export function getPropertyTypeLabel(value: string | null, t: Translate): string {
+  const option = propertyTypeOptions.find((item) => item.value === value)
+  return option ? t(option.labelKey) : "—"
+}
+
 export const metalTypeCodes = metalTypeOptions.map(
   (option) => option.value
 ) as [
@@ -178,7 +267,13 @@ export type AccountFormValues = {
   propertyType: (typeof propertyTypeCodes)[number] | ""
   ownershipPercentage: string
   businessType: string
+  businessTypeOther: string
   industry: string
+  industryOther: string
+  location: string
+  valuationDate: string
+  valuationMethod: string
+  valuationNotes: string
   metalType: (typeof metalTypeCodes)[number] | ""
   purity: string
   purchaseDate: string
@@ -200,7 +295,13 @@ export const emptyAccountFormValues: AccountFormValues = {
   propertyType: "",
   ownershipPercentage: "100",
   businessType: "",
+  businessTypeOther: "",
   industry: "",
+  industryOther: "",
+  location: "",
+  valuationDate: new Date().toISOString().slice(0, 10),
+  valuationMethod: "",
+  valuationNotes: "",
   metalType: "",
   purity: "",
   purchaseDate: "",
@@ -212,6 +313,8 @@ export const emptyAccountFormValues: AccountFormValues = {
 export function accountToFormValues(
   account: AccountSummary
 ): AccountFormValues {
+  const businessType = classificationFormValue(account.business_type, businessTypeOptions)
+  const industry = classificationFormValue(account.industry, industryOptions)
   return {
     name: account.name,
     accountTypeCode:
@@ -229,8 +332,14 @@ export function accountToFormValues(
     propertyType: (account.property_type ??
       "") as AccountFormValues["propertyType"],
     ownershipPercentage: account.ownership_percentage ?? "100",
-    businessType: account.business_type ?? "",
-    industry: account.industry ?? "",
+    businessType: businessType.value,
+    businessTypeOther: businessType.customValue,
+    industry: industry.value,
+    industryOther: industry.customValue,
+    location: account.location ?? "",
+    valuationDate: "",
+    valuationMethod: "",
+    valuationNotes: "",
     metalType: (account.metal_type ?? "") as AccountFormValues["metalType"],
     purity: account.purity ?? "",
     purchaseDate: account.purchase_date ?? "",
@@ -275,6 +384,7 @@ export type AccountTypeSpecificFields = {
   ownershipPercentage: string | null
   businessType: string | null
   industry: string | null
+  location: string | null
   metalType: "gold" | "silver" | null
   purity: string | null
   purchaseDate: string | null
@@ -295,6 +405,7 @@ export function toAccountTypeSpecificFields(
     ownershipPercentage: null,
     businessType: null,
     industry: null,
+    location: null,
     metalType: null,
     purity: null,
     purchaseDate: null,
@@ -325,14 +436,15 @@ export function toAccountTypeSpecificFields(
       fields.metalType = values.metalType || null
       break
     case "real_estate":
-      fields.openingBalance = values.openingBalance.trim()
+      fields.openingBalance = "0"
       fields.propertyType = values.propertyType || null
       fields.ownershipPercentage = values.ownershipPercentage.trim()
+      fields.location = values.location.trim() || null
       break
     case "business":
-      fields.openingBalance = values.openingBalance.trim()
-      fields.businessType = values.businessType.trim() || null
-      fields.industry = values.industry.trim() || null
+      fields.openingBalance = "0"
+      fields.businessType = storedBusinessClassification(values.businessType, values.businessTypeOther)
+      fields.industry = storedBusinessClassification(values.industry, values.industryOther)
       fields.ownershipPercentage = values.ownershipPercentage.trim()
       break
   }
