@@ -13,9 +13,14 @@ import {
   type DashboardValuationMetalPurchase,
   type DashboardValuationMetalPurchaseRuntime,
 } from "../_shared/dashboard-valuation-metal-purchases.ts"
+import { mapWithConcurrency, resolveUniquePairsWithConcurrency } from "../_shared/bounded-concurrency.ts"
+import { DashboardValuationPerformance, type DashboardValuationSnapshotMode } from "../_shared/dashboard-valuation-performance.ts"
 
 const snapshotTtlMs = 15 * 60 * 1000
 const gramsPerTroyOunce = "31.1034768"
+const maxFxConcurrency = 3
+const maxMetalPriceConcurrency = 2
+let dashboardValuationRequestsServed = 0
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
@@ -29,6 +34,7 @@ type Account = {
 }
 type Balance = { account_id: string; current_balance: Decimal }
 type Price = { assetId: string; available: boolean; price: number | null; currencyCode: string | null; stale: boolean }
+type SettledRead<Result> = { value: Result } | { cause: unknown }
 type Snapshot = {
   asOf: string; expiresAt: string; freshness: "fresh" | "stale" | "unavailable"
   currentValues: Record<string, Decimal | null>
@@ -79,98 +85,171 @@ function metalFactor(purity: string): Decimal | null {
   if (karat && ["24", "22", "21", "18", "14", "10", "9"].includes(karat)) return divide(karat, "24", 18)
   return ({ "999": "0.999", "958": "0.958", "950": "0.95", "925": "0.925", "900": "0.9", "835": "0.835", "800": "0.8" } as Record<string, Decimal>)[purity] ?? null
 }
+async function settleRead<Result>(operation: () => Promise<Result>): Promise<SettledRead<Result>> {
+  try { return { value: await operation() } } catch (cause) { return { cause } }
+}
+function readValue<Result>(result: SettledRead<Result>): Result {
+  if ("cause" in result) throw result.cause
+  return result.value
+}
 
 Deno.serve(async (request) => {
   if (request.method === "OPTIONS") return new Response(null, { status: 204, headers: corsHeaders })
   if (request.method !== "POST") return json({ error: "method_not_allowed" }, 405)
+  const coldStartObserved = dashboardValuationRequestsServed === 0
+  dashboardValuationRequestsServed += 1
+  const timing = new DashboardValuationPerformance(Deno.env.get("DASHBOARD_VALUATION_TIMING_LOGS") === "true")
+  let snapshotMode: DashboardValuationSnapshotMode = "error"
   const authorization = request.headers.get("Authorization")
   if (!authorization) return json({ error: "authentication_required" }, 401)
   let stage: DashboardValuationStage = "initialization"
   try {
     const url = Deno.env.get("SUPABASE_URL")!; const anon = Deno.env.get("SUPABASE_ANON_KEY")!
     const userClient = createClient(url, anon, { global: { headers: { Authorization: authorization } } })
-    const { data: { user } } = await userClient.auth.getUser()
+    const { data: { user } } = await timing.measure("auth_get_user", () => userClient.auth.getUser())
     if (!user) return json({ error: "authentication_required" }, 401)
-    const { data: profile, error: profileError } = await userClient.from("profiles").select("base_currency_code").eq("id", user.id).single()
+    const { data: profile, error: profileError } = await timing.measure("profile_read", () => userClient.from("profiles").select("base_currency_code").eq("id", user.id).single())
     if (profileError || !validCurrency(profile?.base_currency_code)) return json({ error: "base_currency_unavailable" }, 422)
     const baseCurrencyCode = profile.base_currency_code
     stage = "snapshot_lookup"
-    const { data: existing, error: existingError } = await userClient.from("dashboard_valuation_snapshots").select("snapshot").eq("user_id", user.id).eq("base_currency_code", baseCurrencyCode).gt("expires_at", new Date().toISOString()).maybeSingle()
+    const { data: existing, error: existingError } = await timing.measure("snapshot_lookup", () => userClient.from("dashboard_valuation_snapshots").select("snapshot").eq("user_id", user.id).eq("base_currency_code", baseCurrencyCode).gt("expires_at", new Date().toISOString()).maybeSingle())
     if (existingError) throw existingError
     if (existing?.snapshot) {
+      snapshotMode = "hit"
       stage = "response_serialization"
       return json(existing.snapshot)
     }
 
     stage = "accounts_query"
-    const { data: accountRows, error: accountsError } = await userClient.from("financial_accounts").select("id,account_type_code,name,currency_code,opening_balance,bank_subtype,is_active,metal_type").eq("is_active", true)
+    const { data: accountRows, error: accountsError } = await timing.measure("accounts_read", () => userClient.from("financial_accounts").select("id,account_type_code,name,currency_code,opening_balance,bank_subtype,is_active,metal_type").eq("is_active", true))
     if (accountsError) throw accountsError
-    stage = "account_balances"
-    const { data: balanceRows, error: balancesError } = await userClient.rpc("get_account_balances", { p_account_ids: null })
-    if (balancesError) throw balancesError
-    const accounts = (accountRows ?? []) as Account[]; const balances = new Map(((balanceRows ?? []) as Balance[]).map((row) => [row.account_id, String(row.current_balance)]))
+    const accounts = (accountRows ?? []) as Account[]; timing.setAccountCount(accounts.length)
     const valuedAccountIds = accounts.filter((account) => account.account_type_code === "real_estate" || account.account_type_code === "business").map((account) => account.id)
-    const { data: valuationRows, error: valuationsError } = valuedAccountIds.length === 0
-      ? { data: [], error: null }
-      : await userClient.rpc("get_effective_account_valuations" as never, { p_account_ids: valuedAccountIds } as never)
+    const brokerageAccounts = accounts.filter((account) => account.account_type_code === "brokerage")
+    const metalAccounts = accounts.filter((account) => account.account_type_code === "gold")
+    const [balancesRead, valuationsRead, ownershipRead, holdingsRead, purchasesRead] = await Promise.all([
+      settleRead(() => timing.measure("balances_rpc", () => userClient.rpc("get_account_balances", { p_account_ids: null }))),
+      settleRead(() => timing.measure("effective_valuations_rpc", async () => valuedAccountIds.length === 0
+        ? { data: [], error: null }
+        : await userClient.rpc("get_effective_account_valuations" as never, { p_account_ids: valuedAccountIds } as never))),
+      settleRead(() => timing.measure("current_ownership_rpc", async () => valuedAccountIds.length === 0
+        ? { data: [], error: null }
+        : await userClient.rpc("get_account_current_ownership" as never, { p_account_ids: valuedAccountIds } as never))),
+      settleRead(() => timing.measure("holdings_read", async () => brokerageAccounts.length === 0
+        ? { data: [], error: null }
+        : await userClient.from("holdings").select("account_id,asset_id,quantity,asset:assets(currency_code,asset_type_code)").in("account_id", brokerageAccounts.map((account) => account.id)).gt("quantity", "0"))),
+      settleRead(() => timing.measure("metal_purchases_read", async () => metalAccounts.length === 0
+        ? { data: [], error: null }
+        : await userClient.rpc("get_effective_metal_purchases", { p_account_ids: metalAccounts.map((account) => account.id) }))),
+    ])
+    stage = "account_balances"
+    const { data: balanceRows, error: balancesError } = readValue(balancesRead)
+    if (balancesError) throw balancesError
+    const balances = new Map(((balanceRows ?? []) as Balance[]).map((row) => [row.account_id, String(row.current_balance)]))
+    const { data: valuationRows, error: valuationsError } = readValue(valuationsRead)
     if (valuationsError) throw valuationsError
-    const { data: ownershipRows, error: ownershipError } = valuedAccountIds.length === 0
-      ? { data: [], error: null }
-      : await userClient.rpc("get_account_current_ownership" as never, { p_account_ids: valuedAccountIds } as never)
+    const { data: ownershipRows, error: ownershipError } = readValue(ownershipRead)
     if (ownershipError) throw ownershipError
+    stage = "holdings_query"
+    const { data: holdingRows, error: holdingsError } = readValue(holdingsRead)
+    if (holdingsError) throw holdingsError
+    stage = "metal_purchases"
+    const { data: purchaseRows, error: purchasesError } = readValue(purchasesRead)
+    if (purchasesError) throw purchasesError
     const currentOwnership = new Map<string, Decimal | null>()
     for (const row of (ownershipRows ?? []) as Array<{ account_id: string; ownership_percentage: unknown }>) currentOwnership.set(row.account_id, row.ownership_percentage === null ? null : String(row.ownership_percentage))
     const latestValuations = new Map<string, Decimal>()
     for (const row of (valuationRows ?? []) as Array<{ account_id: string; valuation_amount: unknown }>) {
       if (!latestValuations.has(row.account_id) && typeof row.valuation_amount !== "undefined") latestValuations.set(row.account_id, String(row.valuation_amount))
     }
-    const brokerageAccounts = accounts.filter((account) => account.account_type_code === "brokerage")
-    const metalAccounts = accounts.filter((account) => account.account_type_code === "gold")
-    stage = "holdings_query"
-    const { data: holdingRows, error: holdingsError } = brokerageAccounts.length === 0 ? { data: [], error: null } : await userClient.from("holdings").select("account_id,asset_id,quantity,asset:assets(currency_code,asset_type_code)").in("account_id", brokerageAccounts.map((account) => account.id)).gt("quantity", "0")
-    if (holdingsError) throw holdingsError
-    stage = "metal_purchases"
-    const { data: purchaseRows, error: purchasesError } = metalAccounts.length === 0 ? { data: [], error: null } : await userClient.rpc("get_effective_metal_purchases", { p_account_ids: metalAccounts.map((account) => account.id) })
-    if (purchasesError) throw purchasesError
     const holdings = ((holdingRows ?? []) as DashboardValuationHoldingRuntime[])
       .map(normalizeDashboardValuationHolding) as DashboardValuationHolding[]
     const purchases = ((purchaseRows ?? []) as DashboardValuationMetalPurchaseRuntime[])
       .map(normalizeDashboardValuationMetalPurchase) as DashboardValuationMetalPurchase[]
     const rateCache = new Map<string, Decimal | null>(); let usedStale = false
+    const inFlightRates = new Map<string, Promise<Decimal | null>>()
     const portfolioAllocationHoldings: Snapshot["portfolioAllocation"]["holdings"] = []
     let portfolioAllocationIncomplete = false
     const resolveRate = async (from: string, to: string): Promise<Decimal | null> => {
       if (from === to) return "1"; const key = `${from}/${to}`; if (rateCache.has(key)) return rateCache.get(key)!
-      try {
-        const response = await fetch(`${url}/functions/v1/fx-rates`, {
-          method: "POST",
-          headers: { Authorization: authorization, apikey: anon, "Content-Type": "application/json" },
-          body: JSON.stringify({ fromCurrencyCode: from, toCurrencyCode: to, mode: "current" }),
-        })
-        const resolved = await response.json() as { available?: unknown; rate?: unknown; stale?: unknown }
-        if (response.ok && resolved.available === true && typeof resolved.rate === "number" && Number.isFinite(resolved.rate) && resolved.rate > 0) {
-          if (resolved.stale === true) usedStale = true
-          const value = String(resolved.rate); rateCache.set(key, value); return value
+      const inFlight = inFlightRates.get(key)
+      if (inFlight) return inFlight
+      timing.addFxPair()
+      const request = timing.measure("fx_request_sum", async () => {
+        try {
+          const response = await fetch(`${url}/functions/v1/fx-rates`, {
+            method: "POST",
+            headers: { Authorization: authorization, apikey: anon, "Content-Type": "application/json" },
+            body: JSON.stringify({ fromCurrencyCode: from, toCurrencyCode: to, mode: "current" }),
+          })
+          const resolved = await response.json() as { available?: unknown; rate?: unknown; stale?: unknown }
+          if (response.ok && resolved.available === true && typeof resolved.rate === "number" && Number.isFinite(resolved.rate) && resolved.rate > 0) {
+            if (resolved.stale === true) usedStale = true
+            const value = String(resolved.rate); rateCache.set(key, value); return value
+          }
+          throw new Error("FX provider unavailable")
+        } catch {
+          const { data: direct } = await userClient.from("exchange_rates").select("rate").eq("base_currency_code", from).eq("quote_currency_code", to).order("effective_at", { ascending: false }).limit(1).maybeSingle()
+          if (direct?.rate) { usedStale = true; const value = String(direct.rate); rateCache.set(key, value); return value }
+          const { data: inverse } = await userClient.from("exchange_rates").select("rate").eq("base_currency_code", to).eq("quote_currency_code", from).order("effective_at", { ascending: false }).limit(1).maybeSingle()
+          const value = inverse?.rate ? divide("1", String(inverse.rate), 18) : null; if (value) usedStale = true; rateCache.set(key, value); return value
         }
-        throw new Error("FX provider unavailable")
-      } catch {
-        const { data: direct } = await userClient.from("exchange_rates").select("rate").eq("base_currency_code", from).eq("quote_currency_code", to).order("effective_at", { ascending: false }).limit(1).maybeSingle()
-        if (direct?.rate) { usedStale = true; const value = String(direct.rate); rateCache.set(key, value); return value }
-        const { data: inverse } = await userClient.from("exchange_rates").select("rate").eq("base_currency_code", to).eq("quote_currency_code", from).order("effective_at", { ascending: false }).limit(1).maybeSingle()
-        const value = inverse?.rate ? divide("1", String(inverse.rate), 18) : null; if (value) usedStale = true; rateCache.set(key, value); return value
+      })
+      inFlightRates.set(key, request)
+      try {
+        return await request
+      } finally {
+        inFlightRates.delete(key)
       }
     }
     const assetIds = [...new Set(holdings.map((holding) => holding.asset_id))]
     const prices = new Map<string, Price>()
-    if (assetIds.length > 0) {
-      stage = "market_prices_request"
-      const response = await fetch(`${url}/functions/v1/market-prices`, { method: "POST", headers: { Authorization: authorization, apikey: anon, "Content-Type": "application/json" }, body: JSON.stringify({ assetIds }) })
-      if (response.ok) for (const item of ((await response.json()) as { prices?: Price[] }).prices ?? []) prices.set(item.assetId, item)
-    }
     const metalUsd = new Map<"XAU" | "XAG", Decimal | null>()
-    for (const symbol of [...new Set(metalAccounts.map((account) => account.metal_type === "silver" ? "XAG" : "XAU"))] as Array<"XAU" | "XAG">) {
-      try { const response = await fetch(`https://api.gold-api.com/price/${symbol}`); const payload = await response.json() as { price?: unknown; currency?: unknown }; metalUsd.set(symbol, typeof payload.price === "number" && Number.isFinite(payload.price) && payload.price > 0 && payload.currency === "USD" ? divide(String(payload.price), gramsPerTroyOunce, 12) : null) } catch { metalUsd.set(symbol, null) }
+    const metalSymbols = [...new Set(metalAccounts.map((account) => account.metal_type === "silver" ? "XAG" : "XAU"))] as Array<"XAU" | "XAG">
+    timing.setMetalSymbolCount(metalSymbols.length)
+    stage = "market_prices_request"
+    const priceRowsPromise = assetIds.length === 0
+      ? Promise.resolve<Price[]>([])
+      : timing.measure("market_prices_call", async () => {
+        const response = await fetch(`${url}/functions/v1/market-prices`, { method: "POST", headers: { Authorization: authorization, apikey: anon, "Content-Type": "application/json" }, body: JSON.stringify({ assetIds }) })
+        return response.ok ? ((await response.json()) as { prices?: Price[] }).prices ?? [] : []
+      })
+    const metalPricesPromise = timing.measure("metal_price_calls", () => mapWithConcurrency(
+      metalSymbols,
+      maxMetalPriceConcurrency,
+      async (symbol) => timing.measure("metal_price_request_sum", async () => {
+        try {
+          const response = await fetch(`https://api.gold-api.com/price/${symbol}`)
+          const payload = await response.json() as { price?: unknown; currency?: unknown }
+          return [symbol, typeof payload.price === "number" && Number.isFinite(payload.price) && payload.price > 0 && payload.currency === "USD" ? divide(String(payload.price), gramsPerTroyOunce, 12) : null] as const
+        } catch {
+          return [symbol, null] as const
+        }
+      }),
+    ))
+    const [priceRows, metalPrices] = await Promise.all([priceRowsPromise, metalPricesPromise])
+    for (const item of priceRows) prices.set(item.assetId, item)
+    for (const [symbol, price] of metalPrices) metalUsd.set(symbol, price)
+    const requiredFxPairs = new Map<string, { from: string; to: string }>()
+    const addFxPair = (from: string, to: string) => {
+      if (from !== to) requiredFxPairs.set(`${from}/${to}`, { from, to })
     }
+    for (const account of brokerageAccounts) {
+      for (const holding of holdings.filter((candidate) => candidate.account_id === account.id)) {
+        const price = prices.get(holding.asset_id)
+        const currency = price?.currencyCode ?? holding.asset?.currency_code ?? null
+        if (price?.available && price.price !== null && currency && holding.asset?.asset_type_code) addFxPair(currency, account.currency_code)
+      }
+    }
+    for (const account of metalAccounts) {
+      if (metalUsd.get(account.metal_type === "silver" ? "XAG" : "XAU")) addFxPair("USD", account.currency_code)
+    }
+    for (const account of accounts) addFxPair(account.currency_code, baseCurrencyCode)
+    await timing.measure("fx_calls", () => resolveUniquePairsWithConcurrency(
+      [...requiredFxPairs.values()],
+      maxFxConcurrency,
+      async (pair) => resolveRate(pair.from, pair.to),
+    ))
     stage = "build_account_values"
     const currentValues: Record<string, Decimal | null> = {}; const unavailableSources: string[] = []
     for (const account of accounts) {
@@ -222,12 +301,16 @@ Deno.serve(async (request) => {
     stage = "build_snapshot_payload"
     const asOf = new Date(); const snapshot: Snapshot = { asOf: asOf.toISOString(), expiresAt: new Date(asOf.getTime() + snapshotTtlMs).toISOString(), freshness: unavailableSources.length ? "unavailable" : usedStale ? "stale" : "fresh", currentValues, accountBalances: Object.fromEntries(balances), rates: Object.fromEntries(rateCache), unavailableSources, portfolioAllocation: { status: portfolioAllocationIncomplete ? "incomplete" : "complete", holdings: portfolioAllocationHoldings } }
     stage = "snapshot_persistence"
-    const { data: stored, error: storeError } = await userClient.rpc("store_dashboard_valuation_snapshot" as never, { p_base_currency_code: baseCurrencyCode, p_snapshot: snapshot, p_as_of: snapshot.asOf, p_expires_at: snapshot.expiresAt } as never)
+    const { data: stored, error: storeError } = await timing.measure("snapshot_persistence", () => userClient.rpc("store_dashboard_valuation_snapshot" as never, { p_base_currency_code: baseCurrencyCode, p_snapshot: snapshot, p_as_of: snapshot.asOf, p_expires_at: snapshot.expiresAt } as never))
     if (storeError) throw storeError
+    snapshotMode = "rebuild"
     stage = "response_serialization"
     return json(stored ?? snapshot)
   } catch (error) {
     console.error("dashboard-valuation request failed", { stage: dashboardValuationReason(stage), message: error instanceof Error ? error.message : String(error) })
     return json({ error: "dashboard_valuation_unavailable", reason: dashboardValuationReason(stage) }, 500)
+  } finally {
+    const summary = timing.summary(snapshotMode, coldStartObserved)
+    if (summary) console.info("dashboard-valuation timing", summary)
   }
 })
