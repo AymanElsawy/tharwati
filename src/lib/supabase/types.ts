@@ -59,6 +59,36 @@ type ProfileRow = {
   updated_at: string
 }
 
+export type GoalType = "buy_home" | "buy_car" | "travel" | "education" | "other"
+export type GoalStatus = "active" | "completed" | "cancelled"
+export type GoalEntryType = "progress" | "withdrawal" | "reversal"
+export type GoalRow = {
+  id: string
+  user_id: string
+  name: string
+  goal_type: GoalType
+  custom_type_name: string | null
+  target_amount: Decimal
+  currency_code: string
+  target_date: string | null
+  status: GoalStatus
+  archived_at: string | null
+  created_at: string
+  updated_at: string
+}
+export type GoalProgressEntryRow = {
+  id: string
+  goal_id: string
+  user_id: string
+  entry_type: GoalEntryType
+  amount: Decimal
+  effective_on: string
+  note: string | null
+  reverses_entry_id: string | null
+  created_at: string
+  replacement_for_entry_id: string | null
+}
+
 type FinancialSettingsRow = {
   id: string
   user_id: string
@@ -348,6 +378,38 @@ export type Database = {
           onboarding_completed?: boolean
           created_at?: string
           updated_at?: string
+        }
+      >
+      goals: TableDefinition<
+        GoalRow,
+        {
+          id?: string
+          user_id: string
+          name: string
+          goal_type: GoalType
+          custom_type_name?: string | null
+          target_amount: Decimal
+          currency_code: string
+          target_date?: string | null
+          status?: GoalStatus
+          archived_at?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+      >
+      goal_progress_entries: TableDefinition<
+        GoalProgressEntryRow,
+        {
+          id?: string
+          goal_id: string
+          user_id: string
+          entry_type: GoalEntryType
+          amount: Decimal
+          effective_on: string
+          note?: string | null
+          reverses_entry_id?: string | null
+          created_at?: string
+          replacement_for_entry_id?: string | null
         }
       >
       financial_settings: TableDefinition<
@@ -708,6 +770,58 @@ export type Database = {
           p_base_currency_code: string
           p_selected_goals: string[]
         }
+        Returns: undefined
+      }
+      create_goal: {
+        Args: {
+          p_name: string
+          p_goal_type: GoalType
+          p_custom_type_name?: string | null
+          p_target_amount: Decimal
+          p_currency_code: string
+          p_target_date?: string | null
+          p_saved_so_far?: Decimal | null
+          p_saved_on?: string | null
+        }
+        Returns: string
+      }
+      update_goal: {
+        Args: {
+          p_goal_id: string
+          p_name: string
+          p_goal_type: GoalType
+          p_custom_type_name?: string | null
+          p_target_amount: Decimal
+          p_currency_code: string
+          p_target_date?: string | null
+        }
+        Returns: undefined
+      }
+      add_goal_progress_entry: {
+        Args: {
+          p_goal_id: string
+          p_entry_type: "progress" | "withdrawal"
+          p_amount: Decimal
+          p_effective_on: string
+          p_note?: string | null
+        }
+        Returns: string
+      }
+      correct_goal_progress_entry: {
+        Args: {
+          p_entry_id: string
+          p_replacement_amount?: Decimal | null
+          p_replacement_effective_on?: string | null
+          p_note?: string | null
+        }
+        Returns: string | null
+      }
+      set_goal_status: {
+        Args: { p_goal_id: string; p_status: GoalStatus }
+        Returns: undefined
+      }
+      set_goal_archived: {
+        Args: { p_goal_id: string; p_archived: boolean }
         Returns: undefined
       }
       get_account_balances: {

@@ -5,6 +5,7 @@ import {
   Palette,
   Sun,
   WalletCards,
+  Target,
   Menu,
   type LucideIcon,
 } from "lucide-react"
@@ -49,6 +50,11 @@ const navigationItems: NavigationItem[] = [
     labelKey: "navigation.accounts",
     path: "/accounts",
     icon: WalletCards,
+  },
+  {
+    labelKey: "navigation.goals",
+    path: "/goals",
+    icon: Target,
   },
 ]
 

@@ -26,6 +26,7 @@ import { getOnboardingCompletion } from "../features/onboarding/repositories/onb
 import { CurrentUserProvider } from "../features/profile/context/CurrentUserProvider"
 import { ProtectedRoute } from "../components/ProtectedRoute"
 import { DashboardLayout } from "../layouts/DashboardLayout"
+import { GoalsPage } from "../features/goals/pages/GoalsPage"
 import { DashboardPage } from "../pages/DashboardPage"
 import { DesignLabPage } from "../pages/DesignLabPage"
 import { NotFoundPage } from "../pages/NotFoundPage"
@@ -200,6 +201,7 @@ export default function App() {
         >
           <Route path="/dashboard" element={<DashboardPage />} />
           <Route path="/accounts" element={<AccountsPage />} />
+          <Route path="/goals" element={<GoalsPage />} />
           <Route
             path="/accounts/:accountId/purities/:purity"
             element={<MetalPurityDetailsPage />}
