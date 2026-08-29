@@ -1003,7 +1003,9 @@ function ExistingHoldingDialog({
       </Dialog.Root>
 
       <ManualAssetDialog
+        key={`${account?.id ?? ""}:${isAssetDialogOpen ? "open" : "closed"}`}
         open={isAssetDialogOpen}
+        defaultCurrencyCode={account?.currency_code ?? "USD"}
         assetTypes={sortedAssetTypes}
         assets={assets}
         onClose={() => setIsAssetDialogOpen(false)}
@@ -1015,12 +1017,14 @@ function ExistingHoldingDialog({
 
 function ManualAssetDialog({
   open,
+  defaultCurrencyCode,
   assetTypes,
   assets,
   onClose,
   onCreated,
 }: {
   open: boolean
+  defaultCurrencyCode: string
   assetTypes: AssetTypeSummary[]
   assets: AssetSummary[]
   onClose: () => void
@@ -1031,7 +1035,7 @@ function ManualAssetDialog({
   const [symbol, setSymbol] = useState("")
   const [exchange, setExchange] = useState("")
   const [assetTypeCode, setAssetTypeCode] = useState("")
-  const [currencyCode, setCurrencyCode] = useState("USD")
+  const [currencyCode, setCurrencyCode] = useState(defaultCurrencyCode)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
 

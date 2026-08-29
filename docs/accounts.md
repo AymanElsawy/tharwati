@@ -414,6 +414,7 @@ Manage Categories remains a compact settings action on the Category label row. D
 For Income and Expense, Add Record uses a wide two-column grid on tablet/desktop: Account and Category first, then Amount (with its account currency) and Date & Time; Notes spans both columns. The standalone read-only Currency field is not displayed. Narrow screens stack these fields into one column. Transfer retains its existing account, amount, received-amount, and FX behavior. Edit prefill normalizes stored decimal strings by removing only trailing zeroes, so displayed monetary inputs remain valid under the existing two-decimal form rule without changing stored precision.
 
 - **Create mode**: two-step — (1) a type picker (radio-group grid of 7 type cards with icon+label), (2) the form itself, pre-seeded with the chosen type.
+- **New account currency** defaults to the authenticated profile's `base_currency_code`; the user may change it before saving. Edit mode always retains the stored account currency. The manual-asset dialog launched from a Brokerage account instead defaults to that Brokerage account's currency.
 - **Edit mode**: skips the type picker; type is effectively immutable from the UI once created.
 - Field visibility/labels are conditional on `accountTypeCode` exactly as described in §2.5/§3.
 - Balance field label varies by type: `brokerage` → "Starting cash balance"; `real_estate`/`business` → "Current value"; `cash`/`bank`/`other` → "Starting balance"; hidden entirely for `gold`.

@@ -30,9 +30,12 @@ import {
 } from "@/features/assets/components/AssetWorkspaceStates"
 import { useAssetsWorkspace } from "@/features/assets/hooks/useAssetsWorkspace"
 import { useTranslation } from "@/i18n/useTranslation"
+import { useCurrentUser } from "@/features/profile/hooks/useCurrentUser"
+import { getProfileCurrencyDefault } from "@/features/profile/domain/currency-default"
 import { EditInvestmentDialog } from "@/features/investments/components/EditInvestmentDialog"
 
 export function AssetsPage() {
+  const { baseCurrencyCode } = useCurrentUser()
   const {
     snapshot,
     items,
@@ -80,6 +83,7 @@ export function AssetsPage() {
   const [form, setForm] = useState<{
     mode: "create" | "edit"
     asset: AssetSummary | null
+    createCurrencyCode?: AssetFormValues["currencyCode"]
   } | null>(null)
   const [confirm, setConfirm] = useState<{
     mode: "archive" | "delete"
@@ -105,7 +109,9 @@ export function AssetsPage() {
             assetTypeCode: "stock",
             name: "",
             symbol: "",
-            currencyCode: "USD",
+            currencyCode:
+              form?.createCurrencyCode ??
+              "USD",
             exchange: "",
             isActive: true,
           },
@@ -354,7 +360,11 @@ export function AssetsPage() {
         onClose={() => setIntentOpen(false)}
         onCreateRecord={() => {
           setIntentOpen(false)
-          setForm({ mode: "create", asset: null })
+          setForm({
+            mode: "create",
+            asset: null,
+            createCurrencyCode: getProfileCurrencyDefault(baseCurrencyCode),
+          })
         }}
         onRecordInvestment={() => {
           setIntentOpen(false)

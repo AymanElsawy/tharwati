@@ -9,6 +9,7 @@ export interface CurrentUserValue {
     fallback: string
     url: string | null
   }
+  baseCurrencyCode: string | null
   email: string
   error: RepositoryError | null
   firstName: string | null

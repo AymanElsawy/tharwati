@@ -8,7 +8,7 @@ export async function getCurrentUserProfile(userId: string) {
   const operation = "profile.getCurrentUser"
   const { data, error } = await supabase
     .from("profiles")
-    .select("full_name, avatar_url")
+    .select("full_name, avatar_url, base_currency_code")
     .eq("id", userId)
     .single()
 

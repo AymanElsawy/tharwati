@@ -33,6 +33,7 @@ export function CurrentUserProvider({
   const [profile, setProfile] = useState<{
     full_name: string | null
     avatar_url: string | null
+    base_currency_code: string | null
   } | null>(null)
   const [error, setError] = useState<RepositoryError | null>(null)
   const [isLoading, setIsLoading] = useState(true)
@@ -81,6 +82,7 @@ export function CurrentUserProvider({
     const greetingType: GreetingType = fullName ? timeGreeting : "welcome"
 
     return {
+      baseCurrencyCode: profile?.base_currency_code ?? null,
       fullName,
       firstName,
       email,

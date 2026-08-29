@@ -28,6 +28,8 @@ import {
 } from "@/features/accounts/types/account-form"
 import { useUnsavedChanges } from "@/hooks/useUnsavedChanges"
 import { useTranslation } from "@/i18n/useTranslation"
+import { useCurrentUser } from "@/features/profile/hooks/useCurrentUser"
+import { getProfileCurrencyDefault } from "@/features/profile/domain/currency-default"
 import type { AccountSummary } from "@/lib/supabase/types"
 
 function compareValues(left: string, right: string, direction: "asc" | "desc") {
@@ -37,6 +39,7 @@ function compareValues(left: string, right: string, direction: "asc" | "desc") {
 
 export function AccountsPage() {
   const { t } = useTranslation()
+  const { baseCurrencyCode } = useCurrentUser()
   const accounts = useAccounts()
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
@@ -44,6 +47,7 @@ export function AccountsPage() {
   const [form, setForm] = useState<{
     mode: "create" | "edit"
     account: AccountSummary | null
+    createCurrencyCode?: AccountFormValues["currencyCode"]
   } | null>(null)
   const [confirm, setConfirm] = useState<{
     mode: "archive" | "delete"
@@ -68,7 +72,12 @@ export function AccountsPage() {
     () =>
       form?.account
         ? accountToFormValues(form.account)
-        : emptyAccountFormValues,
+        : {
+            ...emptyAccountFormValues,
+            currencyCode:
+              form?.createCurrencyCode ??
+              emptyAccountFormValues.currencyCode,
+          },
     [form]
   )
 
@@ -212,7 +221,15 @@ export function AccountsPage() {
               {t("accounts.page.description")}
             </p>
           </div>
-          <Button onClick={() => setForm({ mode: "create", account: null })}>
+          <Button
+            onClick={() =>
+              setForm({
+                mode: "create",
+                account: null,
+                createCurrencyCode: getProfileCurrencyDefault(baseCurrencyCode),
+              })
+            }
+          >
             <Plus size={16} />
             {t("accounts.actions.add")}
           </Button>

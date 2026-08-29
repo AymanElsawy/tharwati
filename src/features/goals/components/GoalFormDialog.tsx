@@ -12,6 +12,8 @@ import {
 } from "../domain/goals"
 import { saveGoal } from "../services/goals.service"
 import { useTranslation } from "@/i18n/useTranslation"
+import { useCurrentUser } from "@/features/profile/hooks/useCurrentUser"
+import { getProfileCurrencyDefault } from "@/features/profile/domain/currency-default"
 import { goalErrorMessage } from "./goal-error-message"
 
 const currencies = ["USD", "SAR", "EGP", "EUR", "GBP"]
@@ -25,6 +27,7 @@ export function GoalFormDialog({
   onSaved: () => Promise<void>
 }) {
   const { t } = useTranslation()
+  const { baseCurrencyCode } = useCurrentUser()
   const editing = goal !== undefined && goal !== null
   const [name, setName] = useState(goal?.name ?? "")
   const [type, setType] = useState<GoalFormInput["goalType"]>(
@@ -33,7 +36,9 @@ export function GoalFormDialog({
   const [customType, setCustomType] = useState(goal?.custom_type_name ?? "")
   const currencyLocked = isGoalCurrencyLocked(Boolean(goal?.hasHistory))
   const [target, setTarget] = useState(goal?.target_amount ?? "")
-  const [currency, setCurrency] = useState(goal?.currency_code ?? "SAR")
+  const [currency, setCurrency] = useState(
+    goal?.currency_code ?? getProfileCurrencyDefault(baseCurrencyCode)
+  )
   const [targetDate, setTargetDate] = useState(goal?.target_date ?? "")
   const [saved, setSaved] = useState("")
   const [savedOn, setSavedOn] = useState(today())
