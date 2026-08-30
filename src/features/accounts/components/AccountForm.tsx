@@ -467,26 +467,7 @@ export function AccountForm({
         </div>
       ) : null}
 
-      {accountTypeCode !== "gold" ? (
-        <label className="flex cursor-pointer items-center gap-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] px-4 py-3">
-          <input
-            type="checkbox"
-            className="size-4 accent-[var(--color-primary)]"
-            disabled={isDisabled}
-            {...register("isActive")}
-          />
-          <span>
-            <span className="block text-sm font-semibold text-[var(--color-text-primary)]">
-              {t("accounts.form.active")}
-            </span>
-            <span className="block text-xs text-[var(--color-text-secondary)]">
-              {t("accounts.form.activeDescription")}
-            </span>
-          </span>
-        </label>
-      ) : (
-        <input type="hidden" {...register("isActive")} />
-      )}
+      <input type="hidden" {...register("isActive")} />
     </form>
   )
 }

@@ -35,7 +35,7 @@ create table public.financial_accounts (
   property_type text,                         -- 'apartment'|'villa'|'land'|'office'|'other', only when type = real_estate
   ownership_percentage numeric(5, 2),         -- projected current ownership for Real Estate/Business
   initial_ownership_percentage numeric(5, 2), -- immutable ownership baseline for their event timeline
-  closed_on date, closed_reason text,          -- `sold` is distinct from ordinary archive/inactive state
+  closed_on date, closed_reason text,          -- `sold` is distinct from ordinary closed/inactive state
   business_type text,                         -- stable Business Type code, or `other:<custom text>`
   industry text,                              -- stable Industry code, or `other:<custom text>`
   location text,                              -- optional, only when type = real_estate
@@ -68,7 +68,7 @@ RLS: standard per-user CRUD (`auth.uid() = user_id`).
 
 `account_valuations` is append-only and stores full (100%) manual valuations. Its correction links preserve an immutable replacement chain; only the latest effective leaf participates in current value. `account_disposals` is likewise append-only and stores the actual gross consideration received by the user, sale currency, ownership percentage sold, sale date, optional note, and an optional correction link. Sale amounts are audit-only: they never create cash, FX, tax, fee, or realized-P/L entries.
 
-Ownership is event-driven: current attributable value is the latest effective full valuation × the server-derived remaining ownership percentage. Remaining ownership is calculated from `initial_ownership_percentage` less effective disposals in effective-date/creation order; it is never reconstructed from the editable container projection. Backdated additions or disposal corrections revalidate the whole effective timeline atomically, so no event can sell more than was held on that date. A Real Estate disposal must sell all remaining ownership; Business may sell a positive partial or full remaining stake. Future sale dates are rejected. A full exit sets `closed_reason = 'sold'` and removes the account from current wealth, while Archive remains a separate inactive state. Sold Real Estate and Business accounts stay reachable in a distinct **Sold / Closed** Accounts-list section with a Sold badge and de-emphasized styling; they are not presented as archived accounts.
+Ownership is event-driven: current attributable value is the latest effective full valuation × the server-derived remaining ownership percentage. Remaining ownership is calculated from `initial_ownership_percentage` less effective disposals in effective-date/creation order; it is never reconstructed from the editable container projection. Backdated additions or disposal corrections revalidate the whole effective timeline atomically, so no event can sell more than was held on that date. A Real Estate disposal must sell all remaining ownership; Business may sell a positive partial or full remaining stake. Future sale dates are rejected. A full exit sets `closed_reason = 'sold'` and removes the account from current wealth, while ordinary Close remains a separate inactive state. Sold Real Estate and Business accounts stay reachable in a distinct **Sold** Accounts-list section with a Sold badge and de-emphasized styling; they are not presented as closed accounts.
 
 New Real Estate/Business accounts are created atomically with their first valuation and use `opening_balance = 0` only as an unused legacy placeholder. No legacy opening-balance demo data is backfilled. Missing valuation or initial ownership is unavailable; an explicit zero valuation remains a valid zero. After valuation/disposal history exists, currency, opening balance, and ordinary ownership edits are locked; ownership projection changes are only made by the disposal timeline. Hard delete is allowed only when no valuation, disposal, ledger, holding, or metal history exists.
 
@@ -78,7 +78,8 @@ Triggers (immutability guards once financial history exists):
 
 - Changing `currency_code` on an account with existing `transaction_entries` raises Postgres error `23514` ("This account already contains financial history. Its currency cannot be changed.").
 - Changing `opening_balance` similarly raises `23514` for opening balance.
-- `getAccountDeletionEligibility()` queries `transaction_entries`, `holdings`, and `metal_purchases` for rows referencing the given account ids (all scoped to the authenticated user); an account is `hasFinancialHistory: true` (and therefore `canDelete: false`) if any of the three has a matching row. This drives both the locked-field UI states above and the Delete button's disabled state in the Accounts list.
+- `get_account_lifecycle_eligibility()` returns server-authoritative history, Close, and Delete eligibility for owned accounts. It covers ledger entries, holdings, metal purchases and funding links, valuations, and disposals.
+- Authenticated table updates cannot directly change `is_active`, `closed_reason`, or `closed_on`; Close/Reopen RPCs own ordinary lifecycle transitions, while disposal projection alone owns Sold status and date.
 
 `account_types` reference table (seed data only, not queried dynamically by the client — types are hardcoded client-side):
 `cash, bank, brokerage, gold, real_estate, business, other`.
@@ -315,13 +316,20 @@ Metal purchase form:
 
 The Add Metal Record dialog shows purity, date and time, grams, cost per gram, optional fees, read-only purchase subtotal, read-only total cost/cost basis, optional Cash/Bank funding, and optional notes. Funding is limited to active same-currency Cash or Bank accounts; the RPC validates ownership and available balance.
 
-## 4. Business logic (create/update/archive/delete)
+## 4. Business logic (create/update/close/reopen/delete)
 
-- **Create**: for `gold`-type accounts, `name` is force-set to `"Silver"` if `metalType === "silver"`, else `"Gold"` (ignores any user input, since the field is hidden). If the form's `isActive` is `false`, creation requires a create-then-immediately-update round trip (insert always creates active, then a second call sets `is_active = false`).
+### Account lifecycle (current source of truth)
+
+- New accounts are active; the metadata form does not edit lifecycle state.
+- **Close Account** calls `close_financial_account`. The server requires exactly zero current Cash/Bank Debit/Other value; Bank Credit Amount Due = 0; Brokerage Available Cash = 0 with no positive holdings; or zero effective Gold/Silver quantity. Real Estate and Business cannot use ordinary Close while ownership remains and must use the existing full-sale flow.
+- **Reopen** calls `reopen_financial_account` and restores a manually closed account. Sold accounts cannot be reopened. Direct client updates to `is_active` are rejected, which also fixes the former Restore no-op path.
+- Closed accounts preserve all linked history, are excluded from active lists and current Net Worth, and appear only when **Show Closed** is enabled. They are shown in a separate **Closed / Archived** section. Sold remains a separate lifecycle and section.
+- **Hard Delete** calls `delete_pristine_financial_account`. It is allowed only for zero-exposure accounts with no transaction entries, holdings, metal purchases or funding links, valuations, or disposals. Direct authenticated table deletion is revoked.
+- `get_account_lifecycle_eligibility` supplies the server-authoritative Close/Delete eligibility and fixed block reason codes to web/mobile clients; clients do not duplicate these financial rules.
+
+- **Create**: for `gold`-type accounts, `name` is force-set to `"Silver"` if `metalType === "silver"`, else `"Gold"` (ignores any user input, since the field is hidden). New accounts are created active; lifecycle state is managed separately.
 - **Update**: same name-forcing logic for gold accounts; otherwise updates all provided fields.
 - **Friendly constraint errors**: both `createAccount()` and `updateAccount()` translate specific Postgres constraint violations into readable `RepositoryError` messages instead of surfacing the raw database error: the gold/silver singleton-per-currency unique index (`financial_accounts_user_currency_metal_type_key`, `23505`) becomes "You already have this type of Gold/Silver account in this currency. Go to that account and add a purchase instead of creating a new one."; the non-metal case-insensitive name uniqueness (`financial_accounts_non_metal_user_name_lower_key`, `23505`) becomes a duplicate-name message; the two immutability triggers (§2.1) keep their existing messages. `AccountFormDialog` catches whatever `onSubmit` throws and renders it as a visible alert inside the dialog (the dialog stays open so the user can correct the field) — previously a create/update failure only surfaced as a generic "Account action failed" banner on the page behind the dialog, or an unhandled rejection in the console, with no readable message shown to the user.
-- **Archive**: soft-deactivate only — `updateAccount(id, { isActive: false })`. There is **no separate DB flag**; archived = `is_active = false`. Note the gold/silver singleton unique index has no `is_active` predicate, so an archived Gold/Silver account still occupies its `(user_id, currency_code, metal_type)` slot — creating a replacement in the same currency hits the same friendly duplicate-account error above; the existing archived account must be restored or the new one created in a different currency.
-- **Delete**: hard delete, gated by `getAccountDeletionEligibility()`.
 - **Mutation guard**: only one mutation may be in flight at a time; a concurrent attempt throws `RepositoryError({code: "conflict"})`.
 - **Cross-feature refresh**: after any mutation (including metal purchases), the web app dispatches a global `window` event `"tharwati:data-changed"`, which other hooks (`useAccounts`, `useCashBalances`) listen for to silently refresh their data. **Mobile needs an equivalent global invalidation mechanism** (event emitter, or query-cache invalidation by shared key).
 
@@ -333,9 +341,10 @@ class AccountsRepository {
   getAccount(id): Promise<AccountSummary>
   createAccount(input: CreateAccountInput): Promise<AccountSummary>
   updateAccount(id, input: UpdateAccountInput): Promise<AccountSummary>
-  archiveAccount(id): Promise<AccountSummary> // = updateAccount(id, {isActive:false})
-  getAccountDeletionEligibility(ids): Promise<AccountDeletionEligibility[]> // checks transaction_entries, holdings, metal_purchases
-  deleteAccount(id): Promise<void> // throws constraint_violation if ineligible
+  closeAccount(id): Promise<AccountSummary>
+  reopenAccount(id): Promise<AccountSummary>
+  getAccountLifecycleEligibility(ids): Promise<AccountLifecycleEligibility[]>
+  deleteAccount(id): Promise<void> // calls narrow pristine-delete RPC
 }
 
 class MetalPurchasesRepository {
@@ -373,8 +382,7 @@ Error handling: Postgres errors are normalized into a `RepositoryError { code, o
 
 ### 6.2 Filtering & sorting (all client-side, over the full loaded account list)
 
-Filters: `search` (case-insensitive substring on name), `type` (exact match), `currency` (exact match; options are derived dynamically from currencies actually present, not the full static enum), and **Show Archived**. Show Archived defaults off and shows active accounts only; when on, it includes both active and archived accounts.
-Filters: `search` (case-insensitive substring on name), `type` (exact match), `currency` (exact match; options are derived dynamically from currencies actually present, not the full static enum), `status` (`all | active | archived`).
+Filters: `search` (case-insensitive substring on name), `type` (exact match), `currency` (exact match; options are derived dynamically from currencies actually present, not the full static enum), and **Show Closed**. Closed accounts are hidden by default and shown in their own section when enabled; Sold accounts remain separate.
 
 The page also reads two URL query params on mount (no UI control for either — they only exist to support deep-linking from elsewhere in the app, currently the dashboard's gold/silver cards, see `docs/dashboard.md`): `type` seeds the initial value of the `type` filter above, and `metal` (`gold | silver`) applies an additional, filter-bar-invisible predicate on `metal_type` so a link can land the user on just gold or just silver accounts without exposing a separate metal filter control.
 
@@ -390,8 +398,8 @@ Row actions:
 
 - **Add purchase** (active gold accounts only) → opens metal purchase dialog.
 - **Edit** (always) → opens account form dialog in edit mode.
-- **Archive/Restore** (icon+label toggles based on `is_active`) → opens confirm dialog.
-- **Delete** (always visible, disabled when ineligible — currently never disabled) → opens confirm dialog.
+- **Close/Reopen** (icon+label toggles based on `is_active`) → opens the server-authoritative lifecycle dialog.
+- **Delete** (always visible, disabled when the account is not pristine) → opens confirm dialog.
 
 The entire account row/card is selectable (including keyboard Enter/Space) and navigates to `/accounts/:accountId`. Row action controls stop propagation, so Edit, Archive/Restore, Delete, and Gold/Silver-specific actions do not trigger navigation. Every Account Details header shows a prominent, label-free resolved amount in that account’s own currency; the standalone currency line is omitted because the amount already includes it. The shared Accounts value layer uses ledger balances for Cash/Bank (including Bank Credit available credit), transaction-derived grams × live price for Gold/Silver, the shared Brokerage valuation for Brokerage, and the existing stored `opening_balance` snapshot for Real Estate, Business, and Other. Cash, Bank Debit, and Bank Credit reuse their full Account Records page with Back navigation; account creation/opening balance is excluded because it is not a ledger transaction. A compact filter area sits above the grouped history: Search is prominent, while local date range, record type, main/subcategory, and native amount range remain compact. Active filters are shown as removable chips and Clear all resets the server-side query and cursor. Existing records appear newest first and are grouped by the device-local calendar date. Each date header shows that account's signed Daily Net in its account currency; with filters active it represents all matching effective movements for that date, including movements not yet loaded by pagination. Rows show Time, Category, Notes, and account-native signed Amount. Income/Expense use the current visible subcategory name when linked (with a legacy description fallback), Transfers display “Transfer,” and empty notes display an em dash. Income rows are green, Expense rows red, and Transfers neutral; Daily Net follows the same positive/negative/zero styling. Each effective row is keyboard/click selectable and opens Edit Record with account sides, native transfer amounts, categories, local Date & Time, and notes prefilled. Saving submits an immutable correction; Delete requires confirmation and submits an immutable reversal. Linked audit rows and their superseded originals are filtered from normal history, while correction replacements remain visible. An empty state appears when no records exist, and a visible Add Record action opens the Expense/Income/Transfer form. Gold/Silver opens its account-details page with the dedicated purchase-history content in §6.7. Brokerage now shows Available Cash, shared Brokerage Current Value, and its holdings/activity details; Real Estate, Business, and Other currently show their account-details header only; no new transaction flow is introduced.
 
@@ -400,8 +408,6 @@ The Add Record form presents the Record Type as three responsive, visible button
 For Bank Credit, value means available credit: Expense/transfer-out decreases it; Income/payment/transfer-in increases it without exceeding the credit limit. Amount Due remains `credit_card_limit - current_balance`.
 
 On a Bank Credit Account Details/Records header, the generic large account-value amount is not shown because it could be mistaken for owned cash. A responsive Credit Summary instead labels Credit Limit, Available Credit (the ledger-projected `current_balance`), Amount Due (`credit_card_limit - current_balance` using decimal-safe subtraction), and optional Due Day. If the limit or projected balance is missing or invalid, the summary is unavailable rather than displaying zero. Bank Debit keeps the existing generic current-value header, and Account Records posting/history behavior is unchanged.
-
-> **Known web-app bug to decide on for mobile**: the "Restore" action for an archived account reuses the _same_ archive confirmation flow and repository call (`archiveAccount`, which always sets `is_active: false`) — so restoring currently does nothing (no-op). There is no working un-archive path in the current app despite the UI implying one. **Recommendation**: fix this on mobile with a distinct `restoreAccount = updateAccount(id, {isActive: true})` call and matching "Restore this account?" dialog copy, but be aware this is a deliberate deviation from current web behavior.
 
 ### 6.4 Create/edit flow (form dialog)
 
@@ -425,7 +431,7 @@ For Income and Expense, Add Record uses a wide two-column grid on tablet/desktop
 - A create/update failure (e.g. a constraint violation) renders as a dismissible alert inside the dialog, above the form fields; the dialog stays open so the user can correct the offending field and resubmit.
 - Closing a dirty form should prompt an "unsaved changes" confirmation.
 
-### 6.5 Archive / Delete confirm dialogs
+### 6.5 Close / Reopen / Delete confirm dialogs
 
 Simple modal: title interpolating account name, description, Cancel + destructive/warning confirm button (disabled + "…ing" label while in flight).
 
@@ -471,8 +477,7 @@ Display formatting:
 1. **Gold/silver accounts are singleton-per-currency** and always auto-named "Gold"/"Silver".
 2. **Gold account `openingBalance` is always `"0"`** on create/update — real balance only accrues via metal purchases.
 3. **Weighted-average cost formula** excludes fees; must be replicated exactly (§2.3 step 5).
-4. **"Restore" is effectively broken** in the current web app (§6.3) — recommend fixing on mobile, but note the deviation.
-5. **The gold/silver singleton-per-currency unique index does not exclude archived (`is_active = false`) accounts.** Archiving a Gold or Silver account permanently occupies its `(user_id, currency_code, metal_type)` slot for that user — creating a new one in the same currency fails with the same friendly duplicate-account message as a genuine duplicate, and the only way out is to restore the archived account (currently broken, see #4) or delete it (only possible if it has no purchase history) or use a different currency. This is a known rough edge, not yet resolved at the schema level.
+4. **The gold/silver singleton-per-currency unique index includes closed (`is_active = false`) accounts.** A closed Gold or Silver account still occupies its `(user_id, currency_code, metal_type)` slot; users should reopen that preserved account rather than create a duplicate.
 6. Cash and Bank values are ledger-adjusted through `get_account_balances`. Active Brokerage accounts also have a ledger-projected Available Cash balance for shared financial reads, while the Accounts list still displays raw `opening_balance` until Brokerage holdings aggregation is introduced; other non-metal account types display raw `opening_balance`.
 7. A `"deposit"` account type appears in one funding-account filter but is **not a real type** — dead code; only `cash`/`bank` are valid metal-purchase funding sources.
 8. **Metal purchase fees are hardcoded to `"0"`** from the client — no fee input UI exists yet, despite full schema/RPC support. Adding it on mobile is net-new, not parity.

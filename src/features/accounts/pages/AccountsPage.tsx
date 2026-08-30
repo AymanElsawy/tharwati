@@ -14,13 +14,13 @@ import {
   type AccountInventoryItem,
   type AccountInventorySort,
 } from "@/features/accounts/components/AccountInventory"
-import { ArchiveAccountDialog } from "@/features/accounts/components/ArchiveAccountDialog"
+import { AccountLifecycleDialog } from "@/features/accounts/components/AccountLifecycleDialog"
 import { DeleteAccountDialog } from "@/features/accounts/components/DeleteAccountDialog"
 import { MetalPurchaseEntryDialog } from "@/features/accounts/components/MetalPurchaseDialog"
 import { useAccounts } from "@/features/accounts/hooks/useAccounts"
 import { useAccountCurrentValues } from "@/features/accounts/hooks/useAccountCurrentValues"
 import { resolveAccountListCurrentValue } from "@/features/accounts/utils/account-list-current-value"
-import { isSoldAccount, partitionSoldAccounts } from "@/features/accounts/utils/account-lifecycle"
+import { isSoldAccount, partitionAccountLifecycle } from "@/features/accounts/utils/account-lifecycle"
 import {
   accountToFormValues,
   emptyAccountFormValues,
@@ -50,7 +50,7 @@ export function AccountsPage() {
     createCurrencyCode?: AccountFormValues["currencyCode"]
   } | null>(null)
   const [confirm, setConfirm] = useState<{
-    mode: "archive" | "delete"
+    mode: "close" | "reopen" | "delete"
     account: AccountSummary
   } | null>(null)
   const [metalPurchaseAccount, setMetalPurchaseAccount] =
@@ -171,8 +171,8 @@ export function AccountsPage() {
     sort,
   ])
 
-  const { activeItems, soldItems } = useMemo(
-    () => partitionSoldAccounts(items),
+  const { activeItems, closedItems, soldItems } = useMemo(
+    () => partitionAccountLifecycle(items),
     [items]
   )
 
@@ -280,7 +280,20 @@ export function AccountsPage() {
             direction={direction}
             onSort={toggleSort}
             onEdit={(account) => setForm({ mode: "edit", account })}
-            onArchive={(account) => setConfirm({ mode: "archive", account })}
+            onLifecycle={(account) => setConfirm({ mode: account.is_active ? "close" : "reopen", account })}
+            onDelete={(account) => setConfirm({ mode: "delete", account })}
+            onAddMetalPurchase={setMetalPurchaseAccount}
+            onOpenAccount={(account) => navigate(`/accounts/${account.id}`)}
+            canDelete={accounts.canDeleteAccount}
+          /> : null}
+          {closedItems.length ? <AccountInventory
+            sectionTitle={t("accounts.closedSection.title")}
+            items={closedItems}
+            sort={sort}
+            direction={direction}
+            onSort={toggleSort}
+            onEdit={(account) => setForm({ mode: "edit", account })}
+            onLifecycle={(account) => setConfirm({ mode: "reopen", account })}
             onDelete={(account) => setConfirm({ mode: "delete", account })}
             onAddMetalPurchase={setMetalPurchaseAccount}
             onOpenAccount={(account) => navigate(`/accounts/${account.id}`)}
@@ -293,7 +306,7 @@ export function AccountsPage() {
             direction={direction}
             onSort={toggleSort}
             onEdit={(account) => setForm({ mode: "edit", account })}
-            onArchive={(account) => setConfirm({ mode: "archive", account })}
+            onLifecycle={(account) => setConfirm({ mode: "reopen", account })}
             onDelete={(account) => setConfirm({ mode: "delete", account })}
             onAddMetalPurchase={setMetalPurchaseAccount}
             onOpenAccount={(account) => navigate(`/accounts/${account.id}`)}
@@ -330,13 +343,16 @@ export function AccountsPage() {
         />
       ) : null}
 
-      <ArchiveAccountDialog
-        account={confirm?.mode === "archive" ? confirm.account : null}
+      <AccountLifecycleDialog
+        account={confirm?.mode === "close" || confirm?.mode === "reopen" ? confirm.account : null}
+        mode={confirm?.mode === "reopen" ? "reopen" : "close"}
+        blockReason={confirm?.mode === "close" ? accounts.closeBlockReason(confirm.account.id) : null}
         isSaving={accounts.isSaving}
         onCancel={() => setConfirm(null)}
         onConfirm={async () => {
           if (confirm) {
-            await accounts.archiveAccount(confirm.account.id)
+            if (confirm.mode === "close") await accounts.closeAccount(confirm.account.id)
+            if (confirm.mode === "reopen") await accounts.reopenAccount(confirm.account.id)
             setConfirm(null)
           }
         }}

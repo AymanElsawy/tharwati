@@ -136,7 +136,7 @@ export function AccountInventory({
   direction,
   onSort,
   onEdit,
-  onArchive,
+  onLifecycle,
   onDelete,
   onAddMetalPurchase,
   onOpenAccount,
@@ -148,7 +148,7 @@ export function AccountInventory({
   direction: "asc" | "desc"
   onSort: (sort: AccountInventorySort) => void
   onEdit: (account: AccountSummary) => void
-  onArchive: (account: AccountSummary) => void
+  onLifecycle: (account: AccountSummary) => void
   onDelete: (account: AccountSummary) => void
   onAddMetalPurchase: (account: AccountSummary) => void
   onOpenAccount: (account: AccountSummary) => void
@@ -198,9 +198,10 @@ export function AccountInventory({
           <tbody>
             {items.map((item) => {
               const sold = isSoldAccount(item.account)
+              const inactive = !item.account.is_active
               return <tr
                 key={item.account.id}
-                className={`cursor-pointer border-b border-[var(--color-border)] last:border-b-0 hover:bg-[var(--color-surface-hover)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--color-primary)] ${sold ? "bg-[var(--color-surface-muted)]/60 text-muted-foreground" : ""}`}
+                className={`cursor-pointer border-b border-[var(--color-border)] last:border-b-0 hover:bg-[var(--color-surface-hover)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--color-primary)] ${inactive ? "bg-[var(--color-surface-muted)]/60 text-muted-foreground" : ""}`}
                 tabIndex={0}
                 onClick={() => onOpenAccount(item.account)}
                 onKeyDown={(event) => {
@@ -254,15 +255,15 @@ export function AccountInventory({
                       <Pencil size={15} />
                     </ActionButton> : null}
                     {!sold ? <ActionButton
-                      ariaLabel={t("accounts.table.archiveLabel", {
+                      ariaLabel={t("accounts.table.closeLabel", {
                         name: item.account.name,
                       })}
                       tooltip={t(
                         item.account.is_active
-                          ? "accounts.actions.archive"
-                          : "accounts.actions.restore"
+                          ? "accounts.actions.close"
+                          : "accounts.actions.reopen"
                       )}
-                      onClick={() => onArchive(item.account)}
+                      onClick={() => onLifecycle(item.account)}
                     >
                       {item.account.is_active ? (
                         <Archive size={15} />
@@ -291,7 +292,8 @@ export function AccountInventory({
       <div className="mt-2 divide-y divide-[var(--color-border)] rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-sm lg:hidden">
         {items.map((item) => {
           const sold = isSoldAccount(item.account)
-          return <div key={item.account.id} className={`grid cursor-pointer gap-2.5 px-4 py-3 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--color-primary)] ${sold ? "bg-[var(--color-surface-muted)]/60 text-muted-foreground" : ""}`} tabIndex={0} role="button" onClick={() => onOpenAccount(item.account)} onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); onOpenAccount(item.account) } }}>
+          const inactive = !item.account.is_active
+          return <div key={item.account.id} className={`grid cursor-pointer gap-2.5 px-4 py-3 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--color-primary)] ${inactive ? "bg-[var(--color-surface-muted)]/60 text-muted-foreground" : ""}`} tabIndex={0} role="button" onClick={() => onOpenAccount(item.account)} onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); onOpenAccount(item.account) } }}>
             <div className="flex items-start justify-between gap-3">
               <strong className="min-w-0 flex-1 break-words">{item.account.name}{sold ? <span className="ms-2 inline-block rounded-full bg-muted px-2 py-0.5 text-[11px] font-semibold text-muted-foreground">{t("accounts.disposal.sold")}</span> : null}</strong>
               <strong className="max-w-[52%] shrink-0 break-words text-end tabular-nums" dir="ltr">{balanceCell(item, locale, t("accounts.currentValueUnavailable"), t("common.loading"))}</strong>
@@ -321,15 +323,15 @@ export function AccountInventory({
                   <Pencil size={15} />
                 </ActionButton> : null}
                 {!sold ? <ActionButton
-                  ariaLabel={t("accounts.table.archiveLabel", {
+                  ariaLabel={t("accounts.table.closeLabel", {
                     name: item.account.name,
                   })}
                   tooltip={t(
                     item.account.is_active
-                      ? "accounts.actions.archive"
-                      : "accounts.actions.restore"
+                      ? "accounts.actions.close"
+                      : "accounts.actions.reopen"
                   )}
-                  onClick={() => onArchive(item.account)}
+                  onClick={() => onLifecycle(item.account)}
                 >
                   {item.account.is_active ? (
                     <Archive size={15} />

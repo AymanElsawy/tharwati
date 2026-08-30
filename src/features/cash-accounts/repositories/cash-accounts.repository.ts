@@ -41,7 +41,7 @@ export class CashAccountsRepository {
     const accountIds = accounts.map((account) => account.id)
     const [balances, eligibility] = await Promise.all([
       accountBalancesService.getAccountBalances(accountIds),
-      accountsRepository.getAccountDeletionEligibility(accountIds),
+      accountsRepository.getAccountLifecycleEligibility(accountIds),
     ])
     const currentBalanceByAccount = new Map(
       balances.map((balance) => [

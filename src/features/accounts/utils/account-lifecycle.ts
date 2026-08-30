@@ -5,9 +5,10 @@ export function isSoldAccount(account: Pick<AccountSummary, "closed_reason">): b
   return account.closed_reason === "sold"
 }
 
-export function partitionSoldAccounts<T extends { account: Pick<AccountSummary, "closed_reason"> }>(items: readonly T[]) {
+export function partitionAccountLifecycle<T extends { account: Pick<AccountSummary, "closed_reason" | "is_active"> }>(items: readonly T[]) {
   return {
-    activeItems: items.filter((item) => !isSoldAccount(item.account)),
+    activeItems: items.filter((item) => item.account.is_active && !isSoldAccount(item.account)),
+    closedItems: items.filter((item) => !item.account.is_active && !isSoldAccount(item.account)),
     soldItems: items.filter((item) => isSoldAccount(item.account)),
   }
 }

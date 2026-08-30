@@ -63,9 +63,12 @@ export type UpdateAccountInput = {
   costPerUnit?: Decimal | null
 }
 
-export type AccountDeletionEligibility = {
+export type AccountLifecycleEligibility = {
   accountId: string
+  canClose: boolean
+  closeBlockReason: string | null
   canDelete: boolean
+  deleteBlockReason: string | null
   hasFinancialHistory: boolean
 }
 
@@ -387,101 +390,49 @@ export class AccountsRepository {
     )
   }
 
-  async archiveAccount(id: string): Promise<AccountSummary> {
-    return this.updateAccount(id, { isActive: false })
+  async closeAccount(id: string): Promise<AccountSummary> {
+    const operation = "accounts.closeAccount"
+    const { error } = await this.client.rpc("close_financial_account", {
+      p_account_id: id,
+    })
+    requireQueryData(true, error, operation)
+    return this.getAccount(id)
   }
 
-  async getAccountDeletionEligibility(
+  async reopenAccount(id: string): Promise<AccountSummary> {
+    const operation = "accounts.reopenAccount"
+    const { error } = await this.client.rpc("reopen_financial_account", {
+      p_account_id: id,
+    })
+    requireQueryData(true, error, operation)
+    return this.getAccount(id)
+  }
+
+  async getAccountLifecycleEligibility(
     accountIds: string[]
-  ): Promise<AccountDeletionEligibility[]> {
-    const operation = "accounts.getAccountDeletionEligibility"
+  ): Promise<AccountLifecycleEligibility[]> {
+    const operation = "accounts.getAccountLifecycleEligibility"
     if (accountIds.length === 0) return []
-
-    const userId = await requireAuthenticatedUserId(this.client, operation)
-    const [entriesResult, valuationsResult, disposalsResult, holdingsResult, metalPurchasesResult] =
-      await Promise.all([
-        this.client
-          .from("transaction_entries")
-          .select("account_id")
-          .eq("user_id", userId)
-          .in("account_id", accountIds),
-        this.client
-          .from("account_valuations")
-          .select("account_id")
-          .eq("user_id", userId)
-          .in("account_id", accountIds),
-        this.client
-          .from("account_disposals")
-          .select("account_id")
-          .eq("user_id", userId)
-          .in("account_id", accountIds),
-        this.client
-          .from("holdings")
-          .select("account_id")
-          .eq("user_id", userId)
-          .in("account_id", accountIds),
-        this.client
-          .from("metal_purchases")
-          .select("account_id")
-          .eq("user_id", userId)
-          .in("account_id", accountIds),
-      ])
-    const referencedIds = new Set([
-      ...requireQueryData(entriesResult.data, entriesResult.error, operation)
-        .map((entry) => entry.account_id)
-        .filter((id): id is string => id !== null),
-      ...requireQueryData(
-        holdingsResult.data,
-        holdingsResult.error,
-        operation
-      ).map((holding) => holding.account_id),
-      ...requireQueryData(
-        metalPurchasesResult.data,
-        metalPurchasesResult.error,
-        operation
-      ).map((purchase) => purchase.account_id),
-      ...requireQueryData(
-        valuationsResult.data,
-        valuationsResult.error,
-        operation
-      ).map((valuation) => valuation.account_id),
-      ...requireQueryData(
-        disposalsResult.data,
-        disposalsResult.error,
-        operation
-      ).map((disposal) => disposal.account_id),
-    ])
-
-    return accountIds.map((accountId) => ({
-      accountId,
-      canDelete: !referencedIds.has(accountId),
-      hasFinancialHistory: referencedIds.has(accountId),
+    const { data, error } = await this.client.rpc(
+      "get_account_lifecycle_eligibility",
+      { p_account_ids: accountIds }
+    )
+    return requireQueryData(data, error, operation).map((row) => ({
+      accountId: row.account_id,
+      canClose: row.can_close,
+      closeBlockReason: row.close_block_reason,
+      canDelete: row.can_delete,
+      deleteBlockReason: row.delete_block_reason,
+      hasFinancialHistory: row.has_financial_history,
     }))
   }
 
   async deleteAccount(id: string): Promise<void> {
     const operation = "accounts.deleteAccount"
-    const userId = await requireAuthenticatedUserId(this.client, operation)
-    const [eligibility] = await this.getAccountDeletionEligibility([id])
-
-    if (!eligibility?.canDelete) {
-      throw new RepositoryError({
-        code: "constraint_violation",
-        message:
-          "Accounts with holdings or transaction history cannot be deleted",
-        operation,
-      })
-    }
-
-    const { data, error } = await this.client
-      .from("financial_accounts")
-      .delete()
-      .eq("id", id)
-      .eq("user_id", userId)
-      .select("id")
-      .single()
-
-    requireQueryData(data, error, operation)
+    const { error } = await this.client.rpc("delete_pristine_financial_account", {
+      p_account_id: id,
+    })
+    requireQueryData(true, error, operation)
   }
 }
 

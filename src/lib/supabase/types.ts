@@ -847,6 +847,20 @@ export type Database = {
         Args: { p_account_ids?: string[] | null }
         Returns: Array<{ account_id: string; ownership_percentage: Decimal | null; is_sold: boolean }>
       }
+      get_account_lifecycle_eligibility: {
+        Args: { p_account_ids?: string[] | null }
+        Returns: Array<{
+          account_id: string
+          can_close: boolean
+          close_block_reason: string | null
+          can_delete: boolean
+          delete_block_reason: string | null
+          has_financial_history: boolean
+        }>
+      }
+      close_financial_account: { Args: { p_account_id: string }; Returns: string }
+      reopen_financial_account: { Args: { p_account_id: string }; Returns: string }
+      delete_pristine_financial_account: { Args: { p_account_id: string }; Returns: string }
       get_account_disposals: {
         Args: { p_account_ids?: string[] | null }
         Returns: Array<AccountDisposalRow & { is_effective: boolean }>

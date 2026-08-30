@@ -19,6 +19,7 @@ type UseAccountsResult = {
   isLoading: boolean
   isSaving: boolean
   canDeleteAccount: (accountId: string) => boolean
+  closeBlockReason: (accountId: string) => string | null
   hasFinancialHistory: (accountId: string) => boolean
   refreshAccounts: () => Promise<void>
   createAccount: (values: AccountFormValues) => Promise<AccountSummary>
@@ -26,7 +27,8 @@ type UseAccountsResult = {
     accountId: string,
     values: AccountFormValues
   ) => Promise<AccountSummary>
-  archiveAccount: (accountId: string) => Promise<AccountSummary>
+  closeAccount: (accountId: string) => Promise<AccountSummary>
+  reopenAccount: (accountId: string) => Promise<AccountSummary>
   deleteAccount: (accountId: string) => Promise<void>
   clearError: () => void
 }
@@ -65,6 +67,9 @@ export function useAccounts(): UseAccountsResult {
   const [accountIdsWithHistory, setAccountIdsWithHistory] = useState<
     ReadonlySet<string>
   >(new Set())
+  const [closeEligibility, setCloseEligibility] = useState<
+    ReadonlyMap<string, string | null>
+  >(new Map())
   const mutationInFlight = useRef(false)
 
   const loadAccounts = useCallback(
@@ -76,7 +81,7 @@ export function useAccounts(): UseAccountsResult {
       try {
         const nextAccounts = await accountsRepository.getAccounts()
         const deletionEligibility =
-          await accountsRepository.getAccountDeletionEligibility(
+          await accountsRepository.getAccountLifecycleEligibility(
             nextAccounts.map((account) => account.id)
           )
 
@@ -95,6 +100,10 @@ export function useAccounts(): UseAccountsResult {
               .map((eligibility) => eligibility.accountId)
           )
         )
+        setCloseEligibility(new Map(deletionEligibility.map((item) => [
+          item.accountId,
+          item.closeBlockReason,
+        ])))
         setError(null)
       } catch (loadError) {
         setError(
@@ -199,12 +208,6 @@ export function useAccounts(): UseAccountsResult {
         }
         const createdAccount = await accountsRepository.createAccount(input)
 
-        if (!values.isActive) {
-          return accountsRepository.updateAccount(createdAccount.id, {
-            isActive: false,
-          })
-        }
-
         return createdAccount
       }),
     [runMutation]
@@ -224,7 +227,6 @@ export function useAccounts(): UseAccountsResult {
               : values.name.trim(),
           currencyCode: values.currencyCode,
           notes: nullableText(values.notes),
-          isActive: values.isActive,
           ...typeFields,
         }
         if (values.accountTypeCode === "real_estate" || values.accountTypeCode === "business") {
@@ -236,10 +238,18 @@ export function useAccounts(): UseAccountsResult {
     [runMutation]
   )
 
-  const archiveAccount = useCallback(
+  const closeAccount = useCallback(
     async (accountId: string) =>
-      runMutation("accounts.archive", () =>
-        accountsRepository.archiveAccount(accountId)
+      runMutation("accounts.close", () =>
+        accountsRepository.closeAccount(accountId)
+      ),
+    [runMutation]
+  )
+
+  const reopenAccount = useCallback(
+    async (accountId: string) =>
+      runMutation("accounts.reopen", () =>
+        accountsRepository.reopenAccount(accountId)
       ),
     [runMutation]
   )
@@ -258,11 +268,13 @@ export function useAccounts(): UseAccountsResult {
     isLoading,
     isSaving,
     canDeleteAccount: (accountId) => deletableAccountIds.has(accountId),
+    closeBlockReason: (accountId) => closeEligibility.get(accountId) ?? null,
     hasFinancialHistory: (accountId) => accountIdsWithHistory.has(accountId),
     refreshAccounts,
     createAccount,
     updateAccount,
-    archiveAccount,
+    closeAccount,
+    reopenAccount,
     deleteAccount,
     clearError: () => setError(null),
   }
