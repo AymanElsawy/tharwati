@@ -2,16 +2,15 @@ import { useId, useState } from "react"
 import { useNavigate } from "react-router-dom"
 
 import { Button } from "@/components/ui/button"
-import { signIn } from "./auth.service"
+import { requestPasswordReset } from "./auth.service"
 
-export function LoginPage() {
+export function ForgotPasswordPage() {
   const navigate = useNavigate()
   const emailId = useId()
-  const passwordId = useId()
 
   const [email, setEmail] = useState("")
-  const [password, setPassword] = useState("")
   const [errorMessage, setErrorMessage] = useState("")
+  const [sent, setSent] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
@@ -20,12 +19,11 @@ export function LoginPage() {
     try {
       setIsLoading(true)
       setErrorMessage("")
-
-      await signIn(email, password)
-
-      navigate("/dashboard")
+      await requestPasswordReset(email)
+      setSent(true)
     } catch (error) {
-      setErrorMessage(error instanceof Error ? error.message : "Login failed")
+      console.error("password reset request failed", error)
+      setErrorMessage("We couldn't send the reset email. Please try again.")
     } finally {
       setIsLoading(false)
     }
@@ -44,14 +42,22 @@ export function LoginPage() {
       >
         <div>
           <h1 className="text-2xl font-bold tracking-tight text-[var(--color-text-primary)]">
-            Welcome back
+            Reset your password
           </h1>
           <p className="mt-1.5 text-sm text-[var(--color-text-secondary)]">
-            Log in to your wealth workspace.
+            Enter your email and we&apos;ll send you a link to set a new password.
           </p>
         </div>
 
-        <div className="space-y-4">
+        {sent ? (
+          <p
+            role="status"
+            className="rounded-lg border border-[var(--color-primary)]/25 bg-[var(--color-primary-soft)] px-3.5 py-2.5 text-sm text-[var(--color-primary)]"
+          >
+            If an account exists for {email.trim()}, a reset link is on its way.
+            Check your inbox and spam folder.
+          </p>
+        ) : (
           <div>
             <label
               htmlFor={emailId}
@@ -69,38 +75,13 @@ export function LoginPage() {
               required
             />
           </div>
+        )}
 
-          <div>
-            <div className="mb-1.5 flex items-center justify-between">
-              <label
-                htmlFor={passwordId}
-                className="block text-sm font-medium text-[var(--color-text-primary)]"
-              >
-                Password
-              </label>
-              <button
-                type="button"
-                onClick={() => navigate("/forgot-password")}
-                className="text-xs font-medium text-[var(--color-text-secondary)] underline-offset-4 hover:text-[var(--color-primary)] hover:underline"
-              >
-                Forgot password?
-              </button>
-            </div>
-            <input
-              id={passwordId}
-              type="password"
-              placeholder="Your password"
-              value={password}
-              onChange={(event) => setPassword(event.target.value)}
-              className="h-11 w-full rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] px-3.5 text-sm text-[var(--color-text-primary)] outline-none transition focus:border-[var(--color-primary)] focus:ring-2 focus:ring-[var(--color-primary-soft)]"
-              required
-            />
-          </div>
-        </div>
-
-        <Button type="submit" disabled={isLoading} size="lg" className="h-11 w-full rounded-xl">
-          {isLoading ? "Logging in..." : "Login"}
-        </Button>
+        {!sent ? (
+          <Button type="submit" disabled={isLoading} size="lg" className="h-11 w-full rounded-xl">
+            {isLoading ? "Sending..." : "Send reset link"}
+          </Button>
+        ) : null}
 
         {errorMessage ? (
           <p
@@ -113,10 +94,10 @@ export function LoginPage() {
 
         <button
           type="button"
-          onClick={() => navigate("/signup")}
+          onClick={() => navigate("/login")}
           className="w-full text-center text-sm font-medium text-[var(--color-text-secondary)] underline-offset-4 hover:text-[var(--color-primary)] hover:underline"
         >
-          Create a new account
+          Back to login
         </button>
       </form>
     </main>

@@ -97,13 +97,23 @@ Deno.serve(async (request) => {
       stale = true
     }
     if (!fx.identity) {
-      const { error } = await admin.from("exchange_rates").upsert({ user_id: null, provider: "frankfurter", base_currency_code: from, quote_currency_code: to, rate: String(fx.rate), effective_at: `${fx.date}T00:00:00Z`, source: "frankfurter", fetched_at: new Date().toISOString() }, { onConflict: "provider,base_currency_code,quote_currency_code,effective_at" })
-      if (error) throw error
+      // Best-effort shared FX cache write. Never fatal to the investment: the
+      // rate has already been resolved, and the cache table may not exist in
+      // every environment.
+      try {
+        const { error } = await admin.from("exchange_rates").upsert({ user_id: null, provider: "frankfurter", base_currency_code: from, quote_currency_code: to, rate: String(fx.rate), effective_at: `${fx.date}T00:00:00Z`, source: "frankfurter", fetched_at: new Date().toISOString() }, { onConflict: "provider,base_currency_code,quote_currency_code,effective_at" })
+        if (error) throw error
+      } catch (error) {
+        console.error("investment-fx cache upsert skipped", { message: error instanceof Error ? error.message : String(error) })
+      }
     }
     const { data, error } = operation === "add"
       ? await userClient.rpc("add_investment", args)
       : await userClient.rpc("edit_investment", args)
-    if (error) return response({ error: error.message }, 422)
+    if (error) {
+      console.error("investment-fx rpc rejected", { operation, code: error.code, message: error.message })
+      return response({ error: "investment_request_rejected", code: error.code ?? null }, 422)
+    }
     return response({ result: data, fx: { provider: fx.identity ? "identity" : "frankfurter", effectiveAt: fx.date, stale } })
   } catch (error) { console.error("Investment FX orchestration failed", error); return response({ error: "historical_fx_unavailable" }, 422) }
 })

@@ -33,3 +33,27 @@ export async function signOut() {
     throw error
   }
 }
+
+/**
+ * Sends a password-recovery email. The link returns the user to
+ * `${origin}/reset-password`, where `onAuthStateChange` fires a
+ * `PASSWORD_RECOVERY` event and the app shows the reset form.
+ */
+export async function requestPasswordReset(email: string) {
+  const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
+    redirectTo: `${window.location.origin}/reset-password`,
+  })
+
+  if (error) {
+    throw error
+  }
+}
+
+/** Completes a recovery: sets a new password for the currently recovered session. */
+export async function updatePassword(newPassword: string) {
+  const { error } = await supabase.auth.updateUser({ password: newPassword })
+
+  if (error) {
+    throw error
+  }
+}

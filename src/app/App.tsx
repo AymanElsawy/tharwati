@@ -11,6 +11,8 @@ import {
 import { supabase } from "../lib/supabase"
 import { LoginPage } from "../features/auth/LoginPage"
 import { SignUpPage } from "../features/auth/SignUpPage"
+import { ForgotPasswordPage } from "../features/auth/ForgotPasswordPage"
+import { ResetPasswordPage } from "../features/auth/ResetPasswordPage"
 import { AccountsPage } from "../features/accounts/pages/AccountsPage"
 import { AccountRecordsPage } from "../features/accounts/pages/AccountRecordsPage"
 import { AccountDetailsPage } from "../features/accounts/pages/AccountDetailsPage"
@@ -41,6 +43,13 @@ export default function App() {
   >(null)
   const [isLoading, setIsLoading] = useState(true)
   const [startupError, setStartupError] = useState<string | null>(null)
+  // Recognise the recovery link synchronously so the router never gets a chance
+  // to route the freshly-created session into the authenticated app.
+  const [isPasswordRecovery, setIsPasswordRecovery] = useState(
+    () =>
+      typeof window !== "undefined" &&
+      /(^|[#&])type=recovery([&]|$)/.test(window.location.hash),
+  )
   const authenticatedUserId = useRef<string | null>(null)
 
   const resolveSession = useCallback(async (currentSession: Session | null) => {
@@ -57,11 +66,8 @@ export default function App() {
     try {
       setOnboardingCompleted(await getOnboardingCompletion())
     } catch (error) {
-      setStartupError(
-        error instanceof Error
-          ? error.message
-          : "We couldn't load your account. Please try again."
-      )
+      console.error("startup: failed to load onboarding state", error)
+      setStartupError("We couldn't load your account. Please try again.")
     } finally {
       setIsLoading(false)
     }
@@ -72,7 +78,8 @@ export default function App() {
       const { data, error } = await supabase.auth.getSession()
 
       if (error) {
-        setStartupError(error.message)
+        console.error("startup: failed to read auth session", error)
+        setStartupError("We couldn't load your account. Please try again.")
         setIsLoading(false)
         return
       }
@@ -84,7 +91,16 @@ export default function App() {
 
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, currentSession) => {
+    } = supabase.auth.onAuthStateChange((event, currentSession) => {
+      if (event === "PASSWORD_RECOVERY") {
+        // The recovery link creates a session; hold the app on the reset form
+        // instead of routing the user into the authenticated app.
+        setIsPasswordRecovery(true)
+        setSession(currentSession)
+        authenticatedUserId.current = currentSession?.user.id ?? null
+        setIsLoading(false)
+        return
+      }
       if (
         canPreserveAuthenticatedTree(
           authenticatedUserId.current,
@@ -102,6 +118,19 @@ export default function App() {
       subscription.unsubscribe()
     }
   }, [resolveSession])
+
+  if (isPasswordRecovery) {
+    return (
+      <ResetPasswordPage
+        onComplete={() => {
+          setIsPasswordRecovery(false)
+          setSession(null)
+          authenticatedUserId.current = null
+          window.location.assign("/login")
+        }}
+      />
+    )
+  }
 
   if (isLoading) {
     return (
@@ -163,6 +192,22 @@ export default function App() {
               <SignUpPage />
             )
           }
+        />
+
+        <Route
+          path="/forgot-password"
+          element={
+            session ? (
+              <Navigate to={authenticatedDestination} replace />
+            ) : (
+              <ForgotPasswordPage />
+            )
+          }
+        />
+
+        <Route
+          path="/reset-password"
+          element={<Navigate to="/login" replace />}
         />
 
         <Route
