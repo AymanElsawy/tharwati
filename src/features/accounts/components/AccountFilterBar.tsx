@@ -29,7 +29,7 @@ export function AccountFilterBar({
 }) {
   const { t } = useTranslation()
   const input =
-    "h-10 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] px-3 text-sm text-[var(--color-text-primary)] outline-none transition focus-visible:border-[var(--color-primary)] focus-visible:ring-2 focus-visible:ring-[var(--color-primary-soft)]"
+    "h-11 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] px-3 text-sm text-[var(--color-text-primary)] outline-none transition focus-visible:border-[var(--color-primary)] focus-visible:ring-2 focus-visible:ring-[var(--color-primary-soft)] sm:h-10"
   return (
     <div className="mt-6 grid gap-3 py-4 sm:grid-cols-2 lg:grid-cols-[minmax(14rem,1fr)_repeat(2,auto)_auto_auto]">
       <input
@@ -68,7 +68,7 @@ export function AccountFilterBar({
           <option key={item}>{item}</option>
         ))}
       </select>
-      <label className="flex h-10 items-center gap-2 px-1 text-sm text-[var(--color-text-primary)]">
+      <label className="flex h-11 items-center gap-2 px-1 text-sm text-[var(--color-text-primary)] sm:h-10">
         <input
           type="checkbox"
           checked={filters.showArchived}

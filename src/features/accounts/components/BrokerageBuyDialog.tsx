@@ -131,9 +131,9 @@ export function BrokerageBuyDialog({ account, availableCash, onClose, onSaved }:
 
   return <Dialog.Root open={account !== null} onOpenChange={(open) => { if (!open && !saving) onClose() }}>
     <Dialog.Portal><Dialog.Backdrop className="fixed inset-0 z-50 bg-black/40" />
-      <Dialog.Popup className="fixed inset-x-3 top-1/2 z-50 mx-auto max-h-[90vh] w-auto max-w-4xl -translate-y-1/2 overflow-y-auto rounded-xl bg-background p-5 shadow-xl sm:inset-x-0">
-        <div className="flex items-center justify-between gap-3"><Dialog.Title className="font-heading text-xl">{t("brokerage.buy")}</Dialog.Title><Button variant="ghost" size="icon" aria-label={t("common.close")} onClick={onClose}><X size={18} /></Button></div>
-        <div className="mt-5 space-y-4">
+      <Dialog.Popup className="fixed inset-x-3 top-1/2 z-50 mx-auto flex max-h-[calc(100dvh-1.5rem)] w-auto max-w-4xl -translate-y-1/2 flex-col overflow-hidden rounded-xl bg-background shadow-xl sm:inset-x-0">
+        <div className="flex shrink-0 items-center justify-between gap-3 border-b border-[var(--color-border)] px-5 py-4"><Dialog.Title className="font-heading text-xl">{t("brokerage.buy")}</Dialog.Title><Button variant="ghost" size="icon" aria-label={t("common.close")} onClick={onClose}><X size={18} /></Button></div>
+        <div className="min-h-0 flex-1 space-y-4 overflow-y-auto p-5">
           <div className="flex items-end gap-2">
             <label className="min-w-0 flex-1 basis-2/3">{t("brokerage.searchExternalAssets")}
               <div className="relative mt-1">
@@ -169,8 +169,9 @@ export function BrokerageBuyDialog({ account, availableCash, onClose, onSaved }:
           {isCrossCurrency ? <label>{t("brokerage.historicalFxRate")}<span className="mt-1 block text-xs text-muted-foreground">{t("brokerage.historicalFxRateHelp", { assetCurrency: asset?.currency_code ?? "", accountCurrency: account?.currency_code ?? "" })}</span><input className={fieldClass} dir="ltr" inputMode="decimal" value={rate} onChange={(event) => setRate(event.target.value)} /></label> : null}
           <div className="grid gap-2 rounded-lg bg-muted/50 p-3 text-sm sm:grid-cols-2"><Preview label={t("brokerage.purchaseAmount")} value={amount(preview.purchaseAmount, asset?.currency_code ?? account?.currency_code ?? "USD", locale)} /><Preview label={t("investment.fees")} value={amount(preview.fees, asset?.currency_code ?? account?.currency_code ?? "USD", locale)} /><Preview label={t("brokerage.cashRequired")} value={amount(preview.accountTotal, account?.currency_code ?? "USD", locale)} /><Preview label={t("brokerage.availableCash")} value={amount(availableCash, account?.currency_code ?? "USD", locale)} /></div>
           <label>{t("investment.date")}<input className={fieldClass} type="datetime-local" value={occurredAt} onChange={(event) => setOccurredAt(event.target.value)} /></label><label>{t("investment.notes")}<textarea className={fieldClass} value={notes} onChange={(event) => setNotes(event.target.value)} /></label>
-          {error ? <p className="text-sm text-red-600">{error}</p> : null}<Button className="w-full" disabled={saving || !valid} onClick={() => void save()}>{saving ? t("brokerage.buying") : t("brokerage.buy")}</Button>
+          {error ? <p className="text-sm text-red-600">{error}</p> : null}
         </div>
+        <div className="shrink-0 border-t border-[var(--color-border)] p-4"><Button className="w-full" disabled={saving || !valid} onClick={() => void save()}>{saving ? t("brokerage.buying") : t("brokerage.buy")}</Button></div>
       </Dialog.Popup></Dialog.Portal>
   </Dialog.Root>
 }

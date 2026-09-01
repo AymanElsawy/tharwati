@@ -567,7 +567,7 @@ function BrokerageActivityDialog({
   return <Dialog.Root open={activity !== null} onOpenChange={(open) => !open && onClose()}>
     <Dialog.Portal>
       <Dialog.Backdrop className="fixed inset-0 z-[70] bg-black/50" />
-      <Dialog.Popup className="fixed inset-x-3 top-1/2 z-[80] mx-auto max-h-[calc(100vh-2rem)] w-auto max-w-lg -translate-y-1/2 overflow-y-auto rounded-xl bg-[var(--color-surface)] p-5 shadow-xl sm:inset-x-0">
+      <Dialog.Popup className="fixed inset-x-3 top-1/2 z-[80] mx-auto max-h-[calc(100dvh-2rem)] w-auto max-w-lg -translate-y-1/2 overflow-y-auto rounded-xl bg-[var(--color-surface)] p-5 shadow-xl sm:inset-x-0">
         <div className="flex items-center justify-between gap-3">
           <Dialog.Title className="font-heading text-xl">{activity ? activityLabel(activity, activity.entries.find((entry) => entry.account_id)?.account_id ?? "", t) : ""}</Dialog.Title>
           <Button variant="ghost" size="icon" aria-label={t("common.close")} onClick={onClose}><X size={18} /></Button>
@@ -773,7 +773,7 @@ function ExistingHoldingDialog({
       >
         <Dialog.Portal>
           <Dialog.Backdrop className="fixed inset-0 z-50 bg-black/40" />
-          <Dialog.Popup className="fixed inset-x-3 top-1/2 z-50 mx-auto max-h-[90vh] w-auto max-w-4xl -translate-y-1/2 overflow-y-auto rounded-xl bg-background p-5 shadow-xl sm:inset-x-0">
+          <Dialog.Popup className="fixed inset-x-3 top-1/2 z-50 mx-auto max-h-[calc(100dvh-1.5rem)] w-auto max-w-4xl -translate-y-1/2 overflow-y-auto rounded-xl bg-background p-5 shadow-xl sm:inset-x-0">
             <div className="flex items-center justify-between gap-3">
               <Dialog.Title className="font-heading text-xl">
                 {t("brokerage.addExistingHolding")}
@@ -1087,7 +1087,7 @@ function ManualAssetDialog({
     >
       <Dialog.Portal>
         <Dialog.Backdrop className="fixed inset-0 z-[60] bg-black/40" />
-        <Dialog.Popup className="fixed inset-x-3 top-1/2 z-[60] mx-auto max-h-[calc(100vh-1.5rem)] w-auto max-w-lg -translate-y-1/2 overflow-y-auto rounded-xl bg-background p-5 shadow-xl sm:inset-x-0">
+        <Dialog.Popup className="fixed inset-x-3 top-1/2 z-[60] mx-auto max-h-[calc(100dvh-1.5rem)] w-auto max-w-lg -translate-y-1/2 overflow-y-auto rounded-xl bg-background p-5 shadow-xl sm:inset-x-0">
           <div className="flex items-center justify-between gap-3">
             <Dialog.Title className="font-heading text-xl">
               {t("brokerage.addAssetManually")}

@@ -347,17 +347,20 @@ export function AccountForm({
           <label htmlFor={`${formId}-ownership`} className={labelClassName}>
             {t("accounts.form.ownershipPercentage")}
           </label>
-          <div className="relative mt-1.5">
+          <div className="relative mt-1.5" dir="ltr">
             <input
               id={`${formId}-ownership`}
-              className={`${fieldClassName} mt-0 pe-9`}
+              className={`${fieldClassName} mt-0 pe-10`}
               disabled={isDisabled || (mode === "edit" && isOpeningBalanceLocked)}
               inputMode="decimal"
               dir="ltr"
               placeholder="100"
               {...register("ownershipPercentage")}
             />
-            <span className="pointer-events-none absolute end-3.5 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
+            <span
+              className="pointer-events-none absolute inset-y-0 end-3.5 flex items-center text-sm text-muted-foreground"
+              dir="ltr"
+            >
               %
             </span>
           </div>

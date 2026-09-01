@@ -1,4 +1,4 @@
-import { ArrowLeft, MoreHorizontal, Plus, Trash2 } from "lucide-react"
+import { ArrowLeft, ChevronDown, MoreHorizontal, Plus, Trash2 } from "lucide-react"
 import { useCallback, useEffect, useMemo, useState } from "react"
 import { useNavigate, useParams } from "react-router-dom"
 
@@ -39,6 +39,7 @@ import {
   formatLocalDateTime,
   formatLocalDateTimeInput,
 } from "@/lib/formatting/local-date-time"
+import { multiplyDecimals } from "@/lib/financial-calculations/decimal"
 
 type PurchaseDateGroup = {
   date: string
@@ -108,7 +109,7 @@ function PurchaseActionMenu({
   return (
     <DropdownMenu>
       <DropdownMenuTrigger
-        className="rounded-md p-1.5 text-[var(--color-text-secondary)] transition hover:bg-[var(--color-surface-muted)] hover:text-[var(--color-text-primary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)]"
+        className="flex size-11 items-center justify-center rounded-md text-[var(--color-text-secondary)] transition hover:bg-[var(--color-surface-muted)] hover:text-[var(--color-text-primary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)] sm:size-auto sm:p-1.5"
         aria-label={menuLabel}
       >
         <MoreHorizontal size={17} />
@@ -164,6 +165,9 @@ export function MetalPurityDetailsPage() {
   const [purchaseToDelete, setPurchaseToDelete] = useState<ValuedMetalPurchaseTransaction | null>(null)
   const [isDeleting, setIsDeleting] = useState(false)
   const [deleteError, setDeleteError] = useState<string | null>(null)
+  const [expandedPurchaseIds, setExpandedPurchaseIds] = useState<Set<string>>(
+    () => new Set()
+  )
 
   const load = useCallback(async () => {
     if (!account || account.account_type_code !== "gold") return
@@ -329,13 +333,6 @@ export function MetalPurityDetailsPage() {
               <span className="text-end">{t("accounts.metalPurchaseHistory.fees")}</span>
               <span className="text-end">{t("accounts.metalPurchaseHistory.totalCost")}</span>
             </div>
-            <div className="grid min-[560px]:hidden grid-cols-[minmax(0,0.65fr)_minmax(0,0.75fr)_minmax(0,1fr)_minmax(0,0.85fr)_minmax(0,1fr)] gap-1.5 border-b border-[var(--color-border)] bg-[var(--color-surface-muted)]/60 px-3 py-2 text-[9px] font-medium leading-tight text-[var(--color-text-secondary)]">
-              <span className="min-w-0 break-words">{t("accounts.metalPurchaseHistory.time")}</span>
-              <span className="min-w-0 break-words text-end">{t("accounts.metalPurchaseHistory.quantity")}</span>
-              <span className="min-w-0 break-words text-end">{t("accounts.metalPurchaseHistory.costPerGram")}</span>
-              <span className="min-w-0 break-words text-end">{t("accounts.metalPurchaseHistory.fees")}</span>
-              <span className="min-w-0 break-words text-end">{t("accounts.metalPurchaseHistory.totalCost")}</span>
-            </div>
             {dateGroups.map((group) => (
               <section key={group.date}>
                 <header className="border-b border-[var(--color-border)] bg-[var(--color-surface-muted)]/60 px-4 py-2.5 sm:px-6">
@@ -364,14 +361,48 @@ export function MetalPurityDetailsPage() {
                   ))}
                 </div>
                 <div className="min-[560px]:hidden">
-                  {group.purchases.map((purchase) => (
-                    <div key={purchase.id} role="button" tabIndex={0} onClick={() => openPurchaseEditor(purchase)} onKeyDown={(event) => { if (event.target === event.currentTarget && (event.key === "Enter" || event.key === " ")) { event.preventDefault(); openPurchaseEditor(purchase) } }} className="relative grid cursor-pointer grid-cols-[minmax(0,0.65fr)_minmax(0,0.75fr)_minmax(0,1fr)_minmax(0,0.85fr)_minmax(0,1fr)] gap-1.5 border-b border-[var(--color-border)] px-3 py-2.5 pe-10 text-[11px] leading-tight outline-none transition-colors hover:bg-[var(--color-surface-muted)] focus-visible:bg-[var(--color-surface-muted)] last:border-b-0" aria-label={t("accounts.metalPurchase.edit")}>
-                      <span className="min-w-0 break-words font-medium tabular-nums" dir="ltr">{formatLocalDateTime(purchase.purchaseDate, locale).time}</span>
-                      <span className="min-w-0 break-words text-end tabular-nums" dir="ltr">{formatPortfolioDecimal(purchase.unitsGrams, locale, 3)} g</span>
-                      <span className="min-w-0 break-words text-end tabular-nums" dir="ltr">{formatPortfolioAmount(purchase.costPerUnit, account.currency_code, locale)}</span>
-                      <span className="min-w-0 break-words text-end tabular-nums" dir="ltr">{formatPortfolioAmount(purchase.fees, account.currency_code, locale)}</span>
-                      <span className="min-w-0 break-words text-end font-semibold tabular-nums" dir="ltr">{formatPortfolioAmount(purchase.totalAmount, account.currency_code, locale)}</span>
-                      <div className="absolute top-1 end-1" onClick={(event) => event.stopPropagation()}>
+                  {group.purchases.map((purchase) => {
+                    const isExpanded = expandedPurchaseIds.has(purchase.id)
+                    const detailsId = `metal-purchase-details-${purchase.id}`
+                    const purchaseCost = multiplyDecimals(
+                      purchase.unitsGrams,
+                      purchase.costPerUnit
+                    )
+
+                    return (
+                    <div key={purchase.id} className="border-b border-[var(--color-border)] last:border-b-0">
+                      <div className="flex items-start gap-1 px-3 py-2.5">
+                        <button
+                          type="button"
+                          className="grid min-w-0 flex-1 grid-cols-2 gap-x-3 gap-y-2 text-start text-xs"
+                          aria-expanded={isExpanded}
+                          aria-controls={detailsId}
+                          onClick={() => setExpandedPurchaseIds((current) => {
+                            const next = new Set(current)
+                            if (next.has(purchase.id)) next.delete(purchase.id)
+                            else next.add(purchase.id)
+                            return next
+                          })}
+                        >
+                          <span className="min-w-0">
+                            <span className="block text-[10px] text-[var(--color-text-secondary)]">{t("accounts.metalPurchaseHistory.time")}</span>
+                            <span className="font-medium tabular-nums" dir="ltr">{formatLocalDateTime(purchase.purchaseDate, locale).time}</span>
+                          </span>
+                          <span className="min-w-0 text-end">
+                            <span className="block text-[10px] text-[var(--color-text-secondary)]">{t("accounts.metalPurchaseHistory.status")}</span>
+                            <span className="font-medium text-emerald-700 dark:text-emerald-400">{t("accounts.metalPurchaseHistory.posted")}</span>
+                          </span>
+                          <span className="min-w-0">
+                            <span className="block text-[10px] text-[var(--color-text-secondary)]">{t("accounts.metalPurchaseHistory.quantity")}</span>
+                            <span className="break-words tabular-nums" dir="ltr">{formatPortfolioDecimal(purchase.unitsGrams, locale, 3)} g</span>
+                          </span>
+                          <span className="min-w-0 text-end">
+                            <span className="block text-[10px] text-[var(--color-text-secondary)]">{t("accounts.metalPurchaseHistory.totalCost")}</span>
+                            <span className="break-words font-semibold tabular-nums" dir="ltr">{formatPortfolioAmount(purchase.totalAmount, account.currency_code, locale)}</span>
+                          </span>
+                        </button>
+                        <ChevronDown size={16} className={`mt-4 shrink-0 transition-transform ${isExpanded ? "rotate-180" : ""}`} aria-hidden="true" />
+                        <div className="shrink-0">
                         <PurchaseActionMenu
                           menuLabel={t("accounts.metalPurchase.actions")}
                           editLabel={t("accounts.metalPurchase.edit")}
@@ -380,8 +411,25 @@ export function MetalPurityDetailsPage() {
                           onDelete={() => openDeleteConfirmation(purchase)}
                         />
                       </div>
+                      </div>
+                      {isExpanded ? (
+                        <div id={detailsId} className="grid grid-cols-2 gap-x-3 gap-y-3 bg-[var(--color-surface-muted)]/45 px-3 py-3 text-xs">
+                          {[
+                            [t("accounts.metalPurchaseHistory.purchaseCost"), purchaseCost],
+                            [t("accounts.metalPurchaseHistory.fees"), purchase.fees],
+                            [t("accounts.metalPurchaseHistory.totalCost"), purchase.totalAmount],
+                            [t("accounts.metalPurchaseHistory.costPerGram"), purchase.costPerUnit],
+                          ].map(([label, value]) => (
+                            <div key={label} className="min-w-0">
+                              <span className="block text-[var(--color-text-secondary)]">{label}</span>
+                              <span className="mt-0.5 block break-words font-medium tabular-nums" dir="ltr">{formatPortfolioAmount(value, account.currency_code, locale)}</span>
+                            </div>
+                          ))}
+                        </div>
+                      ) : null}
                     </div>
-                  ))}
+                    )
+                  })}
                 </div>
               </section>
             ))}

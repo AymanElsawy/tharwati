@@ -84,12 +84,12 @@ export function BrokerageSellDialog({
   return <Dialog.Root open={account !== null} onOpenChange={(open) => !open && !saving && onClose()}>
     <Dialog.Portal>
       <Dialog.Backdrop className="fixed inset-0 z-[90] bg-black/40" />
-      <Dialog.Popup className="fixed inset-x-3 top-1/2 z-[100] mx-auto max-h-[calc(100vh-1.5rem)] w-auto max-w-lg -translate-y-1/2 overflow-y-auto rounded-xl bg-background p-5 shadow-xl sm:inset-x-0">
-        <div className="flex items-center justify-between gap-3">
+      <Dialog.Popup className="fixed inset-x-3 top-1/2 z-[100] mx-auto flex max-h-[calc(100dvh-1.5rem)] w-auto max-w-lg -translate-y-1/2 flex-col overflow-hidden rounded-xl bg-background shadow-xl sm:inset-x-0">
+        <div className="flex shrink-0 items-center justify-between gap-3 border-b border-[var(--color-border)] px-5 py-4">
           <Dialog.Title className="font-heading text-xl">{t("brokerage.sell")}</Dialog.Title>
           <Button variant="ghost" size="icon" aria-label={t("common.close")} onClick={onClose}><X size={18} /></Button>
         </div>
-        <div className="mt-5 space-y-4">
+        <div className="min-h-0 flex-1 space-y-4 overflow-y-auto p-5">
           <p className="text-sm text-muted-foreground">{t("brokerage.currentQuantity")}: <strong className="tabular-nums" dir="ltr">{holdingQuantity}</strong></p>
           <div className="grid gap-4 sm:grid-cols-2">
             <label>{t("investment.quantity")}<input className={fieldClass} dir="ltr" inputMode="decimal" value={quantity} onChange={(event) => setQuantity(event.target.value)} /></label>
@@ -107,8 +107,8 @@ export function BrokerageSellDialog({
           <label>{t("investment.date")}<input className={fieldClass} type="datetime-local" value={occurredAt} onChange={(event) => setOccurredAt(event.target.value)} /></label>
           <label>{t("investment.notes")}<textarea className={fieldClass} value={notes} onChange={(event) => setNotes(event.target.value)} /></label>
           {error ? <p className="text-sm text-red-600">{error}</p> : null}
-          <Button className="w-full" disabled={saving || !valid} onClick={() => void save()}>{saving ? t("brokerage.selling") : t("brokerage.sell")}</Button>
         </div>
+        <div className="shrink-0 border-t border-[var(--color-border)] p-4"><Button className="w-full" disabled={saving || !valid} onClick={() => void save()}>{saving ? t("brokerage.selling") : t("brokerage.sell")}</Button></div>
       </Dialog.Popup>
     </Dialog.Portal>
   </Dialog.Root>

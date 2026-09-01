@@ -23,10 +23,7 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "../components/ui/sheet"
-import {
-  useTheme,
-  type ThemeMode,
-} from "../contexts/ThemeContext"
+import { useTheme, type ThemeMode } from "../contexts/ThemeContext"
 
 type NavigationItem = {
   labelKey: TranslationKey
@@ -79,7 +76,7 @@ const themeOptions: ThemeOption[] = [
 export function DashboardLayout() {
   const navigate = useNavigate()
   const { theme, setTheme } = useTheme()
-  const { t } = useTranslation()
+  const { language, t } = useTranslation()
   const [isMobileNavigationOpen, setIsMobileNavigationOpen] = useState(false)
 
   async function handleLogout() {
@@ -91,7 +88,7 @@ export function DashboardLayout() {
     }
   }
 
-  const navigation = (onNavigate?: () => void) => (
+  const navigation = (onNavigate?: () => void, showPreferences = false) => (
     <>
       <div>
         <h1 className="text-3xl font-black tracking-tight text-[var(--color-primary)]">
@@ -121,7 +118,11 @@ export function DashboardLayout() {
             >
               {({ isActive }) => (
                 <>
-                  <Icon size={22} strokeWidth={isActive ? 2.4 : 2} className="shrink-0" />
+                  <Icon
+                    size={22}
+                    strokeWidth={isActive ? 2.4 : 2}
+                    className="shrink-0"
+                  />
                   <span>{t(item.labelKey)}</span>
                 </>
               )}
@@ -130,7 +131,38 @@ export function DashboardLayout() {
         })}
       </nav>
 
-      <div className="mt-auto">
+      <div className="mt-auto space-y-4">
+        {showPreferences ? (
+          <div className="space-y-3 border-t border-[var(--border-subtle)] pt-4">
+            <LanguageSwitcher />
+            <div className="grid grid-cols-3 gap-2 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-1">
+              {themeOptions.map((option) => {
+                const Icon = option.icon
+                const isSelected = theme === option.value
+                const label = t(option.labelKey)
+                return (
+                  <button
+                    key={option.value}
+                    type="button"
+                    onClick={() => setTheme(option.value)}
+                    aria-label={t("theme.use", { theme: label })}
+                    aria-pressed={isSelected}
+                    title={label}
+                    className={[
+                      "flex min-h-11 min-w-0 items-center justify-center rounded-lg transition",
+                      isSelected
+                        ? "bg-[var(--color-primary)] text-[var(--color-text-on-primary)] shadow-sm"
+                        : "text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text-primary)]",
+                    ].join(" ")}
+                  >
+                    <Icon size={17} />
+                    <span className="sr-only">{label}</span>
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+        ) : null}
         <button
           type="button"
           onClick={() => {
@@ -152,58 +184,84 @@ export function DashboardLayout() {
         {navigation()}
       </aside>
 
-      <Sheet open={isMobileNavigationOpen} onOpenChange={setIsMobileNavigationOpen}>
-        <SheetContent side="left" className="w-[min(19rem,calc(100vw-2.5rem))] border-[var(--border-subtle)] bg-[var(--color-sidebar)] p-6">
-          <SheetHeader className="sr-only"><SheetTitle>{t("navigation.open")}</SheetTitle></SheetHeader>
-          <div className="flex h-full flex-col">{navigation(() => setIsMobileNavigationOpen(false))}</div>
+      <Sheet
+        open={isMobileNavigationOpen}
+        onOpenChange={setIsMobileNavigationOpen}
+      >
+        <SheetContent
+          side={language === "ar" ? "right" : "left"}
+          className="w-[min(19rem,calc(100vw-2.5rem))] border-[var(--border-subtle)] bg-[var(--color-sidebar)] p-6"
+        >
+          <SheetHeader className="sr-only">
+            <SheetTitle>{t("navigation.open")}</SheetTitle>
+          </SheetHeader>
+          <div className="flex h-full flex-col">
+            {navigation(() => setIsMobileNavigationOpen(false), true)}
+          </div>
         </SheetContent>
 
         <div className="min-h-screen lg:ms-[var(--layout-sidebar-width)]">
-        <header className="sticky top-0 z-10 flex min-h-11 items-center justify-between gap-2 border-b border-[var(--border-subtle)] bg-[var(--color-header)] px-[var(--space-page-inline)] py-1 backdrop-blur-xl">
-          <div className="flex min-w-0 items-center gap-2">
-            <SheetTrigger render={<button type="button" aria-label={t("navigation.open")} className="flex size-9 shrink-0 items-center justify-center rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] text-[var(--color-text-primary)] transition hover:bg-[var(--color-surface-hover)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)] lg:hidden" />}>
-              <Menu size={20} />
-            </SheetTrigger>
-            <AuthenticatedUserHeader />
-          </div>
-
-          <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
-            <LanguageSwitcher />
-            <div className="flex items-center rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-1">
-              {themeOptions.map((option) => {
-              const Icon = option.icon
-              const isSelected = theme === option.value
-              const label = t(option.labelKey)
-
-              return (
-                <button
-                  key={option.value}
-                  type="button"
-                  onClick={() => setTheme(option.value)}
-                  aria-label={t("theme.use", { theme: label })}
-                  aria-pressed={isSelected}
-                  title={label}
-                  className={[
-                    "flex size-8 items-center justify-center rounded-lg text-sm font-semibold transition sm:size-auto sm:px-2.5 sm:py-1.5",
-                    isSelected
-                      ? "bg-[var(--color-primary)] text-[var(--color-text-on-primary)] shadow-sm"
-                      : "text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text-primary)]",
-                  ].join(" ")}
-                >
-                  <Icon size={17} />
-                  <span className="hidden xl:inline">{label}</span>
-                </button>
-              )
-              })}
+          <header className="sticky top-0 z-10 flex min-h-13 items-center border-b border-[var(--border-subtle)] bg-[var(--color-header)] px-[var(--space-page-inline)] py-1 backdrop-blur-xl lg:min-h-11">
+            <div className="grid w-full min-w-0 grid-cols-[2.75rem_minmax(0,1fr)_2.75rem] items-center gap-2 lg:hidden">
+              <SheetTrigger
+                render={
+                  <button
+                    type="button"
+                    aria-label={t("navigation.open")}
+                    className="flex size-11 shrink-0 items-center justify-center rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] text-[var(--color-text-primary)] transition hover:bg-[var(--color-surface-hover)] focus-visible:ring-2 focus-visible:ring-[var(--color-primary)] focus-visible:outline-none"
+                  />
+                }
+              >
+                <Menu size={20} />
+              </SheetTrigger>
+              <span className="min-w-0 truncate text-center font-heading text-base font-black text-[var(--color-primary)]">
+                Tharwati
+              </span>
+              <div className="flex size-11 items-center justify-center overflow-hidden rounded-full" title={t("header.tagline")}>
+                <AuthenticatedUserHeader compact />
+              </div>
             </div>
-          </div>
-        </header>
 
-        <main className="min-h-[calc(100vh-2.75rem)] bg-[var(--color-background)] px-[var(--space-page-inline)] py-[var(--space-page-block)]">
-          <div className="tharwati-content-frame">
-            <Outlet />
-          </div>
-        </main>
+            <div className="hidden w-full min-w-0 items-center justify-between gap-2 lg:flex">
+              <AuthenticatedUserHeader />
+              <div className="flex shrink-0 items-center gap-2">
+                <LanguageSwitcher />
+                <div className="flex items-center rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-1">
+                  {themeOptions.map((option) => {
+                    const Icon = option.icon
+                    const isSelected = theme === option.value
+                    const label = t(option.labelKey)
+
+                    return (
+                      <button
+                        key={option.value}
+                        type="button"
+                        onClick={() => setTheme(option.value)}
+                        aria-label={t("theme.use", { theme: label })}
+                        aria-pressed={isSelected}
+                        title={label}
+                        className={[
+                          "flex size-8 items-center justify-center rounded-lg text-sm font-semibold transition xl:size-auto xl:px-2.5 xl:py-1.5",
+                          isSelected
+                            ? "bg-[var(--color-primary)] text-[var(--color-text-on-primary)] shadow-sm"
+                            : "text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text-primary)]",
+                        ].join(" ")}
+                      >
+                        <Icon size={17} />
+                        <span className="hidden xl:inline">{label}</span>
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
+            </div>
+          </header>
+
+          <main className="min-h-[calc(100vh-2.75rem)] bg-[var(--color-background)] px-[var(--space-page-inline)] py-[var(--space-page-block)]">
+            <div className="tharwati-content-frame">
+              <Outlet />
+            </div>
+          </main>
         </div>
       </Sheet>
     </div>

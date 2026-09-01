@@ -1,12 +1,12 @@
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { useCurrentUser } from "@/features/profile/hooks/useCurrentUser"
 
-export function AuthenticatedUserHeader() {
+export function AuthenticatedUserHeader({ compact = false }: { compact?: boolean }) {
   const { avatar, email, error, greeting, isLoading } = useCurrentUser()
 
   if (isLoading) {
     return (
-      <div aria-label="Loading user profile" className="flex items-center gap-2">
+      <div aria-label="Loading user profile" className={`flex items-center gap-2 ${compact ? "size-11 justify-center" : ""}`}>
         <div className="size-8 animate-pulse rounded-full bg-[var(--color-surface-hover)]" />
       <div className="hidden sm:block">
           <div className="h-4 w-40 animate-pulse rounded bg-[var(--color-surface-hover)]" />
@@ -24,7 +24,7 @@ export function AuthenticatedUserHeader() {
           {avatar.fallback}
         </AvatarFallback>
       </Avatar>
-      <div className="hidden min-w-0 sm:block">
+      <div className={compact ? "sr-only" : "hidden min-w-0 sm:block"}>
         <h2 className="truncate text-sm font-bold leading-tight text-[var(--color-text)]">
           {greeting}
         </h2>

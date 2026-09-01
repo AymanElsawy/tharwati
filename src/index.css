@@ -276,6 +276,10 @@ select:dir(rtl) {
   background-position: left 0.65rem center;
 }
 
+[dir="rtl"] .lucide-arrow-left {
+  transform: rotate(180deg);
+}
+
 #root {
   min-width: 0;
 }
