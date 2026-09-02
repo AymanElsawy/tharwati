@@ -9,6 +9,8 @@ export const en = {
   "common.dismiss": "Dismiss",
   "common.loading": "Loading…",
   "common.optional": "optional",
+  "auth.forgotPassword": "Forgot password?",
+  "auth.loginError": "We couldn't log you in. Check your email and password, then try again.",
   "unsaved.title": "Discard unsaved changes?",
   "unsaved.description": "Your entered information will be lost.",
   "unsaved.keepEditing": "Keep editing",

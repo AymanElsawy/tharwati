@@ -13,6 +13,8 @@ export const ar: Record<TranslationKey, string> = {
   "common.dismiss": "تجاهل",
   "common.loading": "جارٍ التحميل…",
   "common.optional": "اختياري",
+  "auth.forgotPassword": "نسيت كلمة المرور؟",
+  "auth.loginError": "تعذر تسجيل الدخول. تحقق من البريد الإلكتروني وكلمة المرور ثم حاول مرة أخرى.",
   "unsaved.title": "هل تريد تجاهل التغييرات غير المحفوظة؟",
   "unsaved.description": "ستفقد المعلومات التي أدخلتها.",
   "unsaved.keepEditing": "متابعة التحرير",

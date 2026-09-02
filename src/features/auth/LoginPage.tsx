@@ -2,10 +2,12 @@ import { useId, useState } from "react"
 import { useNavigate } from "react-router-dom"
 
 import { Button } from "@/components/ui/button"
+import { useTranslation } from "@/i18n/useTranslation"
 import { signIn } from "./auth.service"
 
 export function LoginPage() {
   const navigate = useNavigate()
+  const { t } = useTranslation()
   const emailId = useId()
   const passwordId = useId()
 
@@ -25,7 +27,8 @@ export function LoginPage() {
 
       navigate("/dashboard")
     } catch (error) {
-      setErrorMessage(error instanceof Error ? error.message : "Login failed")
+      console.error("login failed", error)
+      setErrorMessage(t("auth.loginError"))
     } finally {
       setIsLoading(false)
     }
@@ -71,7 +74,7 @@ export function LoginPage() {
           </div>
 
           <div>
-            <div className="mb-1.5 flex items-center justify-between">
+            <div className="mb-1.5 flex min-h-11 flex-wrap items-center justify-between gap-x-3 gap-y-1">
               <label
                 htmlFor={passwordId}
                 className="block text-sm font-medium text-[var(--color-text-primary)]"
@@ -81,9 +84,9 @@ export function LoginPage() {
               <button
                 type="button"
                 onClick={() => navigate("/forgot-password")}
-                className="text-xs font-medium text-[var(--color-text-secondary)] underline-offset-4 hover:text-[var(--color-primary)] hover:underline"
+                className="inline-flex min-h-11 items-center text-sm font-medium text-[var(--color-text-secondary)] underline-offset-4 hover:text-[var(--color-primary)] hover:underline"
               >
-                Forgot password?
+                {t("auth.forgotPassword")}
               </button>
             </div>
             <input

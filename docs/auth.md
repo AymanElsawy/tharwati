@@ -138,10 +138,11 @@ onward action.
 
 ## i18n / RTL
 
-The auth screens use **hardcoded English strings**, unlike the rest of the app which
-routes copy through `src/i18n/{en,ar}/translations.ts`. This is a deliberate current
-deviation, not an oversight — a mobile/Arabic build would need these strings moved
-into the i18n dictionaries and the layouts checked for RTL.
+Most auth-screen copy remains hardcoded English. The login screen's "Forgot
+password?" entry point and generic login-failure message use
+`src/i18n/{en,ar}/translations.ts`; the action follows document direction, so it
+appears on the logical opposite side of the password label in Arabic without
+changing navigation. The remaining auth copy still needs full internationalization.
 
 ## Deferred / known gaps
 
