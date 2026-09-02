@@ -76,19 +76,23 @@ true })`; a failure is logged, not surfaced.
    generic retry message; the real error is logged.
 2. **Email link** — Supabase sends the recovery email; the link returns the user to
    `${origin}/reset-password#…type=recovery…`.
-3. **Recovery gate** — `App.tsx` detects `type=recovery` in the URL hash
-   synchronously on first render (and also handles the async `PASSWORD_RECOVERY`
-   event) and sets `isPasswordRecovery`. While that flag is set, `ResetPasswordPage`
-   is rendered in place of the router, so the freshly-created recovery session can
-   never be routed into the authenticated app.
+3. **Recovery gate** — `App.tsx` detects the `/reset-password` path synchronously on
+   first render, but keeps the reset form hidden while Supabase
+   processes the link. Only a `PASSWORD_RECOVERY` event carrying a session marks
+   the recovery session valid and enables the form. If startup finishes without
+   that confirmation, the page shows an invalid/expired-link state with an action
+   to request a new link. The recovery screen remains outside the router, so its
+   session cannot enter the authenticated app.
 4. **Set new password** — `ResetPasswordPage`: `New password` + `Confirm password`.
    Client rules: minimum 8 characters, both fields must match. On submit →
    `updatePassword(newPassword)`, then `signOut()` (best-effort) to drop the recovery
    session, then a success state whose button sends the user to `/login` to sign in
-   with the new password. An expired/invalid link surfaces a generic "request a new
-   one" message.
+   with the new password. `weak_password` preserves Supabase's password-policy
+   message; `AuthSessionMissingError` asks for a new reset link; other failures show
+   a generic retry message.
 
-The plain `/reset-password` route (no recovery hash) just `Navigate`s to `/login`.
+A plain or expired `/reset-password` route receives no recovery confirmation and
+shows the invalid/expired-link state.
 
 `/login`, `/signup`, and `/forgot-password` all redirect an already-authenticated
 user to their post-auth destination (`/dashboard` or `/onboarding`).

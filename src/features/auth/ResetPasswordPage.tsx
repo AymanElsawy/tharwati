@@ -1,16 +1,27 @@
 import { useId, useState } from "react"
 
 import { Button } from "@/components/ui/button"
-import { signOut, updatePassword } from "./auth.service"
+import {
+  getPasswordUpdateErrorMessage,
+  PASSWORD_UPDATE_SESSION_ERROR,
+  signOut,
+  updatePassword,
+} from "./auth.service"
 
 const MIN_PASSWORD_LENGTH = 8
 
 type ResetPasswordPageProps = {
+  recoveryStatus: "checking" | "valid" | "invalid"
   /** Called after the password is changed and the recovery session is cleared. */
   onComplete: () => void
+  onRequestNewLink: () => void
 }
 
-export function ResetPasswordPage({ onComplete }: ResetPasswordPageProps) {
+export function ResetPasswordPage({
+  recoveryStatus,
+  onComplete,
+  onRequestNewLink,
+}: ResetPasswordPageProps) {
   const passwordId = useId()
   const confirmId = useId()
 
@@ -41,9 +52,7 @@ export function ResetPasswordPage({ onComplete }: ResetPasswordPageProps) {
       setDone(true)
     } catch (error) {
       console.error("password update failed", error)
-      setErrorMessage(
-        "We couldn't update your password. The reset link may have expired — request a new one.",
-      )
+      setErrorMessage(getPasswordUpdateErrorMessage(error))
     } finally {
       setIsLoading(false)
     }
@@ -56,22 +65,39 @@ export function ResetPasswordPage({ onComplete }: ResetPasswordPageProps) {
         className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top,var(--color-primary-soft),transparent_48%)] opacity-70"
       />
 
-      <form
-        onSubmit={handleSubmit}
-        className="tharwati-card relative w-full max-w-sm space-y-5 px-6 py-8 sm:px-8"
-      >
+      <section className="tharwati-card relative w-full max-w-sm space-y-5 px-6 py-8 sm:px-8">
         <div>
           <h1 className="text-2xl font-bold tracking-tight text-[var(--color-text-primary)]">
             Choose a new password
           </h1>
           <p className="mt-1.5 text-sm text-[var(--color-text-secondary)]">
-            {done
-              ? "Your password has been updated."
-              : "Set a new password for your account."}
+            {recoveryStatus === "checking"
+              ? "Checking your reset link..."
+              : recoveryStatus === "invalid"
+                ? PASSWORD_UPDATE_SESSION_ERROR
+                : done
+                  ? "Your password has been updated."
+                  : "Set a new password for your account."}
           </p>
         </div>
 
-        {done ? (
+        {recoveryStatus === "checking" ? (
+          <p
+            role="status"
+            className="text-sm text-[var(--color-text-secondary)]"
+          >
+            Please wait.
+          </p>
+        ) : recoveryStatus === "invalid" ? (
+          <Button
+            type="button"
+            size="lg"
+            className="h-11 w-full rounded-xl"
+            onClick={onRequestNewLink}
+          >
+            Request a new reset link
+          </Button>
+        ) : done ? (
           <Button
             type="button"
             size="lg"
@@ -81,7 +107,7 @@ export function ResetPasswordPage({ onComplete }: ResetPasswordPageProps) {
             Go to login
           </Button>
         ) : (
-          <>
+          <form onSubmit={handleSubmit} className="space-y-5">
             <div className="space-y-4">
               <div>
                 <label
@@ -122,10 +148,15 @@ export function ResetPasswordPage({ onComplete }: ResetPasswordPageProps) {
               </div>
             </div>
 
-            <Button type="submit" disabled={isLoading} size="lg" className="h-11 w-full rounded-xl">
+            <Button
+              type="submit"
+              disabled={isLoading}
+              size="lg"
+              className="h-11 w-full rounded-xl"
+            >
               {isLoading ? "Updating..." : "Update password"}
             </Button>
-          </>
+          </form>
         )}
 
         {errorMessage ? (
@@ -136,7 +167,7 @@ export function ResetPasswordPage({ onComplete }: ResetPasswordPageProps) {
             {errorMessage}
           </p>
         ) : null}
-      </form>
+      </section>
     </main>
   )
 }

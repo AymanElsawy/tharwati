@@ -48,8 +48,11 @@ export default function App() {
   const [isPasswordRecovery, setIsPasswordRecovery] = useState(
     () =>
       typeof window !== "undefined" &&
-      /(^|[#&])type=recovery([&]|$)/.test(window.location.hash),
+      window.location.pathname === "/reset-password",
   )
+  const [recoveryStatus, setRecoveryStatus] = useState<
+    "checking" | "valid" | "invalid"
+  >("checking")
   const authenticatedUserId = useRef<string | null>(null)
 
   const resolveSession = useCallback(async (currentSession: Session | null) => {
@@ -80,11 +83,15 @@ export default function App() {
       if (error) {
         console.error("startup: failed to read auth session", error)
         setStartupError("We couldn't load your account. Please try again.")
+        setRecoveryStatus("invalid")
         setIsLoading(false)
         return
       }
 
       await resolveSession(data.session)
+      setRecoveryStatus((current) =>
+        current === "valid" ? current : "invalid"
+      )
     }
 
     void loadSession()
@@ -96,6 +103,7 @@ export default function App() {
         // The recovery link creates a session; hold the app on the reset form
         // instead of routing the user into the authenticated app.
         setIsPasswordRecovery(true)
+        setRecoveryStatus(currentSession ? "valid" : "invalid")
         setSession(currentSession)
         authenticatedUserId.current = currentSession?.user.id ?? null
         setIsLoading(false)
@@ -122,12 +130,14 @@ export default function App() {
   if (isPasswordRecovery) {
     return (
       <ResetPasswordPage
+        recoveryStatus={recoveryStatus}
         onComplete={() => {
           setIsPasswordRecovery(false)
           setSession(null)
           authenticatedUserId.current = null
           window.location.assign("/login")
         }}
+        onRequestNewLink={() => window.location.assign("/forgot-password")}
       />
     )
   }

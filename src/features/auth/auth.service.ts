@@ -1,5 +1,28 @@
 import { supabase } from "../../lib/supabase"
 
+export const PASSWORD_UPDATE_SESSION_ERROR =
+  "This reset link is invalid or has expired. Request a new reset link."
+export const PASSWORD_UPDATE_GENERIC_ERROR =
+  "We couldn't update your password. Please try again."
+
+type AuthErrorLike = Error & { code?: string }
+
+/** Maps recovery failures without exposing unrelated backend details. */
+export function getPasswordUpdateErrorMessage(error: unknown): string {
+  if (
+    error instanceof Error &&
+    (error as AuthErrorLike).code === "weak_password"
+  ) {
+    return error.message
+  }
+
+  if (error instanceof Error && error.name === "AuthSessionMissingError") {
+    return PASSWORD_UPDATE_SESSION_ERROR
+  }
+
+  return PASSWORD_UPDATE_GENERIC_ERROR
+}
+
 export async function signUp(email: string, password: string) {
   const { data, error } = await supabase.auth.signUp({
     email,
