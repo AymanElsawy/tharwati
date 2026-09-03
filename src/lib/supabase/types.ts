@@ -214,6 +214,9 @@ type AccountDisposalRow = {
   ownership_percentage_sold: Decimal
   notes: string | null
   corrects_disposal_id: string | null
+  idempotency_key: string | null
+  proceeds_account_id: string | null
+  proceeds_transaction_id: string | null
   created_at: string
 }
 
@@ -554,6 +557,9 @@ export type Database = {
           ownership_percentage_sold: Decimal
           notes?: string | null
           corrects_disposal_id?: string | null
+          idempotency_key?: string | null
+          proceeds_account_id?: string | null
+          proceeds_transaction_id?: string | null
           created_at?: string
         }
       >
@@ -874,11 +880,11 @@ export type Database = {
         Returns: AccountValuationRow
       }
       add_account_disposal: {
-        Args: { p_account_id: string; p_disposed_on: string; p_sale_amount: Decimal; p_sale_currency_code: string; p_ownership_percentage_sold: Decimal; p_notes?: string | null }
+        Args: { p_account_id: string; p_disposed_on: string; p_sale_amount: Decimal; p_sale_currency_code: string; p_ownership_percentage_sold: Decimal; p_idempotency_key: string; p_notes?: string | null; p_destination_account_id?: string | null }
         Returns: AccountDisposalRow
       }
       correct_account_disposal: {
-        Args: { p_disposal_id: string; p_disposed_on: string; p_sale_amount: Decimal; p_sale_currency_code: string; p_ownership_percentage_sold: Decimal; p_notes?: string | null }
+        Args: { p_disposal_id: string; p_disposed_on: string; p_sale_amount: Decimal; p_sale_currency_code: string; p_ownership_percentage_sold: Decimal; p_notes?: string | null; p_destination_account_id?: string | null }
         Returns: AccountDisposalRow
       }
       create_valued_account: {

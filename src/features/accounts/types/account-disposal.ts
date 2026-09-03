@@ -9,6 +9,9 @@ export type AccountDisposal = {
   ownershipPercentageSold: Decimal
   notes: string | null
   correctsDisposalId: string | null
+  idempotencyKey: string | null
+  proceedsAccountId: string | null
+  proceedsTransactionId: string | null
   createdAt: string
   isEffective: boolean
 }
@@ -18,7 +21,12 @@ export type AccountDisposalInput = {
   saleAmount: Decimal
   saleCurrencyCode: string
   ownershipPercentageSold: Decimal
+  destinationAccountId?: string | null
   notes?: string | null
+}
+
+export type AddAccountDisposalInput = AccountDisposalInput & {
+  idempotencyKey: string
 }
 
 export type AccountOwnershipProjection = {

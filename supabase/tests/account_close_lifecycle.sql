@@ -106,7 +106,9 @@ select public.add_account_disposal(
   p_sale_amount => 100000,
   p_sale_currency_code => 'USD',
   p_ownership_percentage_sold => 100,
-  p_notes => 'Lifecycle projection test'
+  p_idempotency_key => '3a000000-0000-4000-8000-000000000001',
+  p_notes => 'Lifecycle projection test',
+  p_destination_account_id => '2a000000-0000-4000-8000-000000000001'
 );
 
 do $test$
