@@ -404,6 +404,7 @@ export class AccountsRepository {
     const { error } = await this.client.rpc("reopen_financial_account", {
       p_account_id: id,
     })
+    throwAccountConstraintError(error, operation)
     requireQueryData(true, error, operation)
     return this.getAccount(id)
   }

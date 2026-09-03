@@ -156,3 +156,27 @@ describe("AccountsRepository.createAccount", () => {
     expect(builder.select).toHaveBeenCalled()
   })
 })
+
+describe("AccountsRepository.reopenAccount", () => {
+  it("surfaces an active-name conflict with the existing friendly message", async () => {
+    const client = {
+      rpc: vi.fn().mockResolvedValue({
+        data: null,
+        error: {
+          code: "23505",
+          message:
+            'duplicate key value violates unique constraint "financial_accounts_non_metal_user_name_lower_key"',
+        },
+      }),
+    } as unknown as TypedSupabaseClient
+
+    await expect(
+      new AccountsRepository(client).reopenAccount("account-1")
+    ).rejects.toMatchObject({
+      code: "conflict",
+      message:
+        "You already have an account with this name. Choose a different name.",
+      operation: "accounts.reopenAccount",
+    } satisfies Partial<RepositoryError>)
+  })
+})

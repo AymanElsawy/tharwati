@@ -59,7 +59,7 @@ Key constraints:
 
 Uniqueness:
 
-- **Non-metal accounts**: unique on `(user_id, lower(trim(name)))` where `account_type_code <> 'gold'` — case-insensitive unique name per user.
+- **Non-metal accounts**: unique on `(user_id, lower(trim(name)))` among active rows where `account_type_code <> 'gold'` and `is_active = true`. Closed and Sold accounts retain their historical names without reserving them, so a new active account may reuse one. Reopening a Closed account re-enters the same DB-enforced uniqueness rule and fails with the standard friendly duplicate-name error if another active account now uses its name. Whitespace/case variants still conflict. Sold accounts remain non-reopenable.
 - **Gold/silver accounts**: unique on `(user_id, currency_code, metal_type)` where `account_type_code = 'gold'` — **only one Gold and one Silver account per currency, per user.** This is why gold/silver accounts are always auto-named "Gold"/"Silver" and the name field is hidden in the form.
 
 RLS: standard per-user CRUD (`auth.uid() = user_id`).
