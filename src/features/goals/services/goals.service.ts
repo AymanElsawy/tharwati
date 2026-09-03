@@ -30,6 +30,10 @@ export type GoalsReadModel = {
   goals: GoalSummary[]
   entriesByGoal: ReadonlyMap<string, GoalHistoryEntry[]>
 }
+export type DashboardGoalsReadModel = {
+  goals: GoalSummary[]
+  hasAnyGoals: boolean
+}
 export type GoalHistoryGroup = {
   root: GoalHistoryEntry
   related: GoalHistoryEntry[]
@@ -90,6 +94,21 @@ export async function loadGoals(): Promise<GoalsReadModel> {
     return summary
   })
   return { goals, entriesByGoal }
+}
+export async function listActiveGoalSummaries(
+  limit = 3
+): Promise<DashboardGoalsReadModel> {
+  const data = await goalsRepository.listActiveSummaries(limit)
+  const entriesByGoal = buildGoalHistoryEntries(data.entries)
+  const goals = data.goals.map((goal) => {
+    const summary = toGoalSummary(goal, entriesByGoal.get(goal.id) ?? [])
+    if (!summary)
+      throw new Error(
+        "Goal progress is unavailable because stored decimal data is invalid."
+      )
+    return summary
+  })
+  return { goals, hasAnyGoals: data.hasAnyGoals }
 }
 export async function saveGoal(input: GoalFormInput, id?: string) {
   const error = validateGoalInput(input)

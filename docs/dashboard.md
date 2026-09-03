@@ -192,7 +192,7 @@ The `dashboard-valuation` Edge Function has opt-in aggregate timing logs when it
 ## 3. UI / UX flow
 
 ### 3.1 Production dashboard (currently live)
-Page = header (eyebrow/title/description) + `NetWorthCard` + `AccountsOverviewCard`.
+Page = header (eyebrow/title/description) + `NetWorthCard` + Assets Breakdown and Portfolio Allocation + `AccountsOverviewCard` + `DashboardGoalsCard`.
 
 **`NetWorthCard`** states, in priority order:
 1. Loading — pulsing skeleton.
@@ -205,6 +205,10 @@ Page = header (eyebrow/title/description) + `NetWorthCard` + `AccountsOverviewCa
 **`DashboardPortfolioAllocationCard`** follows Assets Breakdown. It uses only the positive Brokerage holding rows embedded in the same server snapshot and renders a responsive donut with exact total Brokerage investments in its center plus an aligned category, amount, and percentage list. It does not include Brokerage cash or non-Brokerage wealth, and is unavailable if any positive Brokerage holding could not be valued. The two allocation cards share one desktop two-column row with equal-height cards; mobile stacks them. Within each card, a fixed, non-zero chart box keeps the donut visible and desktop places it left of the legend while mobile centers it above the compact legend. Each mobile legend item keeps marker and category at logical start, with a breakable localized monetary amount at logical end and a bold percentage directly beneath that amount.
 
 **`AccountsOverviewCard`** states: loading (3 skeleton tiles) / error / empty ("add an account" prompt) / success (a responsive grid). Every card shows its type, active account count, and one base-currency Total Current Value from the shared snapshot; unavailable groups show an explicit unavailable state. Every card links to its matching `/accounts?type=…` filter, while Gold and Silver retain their metal-specific filters.
+
+**`DashboardGoalsCard`** is a separate full-width card after Accounts Overview and does not participate in the Dashboard valuation aggregate. It loads at most three active, unarchived goals, ordered by target date ascending with undated goals last and oldest creation time as the tie-breaker; this naturally places overdue dates before future dates. A count-only user-scoped query distinguishes a user with no goals from one with only completed, cancelled, or archived goals. Progress entries are fetched only for displayed goal IDs and summarized through shared decimal-safe Goals domain logic.
+
+Each row uses a compact responsive grid: desktop shows goal name and due/overdue date, funded/target and surplus, then percentage and a short progress bar. Small screens stack those groups without horizontal scrolling; a missing target date leaves no placeholder space. Mobile also reduces header-to-content spacing while retaining the 44 px View all target. Currencies are never converted or aggregated. The card states that tracking is manual and money is not reserved. Loading uses three compact skeleton rows; failures remain isolated to this card with Retry; invalid stored decimals are unavailable rather than zero. Empty users receive a Create your first goal link, while users with only non-active goals receive a View all goals link. All navigation targets `/goals`; layout retains at least 44 px action targets.
 
 ### 3.2 Rich dashboard (unused in production, but the more complete design)
 

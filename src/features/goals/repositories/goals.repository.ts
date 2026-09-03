@@ -25,6 +25,56 @@ function failure(error: unknown, operation: string) {
 }
 
 export const goalsRepository = {
+  async listActiveSummaries(limit: number): Promise<{
+    goals: GoalRow[]
+    entries: GoalProgressEntryRow[]
+    hasAnyGoals: boolean
+  }> {
+    const operation = "goals.listActiveSummaries"
+    const userId = await requireAuthenticatedUserId(supabase, operation)
+    const [goalsResult, countResult] = await Promise.all([
+      supabase
+        .from("goals")
+        .select(goalSelect)
+        .eq("user_id", userId)
+        .eq("status", "active")
+        .is("archived_at", null)
+        .order("target_date", { ascending: true, nullsFirst: false })
+        .order("created_at", { ascending: true })
+        .limit(limit),
+      supabase
+        .from("goals")
+        .select("id", { count: "exact", head: true })
+        .eq("user_id", userId),
+    ])
+    const goals = requireQueryData(
+      goalsResult.data,
+      goalsResult.error,
+      operation
+    )
+    failure(countResult.error, operation)
+    if (goals.length === 0)
+      return { goals, entries: [], hasAnyGoals: (countResult.count ?? 0) > 0 }
+
+    const entriesResult = await supabase
+      .from("goal_progress_entries")
+      .select(entrySelect)
+      .eq("user_id", userId)
+      .in(
+        "goal_id",
+        goals.map((goal) => goal.id)
+      )
+      .order("created_at", { ascending: true })
+    return {
+      goals,
+      entries: requireQueryData(
+        entriesResult.data,
+        entriesResult.error,
+        operation
+      ),
+      hasAnyGoals: (countResult.count ?? 0) > 0,
+    }
+  },
   async list(): Promise<{ goals: GoalRow[]; entries: GoalProgressEntryRow[] }> {
     const operation = "goals.list"
     const userId = await requireAuthenticatedUserId(supabase, operation)

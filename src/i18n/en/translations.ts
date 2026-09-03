@@ -59,6 +59,18 @@ export const en = {
     "Current value is above what you paid",
   "dashboard.accountsOverview.valueDecreased":
     "Current value is below what you paid",
+  "dashboard.goals.title": "Goals",
+  "dashboard.goals.viewAll": "View all",
+  "dashboard.goals.manualTracking":
+    "Progress is tracked manually. Money is not reserved.",
+  "dashboard.goals.empty": "Create your first goal to start tracking progress.",
+  "dashboard.goals.createFirst": "Create your first goal",
+  "dashboard.goals.noActive": "You have no active goals.",
+  "dashboard.goals.unavailable": "Goals are temporarily unavailable.",
+  "dashboard.goals.retry": "Try again",
+  "dashboard.goals.overdue": "Overdue · {{date}}",
+  "dashboard.goals.due": "Due {{date}}",
+  "dashboard.goals.overTarget": "{{amount}} over target",
   "dashboard.netWorth.title": "Net worth",
   "dashboard.netWorth.accountCount": "Across {{count}} accounts",
   "dashboard.netWorth.empty":

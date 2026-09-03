@@ -1,6 +1,7 @@
 import { AccountsOverviewCard } from "@/features/dashboard/components/AccountsOverviewCard"
 import { AssetsBreakdownCard } from "@/features/dashboard/components/AssetsBreakdownCard"
 import { DashboardPortfolioAllocationCard } from "@/features/dashboard/components/DashboardPortfolioAllocationCard"
+import { DashboardGoalsCard } from "@/features/dashboard/components/DashboardGoalsCard"
 import { NetWorthCard } from "@/features/dashboard/components/NetWorthCard"
 import { useDashboardAggregate } from "@/features/dashboard/hooks/useDashboardAggregate"
 import { useTranslation } from "@/i18n/useTranslation"
@@ -38,6 +39,7 @@ export function DashboardPage() {
         error={aggregate.error}
         isLoading={aggregate.isLoading}
       />
+      <DashboardGoalsCard />
     </section>
   )
 }

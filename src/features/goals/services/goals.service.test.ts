@@ -1,6 +1,11 @@
-import { describe, expect, it } from "vitest"
-import type { GoalProgressEntryRow } from "@/lib/supabase/types"
-import { buildGoalHistoryEntries, groupGoalHistoryEntries } from "./goals.service"
+import { afterEach, describe, expect, it, vi } from "vitest"
+import type { GoalProgressEntryRow, GoalRow } from "@/lib/supabase/types"
+import { goalsRepository } from "../repositories/goals.repository"
+import {
+  buildGoalHistoryEntries,
+  groupGoalHistoryEntries,
+  listActiveGoalSummaries,
+} from "./goals.service"
 
 const row = (
   id: string,
@@ -68,5 +73,58 @@ describe("Goals history read model", () => {
         ]),
       }),
     ])
+  })
+})
+
+const goal = (overrides: Partial<GoalRow> = {}): GoalRow => ({
+  id: "goal",
+  user_id: "user",
+  name: "Home",
+  goal_type: "buy_home",
+  custom_type_name: null,
+  target_amount: "100",
+  currency_code: "EGP",
+  target_date: "2027-01-01",
+  status: "active",
+  archived_at: null,
+  created_at: "2026-01-01T00:00:00Z",
+  updated_at: "2026-01-01T00:00:00Z",
+  ...overrides,
+})
+
+describe("Dashboard Goals read model", () => {
+  afterEach(() => vi.restoreAllMocks())
+
+  it("returns exact zero and uncapped over-target progress", async () => {
+    vi.spyOn(goalsRepository, "listActiveSummaries")
+      .mockResolvedValueOnce({ goals: [goal()], entries: [], hasAnyGoals: true })
+      .mockResolvedValueOnce({
+        goals: [goal()],
+        entries: [row("progress", "progress", { amount: "125" })],
+        hasAnyGoals: true,
+      })
+
+    await expect(listActiveGoalSummaries()).resolves.toMatchObject({
+      goals: [{ fundedAmount: "0", progressPercent: "0" }],
+    })
+    await expect(listActiveGoalSummaries()).resolves.toMatchObject({
+      goals: [{
+        fundedAmount: "125",
+        progressPercent: "125",
+        displayPercent: "100",
+        surplusAmount: "25",
+      }],
+    })
+  })
+
+  it("fails honestly when stored goal money is invalid", async () => {
+    vi.spyOn(goalsRepository, "listActiveSummaries").mockResolvedValue({
+      goals: [goal({ target_amount: "invalid" })],
+      entries: [],
+      hasAnyGoals: true,
+    })
+    await expect(listActiveGoalSummaries()).rejects.toThrow(
+      "Goal progress is unavailable"
+    )
   })
 })
