@@ -117,7 +117,14 @@ user to their post-auth destination (`/dashboard` or `/onboarding`).
 - `handle_new_user()` is `SECURITY DEFINER` with a fixed empty `search_path`, is
   revoked from `public`/`anon`/`authenticated`, and runs only as the
   `on_auth_user_created` trigger. It is the only writer of `profiles` rows.
-- `profiles` cascade-deletes with its `auth.users` row.
+- Whole-user deletion starts from `auth.users` and cascades through every
+  user-owned domain, including profiles, settings, accounts, immutable ledger
+  history, assets/holdings, manual prices, valuations/disposals, Gold/Silver
+  lifecycle history, dashboard snapshots, and Goals/progress. Posted ledger
+  rows remain immutable while their Auth owner exists; their delete triggers
+  permit deletion only after the parent Auth row has entered its database
+  cascade. Internal history cross-links use deferred referential checks so the
+  complete cascade can finish without weakening standalone delete protection.
 - Password reset redirect targets must be allow-listed in the hosted project's
   **Auth → URL configuration** (Site URL + Redirect URLs) for the production
   domain; otherwise `resetPasswordForEmail` links resolve to the wrong origin or
