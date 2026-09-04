@@ -26,3 +26,15 @@ export async function getCurrentUserBaseCurrency() {
 
   return requireQueryData(data, error, operation).base_currency_code
 }
+
+export async function updateCurrentUserFullName(fullName: string | null) {
+  const operation = "profile.updateFullName"
+  const userId = await requireAuthenticatedUserId(supabase, operation)
+  const { data, error } = await supabase
+    .from("profiles")
+    .update({ full_name: fullName })
+    .eq("id", userId)
+    .select("full_name")
+    .single()
+  return requireQueryData(data, error, operation)
+}

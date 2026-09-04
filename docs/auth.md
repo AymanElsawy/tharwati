@@ -132,6 +132,38 @@ user to their post-auth destination (`/dashboard` or `/onboarding`).
 - Client startup and auth errors are logged to the console and shown to the user
   only as generic copy — raw backend messages are not rendered (audit F5, partial).
 
+### Download My Data backend
+
+Privacy Stage 2 exposes an authenticated, versioned JSON export through the
+protected `/settings` page. The `export-my-data` Edge Function validates the bearer session with
+Supabase Auth and calls `export_my_data_v1()` using that same caller-scoped client.
+The function never uses a service-role key for table fan-out. The RPC takes no
+arguments and derives ownership exclusively from `auth.uid()`.
+
+The document contract is `schema: "tharwati.user-data-export"`, `version: 1`, with
+`generated_at`, the authenticated subject id, a safe Auth-account subset (`id`,
+`email`, `phone`, account timestamps), and explicitly selected source/audit rows:
+profile/preferences, financial accounts, transactions and entries, holdings,
+user-created assets and identifiers, Gold/Silver purchases and lifecycle events,
+valuations and disposals, user-created categories and personal category overrides,
+Goals and progress entries, and caller-owned manual market prices. Numeric money
+and quantity fields are JSON strings and every collection has a stable database
+ordering.
+
+The export excludes credentials and tokens, Auth identities and metadata blobs,
+shared catalogs/assets, global provider price caches, dashboard valuation
+snapshots, logs, operational rate-limit state, and newly calculated/derived
+financial metrics. Stored stale or unavailable source records are exported as
+stored; the export does not refresh providers or fabricate values.
+
+The database enforces one export request per authenticated user per 60 seconds
+with an atomic rate-limit claim. The Edge Function caps the serialized response at
+10 MiB and returns `export_too_large` with HTTP 413 rather than truncating. Success
+uses `application/json`, `Cache-Control: no-store`, and attachment name
+`tharwati-data-export-v1-YYYY-MM-DD.json`; no copy is written to Storage and export
+bodies or financial values are not logged. `public` and `anon` cannot execute the
+RPC; only `authenticated` receives `EXECUTE`.
+
 ## UI
 
 Public routes: `/login`, `/signup`, `/forgot-password`, `/reset-password`. All four
@@ -158,4 +190,6 @@ changing navigation. The remaining auth copy still needs full internationalizati
 - Auth copy is not internationalized.
 - Client-side reset minimum (8) is stricter than the server minimum (6); align both.
 - No account-deletion self-service; user deletion is a Supabase admin/API action.
+- Settings provides Download My Data and full-name editing; self-service account
+  deletion and a supported in-app email-change flow remain deferred.
 - No social login, MFA, magic-link, or "remember this device".

@@ -770,6 +770,10 @@ export type Database = {
     }
     Views: Record<never, never>
     Functions: {
+      export_my_data_v1: {
+        Args: Record<PropertyKey, never>
+        Returns: Json
+      }
       complete_onboarding: {
         Args: {
           p_country_code: string

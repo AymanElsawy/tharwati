@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type ReactNode } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react"
 import type { User } from "@supabase/supabase-js"
 
 import {
@@ -7,6 +7,7 @@ import {
 } from "@/features/profile/context/CurrentUserContext"
 import { getCurrentUserProfile } from "@/features/profile/repositories/profile.repository"
 import { RepositoryError } from "@/lib/supabase/types"
+import { ProfileRequestGuard } from "./profile-request-guard"
 
 interface CurrentUserProviderProps {
   children: ReactNode
@@ -38,41 +39,54 @@ export function CurrentUserProvider({
   const [error, setError] = useState<RepositoryError | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [timeGreeting] = useState(getTimeGreeting)
+  const isMountedRef = useRef(true)
+  const requestGuardRef = useRef(new ProfileRequestGuard(user.id))
 
-  useEffect(() => {
-    let isActive = true
-
-    async function loadProfile() {
-      setIsLoading(true)
-      try {
-        const nextProfile = await getCurrentUserProfile(user.id)
-        if (isActive) {
-          setProfile(nextProfile)
-          setError(null)
-        }
-      } catch (profileError) {
-        if (isActive) {
-          setError(
-            profileError instanceof RepositoryError
-              ? profileError
-              : new RepositoryError({
-                  code: "database_error",
-                  message: "Your profile could not be loaded",
-                  operation: "profile.getCurrentUser",
-                  cause: profileError,
-                }),
-          )
-        }
-      } finally {
-        if (isActive) setIsLoading(false)
-      }
-    }
-
-    void loadProfile()
-    return () => {
-      isActive = false
+  const refreshProfile = useCallback(async () => {
+    const request = requestGuardRef.current.begin(user.id)
+    setIsLoading(true)
+    try {
+      const nextProfile = await getCurrentUserProfile(user.id)
+      if (!isMountedRef.current || !requestGuardRef.current.isCurrent(request)) return
+      setProfile(nextProfile)
+      setError(null)
+    } catch (profileError) {
+      if (!isMountedRef.current || !requestGuardRef.current.isCurrent(request)) return
+      setError(
+        profileError instanceof RepositoryError
+          ? profileError
+          : new RepositoryError({
+              code: "database_error",
+              message: "Your profile could not be loaded",
+              operation: "profile.getCurrentUser",
+              cause: profileError,
+            }),
+      )
+      throw profileError
+    } finally {
+      if (isMountedRef.current && requestGuardRef.current.isCurrent(request)) setIsLoading(false)
     }
   }, [user.id])
+
+  useEffect(() => {
+    const guard = requestGuardRef.current
+    isMountedRef.current = true
+    return () => {
+      isMountedRef.current = false
+      guard.invalidate()
+    }
+  }, [])
+
+  useEffect(() => {
+    const guard = requestGuardRef.current
+    guard.setActiveUser(user.id)
+    async function loadInitialProfile() {
+      await refreshProfile().catch(() => undefined)
+    }
+
+    void loadInitialProfile()
+    return () => guard.invalidate()
+  }, [refreshProfile, user.id])
 
   const value = useMemo(() => {
     const fullName = profile?.full_name?.trim() || null
@@ -96,9 +110,10 @@ export function CurrentUserProvider({
           : `${greetingLabels[greetingType]}, ${firstName} 👋`,
       greetingType,
       isLoading,
+      refreshProfile,
       error,
     }
-  }, [error, isLoading, profile, timeGreeting, user.email])
+  }, [error, isLoading, profile, refreshProfile, timeGreeting, user.email])
 
   return <CurrentUserContext.Provider value={value}>{children}</CurrentUserContext.Provider>
 }

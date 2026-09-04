@@ -34,6 +34,7 @@ import { DesignLabPage } from "../pages/DesignLabPage"
 import { NotFoundPage } from "../pages/NotFoundPage"
 import { useTranslation } from "../i18n/useTranslation"
 import { canPreserveAuthenticatedTree } from "../features/auth/auth-session-lifecycle"
+import { SettingsPage } from "../features/settings/pages/SettingsPage"
 
 export default function App() {
   const { t } = useTranslation()
@@ -245,7 +246,7 @@ export default function App() {
           element={
             <ProtectedRoute session={session}>
               {onboardingCompleted ? (
-                <CurrentUserProvider user={session!.user}>
+                <CurrentUserProvider key={session!.user.id} user={session!.user}>
                   <DashboardLayout />
                 </CurrentUserProvider>
               ) : (
@@ -257,6 +258,7 @@ export default function App() {
           <Route path="/dashboard" element={<DashboardPage />} />
           <Route path="/accounts" element={<AccountsPage />} />
           <Route path="/goals" element={<GoalsPage />} />
+          <Route path="/settings" element={<SettingsPage />} />
           <Route
             path="/accounts/:accountId/purities/:purity"
             element={<MetalPurityDetailsPage />}

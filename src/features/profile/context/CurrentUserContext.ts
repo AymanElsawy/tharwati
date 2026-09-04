@@ -17,6 +17,7 @@ export interface CurrentUserValue {
   greeting: string
   greetingType: GreetingType
   isLoading: boolean
+  refreshProfile: () => Promise<void>
 }
 
 export const CurrentUserContext = createContext<CurrentUserValue | null>(null)

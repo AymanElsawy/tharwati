@@ -7,6 +7,7 @@ import {
   WalletCards,
   Target,
   Menu,
+  Settings,
   type LucideIcon,
 } from "lucide-react"
 import { NavLink, Outlet, useNavigate } from "react-router-dom"
@@ -53,6 +54,7 @@ const navigationItems: NavigationItem[] = [
     path: "/goals",
     icon: Target,
   },
+  { labelKey: "navigation.settings", path: "/settings", icon: Settings },
 ]
 
 const themeOptions: ThemeOption[] = [
