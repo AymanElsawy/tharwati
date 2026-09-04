@@ -4,6 +4,7 @@ import { getDashboardBreakdownItems } from "@/features/dashboard/utils/assets-br
 import type { DashboardAggregate } from "@/features/dashboard/services/dashboard-aggregate.service"
 import { addDecimals } from "@/lib/financial-calculations/decimal"
 import componentSource from "./AssetsBreakdownCard.tsx?raw"
+import netWorthCardSource from "./NetWorthCard.tsx?raw"
 
 function aggregate(overrides: Partial<DashboardAggregate> = {}): DashboardAggregate {
   return {
@@ -55,7 +56,8 @@ describe("AssetsBreakdownCard", () => {
     expect(componentSource).toContain('t("dashboard.assetsBreakdown.totalAssets")')
     expect(componentSource).toContain("chartValue: Number(item.percentage)")
     expect(componentSource).toContain('dataKey="chartValue"')
-    expect(componentSource).toContain("min-h-52")
+    expect(componentSource).toContain("min-h-44")
+    expect(componentSource).toContain("md:h-48 md:w-48")
     expect(componentSource).not.toContain('flex h-4 overflow-hidden')
   })
 
@@ -63,6 +65,7 @@ describe("AssetsBreakdownCard", () => {
     expect(componentSource).toContain('grid-cols-[auto_minmax(0,1fr)_auto_auto]')
     expect(componentSource).not.toContain("sm:grid-cols-2")
     expect(componentSource).toContain("md:grid-cols-[12rem_minmax(0,1fr)]")
+    expect(componentSource).toContain("grid gap-2 md:gap-3")
   })
 
   it("returns no slices for an incomplete aggregate", () => {
@@ -77,5 +80,13 @@ describe("AssetsBreakdownCard", () => {
       },
     }))).toEqual([])
     expect(componentSource).toContain('aggregate.status === "incomplete"')
+  })
+
+  it("keeps both valid and unavailable embedded breakdown states inside Wealth Overview's one outer card", () => {
+    expect(netWorthCardSource).toContain('<AssetsBreakdownCard aggregate={result} isLoading={false} embedded />')
+    expect(netWorthCardSource).toContain('className="tharwati-card relative min-h-48 overflow-hidden p-6 lg:min-h-0"')
+    expect(componentSource).toContain('return embedded ? <section className="min-w-0">{content}</section>')
+    expect(componentSource).toContain('aggregate.status === "incomplete") return embedded ? <section className="min-w-0">')
+    expect(componentSource).not.toContain('aggregate.status === "incomplete") return embedded ? <article className="tharwati-card')
   })
 })

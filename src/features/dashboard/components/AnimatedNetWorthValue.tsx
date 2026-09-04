@@ -1,3 +1,4 @@
+/* eslint-disable react-refresh/only-export-components -- animation utilities have focused unit coverage. */
 import { useEffect, useRef, useState } from "react"
 
 export const netWorthAnimationDurationMs = 500
@@ -31,6 +32,7 @@ function usePrefersReducedMotion() {
 
 function useAnimatedNetWorthValue(target: number) {
   const prefersReducedMotion = usePrefersReducedMotion()
+  const hasAnimated = useRef(false)
   const displayedValue = useRef(0)
   const frameId = useRef<number | null>(null)
   const [value, setValue] = useState(0)
@@ -38,7 +40,8 @@ function useAnimatedNetWorthValue(target: number) {
   useEffect(() => {
     if (frameId.current !== null) cancelAnimationFrame(frameId.current)
 
-    if (prefersReducedMotion || displayedValue.current === target) {
+    if (prefersReducedMotion || hasAnimated.current || displayedValue.current === target) {
+      hasAnimated.current = true
       displayedValue.current = target
       setValue(target)
       frameId.current = null
@@ -48,6 +51,7 @@ function useAnimatedNetWorthValue(target: number) {
     const startValue = displayedValue.current
     const startedAt = performance.now()
     const animate = (now: number) => {
+      hasAnimated.current = true
       const progress = Math.min((now - startedAt) / netWorthAnimationDurationMs, 1)
       const nextValue = interpolateNetWorthValue(startValue, target, progress)
       displayedValue.current = nextValue

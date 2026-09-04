@@ -2,6 +2,8 @@ import { AlertTriangle, RefreshCw, WalletCards } from "lucide-react"
 import { Link } from "react-router-dom"
 
 import { Button } from "@/components/ui/button"
+import { AnimatedNetWorthValue } from "@/features/dashboard/components/AnimatedNetWorthValue"
+import { AssetsBreakdownCard } from "@/features/dashboard/components/AssetsBreakdownCard"
 import type { DashboardAggregate } from "@/features/dashboard/services/dashboard-aggregate.service"
 import { formatPortfolioAmount } from "@/features/portfolio/utils/portfolio-formatters"
 import type { RepositoryError } from "@/lib/supabase/types"
@@ -58,13 +60,18 @@ export function NetWorthCard({ result, error, isLoading, refresh }: NetWorthCard
     )
   }
 
+  const netWorthValue = result.status === "complete" && result.netWorth !== null
+    ? Number(result.netWorth)
+    : null
+
   return (
     <article className="tharwati-card relative min-h-48 overflow-hidden p-6 lg:min-h-0">
       <div
         aria-hidden="true"
         className="absolute -end-8 -top-8 size-28 rounded-full bg-[var(--color-primary-soft)]"
       />
-      <div className="relative">
+      <div className="relative grid gap-6 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)] lg:items-center">
+        <div className="min-w-0">
         <div className="flex items-center justify-between gap-3">
           <h2 className="text-sm font-bold uppercase tracking-[0.14em] text-[var(--color-primary)]">
             {t("dashboard.netWorth.title")}
@@ -74,9 +81,9 @@ export function NetWorthCard({ result, error, isLoading, refresh }: NetWorthCard
           </span>
         </div>
 
-        <p className="mt-5 text-3xl font-black tracking-tight text-[var(--color-text-primary)]" dir="ltr">
-          {result.status === "complete" && result.netWorth !== null
-            ? formatPortfolioAmount(result.netWorth, result.baseCurrencyCode, language === "ar" ? "ar-SA" : "en-US")
+        <p className="mt-5 text-4xl font-bold tracking-tight text-[var(--color-text-primary)] sm:text-5xl" dir="ltr">
+          {netWorthValue !== null && Number.isFinite(netWorthValue)
+            ? <AnimatedNetWorthValue value={netWorthValue} format={(value) => formatPortfolioAmount(String(value), result.baseCurrencyCode, language === "ar" ? "ar-SA" : "en-US")} />
             : t("dashboard.netWorth.unavailable")}
         </p>
 
@@ -103,6 +110,10 @@ export function NetWorthCard({ result, error, isLoading, refresh }: NetWorthCard
         >
           {t("navigation.accounts")}
         </Link>
+        </div>
+        <div className="min-w-0 border-t border-[var(--color-border)] pt-6 lg:border-s lg:border-t-0 lg:ps-6 lg:pt-0">
+          <AssetsBreakdownCard aggregate={result} isLoading={false} embedded />
+        </div>
       </div>
     </article>
   )

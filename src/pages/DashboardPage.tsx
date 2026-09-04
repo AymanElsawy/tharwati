@@ -1,5 +1,4 @@
 import { AccountsOverviewCard } from "@/features/dashboard/components/AccountsOverviewCard"
-import { AssetsBreakdownCard } from "@/features/dashboard/components/AssetsBreakdownCard"
 import { DashboardPortfolioAllocationCard } from "@/features/dashboard/components/DashboardPortfolioAllocationCard"
 import { DashboardGoalsCard } from "@/features/dashboard/components/DashboardGoalsCard"
 import { NetWorthCard } from "@/features/dashboard/components/NetWorthCard"
@@ -25,14 +24,11 @@ export function DashboardPage() {
       </header>
 
       <NetWorthCard {...aggregate} />
-      <div className="grid gap-6 lg:grid-cols-2 lg:items-stretch">
-        <AssetsBreakdownCard aggregate={aggregate.result} isLoading={aggregate.isLoading} />
-        <DashboardPortfolioAllocationCard
-          allocation={aggregate.portfolioAllocation}
-          baseCurrencyCode={aggregate.result?.baseCurrencyCode ?? null}
-          isLoading={aggregate.isLoading}
-        />
-      </div>
+      <DashboardPortfolioAllocationCard
+        allocation={aggregate.portfolioAllocation}
+        baseCurrencyCode={aggregate.result?.baseCurrencyCode ?? null}
+        isLoading={aggregate.isLoading}
+      />
       <AccountsOverviewCard
         overview={aggregate.accountsOverview}
         baseCurrencyCode={aggregate.result?.baseCurrencyCode ?? null}

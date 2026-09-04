@@ -5,6 +5,7 @@ import {
   interpolateNetWorthValue,
   netWorthAnimationDurationMs,
 } from "./AnimatedNetWorthValue"
+import componentSource from "./AnimatedNetWorthValue.tsx?raw"
 
 describe("AnimatedNetWorthValue", () => {
   it("uses a short eased animation duration", () => {
@@ -17,5 +18,10 @@ describe("AnimatedNetWorthValue", () => {
     expect(interpolateNetWorthValue(1_000, 250, 1)).toBe(250)
     expect(interpolateNetWorthValue(0, 1_000, 0.5)).toBeGreaterThan(500)
     expect(easeOutCubic(1)).toBe(1)
+  })
+
+  it("limits count-up to the first valid loaded target and honors reduced motion", () => {
+    expect(componentSource).toContain("const hasAnimated = useRef(false)")
+    expect(componentSource).toContain("prefersReducedMotion || hasAnimated.current")
   })
 })
