@@ -790,7 +790,7 @@ function ExistingHoldingDialog({
 
             <div className="mt-5 space-y-4">
               <section className="space-y-3 border-b border-[var(--color-border)] pb-4">
-                <div className="flex items-end gap-2">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:gap-2">
                   <label className="block min-w-0 flex-1 basis-2/3">
                     {t("brokerage.searchExternalAssets")}
                     <div className="relative mt-1">
@@ -810,8 +810,8 @@ function ExistingHoldingDialog({
                       />
                     </div>
                   </label>
-                  <label className="w-40 shrink-0" title={t("brokerage.externalAssetCountry")}>
-                    {t("brokerage.externalAssetCountry")}
+                  <label className="w-full sm:w-[clamp(15rem,28vw,18rem)] sm:shrink-0" title={t("brokerage.externalAssetSearchCountry")}>
+                    {t("brokerage.externalAssetSearchCountry")}
                     <select
                       className={`${fieldClass} ps-3`}
                       value={externalSearchCountry}
@@ -828,6 +828,7 @@ function ExistingHoldingDialog({
                         </option>
                       ))}
                     </select>
+                    <span className="mt-1 block text-xs text-muted-foreground">{t("brokerage.externalAssetSearchCountryHelp")}</span>
                   </label>
                 </div>
                 {externalSearchQuery.trim().length > 0 && externalSearchQuery.trim().length < 2 ? (

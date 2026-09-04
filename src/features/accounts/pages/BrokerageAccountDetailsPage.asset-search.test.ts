@@ -20,4 +20,15 @@ describe("Brokerage external asset selection UI contract", () => {
     expect(page).toContain('t("brokerage.addAssetManually")')
     expect(page).toContain("setIsAssetDialogOpen(true)")
   })
+
+  it("labels the optional country control as a listing-search filter", () => {
+    expect(page).toContain('t("brokerage.externalAssetSearchCountry")')
+    expect(page).toContain('t("brokerage.externalAssetSearchCountryHelp")')
+    expect(page).toContain('t("brokerage.searchExternalAssetsAllCountries")')
+  })
+
+  it("stacks search controls on mobile and gives the country control desktop room", () => {
+    expect(page).toContain("flex flex-col gap-3 sm:flex-row sm:items-start sm:gap-2")
+    expect(page).toContain("w-full sm:w-[clamp(15rem,28vw,18rem)] sm:shrink-0")
+  })
 })

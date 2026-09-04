@@ -134,18 +134,19 @@ export function BrokerageBuyDialog({ account, availableCash, onClose, onSaved }:
       <Dialog.Popup className="fixed inset-x-3 top-1/2 z-50 mx-auto flex max-h-[calc(100dvh-1.5rem)] w-auto max-w-4xl -translate-y-1/2 flex-col overflow-hidden rounded-xl bg-background shadow-xl sm:inset-x-0">
         <div className="flex shrink-0 items-center justify-between gap-3 border-b border-[var(--color-border)] px-5 py-4"><Dialog.Title className="font-heading text-xl">{t("brokerage.buy")}</Dialog.Title><Button variant="ghost" size="icon" aria-label={t("common.close")} onClick={onClose}><X size={18} /></Button></div>
         <div className="min-h-0 flex-1 space-y-4 overflow-y-auto p-5">
-          <div className="flex items-end gap-2">
-            <label className="min-w-0 flex-1 basis-2/3">{t("brokerage.searchExternalAssets")}
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:gap-2">
+            <label className="w-full min-w-0 flex-1">{t("brokerage.searchExternalAssets")}
               <div className="relative mt-1">
                 <Search className="pointer-events-none absolute start-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
                 <input className={`${fieldClass} mt-0 ps-9`} type="search" value={externalSearchQuery} onChange={(event) => { setExternalSearchQuery(event.target.value); setExternalResults([]); setIsExternalSearchLoading(false); setIsExternalSearchUnavailable(false); setSelectedExternalResult(null); setExternalResolutionError(false) }} placeholder={t("brokerage.searchExternalAssetsPlaceholder")} autoComplete="off" />
               </div>
             </label>
-            <label className="w-40 shrink-0" title={t("brokerage.externalAssetCountry")}>{t("brokerage.externalAssetCountry")}
+            <label className="w-full sm:w-[clamp(15rem,28vw,18rem)] sm:shrink-0" title={t("brokerage.externalAssetSearchCountry")}>{t("brokerage.externalAssetSearchCountry")}
               <select className={`${fieldClass} ps-3`} value={externalSearchCountry} onChange={(event) => { setExternalSearchCountry(event.target.value); setSelectedExternalResult(null); setExternalResolutionError(false) }}>
                 <option value="">🌐 {t("brokerage.searchExternalAssetsAllCountries")}</option>
                 {countries.map((country) => <option key={country.code} value={country.name}>{country.flag} {country.name}</option>)}
               </select>
+              <span className="mt-1 block text-xs text-muted-foreground">{t("brokerage.externalAssetSearchCountryHelp")}</span>
             </label>
           </div>
           {externalSearchQuery.trim().length > 0 && externalSearchQuery.trim().length < 2 ? <p className="text-xs text-muted-foreground">{t("brokerage.searchExternalAssetsMinimum")}</p> : null}

@@ -84,12 +84,14 @@ true })`; a failure is logged, not surfaced.
    to request a new link. The recovery screen remains outside the router, so its
    session cannot enter the authenticated app.
 4. **Set new password** — `ResetPasswordPage`: `New password` + `Confirm password`.
-   Client rules: minimum 8 characters, both fields must match. On submit →
+   Client rules: minimum 12 characters, with at least one lowercase letter, one
+   uppercase letter, and one number; both fields must match. The same complete
+   requirement appears before submission on Signup and Reset Password. On submit →
    `updatePassword(newPassword)`, then `signOut()` (best-effort) to drop the recovery
    session, then a success state whose button sends the user to `/login` to sign in
-   with the new password. `weak_password` preserves Supabase's password-policy
-   message; `AuthSessionMissingError` asks for a new reset link; other failures show
-   a generic retry message.
+   with the new password. `weak_password` is mapped to friendly localized copy rather
+   than rendered backend text; `AuthSessionMissingError` asks for a new reset link;
+   other failures show a generic retry message.
 
 A plain or expired `/reset-password` route receives no recovery confirmation and
 shows the invalid/expired-link state.
@@ -100,14 +102,13 @@ user to their post-auth destination (`/dashboard` or `/onboarding`).
 ## Validation
 
 - Email fields are `type="email"` `required`; no additional client format check.
-- Login/signup password field: `required`; signup adds `minLength={6}` to match the
-  server's `minimum_password_length = 6`.
-- Reset password: `minLength={8}` and an equality check against the confirm field —
-  intentionally stricter than the current server minimum (see quirks).
+- Signup and Reset Password both require at least 12 characters, at least one
+  lowercase letter, at least one uppercase letter, and at least one number. They
+  share the same client predicate, visible localized helper, and localized
+  weak-password error treatment. These rules match the confirmed hosted policy.
 - Server-side password strength (`password_requirements`), leaked-password
   protection, email confirmation, and CAPTCHA are Supabase-dashboard settings, not
-  code. As of the launch-readiness audit they are **off** (see
-  `plans/launch-readiness-security-audit.md`, F3).
+  code. The client does not expose raw backend policy text.
 
 ## Security and API
 
@@ -130,7 +131,8 @@ user to their post-auth destination (`/dashboard` or `/onboarding`).
   domain; otherwise `resetPasswordForEmail` links resolve to the wrong origin or
   are rejected (audit F4).
 - Client startup and auth errors are logged to the console and shown to the user
-  only as generic copy — raw backend messages are not rendered (audit F5, partial).
+  only as generic copy — weak-password messages on Signup and Reset Password are
+  localized and raw backend text is not rendered.
 
 ### Download My Data backend
 
@@ -177,18 +179,18 @@ onward action.
 
 ## i18n / RTL
 
-Most auth-screen copy remains hardcoded English. The login screen's "Forgot
-password?" entry point and generic login-failure message use
+Most auth-screen copy remains hardcoded English. Password requirements, password
+validation, and weak-password copy on Signup and Reset Password, plus the login
+screen's "Forgot password?" entry point and generic login-failure message, use
 `src/i18n/{en,ar}/translations.ts`; the action follows document direction, so it
 appears on the logical opposite side of the password label in Arabic without
 changing navigation. The remaining auth copy still needs full internationalization.
 
 ## Deferred / known gaps
 
-- No email verification, CAPTCHA, leaked-password check, or password-complexity
-  rules enabled (hosted-dashboard config — audit F3).
+- No CAPTCHA or leaked-password check is configured in code; hosted Auth policy
+  remains a dashboard concern.
 - Auth copy is not internationalized.
-- Client-side reset minimum (8) is stricter than the server minimum (6); align both.
 - Settings source provides Download My Data, full-name editing, and password-
   reauthenticated self-service account deletion. The `delete-account` Edge Function
   is deployed, ACTIVE, and configured with `verify_jwt = true`. An authenticated

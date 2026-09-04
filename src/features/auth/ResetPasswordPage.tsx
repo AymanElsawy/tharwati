@@ -3,12 +3,14 @@ import { useId, useState } from "react"
 import { Button } from "@/components/ui/button"
 import {
   getPasswordUpdateErrorMessage,
+  isWeakPasswordError,
+  meetsPasswordRequirements,
+  PASSWORD_MIN_LENGTH,
   PASSWORD_UPDATE_SESSION_ERROR,
   signOut,
   updatePassword,
 } from "./auth.service"
-
-const MIN_PASSWORD_LENGTH = 8
+import { useTranslation } from "@/i18n/useTranslation"
 
 type ResetPasswordPageProps = {
   recoveryStatus: "checking" | "valid" | "invalid"
@@ -22,6 +24,7 @@ export function ResetPasswordPage({
   onComplete,
   onRequestNewLink,
 }: ResetPasswordPageProps) {
+  const { t } = useTranslation()
   const passwordId = useId()
   const confirmId = useId()
 
@@ -34,12 +37,12 @@ export function ResetPasswordPage({
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
 
-    if (password.length < MIN_PASSWORD_LENGTH) {
-      setErrorMessage(`Use at least ${MIN_PASSWORD_LENGTH} characters.`)
+    if (!meetsPasswordRequirements(password)) {
+      setErrorMessage(t("auth.password.weak"))
       return
     }
     if (password !== confirm) {
-      setErrorMessage("The two passwords don't match.")
+      setErrorMessage(t("auth.password.mismatch"))
       return
     }
 
@@ -52,7 +55,11 @@ export function ResetPasswordPage({
       setDone(true)
     } catch (error) {
       console.error("password update failed", error)
-      setErrorMessage(getPasswordUpdateErrorMessage(error))
+      setErrorMessage(
+        isWeakPasswordError(error)
+          ? t("auth.password.weak")
+          : getPasswordUpdateErrorMessage(error)
+      )
     } finally {
       setIsLoading(false)
     }
@@ -119,13 +126,20 @@ export function ResetPasswordPage({
                 <input
                   id={passwordId}
                   type="password"
-                  placeholder={`At least ${MIN_PASSWORD_LENGTH} characters`}
+                  placeholder={t("auth.password.placeholder", {
+                    count: PASSWORD_MIN_LENGTH,
+                  })}
                   value={password}
                   onChange={(event) => setPassword(event.target.value)}
                   className="h-11 w-full rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] px-3.5 text-sm text-[var(--color-text-primary)] outline-none transition focus:border-[var(--color-primary)] focus:ring-2 focus:ring-[var(--color-primary-soft)]"
                   required
-                  minLength={MIN_PASSWORD_LENGTH}
+                  minLength={PASSWORD_MIN_LENGTH}
                 />
+                <p className="mt-1.5 text-xs text-[var(--color-text-secondary)]">
+                  {t("auth.password.requirements", {
+                    count: PASSWORD_MIN_LENGTH,
+                  })}
+                </p>
               </div>
 
               <div>
@@ -143,7 +157,7 @@ export function ResetPasswordPage({
                   onChange={(event) => setConfirm(event.target.value)}
                   className="h-11 w-full rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] px-3.5 text-sm text-[var(--color-text-primary)] outline-none transition focus:border-[var(--color-primary)] focus:ring-2 focus:ring-[var(--color-primary-soft)]"
                   required
-                  minLength={MIN_PASSWORD_LENGTH}
+                  minLength={PASSWORD_MIN_LENGTH}
                 />
               </div>
             </div>

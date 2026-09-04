@@ -3,6 +3,8 @@ import {
   ArrowUpDown,
   Archive,
   ArchiveRestore,
+  ChevronLeft,
+  ChevronRight,
   Coins,
   Pencil,
   Trash2,
@@ -293,10 +295,13 @@ export function AccountInventory({
         {items.map((item) => {
           const sold = isSoldAccount(item.account)
           const inactive = !item.account.is_active
-          return <div key={item.account.id} className={`grid cursor-pointer gap-2.5 px-4 py-3 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--color-primary)] ${inactive ? "bg-[var(--color-surface-muted)]/60 text-muted-foreground" : ""}`} tabIndex={0} role="button" onClick={() => onOpenAccount(item.account)} onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); onOpenAccount(item.account) } }}>
+          return <div key={item.account.id} className={`grid cursor-pointer gap-2.5 px-4 py-3 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--color-primary)] ${inactive ? "bg-[var(--color-surface-muted)]/60 text-muted-foreground" : ""}`} tabIndex={0} role="button" aria-label={t("accounts.table.openLabel", { name: item.account.name })} onClick={() => onOpenAccount(item.account)} onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); onOpenAccount(item.account) } }}>
             <div className="flex items-start justify-between gap-3">
               <strong className="min-w-0 flex-1 break-words">{item.account.name}{sold ? <span className="ms-2 inline-block rounded-full bg-muted px-2 py-0.5 text-[11px] font-semibold text-muted-foreground">{t("accounts.disposal.sold")}</span> : null}</strong>
-              <strong className="max-w-[52%] shrink-0 break-words text-end tabular-nums" dir="ltr">{balanceCell(item, locale, t("accounts.currentValueUnavailable"), t("common.loading"))}</strong>
+              <div className="flex max-w-[58%] shrink-0 items-center gap-2">
+                <strong className="min-w-0 break-words text-end tabular-nums" dir="ltr">{balanceCell(item, locale, t("accounts.currentValueUnavailable"), t("common.loading"))}</strong>
+                {language === "ar" ? <ChevronLeft aria-hidden="true" size={20} className="shrink-0 text-muted-foreground" /> : <ChevronRight aria-hidden="true" size={20} className="shrink-0 text-muted-foreground" />}
+              </div>
             </div>
             <div className="flex items-center justify-between gap-3">
               <span className="min-w-0 break-words text-xs text-muted-foreground">{typeLabel(item.account, t)}</span>

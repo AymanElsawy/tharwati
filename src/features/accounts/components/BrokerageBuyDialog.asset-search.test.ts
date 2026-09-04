@@ -24,4 +24,15 @@ describe("Brokerage buy external asset selection UI contract", () => {
     expect(dialog).toContain('t("investment.asset.section")')
     expect(dialog).toContain('assetsRepository.searchAssets("", 100)')
   })
+
+  it("labels the optional country control as a listing-search filter", () => {
+    expect(dialog).toContain('t("brokerage.externalAssetSearchCountry")')
+    expect(dialog).toContain('t("brokerage.externalAssetSearchCountryHelp")')
+    expect(dialog).toContain('t("brokerage.searchExternalAssetsAllCountries")')
+  })
+
+  it("stacks search controls on mobile and gives the country control desktop room", () => {
+    expect(dialog).toContain("flex flex-col gap-3 sm:flex-row sm:items-start sm:gap-2")
+    expect(dialog).toContain("w-full sm:w-[clamp(15rem,28vw,18rem)] sm:shrink-0")
+  })
 })

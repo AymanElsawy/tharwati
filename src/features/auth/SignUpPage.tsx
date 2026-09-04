@@ -2,10 +2,17 @@ import { useId, useState } from "react"
 import { useNavigate } from "react-router-dom"
 
 import { Button } from "@/components/ui/button"
-import { signUp } from "./auth.service"
+import { useTranslation } from "@/i18n/useTranslation"
+import {
+  isWeakPasswordError,
+  meetsPasswordRequirements,
+  PASSWORD_MIN_LENGTH,
+  signUp,
+} from "./auth.service"
 
 export function SignUpPage() {
   const navigate = useNavigate()
+  const { t } = useTranslation()
   const emailId = useId()
   const passwordId = useId()
 
@@ -18,10 +25,15 @@ export function SignUpPage() {
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
 
+    setErrorMessage("")
+    setInfoMessage("")
+    if (!meetsPasswordRequirements(password)) {
+      setErrorMessage(t("auth.password.weak"))
+      return
+    }
+
     try {
       setIsLoading(true)
-      setErrorMessage("")
-      setInfoMessage("")
 
       const { session } = await signUp(email, password)
 
@@ -31,7 +43,11 @@ export function SignUpPage() {
         setInfoMessage("Check your email to confirm your account, then log in.")
       }
     } catch (error) {
-      setErrorMessage(error instanceof Error ? error.message : "Signup failed")
+      setErrorMessage(
+        isWeakPasswordError(error)
+          ? t("auth.password.weak")
+          : "Signup failed"
+      )
     } finally {
       setIsLoading(false)
     }
@@ -86,13 +102,18 @@ export function SignUpPage() {
             <input
               id={passwordId}
               type="password"
-              placeholder="At least 6 characters"
+              placeholder={t("auth.password.placeholder", {
+                count: PASSWORD_MIN_LENGTH,
+              })}
               value={password}
               onChange={(event) => setPassword(event.target.value)}
               className="h-11 w-full rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] px-3.5 text-sm text-[var(--color-text-primary)] outline-none transition focus:border-[var(--color-primary)] focus:ring-2 focus:ring-[var(--color-primary-soft)]"
               required
-              minLength={6}
+              minLength={PASSWORD_MIN_LENGTH}
             />
+            <p className="mt-1.5 text-xs text-[var(--color-text-secondary)]">
+              {t("auth.password.requirements", { count: PASSWORD_MIN_LENGTH })}
+            </p>
           </div>
         </div>
 
