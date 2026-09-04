@@ -29,9 +29,31 @@ or approved legal copy exist yet.
 
 ## Delete account
 
-The destructive section is intentionally disabled. It does not invoke Auth admin
-APIs, database deletion, or a success state. Stage 4 must add the confirmed
-self-service deletion UX around the already-hardened whole-user deletion backend.
+The source provides a two-step, mobile-ready confirmation dialog. The user first
+reauthenticates with their current password, then types their current email exactly
+before the permanent action is enabled. The dialog offers Download My Data before
+deletion and clears its password and confirmation whenever it is cancelled or an
+attempt fails.
+
+The client sends only the password to the authenticated `delete-account` Edge
+Function. The function derives the caller from the bearer session, independently
+reauthenticates that email/password, requires the resulting user id to equal the
+caller id, then permanently deletes only that caller through the server-only Auth
+admin client. It accepts no user id or email, bounds request bodies to 4 KiB,
+returns only stable error codes, never logs credentials or user data, and returns
+an empty `204` response with `Cache-Control: no-store` on success.
+
+Deletion starts the existing production-safe whole-user cascade. After success,
+the client clears the local Supabase session and replaces navigation with `/login`
+even if local sign-out fails. If the delete response is lost, only a server-backed
+`user_not_found` result is treated as confirmed success; otherwise the dialog
+clears credentials and requires reauthentication before retrying. There are no
+additional app-owned user caches to clear after the authenticated tree unmounts.
+
+`delete-account` is deployed, ACTIVE, and configured with `verify_jwt = true`.
+An authenticated destructive smoke test passed on a disposable confirmed user:
+whole-user cascade deletion completed with no remaining user-owned rows or
+orphans. Download My Data remains available separately.
 
 ## Navigation
 

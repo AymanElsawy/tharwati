@@ -189,7 +189,10 @@ changing navigation. The remaining auth copy still needs full internationalizati
   rules enabled (hosted-dashboard config — audit F3).
 - Auth copy is not internationalized.
 - Client-side reset minimum (8) is stricter than the server minimum (6); align both.
-- No account-deletion self-service; user deletion is a Supabase admin/API action.
-- Settings provides Download My Data and full-name editing; self-service account
-  deletion and a supported in-app email-change flow remain deferred.
+- Settings source provides Download My Data, full-name editing, and password-
+  reauthenticated self-service account deletion. The `delete-account` Edge Function
+  is deployed, ACTIVE, and configured with `verify_jwt = true`. An authenticated
+  destructive smoke test on a disposable confirmed user passed: whole-user cascade
+  deletion completed with no remaining user-owned rows or orphans. Download My Data
+  remains available separately. Email change remains deferred.
 - No social login, MFA, magic-link, or "remember this device".
