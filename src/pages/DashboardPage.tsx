@@ -23,19 +23,21 @@ export function DashboardPage() {
         </p>
       </header>
 
-      <NetWorthCard {...aggregate} />
-      <DashboardPortfolioAllocationCard
-        allocation={aggregate.portfolioAllocation}
-        baseCurrencyCode={aggregate.result?.baseCurrencyCode ?? null}
-        isLoading={aggregate.isLoading}
-      />
-      <AccountsOverviewCard
-        overview={aggregate.accountsOverview}
-        baseCurrencyCode={aggregate.result?.baseCurrencyCode ?? null}
-        error={aggregate.error}
-        isLoading={aggregate.isLoading}
-      />
-      <DashboardGoalsCard />
+      <div className="grid gap-8 sm:gap-[var(--space-section)]">
+        <NetWorthCard {...aggregate} />
+        <DashboardGoalsCard />
+        <AccountsOverviewCard
+          overview={aggregate.accountsOverview}
+          baseCurrencyCode={aggregate.result?.baseCurrencyCode ?? null}
+          error={aggregate.error}
+          isLoading={aggregate.isLoading}
+        />
+        <DashboardPortfolioAllocationCard
+          allocation={aggregate.portfolioAllocation}
+          baseCurrencyCode={aggregate.result?.baseCurrencyCode ?? null}
+          isLoading={aggregate.isLoading}
+        />
+      </div>
     </section>
   )
 }
