@@ -2,7 +2,8 @@ import type { TranslationKey } from "../en/translations"
 
 export const ar: Record<TranslationKey, string> = {
   "dashboard.accountsOverview.totalCurrentValue": "إجمالي القيمة الحالية",
-  "dashboard.accountsOverview.currentValueUnavailable": "القيمة الحالية غير متاحة",
+  "dashboard.accountsOverview.currentValueUnavailable":
+    "القيمة الحالية غير متاحة",
   "language.english": "English",
   "language.arabic": "العربية",
   "language.switchTo": "تغيير اللغة إلى {{language}}",
@@ -14,9 +15,11 @@ export const ar: Record<TranslationKey, string> = {
   "common.loading": "جارٍ التحميل…",
   "common.optional": "اختياري",
   "auth.forgotPassword": "نسيت كلمة المرور؟",
-  "auth.loginError": "تعذر تسجيل الدخول. تحقق من البريد الإلكتروني وكلمة المرور ثم حاول مرة أخرى.",
+  "auth.loginError":
+    "تعذر تسجيل الدخول. تحقق من البريد الإلكتروني وكلمة المرور ثم حاول مرة أخرى.",
   "auth.password.placeholder": "{{count}} حرفًا على الأقل",
-  "auth.password.requirements": "استخدم كلمة مرور من {{count}} حرفًا على الأقل، تتضمن حرفًا صغيرًا وحرفًا كبيرًا ورقمًا.",
+  "auth.password.requirements":
+    "استخدم كلمة مرور من {{count}} حرفًا على الأقل، تتضمن حرفًا صغيرًا وحرفًا كبيرًا ورقمًا.",
   "auth.password.weak": "يجب أن تستوفي كلمة المرور المتطلبات المذكورة أعلاه.",
   "auth.password.mismatch": "كلمتا المرور غير متطابقتين.",
   "unsaved.title": "هل تريد تجاهل التغييرات غير المحفوظة؟",
@@ -48,13 +51,15 @@ export const ar: Record<TranslationKey, string> = {
   "settings.profile.title": "الملف الشخصي",
   "settings.profile.fullName": "الاسم الكامل",
   "settings.profile.email": "البريد الإلكتروني",
-  "settings.profile.emailComingSoon": "سيكون تغيير البريد الإلكتروني متاحاً في تحديث قادم.",
+  "settings.profile.emailComingSoon":
+    "سيكون تغيير البريد الإلكتروني متاحاً في تحديث قادم.",
   "settings.profile.save": "حفظ التغييرات",
   "settings.profile.saving": "جارٍ الحفظ…",
   "settings.profile.saved": "تم تحديث الملف الشخصي.",
   "settings.profile.error": "تعذر حفظ ملفك الشخصي. حاول مرة أخرى.",
   "settings.privacy.title": "الخصوصية والبيانات",
-  "settings.export.description": "نزّل نسخة JSON من بياناتك الشخصية. قد يستغرق ذلك لحظة.",
+  "settings.export.description":
+    "نزّل نسخة JSON من بياناتك الشخصية. قد يستغرق ذلك لحظة.",
   "settings.export.action": "تنزيل بياناتي",
   "settings.export.loading": "جارٍ تجهيز التنزيل…",
   "settings.export.success": "بدأ تنزيلك.",
@@ -63,22 +68,28 @@ export const ar: Record<TranslationKey, string> = {
   "settings.export.authExpired": "انتهت جلستك. يرجى تسجيل الدخول مرة أخرى.",
   "settings.export.error": "تعذر تجهيز التنزيل. حاول مرة أخرى.",
   "settings.legal.title": "سياسة الخصوصية والشروط",
-  "settings.legal.comingSoon": "ستتوفر روابط سياسة الخصوصية والشروط قبل الإطلاق.",
+  "settings.legal.comingSoon":
+    "ستتوفر روابط سياسة الخصوصية والشروط قبل الإطلاق.",
   "settings.delete.title": "حذف الحساب",
   "settings.delete.description": "احذف حسابك وجميع بياناته المالية نهائيًا.",
   "settings.delete.action": "حذف الحساب",
   "settings.delete.dialogTitle": "حذف الحساب نهائيًا",
-  "settings.delete.passwordDescription": "أكّد هويتك أولًا باستخدام كلمة المرور الحالية.",
-  "settings.delete.confirmDescription": "يلزم تأكيد أخير قبل حذف حسابك نهائيًا.",
+  "settings.delete.passwordDescription":
+    "أكّد هويتك أولًا باستخدام كلمة المرور الحالية.",
+  "settings.delete.confirmDescription":
+    "يلزم تأكيد أخير قبل حذف حسابك نهائيًا.",
   "settings.delete.downloadFirst": "تنزيل بياناتي أولًا",
   "settings.delete.passwordLabel": "كلمة المرور الحالية",
   "settings.delete.passwordError": "تعذر التحقق من كلمة المرور. حاول مرة أخرى.",
   "settings.delete.checking": "جارٍ التحقق…",
-  "settings.delete.permanentWarning": "سيؤدي هذا إلى حذف حسابك وحساباتك المالية ومعاملاتك وأهدافك وبياناتك المحفوظة نهائيًا. لا يمكن التراجع عن ذلك.",
-  "settings.delete.confirmLabel": "اكتب بريدك الإلكتروني مطابقًا تمامًا للتأكيد",
+  "settings.delete.permanentWarning":
+    "سيؤدي هذا إلى حذف حسابك وحساباتك المالية ومعاملاتك وأهدافك وبياناتك المحفوظة نهائيًا. لا يمكن التراجع عن ذلك.",
+  "settings.delete.confirmLabel":
+    "اكتب بريدك الإلكتروني مطابقًا تمامًا للتأكيد",
   "settings.delete.permanentAction": "حذف الحساب نهائيًا",
   "settings.delete.deleting": "جارٍ الحذف…",
-  "settings.delete.failure": "تعذر حذف حسابك. أعد إدخال كلمة المرور وحاول مرة أخرى.",
+  "settings.delete.failure":
+    "تعذر حذف حسابك. أعد إدخال كلمة المرور وحاول مرة أخرى.",
   "theme.use": "استخدم سمة {{theme}}",
   "theme.light": "فاتح",
   "theme.dark": "داكن",
@@ -86,6 +97,25 @@ export const ar: Record<TranslationKey, string> = {
   "pages.dashboard.eyebrow": "نظرة مالية عامة",
   "pages.dashboard.title": "ثروتك في لمحة",
   "pages.dashboard.description": "اطّلع على حساباتك وأرصدتك في لمحة واحدة.",
+  "dashboard.hero.greeting": "مرحبًا بعودتك",
+  "dashboard.hero.personalGreeting": "مساء الخير، {{name}} 👋",
+  "dashboard.hero.guest": "بك",
+  "dashboard.hero.notifications": "الإشعارات",
+  "dashboard.hero.accountsCount": "الحسابات",
+  "dashboard.insights.title": "أهم الرؤى",
+  "dashboard.insights.description":
+    "جودة بيانات لوحة التحكم وما يحتاج إلى اهتمام.",
+  "dashboard.insights.incompleteTitle": "بعض القيم تحتاج إلى اهتمام",
+  "dashboard.insights.incompleteDescription":
+    "يبقى صافي الثروة غير متاح حتى تُحل جميع القيم الحالية وأسعار الصرف المطلوبة.",
+  "dashboard.insights.staleTitle": "لقطة التقييم قديمة",
+  "dashboard.insights.staleDescription":
+    "تظل القيم من أحدث لقطة متاحة للوحة التحكم.",
+  "dashboard.insights.emptyTitle": "ابدأ بحساب",
+  "dashboard.insights.emptyDescription": "أضف حسابًا لبدء بناء صورتك المالية.",
+  "dashboard.insights.readyTitle": "قيم لوحة التحكم متاحة",
+  "dashboard.insights.readyDescription":
+    "تستخدم الإجماليات لقطة تقييم لوحة التحكم الحالية.",
   "dashboard.accountsOverview.title": "نظرة عامة على الحسابات",
   "dashboard.accountsOverview.description":
     "الأرصدة النشطة مجمّعة حسب نوع الحساب",
@@ -119,14 +149,16 @@ export const ar: Record<TranslationKey, string> = {
     "اختر عملة أساسية أثناء التهيئة لعرض صافي ثروتك هنا.",
   "dashboard.netWorth.completeOnboarding": "أكمل التهيئة",
   "dashboard.netWorth.unavailable": "صافي الثروة غير متاح مؤقتًا",
-  "dashboard.netWorth.incomplete": "بعض القيم الحالية غير متاحة، لذلك لا يمكن حساب صافي الثروة.",
+  "dashboard.netWorth.incomplete":
+    "بعض القيم الحالية غير متاحة، لذلك لا يمكن حساب صافي الثروة.",
   "dashboard.netWorth.skippedTypes": "أرصدة {{types}} غير مضمّنة بعد.",
   "dashboard.netWorth.unavailableRates":
     "أسعار الصرف غير متاحة لـ {{pairs}} — يُعرض إجمالي جزئي.",
   "dashboard.assetsBreakdown.title": "توزيع الأصول",
   "dashboard.assetsBreakdown.description": "الأصول الحالية حسب نوع الحساب",
   "dashboard.assetsBreakdown.loading": "جارٍ تحميل توزيع الأصول",
-  "dashboard.assetsBreakdown.unavailable": "توزيع الأصول غير متاح حتى تُحل جميع القيم الحالية.",
+  "dashboard.assetsBreakdown.unavailable":
+    "توزيع الأصول غير متاح حتى تُحل جميع القيم الحالية.",
   "dashboard.assetsBreakdown.empty": "لا توجد قيم أصول موجبة لعرضها بعد.",
   "dashboard.assetsBreakdown.chartLabel": "مخطط توزيع الأصول",
   "dashboard.assetsBreakdown.legendLabel": "وسيلة إيضاح توزيع الأصول",
@@ -139,10 +171,13 @@ export const ar: Record<TranslationKey, string> = {
   "dashboard.assetsBreakdown.totalLiabilities": "إجمالي الالتزامات",
   "dashboard.assetsBreakdown.totalAssets": "إجمالي الأصول",
   "dashboard.portfolioAllocation.title": "توزيع المحفظة",
-  "dashboard.portfolioAllocation.description": "استثمارات الوساطة الحالية حسب نوع الأصل",
+  "dashboard.portfolioAllocation.description":
+    "استثمارات الوساطة الحالية حسب نوع الأصل",
   "dashboard.portfolioAllocation.loading": "جارٍ تحميل توزيع المحفظة",
-  "dashboard.portfolioAllocation.unavailable": "توزيع المحفظة غير متاح حتى تُحل جميع قيم حيازات الوساطة الحالية.",
-  "dashboard.portfolioAllocation.empty": "لا توجد حيازات وساطة موجبة لعرضها بعد.",
+  "dashboard.portfolioAllocation.unavailable":
+    "توزيع المحفظة غير متاح حتى تُحل جميع قيم حيازات الوساطة الحالية.",
+  "dashboard.portfolioAllocation.empty":
+    "لا توجد حيازات وساطة موجبة لعرضها بعد.",
   "dashboard.portfolioAllocation.chartLabel": "مخطط توزيع المحفظة",
   "dashboard.portfolioAllocation.legendLabel": "وسيلة إيضاح توزيع المحفظة",
   "dashboard.portfolioAllocation.stocks": "الأسهم",
@@ -410,9 +445,12 @@ export const ar: Record<TranslationKey, string> = {
   "accounts.metalPurchase.delete": "حذف عملية الشراء",
   "accounts.metalPurchase.deleting": "جارٍ الحذف...",
   "accounts.metalPurchase.deleteTitle": "حذف عملية الشراء هذه؟",
-  "accounts.metalPurchase.deleteDescription": "ستُزال عملية الشراء هذه من سجل الحساب وإجمالياته.",
-  "accounts.metalPurchase.deleteError": "تعذر حذف عملية الشراء هذه. حاول مرة أخرى.",
-  "accounts.metalPurchase.editError": "تعذر حفظ عملية الشراء هذه. حاول مرة أخرى.",
+  "accounts.metalPurchase.deleteDescription":
+    "ستُزال عملية الشراء هذه من سجل الحساب وإجمالياته.",
+  "accounts.metalPurchase.deleteError":
+    "تعذر حذف عملية الشراء هذه. حاول مرة أخرى.",
+  "accounts.metalPurchase.editError":
+    "تعذر حفظ عملية الشراء هذه. حاول مرة أخرى.",
   "accounts.metalPurchase.actions": "إجراءات عملية الشراء",
   "accounts.metalPurchase.paidFrom": "تم الدفع من",
   "accounts.metalPurchase.fundingAccountRequired": "اختر حسابًا",
@@ -479,7 +517,8 @@ export const ar: Record<TranslationKey, string> = {
   "accounts.records.delete": "حذف السجل",
   "accounts.records.deleting": "جارٍ الحذف...",
   "accounts.records.deleteTitle": "حذف السجل؟",
-  "accounts.records.deleteDescription": "سيُزال السجل من السجل التاريخي وسيتم تحديث أرصدة حساباتك.",
+  "accounts.records.deleteDescription":
+    "سيُزال السجل من السجل التاريخي وسيتم تحديث أرصدة حساباتك.",
   "accounts.records.type": "نوع السجل",
   "accounts.records.expense": "مصروف",
   "accounts.records.income": "دخل",
@@ -511,10 +550,12 @@ export const ar: Record<TranslationKey, string> = {
   "accounts.records.notes": "ملاحظات (اختياري)",
   "accounts.records.fxError": "سعر الصرف الحالي غير متاح.",
   "accounts.records.validation.account": "اختر حسابًا.",
-  "accounts.records.validation.amount": "أدخل مبلغًا موجبًا بمنزلتين عشريتين كحد أقصى.",
+  "accounts.records.validation.amount":
+    "أدخل مبلغًا موجبًا بمنزلتين عشريتين كحد أقصى.",
   "accounts.records.validation.date": "التاريخ والوقت مطلوبان.",
   "accounts.records.validation.category": "الفئة مطلوبة.",
-  "accounts.records.validation.differentAccounts": "يجب أن يكون حسابا الإرسال والاستلام مختلفين.",
+  "accounts.records.validation.differentAccounts":
+    "يجب أن يكون حسابا الإرسال والاستلام مختلفين.",
   "accounts.table.name": "اسم الحساب",
   "accounts.table.type": "النوع",
   "accounts.table.currency": "العملة",
@@ -559,15 +600,18 @@ export const ar: Record<TranslationKey, string> = {
   "accounts.disposal.saleCurrency": "عملة البيع",
   "accounts.disposal.destinationAccount": "أين أودعت أموال البيع؟",
   "accounts.disposal.destinationPlaceholder": "اختر حسابًا نقديًا أو بنكيًا",
-  "accounts.disposal.noDestinationAccounts": "لا يوجد حساب نقدي أو بنكي نشط بهذه العملة.",
+  "accounts.disposal.noDestinationAccounts":
+    "لا يوجد حساب نقدي أو بنكي نشط بهذه العملة.",
   "accounts.disposal.ownershipSold": "نسبة الملكية المباعة (%)",
   "accounts.disposal.saleDate": "تاريخ البيع",
   "accounts.disposal.notes": "ملاحظة البيع (اختياري)",
-  "accounts.disposal.fullSaleOnly": "سيؤدي هذا البيع إلى الخروج من نسبة ملكيتك المتبقية البالغة {{percentage}}%.",
+  "accounts.disposal.fullSaleOnly":
+    "سيؤدي هذا البيع إلى الخروج من نسبة ملكيتك المتبقية البالغة {{percentage}}%.",
   "accounts.disposal.history": "سجل المبيعات",
   "accounts.disposal.sold": "تم البيع",
   "accounts.validation.saleAmount": "أدخل مبلغ بيع صالحًا وغير سالب.",
-  "accounts.validation.saleDestinationRequired": "اختر الحساب الذي أودعت فيه حصيلة البيع.",
+  "accounts.validation.saleDestinationRequired":
+    "اختر الحساب الذي أودعت فيه حصيلة البيع.",
   "accounts.details.metadata": "تفاصيل الحساب",
   "accounts.closedSection.title": "مغلق / مؤرشف",
   "accounts.soldSection.title": "مباع",
@@ -637,7 +681,8 @@ export const ar: Record<TranslationKey, string> = {
   "accounts.creditSummary.dueDay": "يوم الاستحقاق",
   "accounts.creditSummary.dueDayUnset": "غير محدد",
   "accounts.creditSummary.dueDayValue": "اليوم {{day}}",
-  "accounts.creditSummary.unavailable": "ملخص الائتمان غير متاح حتى تكون قيمة الحد والائتمان المتاح صحيحة.",
+  "accounts.creditSummary.unavailable":
+    "ملخص الائتمان غير متاح حتى تكون قيمة الحد والائتمان المتاح صحيحة.",
   "accounts.form.investmentType.label": "نوع الاستثمارات",
   "accounts.form.investmentType.stockEtf": "أسهم وصناديق مؤشرات",
   "accounts.form.investmentType.crypto": "عملات رقمية",
@@ -651,7 +696,8 @@ export const ar: Record<TranslationKey, string> = {
   "accounts.validation.nameRequired": "اسم الحساب مطلوب",
   "accounts.validation.balanceRequired": "الرصيد مطلوب",
   "accounts.validation.valuationDateRequired": "تاريخ التقييم مطلوب",
-  "accounts.validation.valuationDateFuture": "لا يمكن أن يكون تاريخ التقييم في المستقبل",
+  "accounts.validation.valuationDateFuture":
+    "لا يمكن أن يكون تاريخ التقييم في المستقبل",
   "accounts.validation.balanceInvalid":
     "أدخل مبلغًا غير سالب وبحد أقصى منزلتين عشريتين",
   "accounts.validation.bankSubtypeRequired": "اختر مدين أو ائتماني",
@@ -683,17 +729,26 @@ export const ar: Record<TranslationKey, string> = {
     "سيبقى الحساب متاحًا للسجلات التاريخية، لكنه سيُصنّف كحساب غير نشط.",
   "accounts.close.closing": "جارٍ الإغلاق…",
   "accounts.close.confirm": "إغلاق الحساب",
-  "accounts.close.blocked.remaining_cash": "انقل أو اسحب النقد المتبقي قبل إغلاق هذا الحساب.",
-  "accounts.close.blocked.remaining_value": "سوِّ القيمة المتبقية قبل إغلاق هذا الحساب.",
-  "accounts.close.blocked.outstanding_credit_balance": "سدّد الرصيد الائتماني المستحق قبل إغلاق هذا الحساب.",
-  "accounts.close.blocked.remaining_holdings": "بع أو أزل كل الاستثمارات المتبقية قبل إغلاق حساب الوساطة.",
-  "accounts.close.blocked.remaining_metal_quantity": "تخلّص من كمية المعدن المتبقية أو اعكسها قبل إغلاق الحساب.",
-  "accounts.close.blocked.ownership_still_held": "استخدم مسار البيع الكامل ما دامت ملكية العقار أو النشاط التجاري قائمة.",
-  "accounts.close.blocked.current_value_unavailable": "تعذر التحقق من القيمة الاقتصادية الحالية، لذلك لا يمكن إغلاق الحساب بأمان.",
+  "accounts.close.blocked.remaining_cash":
+    "انقل أو اسحب النقد المتبقي قبل إغلاق هذا الحساب.",
+  "accounts.close.blocked.remaining_value":
+    "سوِّ القيمة المتبقية قبل إغلاق هذا الحساب.",
+  "accounts.close.blocked.outstanding_credit_balance":
+    "سدّد الرصيد الائتماني المستحق قبل إغلاق هذا الحساب.",
+  "accounts.close.blocked.remaining_holdings":
+    "بع أو أزل كل الاستثمارات المتبقية قبل إغلاق حساب الوساطة.",
+  "accounts.close.blocked.remaining_metal_quantity":
+    "تخلّص من كمية المعدن المتبقية أو اعكسها قبل إغلاق الحساب.",
+  "accounts.close.blocked.ownership_still_held":
+    "استخدم مسار البيع الكامل ما دامت ملكية العقار أو النشاط التجاري قائمة.",
+  "accounts.close.blocked.current_value_unavailable":
+    "تعذر التحقق من القيمة الاقتصادية الحالية، لذلك لا يمكن إغلاق الحساب بأمان.",
   "accounts.close.blocked.already_closed": "هذا الحساب مغلق بالفعل.",
-  "accounts.close.blocked.sold_account": "تبقى الحسابات المباعة منفصلة ولا يمكن إغلاقها أو إعادة فتحها.",
+  "accounts.close.blocked.sold_account":
+    "تبقى الحسابات المباعة منفصلة ولا يمكن إغلاقها أو إعادة فتحها.",
   "accounts.reopen.title": "إعادة فتح {{name}}؟",
-  "accounts.reopen.description": "سيعود الحساب إلى الحسابات النشطة والتقييم الحالي.",
+  "accounts.reopen.description":
+    "سيعود الحساب إلى الحسابات النشطة والتقييم الحالي.",
   "accounts.reopen.reopening": "جارٍ إعادة الفتح…",
   "accounts.reopen.confirm": "إعادة فتح الحساب",
   "accounts.delete.title": "حذف {{name}} نهائيًا؟",
@@ -725,13 +780,16 @@ export const ar: Record<TranslationKey, string> = {
   "brokerage.netDividendReinvested": "صافي التوزيع",
   "brokerage.savingDividend": "جارٍ حفظ التوزيع...",
   "brokerage.dividendError": "تعذر تسجيل التوزيع.",
-  "brokerage.dividendCrossCurrencyUnsupported": "التوزيعات متعددة العملات غير مدعومة بعد.",
+  "brokerage.dividendCrossCurrencyUnsupported":
+    "التوزيعات متعددة العملات غير مدعومة بعد.",
   "brokerage.currentValue": "القيمة الحالية",
   "brokerage.totalHoldingsMarketValue": "إجمالي القيمة السوقية للحيازات",
   "brokerage.totalUnrealizedPnl": "إجمالي الربح/الخسارة غير المحققة",
-  "brokerage.totalUnrealizedPnlPercent": "إجمالي نسبة الربح/الخسارة غير المحققة %",
+  "brokerage.totalUnrealizedPnlPercent":
+    "إجمالي نسبة الربح/الخسارة غير المحققة %",
   "brokerage.currentValueUnavailable": "غير متاحة",
-  "brokerage.currentValueIncomplete": "القيمة الحالية غير مكتملة لأن بيانات السوق غير متاحة.",
+  "brokerage.currentValueIncomplete":
+    "القيمة الحالية غير مكتملة لأن بيانات السوق غير متاحة.",
   "brokerage.availableCashError": "تعذر تحميل النقد المتاح.",
   "brokerage.holdings": "الحيازات",
   "brokerage.holdingsError": "تعذر تحميل الحيازات.",
@@ -762,20 +820,26 @@ export const ar: Record<TranslationKey, string> = {
   "brokerage.searchExternalAssetsPlaceholder": "ابحث بالاسم أو الرمز",
   "brokerage.searchExternalAssetsMinimum": "أدخل حرفين على الأقل للبحث.",
   "brokerage.searchExternalAssetsLoading": "جارٍ البحث عن أصول خارجية...",
-  "brokerage.searchExternalAssetsUnavailable": "البحث عن الأصول الخارجية غير متاح مؤقتًا.",
+  "brokerage.searchExternalAssetsUnavailable":
+    "البحث عن الأصول الخارجية غير متاح مؤقتًا.",
   "brokerage.externalAssetCountry": "البلد",
   "brokerage.externalAssetSearchCountry": "دولة الإدراج (اختياري)",
-  "brokerage.externalAssetSearchCountryHelp": "استخدمها لتصفية نتائج البحث حسب دولة إدراج الأصل.",
+  "brokerage.externalAssetSearchCountryHelp":
+    "استخدمها لتصفية نتائج البحث حسب دولة إدراج الأصل.",
   "brokerage.searchExternalAssetsAllCountries": "كل الدول",
-  "brokerage.externalAssetNotSaved": "لم تتم إضافة هذه النتيجة إلى قائمة أصولك بعد.",
+  "brokerage.externalAssetNotSaved":
+    "لم تتم إضافة هذه النتيجة إلى قائمة أصولك بعد.",
   "brokerage.externalAssetResolving": "جارٍ إضافة الأصل إلى قائمتك...",
-  "brokerage.externalAssetSelected": "تم اختيار الأصل. أكمل تفاصيل الحيازة للمتابعة.",
-  "brokerage.externalAssetResolveError": "تعذرت إضافة هذا الأصل. يمكنك المحاولة مجددًا أو إضافته يدويًا.",
+  "brokerage.externalAssetSelected":
+    "تم اختيار الأصل. أكمل تفاصيل الحيازة للمتابعة.",
+  "brokerage.externalAssetResolveError":
+    "تعذرت إضافة هذا الأصل. يمكنك المحاولة مجددًا أو إضافته يدويًا.",
   "brokerage.addAssetManually": "إضافة أصل يدويًا",
   "brokerage.manualAssetDescription": "أنشئ سجل أصل خاصًا لهذه الحيازة.",
   "brokerage.averageHistoricalCost": "متوسط التكلفة التاريخية",
   "brokerage.historicalFxRate": "سعر الصرف التاريخي",
-  "brokerage.historicalFxRateHelp": "1 {{assetCurrency}} = X {{accountCurrency}}",
+  "brokerage.historicalFxRateHelp":
+    "1 {{assetCurrency}} = X {{accountCurrency}}",
   "brokerage.saveHolding": "حفظ الحيازة",
   "brokerage.createAsset": "إنشاء أصل",
   "brokerage.assetIdentityExists": "يوجد أصل بهذا السوق والرمز بالفعل.",
@@ -797,14 +861,17 @@ export const ar: Record<TranslationKey, string> = {
   "brokerage.marketValueUnavailable": "غير متاحة",
   "brokerage.marketValueStale": "قديمة",
   "brokerage.accountCurrencyMarketValue": "القيمة السوقية بعملة الحساب",
-  "brokerage.accountCurrencyMarketValueUnavailable": "غير متاحة (سعر الصرف الحالي غير متاح)",
+  "brokerage.accountCurrencyMarketValueUnavailable":
+    "غير متاحة (سعر الصرف الحالي غير متاح)",
   "brokerage.historicalAverageCost": "متوسط التكلفة التاريخية",
   "brokerage.accountCostEffect": "أثر تكلفة الحساب",
   "brokerage.editExistingHolding": "تعديل الحيازة الحالية",
   "brokerage.holdingEditError": "تعذر تحديث هذه الحيازة الحالية.",
-  "brokerage.holdingChangedError": "تغيرت هذه الحيازة الحالية بالفعل. تم تحديث السجل.",
+  "brokerage.holdingChangedError":
+    "تغيرت هذه الحيازة الحالية بالفعل. تم تحديث السجل.",
   "brokerage.deleteHoldingTitle": "حذف هذه الحيازة الحالية؟",
-  "brokerage.deleteHoldingDescription": "ستُزال هذه العملية من سجل الحيازة وإجمالياتها.",
+  "brokerage.deleteHoldingDescription":
+    "ستُزال هذه العملية من سجل الحيازة وإجمالياتها.",
   "brokerage.deletingHolding": "جارٍ الحذف...",
   "brokerage.holdingDeleteError": "تعذر حذف هذه الحيازة الحالية.",
   "accountType.cash": "نقد",

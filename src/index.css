@@ -205,16 +205,8 @@
   --radius-surface: 1rem;
   --radius-feature: 1.25rem;
 
-  --border-subtle: color-mix(
-    in srgb,
-    var(--color-border) 62%,
-    transparent
-  );
-  --border-quiet: color-mix(
-    in srgb,
-    var(--color-border) 38%,
-    transparent
-  );
+  --border-subtle: color-mix(in srgb, var(--color-border) 62%, transparent);
+  --border-quiet: color-mix(in srgb, var(--color-border) 38%, transparent);
 
   --shadow-quiet: 0 1px 2px rgba(15, 23, 42, 0.02);
   --shadow-feature: 0 12px 36px rgba(15, 23, 42, 0.035);
@@ -244,7 +236,12 @@ body {
   background: var(--color-background);
   color: var(--color-text-primary);
   font-family:
-    Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+    Inter,
+    ui-sans-serif,
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
     sans-serif;
   transition:
     background-color 180ms ease,
@@ -322,6 +319,116 @@ select {
     transform 180ms ease;
 }
 
+.tharwati-dashboard-hero {
+  border: 1px solid var(--color-border);
+  border-radius: 1.5rem;
+  background:
+    radial-gradient(
+      circle at 100% 0%,
+      color-mix(in srgb, var(--color-primary) 18%, transparent),
+      transparent 44%
+    ),
+    var(--color-surface-elevated);
+  box-shadow: var(--shadow-card);
+}
+
+.tharwati-dashboard-page {
+  position: relative;
+  isolation: isolate;
+  gap: clamp(0.75rem, 1.8vw, 1.25rem);
+}
+
+.tharwati-dashboard-masthead {
+  min-height: clamp(8.75rem, 14vw, 11rem);
+  padding-top: clamp(0.25rem, 1vw, 0.75rem);
+  color: #fff;
+  text-shadow: 0 2px 18px rgba(0, 0, 0, 0.72);
+}
+
+.tharwati-dashboard-greeting {
+  font-size: clamp(1rem, 1.6vw, 1.25rem);
+  font-weight: 600;
+}
+
+.tharwati-dashboard-title {
+  color: #fff;
+  font-size: clamp(2rem, 3.6vw, 3.5rem);
+  font-weight: 850;
+  letter-spacing: -0.045em;
+  line-height: 1.04;
+}
+
+.tharwati-dashboard-date {
+  color: rgba(255, 255, 255, 0.9);
+  font-weight: 600;
+}
+
+.tharwati-dashboard-bell {
+  border: 1px solid rgba(255, 255, 255, 0.42);
+  background: rgba(4, 15, 18, 0.35);
+  color: #fff;
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.22);
+  backdrop-filter: blur(12px);
+}
+
+.tharwati-dashboard-page::before {
+  position: absolute;
+  z-index: -1;
+  inset: calc(-1 * var(--space-page-block)) calc(-1 * var(--space-page-inline))
+    auto;
+  height: clamp(15rem, 23vw, 20rem);
+  pointer-events: none;
+  content: "";
+  background-image:
+    linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--color-background) 8%, transparent) 0%,
+      color-mix(in srgb, var(--color-background) 42%, transparent) 62%,
+      var(--color-background) 100%
+    ),
+    url("./assets/dashboard-mountain.png");
+  background-position:
+    center,
+    center top;
+  background-size: cover;
+}
+
+:root[data-theme="light"] .tharwati-dashboard-page::before {
+  background-image:
+    linear-gradient(
+      180deg,
+      rgba(238, 243, 240, 0.08) 0%,
+      rgba(238, 243, 240, 0.43) 62%,
+      #eef3f0 100%
+    ),
+    url("./assets/dashboard-mountain.png");
+}
+
+:root[data-theme="colorful"] .tharwati-dashboard-page::before {
+  background-image:
+    linear-gradient(
+      180deg,
+      rgba(237, 244, 255, 0.08) 0%,
+      rgba(237, 244, 255, 0.42) 62%,
+      #edf4ff 100%
+    ),
+    url("./assets/dashboard-mountain.png");
+}
+
+@media (max-width: 39.999rem) {
+  .tharwati-dashboard-page::before {
+    height: 17rem;
+    background-position:
+      center,
+      58% top;
+  }
+
+  .tharwati-dashboard-masthead {
+    min-height: 9rem;
+    padding-top: 0;
+  }
+}
+
 .tharwati-card-hover:hover {
   transform: translateY(-2px);
   box-shadow: var(--shadow-card-hover);
@@ -393,7 +500,8 @@ select {
 
 .tharwati-input:focus {
   border-color: var(--color-primary);
-  box-shadow: 0 0 0 4px color-mix(in srgb, var(--color-primary) 12%, transparent);
+  box-shadow: 0 0 0 4px
+    color-mix(in srgb, var(--color-primary) 12%, transparent);
 }
 
 .tharwati-label {
@@ -596,6 +704,10 @@ select {
   }
 
   .tharwati-card {
+    border-radius: 1rem;
+  }
+
+  .tharwati-dashboard-hero {
     border-radius: 1rem;
   }
 }

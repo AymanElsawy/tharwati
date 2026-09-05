@@ -183,7 +183,7 @@ export function DashboardLayout() {
   return (
     <div className="theme-transition min-h-screen overflow-x-clip bg-[var(--color-background)]">
       <aside className="fixed inset-y-0 start-0 z-20 hidden w-[var(--layout-sidebar-width)] flex-col border-e border-[var(--border-subtle)] bg-[var(--color-sidebar)] px-6 py-9 shadow-[2px_0_20px_rgba(15,23,42,0.025)] lg:flex">
-        {navigation()}
+        {navigation(undefined, true)}
       </aside>
 
       <Sheet
@@ -203,7 +203,7 @@ export function DashboardLayout() {
         </SheetContent>
 
         <div className="min-h-screen lg:ms-[var(--layout-sidebar-width)]">
-          <header className="sticky top-0 z-10 flex min-h-13 items-center border-b border-[var(--border-subtle)] bg-[var(--color-header)] px-[var(--space-page-inline)] py-1 backdrop-blur-xl lg:min-h-11">
+          <header className="sticky top-0 z-10 flex min-h-13 items-center border-b border-[var(--border-subtle)] bg-[var(--color-header)] px-[var(--space-page-inline)] py-1 backdrop-blur-xl lg:hidden">
             <div className="grid w-full min-w-0 grid-cols-[2.75rem_minmax(0,1fr)_2.75rem] items-center gap-2 lg:hidden">
               <SheetTrigger
                 render={
@@ -216,50 +216,19 @@ export function DashboardLayout() {
               >
                 <Menu size={20} />
               </SheetTrigger>
-              <span className="min-w-0 truncate text-center font-heading text-base font-black text-[var(--color-primary)]">
+              <span className="font-heading min-w-0 truncate text-center text-base font-black text-[var(--color-primary)]">
                 Tharwati
               </span>
-              <div className="flex size-11 items-center justify-center overflow-hidden rounded-full" title={t("header.tagline")}>
+              <div
+                className="flex size-11 items-center justify-center overflow-hidden rounded-full"
+                title={t("header.tagline")}
+              >
                 <AuthenticatedUserHeader compact />
-              </div>
-            </div>
-
-            <div className="hidden w-full min-w-0 items-center justify-between gap-2 lg:flex">
-              <AuthenticatedUserHeader />
-              <div className="flex shrink-0 items-center gap-2">
-                <LanguageSwitcher />
-                <div className="flex items-center rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-1">
-                  {themeOptions.map((option) => {
-                    const Icon = option.icon
-                    const isSelected = theme === option.value
-                    const label = t(option.labelKey)
-
-                    return (
-                      <button
-                        key={option.value}
-                        type="button"
-                        onClick={() => setTheme(option.value)}
-                        aria-label={t("theme.use", { theme: label })}
-                        aria-pressed={isSelected}
-                        title={label}
-                        className={[
-                          "flex size-8 items-center justify-center rounded-lg text-sm font-semibold transition xl:size-auto xl:px-2.5 xl:py-1.5",
-                          isSelected
-                            ? "bg-[var(--color-primary)] text-[var(--color-text-on-primary)] shadow-sm"
-                            : "text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text-primary)]",
-                        ].join(" ")}
-                      >
-                        <Icon size={17} />
-                        <span className="hidden xl:inline">{label}</span>
-                      </button>
-                    )
-                  })}
-                </div>
               </div>
             </div>
           </header>
 
-          <main className="min-h-[calc(100vh-2.75rem)] bg-[var(--color-background)] px-[var(--space-page-inline)] py-[var(--space-page-block)]">
+          <main className="min-h-[calc(100vh-2.75rem)] bg-[var(--color-background)] px-[var(--space-page-inline)] py-[var(--space-page-block)] lg:min-h-screen">
             <div className="tharwati-content-frame">
               <Outlet />
             </div>

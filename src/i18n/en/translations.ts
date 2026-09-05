@@ -10,10 +10,13 @@ export const en = {
   "common.loading": "Loading…",
   "common.optional": "optional",
   "auth.forgotPassword": "Forgot password?",
-  "auth.loginError": "We couldn't log you in. Check your email and password, then try again.",
+  "auth.loginError":
+    "We couldn't log you in. Check your email and password, then try again.",
   "auth.password.placeholder": "At least {{count}} characters",
-  "auth.password.requirements": "Use at least {{count}} characters, including a lowercase letter, an uppercase letter, and a number.",
-  "auth.password.weak": "Your password must meet the requirements listed above.",
+  "auth.password.requirements":
+    "Use at least {{count}} characters, including a lowercase letter, an uppercase letter, and a number.",
+  "auth.password.weak":
+    "Your password must meet the requirements listed above.",
   "auth.password.mismatch": "The two passwords don't match.",
   "unsaved.title": "Discard unsaved changes?",
   "unsaved.description": "Your entered information will be lost.",
@@ -44,37 +47,49 @@ export const en = {
   "settings.profile.title": "Profile",
   "settings.profile.fullName": "Full name",
   "settings.profile.email": "Email",
-  "settings.profile.emailComingSoon": "Email changes will be available in a future update.",
+  "settings.profile.emailComingSoon":
+    "Email changes will be available in a future update.",
   "settings.profile.save": "Save changes",
   "settings.profile.saving": "Saving…",
   "settings.profile.saved": "Profile updated.",
   "settings.profile.error": "We couldn’t save your profile. Try again.",
   "settings.privacy.title": "Privacy & Data",
-  "settings.export.description": "Download a JSON copy of your personal data. This can take a moment.",
+  "settings.export.description":
+    "Download a JSON copy of your personal data. This can take a moment.",
   "settings.export.action": "Download my data",
   "settings.export.loading": "Preparing download…",
   "settings.export.success": "Your download has started.",
-  "settings.export.rateLimited": "Please wait a minute before requesting another export.",
-  "settings.export.tooLarge": "Your export is too large to prepare right now. Please contact support.",
-  "settings.export.authExpired": "Your session has expired. Please sign in again.",
+  "settings.export.rateLimited":
+    "Please wait a minute before requesting another export.",
+  "settings.export.tooLarge":
+    "Your export is too large to prepare right now. Please contact support.",
+  "settings.export.authExpired":
+    "Your session has expired. Please sign in again.",
   "settings.export.error": "We couldn’t prepare your download. Try again.",
   "settings.legal.title": "Privacy Policy & Terms",
-  "settings.legal.comingSoon": "Privacy Policy and Terms links will be available before launch.",
+  "settings.legal.comingSoon":
+    "Privacy Policy and Terms links will be available before launch.",
   "settings.delete.title": "Delete account",
-  "settings.delete.description": "Permanently delete your account and all of its financial data.",
+  "settings.delete.description":
+    "Permanently delete your account and all of its financial data.",
   "settings.delete.action": "Delete account",
   "settings.delete.dialogTitle": "Permanently delete account",
-  "settings.delete.passwordDescription": "First, confirm your identity with your current password.",
-  "settings.delete.confirmDescription": "One final confirmation is required before your account is permanently deleted.",
+  "settings.delete.passwordDescription":
+    "First, confirm your identity with your current password.",
+  "settings.delete.confirmDescription":
+    "One final confirmation is required before your account is permanently deleted.",
   "settings.delete.downloadFirst": "Download my data first",
   "settings.delete.passwordLabel": "Current password",
-  "settings.delete.passwordError": "That password could not be verified. Try again.",
+  "settings.delete.passwordError":
+    "That password could not be verified. Try again.",
   "settings.delete.checking": "Checking…",
-  "settings.delete.permanentWarning": "This permanently deletes your account, accounts, transactions, goals, and other saved data. This cannot be undone.",
+  "settings.delete.permanentWarning":
+    "This permanently deletes your account, accounts, transactions, goals, and other saved data. This cannot be undone.",
   "settings.delete.confirmLabel": "Type your email exactly to confirm",
   "settings.delete.permanentAction": "Permanently delete account",
   "settings.delete.deleting": "Deleting…",
-  "settings.delete.failure": "We couldn’t delete your account. Re-enter your password and try again.",
+  "settings.delete.failure":
+    "We couldn’t delete your account. Re-enter your password and try again.",
   "theme.use": "Use {{theme}} theme",
   "theme.light": "Light",
   "theme.dark": "Dark",
@@ -82,6 +97,26 @@ export const en = {
   "pages.dashboard.eyebrow": "Financial overview",
   "pages.dashboard.title": "Your wealth at a glance",
   "pages.dashboard.description": "See your accounts and balances at a glance.",
+  "dashboard.hero.greeting": "Welcome back",
+  "dashboard.hero.personalGreeting": "Good afternoon, {{name}} 👋",
+  "dashboard.hero.guest": "there",
+  "dashboard.hero.notifications": "Notifications",
+  "dashboard.hero.accountsCount": "Accounts",
+  "dashboard.insights.title": "Key insights",
+  "dashboard.insights.description":
+    "Current dashboard data quality and attention.",
+  "dashboard.insights.incompleteTitle": "Some values need attention",
+  "dashboard.insights.incompleteDescription":
+    "Net worth stays unavailable until all required current values and exchange rates resolve.",
+  "dashboard.insights.staleTitle": "Valuation snapshot is stale",
+  "dashboard.insights.staleDescription":
+    "Values remain from the latest available dashboard snapshot.",
+  "dashboard.insights.emptyTitle": "Start with an account",
+  "dashboard.insights.emptyDescription":
+    "Add an account to begin building your financial picture.",
+  "dashboard.insights.readyTitle": "Dashboard values are available",
+  "dashboard.insights.readyDescription":
+    "Totals use the current dashboard valuation snapshot.",
   "dashboard.accountsOverview.title": "Accounts overview",
   "dashboard.accountsOverview.description":
     "Active balances grouped by account type",
@@ -89,7 +124,8 @@ export const en = {
     "Add an account to see balances grouped by type.",
   "dashboard.accountsOverview.accountCount": "{{count}} accounts",
   "dashboard.accountsOverview.totalCurrentValue": "Total current value",
-  "dashboard.accountsOverview.currentValueUnavailable": "Current value unavailable",
+  "dashboard.accountsOverview.currentValueUnavailable":
+    "Current value unavailable",
   "dashboard.accountsOverview.metalUnits": "{{units}} g",
   "dashboard.accountsOverview.costPerUnit":
     "Bought at {{price}} {{currency}}/g",
@@ -121,11 +157,13 @@ export const en = {
     "Choose a base currency in onboarding to see your net worth here.",
   "dashboard.netWorth.completeOnboarding": "Complete onboarding",
   "dashboard.netWorth.unavailable": "Net worth is temporarily unavailable",
-  "dashboard.netWorth.incomplete": "Some current values are unavailable, so net worth cannot be calculated.",
+  "dashboard.netWorth.incomplete":
+    "Some current values are unavailable, so net worth cannot be calculated.",
   "dashboard.assetsBreakdown.title": "Assets breakdown",
   "dashboard.assetsBreakdown.description": "Current assets by account type",
   "dashboard.assetsBreakdown.loading": "Loading assets breakdown",
-  "dashboard.assetsBreakdown.unavailable": "Assets breakdown is unavailable until all current values are resolved.",
+  "dashboard.assetsBreakdown.unavailable":
+    "Assets breakdown is unavailable until all current values are resolved.",
   "dashboard.assetsBreakdown.empty": "No positive asset values to display yet.",
   "dashboard.assetsBreakdown.chartLabel": "Assets breakdown chart",
   "dashboard.assetsBreakdown.legendLabel": "Assets breakdown legend",
@@ -138,10 +176,13 @@ export const en = {
   "dashboard.assetsBreakdown.totalLiabilities": "Total liabilities",
   "dashboard.assetsBreakdown.totalAssets": "Total assets",
   "dashboard.portfolioAllocation.title": "Portfolio allocation",
-  "dashboard.portfolioAllocation.description": "Current Brokerage investments by asset type",
+  "dashboard.portfolioAllocation.description":
+    "Current Brokerage investments by asset type",
   "dashboard.portfolioAllocation.loading": "Loading portfolio allocation",
-  "dashboard.portfolioAllocation.unavailable": "Portfolio allocation is unavailable until all Brokerage holdings have current values.",
-  "dashboard.portfolioAllocation.empty": "No positive Brokerage holdings to display yet.",
+  "dashboard.portfolioAllocation.unavailable":
+    "Portfolio allocation is unavailable until all Brokerage holdings have current values.",
+  "dashboard.portfolioAllocation.empty":
+    "No positive Brokerage holdings to display yet.",
   "dashboard.portfolioAllocation.chartLabel": "Portfolio allocation chart",
   "dashboard.portfolioAllocation.legendLabel": "Portfolio allocation legend",
   "dashboard.portfolioAllocation.stocks": "Stocks",
@@ -423,9 +464,12 @@ export const en = {
   "accounts.metalPurchase.delete": "Delete purchase",
   "accounts.metalPurchase.deleting": "Deleting...",
   "accounts.metalPurchase.deleteTitle": "Delete this purchase?",
-  "accounts.metalPurchase.deleteDescription": "This purchase will be removed from the account history and totals.",
-  "accounts.metalPurchase.deleteError": "We couldn't delete this purchase. Please try again.",
-  "accounts.metalPurchase.editError": "We couldn't save this purchase. Please try again.",
+  "accounts.metalPurchase.deleteDescription":
+    "This purchase will be removed from the account history and totals.",
+  "accounts.metalPurchase.deleteError":
+    "We couldn't delete this purchase. Please try again.",
+  "accounts.metalPurchase.editError":
+    "We couldn't save this purchase. Please try again.",
   "accounts.metalPurchase.actions": "Purchase actions",
   "accounts.metalPurchase.paidFrom": "Paid from",
   "accounts.metalPurchase.fundingAccountRequired": "Select an account",
@@ -492,7 +536,8 @@ export const en = {
   "accounts.records.delete": "Delete record",
   "accounts.records.deleting": "Deleting...",
   "accounts.records.deleteTitle": "Delete record?",
-  "accounts.records.deleteDescription": "This will remove the record from your history. Your account balances will be updated.",
+  "accounts.records.deleteDescription":
+    "This will remove the record from your history. Your account balances will be updated.",
   "accounts.records.type": "Record type",
   "accounts.records.expense": "Expense",
   "accounts.records.income": "Income",
@@ -524,10 +569,12 @@ export const en = {
   "accounts.records.notes": "Notes (optional)",
   "accounts.records.fxError": "A current exchange rate is unavailable.",
   "accounts.records.validation.account": "Select an account.",
-  "accounts.records.validation.amount": "Enter a positive amount with up to 2 decimal places.",
+  "accounts.records.validation.amount":
+    "Enter a positive amount with up to 2 decimal places.",
   "accounts.records.validation.date": "Date and time are required.",
   "accounts.records.validation.category": "Category is required.",
-  "accounts.records.validation.differentAccounts": "From and to accounts must be different.",
+  "accounts.records.validation.differentAccounts":
+    "From and to accounts must be different.",
   "accounts.table.name": "Account name",
   "accounts.table.type": "Type",
   "accounts.table.currency": "Currency",
@@ -573,15 +620,18 @@ export const en = {
   "accounts.disposal.saleCurrency": "Sale currency",
   "accounts.disposal.destinationAccount": "Where did the money go?",
   "accounts.disposal.destinationPlaceholder": "Select a Cash or Bank account",
-  "accounts.disposal.noDestinationAccounts": "No active Cash or Bank account uses this currency.",
+  "accounts.disposal.noDestinationAccounts":
+    "No active Cash or Bank account uses this currency.",
   "accounts.disposal.ownershipSold": "Ownership sold (%)",
   "accounts.disposal.saleDate": "Sale date",
   "accounts.disposal.notes": "Sale note (optional)",
-  "accounts.disposal.fullSaleOnly": "This sale exits your remaining {{percentage}}% ownership.",
+  "accounts.disposal.fullSaleOnly":
+    "This sale exits your remaining {{percentage}}% ownership.",
   "accounts.disposal.history": "Sale history",
   "accounts.disposal.sold": "Sold",
   "accounts.validation.saleAmount": "Enter a valid non-negative sale amount.",
-  "accounts.validation.saleDestinationRequired": "Select where the sale proceeds were deposited.",
+  "accounts.validation.saleDestinationRequired":
+    "Select where the sale proceeds were deposited.",
   "accounts.details.metadata": "Account details",
   "accounts.closedSection.title": "Closed / Archived",
   "accounts.soldSection.title": "Sold",
@@ -622,7 +672,8 @@ export const en = {
   "accounts.form.industry.education": "Education",
   "accounts.form.industry.professionalServices": "Professional Services",
   "accounts.form.industry.financialServices": "Financial Services",
-  "accounts.form.industry.logisticsTransportation": "Logistics & Transportation",
+  "accounts.form.industry.logisticsTransportation":
+    "Logistics & Transportation",
   "accounts.form.industry.hospitalityTourism": "Hospitality & Tourism",
   "accounts.form.industry.agriculture": "Agriculture",
   "accounts.form.industry.other": "Other",
@@ -651,7 +702,8 @@ export const en = {
   "accounts.creditSummary.dueDay": "Due Day",
   "accounts.creditSummary.dueDayUnset": "Not set",
   "accounts.creditSummary.dueDayValue": "Day {{day}}",
-  "accounts.creditSummary.unavailable": "Credit summary is unavailable until the credit limit and available credit are valid.",
+  "accounts.creditSummary.unavailable":
+    "Credit summary is unavailable until the credit limit and available credit are valid.",
   "accounts.form.investmentType.label": "Type of investments",
   "accounts.form.investmentType.stockEtf": "Stock & ETF",
   "accounts.form.investmentType.crypto": "Crypto",
@@ -665,7 +717,8 @@ export const en = {
   "accounts.validation.nameRequired": "Name is required",
   "accounts.validation.balanceRequired": "Balance is required",
   "accounts.validation.valuationDateRequired": "Valuation date is required",
-  "accounts.validation.valuationDateFuture": "Valuation date cannot be in the future",
+  "accounts.validation.valuationDateFuture":
+    "Valuation date cannot be in the future",
   "accounts.validation.balanceInvalid":
     "Enter a non-negative amount with up to 2 decimal places",
   "accounts.validation.bankSubtypeRequired": "Select debit or credit",
@@ -696,20 +749,30 @@ export const en = {
   "accounts.validation.costPerUnitInvalid":
     "Enter a non-negative amount with up to 2 decimal places",
   "accounts.close.title": "Close {{name}}?",
-  "accounts.close.description": "The account will be hidden from active accounts and current wealth while its full financial history remains preserved.",
+  "accounts.close.description":
+    "The account will be hidden from active accounts and current wealth while its full financial history remains preserved.",
   "accounts.close.closing": "Closing…",
   "accounts.close.confirm": "Close account",
-  "accounts.close.blocked.remaining_cash": "Move or withdraw the remaining cash before closing this account.",
-  "accounts.close.blocked.remaining_value": "Settle the remaining account value before closing this account.",
-  "accounts.close.blocked.outstanding_credit_balance": "Pay the outstanding credit balance before closing this account.",
-  "accounts.close.blocked.remaining_holdings": "Sell or remove all remaining holdings before closing this Brokerage account.",
-  "accounts.close.blocked.remaining_metal_quantity": "Dispose of or reverse all remaining metal quantity before closing this account.",
-  "accounts.close.blocked.ownership_still_held": "Use the full-sale flow while Real Estate or Business ownership is still held.",
-  "accounts.close.blocked.current_value_unavailable": "The current economic value could not be verified, so this account cannot be closed safely.",
+  "accounts.close.blocked.remaining_cash":
+    "Move or withdraw the remaining cash before closing this account.",
+  "accounts.close.blocked.remaining_value":
+    "Settle the remaining account value before closing this account.",
+  "accounts.close.blocked.outstanding_credit_balance":
+    "Pay the outstanding credit balance before closing this account.",
+  "accounts.close.blocked.remaining_holdings":
+    "Sell or remove all remaining holdings before closing this Brokerage account.",
+  "accounts.close.blocked.remaining_metal_quantity":
+    "Dispose of or reverse all remaining metal quantity before closing this account.",
+  "accounts.close.blocked.ownership_still_held":
+    "Use the full-sale flow while Real Estate or Business ownership is still held.",
+  "accounts.close.blocked.current_value_unavailable":
+    "The current economic value could not be verified, so this account cannot be closed safely.",
   "accounts.close.blocked.already_closed": "This account is already closed.",
-  "accounts.close.blocked.sold_account": "Sold accounts remain separate and cannot be closed or reopened.",
+  "accounts.close.blocked.sold_account":
+    "Sold accounts remain separate and cannot be closed or reopened.",
   "accounts.reopen.title": "Reopen {{name}}?",
-  "accounts.reopen.description": "The account will return to active accounts and current valuation.",
+  "accounts.reopen.description":
+    "The account will return to active accounts and current valuation.",
   "accounts.reopen.reopening": "Reopening…",
   "accounts.reopen.confirm": "Reopen account",
   "accounts.delete.title": "Permanently delete {{name}}?",
@@ -741,13 +804,15 @@ export const en = {
   "brokerage.netDividendReinvested": "Net Dividend",
   "brokerage.savingDividend": "Saving dividend...",
   "brokerage.dividendError": "Unable to record dividend.",
-  "brokerage.dividendCrossCurrencyUnsupported": "Cross-currency dividends are not supported yet.",
+  "brokerage.dividendCrossCurrencyUnsupported":
+    "Cross-currency dividends are not supported yet.",
   "brokerage.currentValue": "Current Value",
   "brokerage.totalHoldingsMarketValue": "Total holdings market value",
   "brokerage.totalUnrealizedPnl": "Total Unrealized P/L",
   "brokerage.totalUnrealizedPnlPercent": "Total Unrealized P/L %",
   "brokerage.currentValueUnavailable": "Unavailable",
-  "brokerage.currentValueIncomplete": "Current value is incomplete because market data is unavailable.",
+  "brokerage.currentValueIncomplete":
+    "Current value is incomplete because market data is unavailable.",
   "brokerage.availableCashError": "Unable to load available cash.",
   "brokerage.holdings": "Holdings",
   "brokerage.activity": "Activity",
@@ -766,7 +831,8 @@ export const en = {
   "brokerage.sellError": "Unable to complete this sale.",
   "brokerage.currentQuantity": "Current quantity",
   "brokerage.unitSalePrice": "Unit sale price",
-  "brokerage.sellQuantityExceeded": "Quantity cannot exceed the current holding.",
+  "brokerage.sellQuantityExceeded":
+    "Quantity cannot exceed the current holding.",
   "brokerage.grossProceeds": "Gross proceeds",
   "brokerage.netProceeds": "Net proceeds",
   "brokerage.cashProceeds": "Brokerage cash proceeds",
@@ -776,25 +842,34 @@ export const en = {
   "brokerage.noAssets": "No assets available yet",
   "brokerage.searchExternalAssets": "Search external assets",
   "brokerage.searchExternalAssetsPlaceholder": "Search by name or ticker",
-  "brokerage.searchExternalAssetsMinimum": "Enter at least 2 characters to search.",
+  "brokerage.searchExternalAssetsMinimum":
+    "Enter at least 2 characters to search.",
   "brokerage.searchExternalAssetsLoading": "Searching external assets...",
-  "brokerage.searchExternalAssetsUnavailable": "External asset search is temporarily unavailable.",
+  "brokerage.searchExternalAssetsUnavailable":
+    "External asset search is temporarily unavailable.",
   "brokerage.externalAssetCountry": "Country",
   "brokerage.externalAssetSearchCountry": "Listing country (optional)",
-  "brokerage.externalAssetSearchCountryHelp": "Filter asset search by listing country.",
+  "brokerage.externalAssetSearchCountryHelp":
+    "Filter asset search by listing country.",
   "brokerage.searchExternalAssetsAllCountries": "All countries",
-  "brokerage.externalAssetNotSaved": "This result has not been added to your asset catalog yet.",
+  "brokerage.externalAssetNotSaved":
+    "This result has not been added to your asset catalog yet.",
   "brokerage.externalAssetResolving": "Adding asset to your catalog...",
-  "brokerage.externalAssetSelected": "Asset selected. Complete the holding details to continue.",
-  "brokerage.externalAssetResolveError": "Unable to add this asset. You can try again or add it manually.",
+  "brokerage.externalAssetSelected":
+    "Asset selected. Complete the holding details to continue.",
+  "brokerage.externalAssetResolveError":
+    "Unable to add this asset. You can try again or add it manually.",
   "brokerage.addAssetManually": "Add asset manually",
-  "brokerage.manualAssetDescription": "Create a private asset record for this holding.",
+  "brokerage.manualAssetDescription":
+    "Create a private asset record for this holding.",
   "brokerage.averageHistoricalCost": "Average historical cost",
   "brokerage.historicalFxRate": "Historical FX Rate",
-  "brokerage.historicalFxRateHelp": "1 {{assetCurrency}} = X {{accountCurrency}}",
+  "brokerage.historicalFxRateHelp":
+    "1 {{assetCurrency}} = X {{accountCurrency}}",
   "brokerage.saveHolding": "Save holding",
   "brokerage.createAsset": "Create asset",
-  "brokerage.assetIdentityExists": "An asset with this exchange and symbol is already available.",
+  "brokerage.assetIdentityExists":
+    "An asset with this exchange and symbol is already available.",
   "brokerage.holdingDetails": "Holding details",
   "brokerage.holdingHistory": "History",
   "brokerage.noHoldingHistory": "No existing holding activity yet.",
@@ -813,14 +888,17 @@ export const en = {
   "brokerage.marketValueUnavailable": "Unavailable",
   "brokerage.marketValueStale": "stale",
   "brokerage.accountCurrencyMarketValue": "Account-currency market value",
-  "brokerage.accountCurrencyMarketValueUnavailable": "Unavailable (current FX unavailable)",
+  "brokerage.accountCurrencyMarketValueUnavailable":
+    "Unavailable (current FX unavailable)",
   "brokerage.historicalAverageCost": "Historical average cost",
   "brokerage.accountCostEffect": "Account cost effect",
   "brokerage.editExistingHolding": "Edit existing holding",
   "brokerage.holdingEditError": "Unable to update this existing holding.",
-  "brokerage.holdingChangedError": "This existing holding has already changed. The history was refreshed.",
+  "brokerage.holdingChangedError":
+    "This existing holding has already changed. The history was refreshed.",
   "brokerage.deleteHoldingTitle": "Delete this existing holding?",
-  "brokerage.deleteHoldingDescription": "This entry will be removed from the holding history and totals.",
+  "brokerage.deleteHoldingDescription":
+    "This entry will be removed from the holding history and totals.",
   "brokerage.deletingHolding": "Deleting...",
   "brokerage.holdingDeleteError": "Unable to delete this existing holding.",
   "accountType.cash": "Cash",

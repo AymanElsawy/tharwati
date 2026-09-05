@@ -23,11 +23,13 @@ describe("DashboardGoalsCard", () => {
     expect(componentSource).not.toContain("baseCurrency")
   })
 
-  it("uses compact desktop columns and a stacked mobile row layout", () => {
+  it("keeps goals stacked inside the narrower desktop Dashboard column", () => {
     expect(componentSource).toContain(
-      "lg:grid-cols-[minmax(0,1fr)_minmax(12rem,0.7fr)_minmax(10rem,0.55fr)]"
+      "xl:grid-cols-1 2xl:grid-cols-[minmax(0,1fr)_minmax(12rem,0.7fr)_minmax(10rem,0.55fr)]"
     )
-    expect(componentSource).toContain("sm:col-span-2 lg:col-span-1")
+    expect(componentSource).toContain(
+      "sm:col-span-2 xl:col-span-1 2xl:col-span-1"
+    )
     expect(componentSource).toContain('className="min-w-0 flex-1"')
     expect(componentSource).toContain('className="mt-3 sm:mt-5"')
   })
