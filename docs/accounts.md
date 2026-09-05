@@ -27,7 +27,7 @@ create table public.financial_accounts (
   opening_balance numeric(20, 2) not null default 0,
   is_active boolean not null default true,
   notes text,
-  bank_subtype text,                          -- 'debit' | 'credit', only when type = bank
+  bank_subtype text,                          -- required 'debit' | 'credit' for bank; null otherwise
   credit_card_limit numeric(20, 2),           -- positive when set; only for bank credit accounts
   due_day_of_month integer,                   -- optional 1-31; only for bank credit accounts
   investment_type text,                       -- 'stock_etf' | 'crypto' | 'other', only when type = brokerage
@@ -52,7 +52,7 @@ Key constraints:
 
 - `name` cannot be blank.
 - `currency_code` restricted to `USD | SAR | EGP | EUR | GBP` (fixed 5-item enum, not user-extensible).
-- All type-specific columns are nullable but constrained via CHECK to only be non-null for their matching `account_type_code`.
+- Type-specific columns are nullable at the column level and constrained via CHECK to match their `account_type_code`. In particular, every Bank account must have `bank_subtype = 'debit' | 'credit'`, while every non-bank account must have `bank_subtype = null`.
 - `credit_card_limit`, when present, must be positive, and `opening_balance` (available credit) must be between zero and that limit. `due_day_of_month`, when present, must be between 1 and 31. Both credit-only columns must remain null unless the account is a bank account with `bank_subtype = 'credit'`.
 - `metal_type` is **required** when `account_type_code = 'gold'`, and must be `null` otherwise.
 - Purity enum depends on `metal_type`: gold → `24k,22k,21k,18k,14k,10k,9k,other`; silver → `999,958,950,925,900,835,800,other`.

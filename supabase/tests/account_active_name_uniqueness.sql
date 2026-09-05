@@ -1,6 +1,6 @@
 begin;
 
-\echo 1..7
+\echo 1..8
 
 create or replace function pg_temp.expect_name_conflict(p_statement text)
 returns void
@@ -114,11 +114,23 @@ select pg_temp.expect_name_conflict($sql$
 $sql$);
 \echo ok 6 - reopen rejects same normalized name and same account type
 
+update public.financial_accounts
+set name = ' reopen different '
+where id = '2c000000-0000-4000-8000-000000000008';
+do $test$ begin
+  if not exists (
+    select 1 from public.financial_accounts
+    where id = '2c000000-0000-4000-8000-000000000008'
+      and name = ' reopen different '
+  ) then raise exception 'cross-subtype rename did not persist'; end if;
+end; $test$;
+\echo ok 7 - rename to a name used by the other Bank subtype is allowed
+
 select pg_temp.expect_name_conflict($sql$
   update public.financial_accounts
   set name = ' misr '
   where id = '2c000000-0000-4000-8000-000000000008'
 $sql$);
-\echo ok 7 - rename to same normalized name and type is rejected
+\echo ok 8 - rename to same normalized name and type is rejected
 
 rollback;
