@@ -20,7 +20,10 @@ import { MetalPurchaseEntryDialog } from "@/features/accounts/components/MetalPu
 import { useAccounts } from "@/features/accounts/hooks/useAccounts"
 import { useAccountCurrentValues } from "@/features/accounts/hooks/useAccountCurrentValues"
 import { resolveAccountListCurrentValue } from "@/features/accounts/utils/account-list-current-value"
-import { isSoldAccount, partitionAccountLifecycle } from "@/features/accounts/utils/account-lifecycle"
+import {
+  isSoldAccount,
+  partitionAccountLifecycle,
+} from "@/features/accounts/utils/account-lifecycle"
 import {
   accountToFormValues,
   emptyAccountFormValues,
@@ -75,8 +78,7 @@ export function AccountsPage() {
         : {
             ...emptyAccountFormValues,
             currencyCode:
-              form?.createCurrencyCode ??
-              emptyAccountFormValues.currencyCode,
+              form?.createCurrencyCode ?? emptyAccountFormValues.currencyCode,
           },
     [form]
   )
@@ -107,7 +109,12 @@ export function AccountsPage() {
       if (metalFilter && account.metal_type !== metalFilter) return false
       if (filters.currency && account.currency_code !== filters.currency)
         return false
-      if (!filters.showArchived && !account.is_active && !isSoldAccount(account)) return false
+      if (
+        !filters.showArchived &&
+        !account.is_active &&
+        !isSoldAccount(account)
+      )
+        return false
       return true
     })
 
@@ -122,15 +129,11 @@ export function AccountsPage() {
       return {
         account,
         currentBalance:
-          account.account_type_code === "gold"
-            ? null
-            : currentValue.value,
+          account.account_type_code === "gold" ? null : currentValue.value,
         currentValueStatus: currentValue.status,
         isCurrentValueLoading: currentValue.isLoading,
         metalCurrentValue:
-          account.account_type_code === "gold"
-            ? currentValue.value
-            : null,
+          account.account_type_code === "gold" ? currentValue.value : null,
       }
     })
 
@@ -210,14 +213,14 @@ export function AccountsPage() {
 
   return (
     <div className="pb-12">
-      <header className="pb-7">
-        <div className="flex flex-wrap items-end justify-between gap-4">
-          <div>
+      <header className="border-b border-[var(--border-subtle)] pb-5 sm:pb-8">
+        <div className="flex flex-wrap items-end justify-between gap-4 sm:gap-5">
+          <div className="max-w-2xl">
             <p className="tharwati-eyebrow">{t("accounts.page.eyebrow")}</p>
-            <h1 className="tharwati-page-title mt-2">
+            <h1 className="tharwati-page-title mt-1 sm:mt-2">
               {t("accounts.page.title")}
             </h1>
-            <p className="tharwati-page-description mt-2 max-w-2xl">
+            <p className="tharwati-page-description mt-1.5 max-w-2xl sm:mt-2">
               {t("accounts.page.description")}
             </p>
           </div>
@@ -229,6 +232,7 @@ export function AccountsPage() {
                 createCurrencyCode: getProfileCurrencyDefault(baseCurrencyCode),
               })
             }
+            className="min-h-11 shrink-0 rounded-xl px-4 shadow-sm shadow-[color-mix(in_srgb,var(--color-primary)_18%,transparent)]"
           >
             <Plus size={16} />
             {t("accounts.actions.add")}
@@ -274,44 +278,55 @@ export function AccountsPage() {
         </div>
       ) : (
         <>
-          {activeItems.length ? <AccountInventory
-            items={activeItems}
-            sort={sort}
-            direction={direction}
-            onSort={toggleSort}
-            onEdit={(account) => setForm({ mode: "edit", account })}
-            onLifecycle={(account) => setConfirm({ mode: account.is_active ? "close" : "reopen", account })}
-            onDelete={(account) => setConfirm({ mode: "delete", account })}
-            onAddMetalPurchase={setMetalPurchaseAccount}
-            onOpenAccount={(account) => navigate(`/accounts/${account.id}`)}
-            canDelete={accounts.canDeleteAccount}
-          /> : null}
-          {closedItems.length ? <AccountInventory
-            sectionTitle={t("accounts.closedSection.title")}
-            items={closedItems}
-            sort={sort}
-            direction={direction}
-            onSort={toggleSort}
-            onEdit={(account) => setForm({ mode: "edit", account })}
-            onLifecycle={(account) => setConfirm({ mode: "reopen", account })}
-            onDelete={(account) => setConfirm({ mode: "delete", account })}
-            onAddMetalPurchase={setMetalPurchaseAccount}
-            onOpenAccount={(account) => navigate(`/accounts/${account.id}`)}
-            canDelete={accounts.canDeleteAccount}
-          /> : null}
-          {soldItems.length ? <AccountInventory
-            sectionTitle={t("accounts.soldSection.title")}
-            items={soldItems}
-            sort={sort}
-            direction={direction}
-            onSort={toggleSort}
-            onEdit={(account) => setForm({ mode: "edit", account })}
-            onLifecycle={(account) => setConfirm({ mode: "reopen", account })}
-            onDelete={(account) => setConfirm({ mode: "delete", account })}
-            onAddMetalPurchase={setMetalPurchaseAccount}
-            onOpenAccount={(account) => navigate(`/accounts/${account.id}`)}
-            canDelete={accounts.canDeleteAccount}
-          /> : null}
+          {activeItems.length ? (
+            <AccountInventory
+              items={activeItems}
+              sort={sort}
+              direction={direction}
+              onSort={toggleSort}
+              onEdit={(account) => setForm({ mode: "edit", account })}
+              onLifecycle={(account) =>
+                setConfirm({
+                  mode: account.is_active ? "close" : "reopen",
+                  account,
+                })
+              }
+              onDelete={(account) => setConfirm({ mode: "delete", account })}
+              onAddMetalPurchase={setMetalPurchaseAccount}
+              onOpenAccount={(account) => navigate(`/accounts/${account.id}`)}
+              canDelete={accounts.canDeleteAccount}
+            />
+          ) : null}
+          {closedItems.length ? (
+            <AccountInventory
+              sectionTitle={t("accounts.closedSection.title")}
+              items={closedItems}
+              sort={sort}
+              direction={direction}
+              onSort={toggleSort}
+              onEdit={(account) => setForm({ mode: "edit", account })}
+              onLifecycle={(account) => setConfirm({ mode: "reopen", account })}
+              onDelete={(account) => setConfirm({ mode: "delete", account })}
+              onAddMetalPurchase={setMetalPurchaseAccount}
+              onOpenAccount={(account) => navigate(`/accounts/${account.id}`)}
+              canDelete={accounts.canDeleteAccount}
+            />
+          ) : null}
+          {soldItems.length ? (
+            <AccountInventory
+              sectionTitle={t("accounts.soldSection.title")}
+              items={soldItems}
+              sort={sort}
+              direction={direction}
+              onSort={toggleSort}
+              onEdit={(account) => setForm({ mode: "edit", account })}
+              onLifecycle={(account) => setConfirm({ mode: "reopen", account })}
+              onDelete={(account) => setConfirm({ mode: "delete", account })}
+              onAddMetalPurchase={setMetalPurchaseAccount}
+              onOpenAccount={(account) => navigate(`/accounts/${account.id}`)}
+              canDelete={accounts.canDeleteAccount}
+            />
+          ) : null}
         </>
       )}
 
@@ -344,15 +359,25 @@ export function AccountsPage() {
       ) : null}
 
       <AccountLifecycleDialog
-        account={confirm?.mode === "close" || confirm?.mode === "reopen" ? confirm.account : null}
+        account={
+          confirm?.mode === "close" || confirm?.mode === "reopen"
+            ? confirm.account
+            : null
+        }
         mode={confirm?.mode === "reopen" ? "reopen" : "close"}
-        blockReason={confirm?.mode === "close" ? accounts.closeBlockReason(confirm.account.id) : null}
+        blockReason={
+          confirm?.mode === "close"
+            ? accounts.closeBlockReason(confirm.account.id)
+            : null
+        }
         isSaving={accounts.isSaving}
         onCancel={() => setConfirm(null)}
         onConfirm={async () => {
           if (confirm) {
-            if (confirm.mode === "close") await accounts.closeAccount(confirm.account.id)
-            if (confirm.mode === "reopen") await accounts.reopenAccount(confirm.account.id)
+            if (confirm.mode === "close")
+              await accounts.closeAccount(confirm.account.id)
+            if (confirm.mode === "reopen")
+              await accounts.reopenAccount(confirm.account.id)
             setConfirm(null)
           }
         }}
