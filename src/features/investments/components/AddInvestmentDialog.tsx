@@ -7,6 +7,7 @@ import { useTranslation } from "../../../i18n/useTranslation"
 import type { TranslationKey } from "../../../i18n/en/translations"
 import type { AccountSummary, AssetSummary } from "../../../lib/supabase/types"
 import { accountsRepository } from "../../accounts/repositories/accounts.repository"
+import { getAccountPickerOptions } from "../../accounts/utils/account-display-label"
 import {
   accountTypeOptions,
   currencyOptions,
@@ -76,22 +77,33 @@ export function AddInvestmentDialog({ isOpen, onClose, onSuccess }: Props) {
     resolver: zodResolver(schema),
     defaultValues: defaultAddInvestmentValues,
   })
-  const [fundingMode, accountMode, assetMode, assetId, newAssetType, unit] = useWatch({
-    control,
-    name: ["fundingMode", "accountMode", "assetMode", "assetId", "newAssetTypeCode", "unit"],
-  })
+  const [fundingMode, accountMode, assetMode, assetId, newAssetType, unit] =
+    useWatch({
+      control,
+      name: [
+        "fundingMode",
+        "accountMode",
+        "assetMode",
+        "assetId",
+        "newAssetTypeCode",
+        "unit",
+      ],
+    })
   const fundingAccounts = useMemo(
-    () => accounts.filter((account) => ["cash", "bank"].includes(account.account_type_code)),
-    [accounts],
+    () =>
+      accounts.filter((account) =>
+        ["cash", "bank"].includes(account.account_type_code)
+      ),
+    [accounts]
   )
 
   const filteredAssets = useMemo(
     () => filterInvestmentAssetCatalog(assets, assetSearch),
-    [assetSearch, assets],
+    [assetSearch, assets]
   )
   const selectedAsset = useMemo(
     () => assets.find((asset) => asset.id === assetId) ?? null,
-    [assetId, assets],
+    [assetId, assets]
   )
 
   const isPreciousMetal = newAssetType === "gold" || newAssetType === "silver"
@@ -196,24 +208,62 @@ export function AddInvestmentDialog({ isOpen, onClose, onSuccess }: Props) {
           )}
 
           <fieldset className="rounded-2xl border border-[var(--color-border)] p-4 sm:p-5">
-            <legend className="px-2 font-bold">{t("investment.funding.section")}</legend>
+            <legend className="px-2 font-bold">
+              {t("investment.funding.section")}
+            </legend>
             <div className="space-y-3">
               <label className="flex items-start gap-2">
-                <input type="radio" value="external" disabled={isSaving} {...register("fundingMode")} />
-                <span><strong className="block">{t("investment.funding.external")}</strong><span className="text-sm text-[var(--color-text-secondary)]">{t("investment.funding.externalDescription")}</span></span>
+                <input
+                  type="radio"
+                  value="external"
+                  disabled={isSaving}
+                  {...register("fundingMode")}
+                />
+                <span>
+                  <strong className="block">
+                    {t("investment.funding.external")}
+                  </strong>
+                  <span className="text-sm text-[var(--color-text-secondary)]">
+                    {t("investment.funding.externalDescription")}
+                  </span>
+                </span>
               </label>
               <label className="flex items-start gap-2">
-                <input type="radio" value="cash_account" disabled={isSaving} {...register("fundingMode")} />
-                <span><strong className="block">{t("investment.funding.cash")}</strong><span className="text-sm text-[var(--color-text-secondary)]">{t("investment.funding.cashDescription")}</span></span>
+                <input
+                  type="radio"
+                  value="cash_account"
+                  disabled={isSaving}
+                  {...register("fundingMode")}
+                />
+                <span>
+                  <strong className="block">
+                    {t("investment.funding.cash")}
+                  </strong>
+                  <span className="text-sm text-[var(--color-text-secondary)]">
+                    {t("investment.funding.cashDescription")}
+                  </span>
+                </span>
               </label>
               {fundingMode === "cash_account" ? (
                 <label className="block text-sm font-semibold">
                   {t("investment.funding.account")}
-                  <select className={fieldClass} disabled={isSaving || isLoadingOptions} {...register("fundingAccountId")}>
+                  <select
+                    className={fieldClass}
+                    disabled={isSaving || isLoadingOptions}
+                    {...register("fundingAccountId")}
+                  >
                     <option value="">{t("investment.common.choose")}</option>
-                    {fundingAccounts.map((account) => <option key={account.id} value={account.id}>{account.name} — {account.currency_code}</option>)}
+                    {getAccountPickerOptions(fundingAccounts, t).map(
+                      (option) => (
+                        <option key={option.value} value={option.value}>
+                          {option.label}
+                        </option>
+                      )
+                    )}
                   </select>
-                  <span className="text-red-600">{errors.fundingAccountId?.message}</span>
+                  <span className="text-red-600">
+                    {errors.fundingAccountId?.message}
+                  </span>
                 </label>
               ) : null}
             </div>
@@ -249,9 +299,9 @@ export function AddInvestmentDialog({ isOpen, onClose, onSuccess }: Props) {
                   {...register("accountId")}
                 >
                   <option value="">{t("investment.common.choose")}</option>
-                  {accounts.map((account) => (
-                    <option key={account.id} value={account.id}>
-                      {account.name} — {account.currency_code}
+                  {getAccountPickerOptions(accounts, t).map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
                     </option>
                   ))}
                 </select>
@@ -327,60 +377,62 @@ export function AddInvestmentDialog({ isOpen, onClose, onSuccess }: Props) {
             </div>
             {assetMode === "existing" ? (
               <div className="space-y-3">
-              <label className="block text-sm font-semibold">
-                {t("investment.asset.searchLabel")}
-                <input
-                  type="search"
-                  value={assetSearch}
-                  onChange={(event) => setAssetSearch(event.target.value)}
-                  placeholder={t("investment.asset.searchPlaceholder")}
-                  autoComplete="off"
-                  className={fieldClass}
-                  disabled={isSaving || isLoadingOptions}
-                />
-              </label>
-              <label className="block text-sm font-semibold">
-                {t("investment.asset.select")}
-                <select
-                  className={fieldClass}
-                  disabled={isSaving || isLoadingOptions}
-                  {...register("assetId")}
-                >
-                  <option value="">{t("investment.common.choose")}</option>
-                  {filteredAssets.map((asset) => (
-                    <option key={asset.id} value={asset.id}>
-                      {asset.symbol ? `${asset.symbol} — ` : ""}
-                      {asset.name} ({asset.currency_code})
-                    </option>
-                  ))}
-                </select>
-                <span className="text-red-600">{errors.assetId?.message}</span>
-              </label>
-              {selectedAsset ? (
-                <p className="text-xs text-[var(--color-text-secondary)]">
-                  {t("investment.asset.authoritativeSelection", {
-                    symbol: selectedAsset.symbol ?? selectedAsset.name,
-                    exchange: selectedAsset.exchange ?? "—",
-                    currency: selectedAsset.currency_code,
-                  })}
-                </p>
-              ) : null}
-              {filteredAssets.length === 0 ? (
-                <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-[var(--color-border)] p-3">
-                  <p className="text-sm text-[var(--color-text-secondary)]">
-                    {t("investment.asset.noResults")}
-                  </p>
-                  <button
-                    type="button"
-                    className="tharwati-button-secondary"
-                    onClick={() =>
-                      setValue("assetMode", "new", { shouldDirty: true })
-                    }
+                <label className="block text-sm font-semibold">
+                  {t("investment.asset.searchLabel")}
+                  <input
+                    type="search"
+                    value={assetSearch}
+                    onChange={(event) => setAssetSearch(event.target.value)}
+                    placeholder={t("investment.asset.searchPlaceholder")}
+                    autoComplete="off"
+                    className={fieldClass}
+                    disabled={isSaving || isLoadingOptions}
+                  />
+                </label>
+                <label className="block text-sm font-semibold">
+                  {t("investment.asset.select")}
+                  <select
+                    className={fieldClass}
+                    disabled={isSaving || isLoadingOptions}
+                    {...register("assetId")}
                   >
-                    {t("investment.asset.createCustom")}
-                  </button>
-                </div>
-              ) : null}
+                    <option value="">{t("investment.common.choose")}</option>
+                    {filteredAssets.map((asset) => (
+                      <option key={asset.id} value={asset.id}>
+                        {asset.symbol ? `${asset.symbol} — ` : ""}
+                        {asset.name} ({asset.currency_code})
+                      </option>
+                    ))}
+                  </select>
+                  <span className="text-red-600">
+                    {errors.assetId?.message}
+                  </span>
+                </label>
+                {selectedAsset ? (
+                  <p className="text-xs text-[var(--color-text-secondary)]">
+                    {t("investment.asset.authoritativeSelection", {
+                      symbol: selectedAsset.symbol ?? selectedAsset.name,
+                      exchange: selectedAsset.exchange ?? "—",
+                      currency: selectedAsset.currency_code,
+                    })}
+                  </p>
+                ) : null}
+                {filteredAssets.length === 0 ? (
+                  <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-[var(--color-border)] p-3">
+                    <p className="text-sm text-[var(--color-text-secondary)]">
+                      {t("investment.asset.noResults")}
+                    </p>
+                    <button
+                      type="button"
+                      className="tharwati-button-secondary"
+                      onClick={() =>
+                        setValue("assetMode", "new", { shouldDirty: true })
+                      }
+                    >
+                      {t("investment.asset.createCustom")}
+                    </button>
+                  </div>
+                ) : null}
               </div>
             ) : (
               <div className="grid gap-4 sm:grid-cols-2">
@@ -434,7 +486,7 @@ export function AddInvestmentDialog({ isOpen, onClose, onSuccess }: Props) {
                       {t(
                         requiresMarketSymbol
                           ? "investment.asset.symbolRequired"
-                          : "investment.asset.symbol",
+                          : "investment.asset.symbol"
                       )}
                       <input
                         className={fieldClass}
@@ -450,7 +502,7 @@ export function AddInvestmentDialog({ isOpen, onClose, onSuccess }: Props) {
                       {t(
                         isListedEquity
                           ? "investment.asset.exchangeOptional"
-                          : "investment.asset.exchange",
+                          : "investment.asset.exchange"
                       )}
                       <input
                         className={fieldClass}

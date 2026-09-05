@@ -16,11 +16,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip"
-import {
-  bankSubtypeOptions,
-  getAccountTypeLabel,
-  metalTypeOptions,
-} from "@/features/accounts/types/account-form"
+import { getAccountDisplayTypeLabel } from "@/features/accounts/utils/account-display-label"
 import {
   formatPortfolioAmount,
   formatPortfolioPercent,
@@ -84,26 +80,6 @@ const columns: Array<[AccountInventorySort, TranslationKey]> = [
   ["type", "accounts.table.type"],
   ["balance", "accounts.table.balance"],
 ]
-
-function typeLabel(
-  account: AccountSummary,
-  t: ReturnType<typeof useTranslation>["t"]
-) {
-  if (account.account_type_code === "gold" && account.metal_type) {
-    const option = metalTypeOptions.find(
-      (item) => item.value === account.metal_type
-    )
-    if (option) return t(option.labelKey)
-  }
-  if (account.account_type_code === "bank" && account.bank_subtype) {
-    const subtype = bankSubtypeOptions.find(
-      (item) => item.value === account.bank_subtype
-    )
-    if (subtype)
-      return `${getAccountTypeLabel(account.account_type_code, t)} ${t(subtype.labelKey)}`
-  }
-  return getAccountTypeLabel(account.account_type_code, t)
-}
 
 function balanceCell(
   item: AccountInventoryItem,
@@ -229,7 +205,7 @@ export function AccountInventory({
                     </span>
                   </td>
                   <td className="px-5 py-4.5 text-[var(--color-text-secondary)]">
-                    {typeLabel(item.account, t)}
+                    {getAccountDisplayTypeLabel(item.account, t)}
                   </td>
                   <td
                     className="px-5 py-4.5 font-medium tabular-nums"
@@ -375,7 +351,7 @@ export function AccountInventory({
               </div>
               <div className="flex items-center justify-between gap-3">
                 <span className="min-w-0 text-xs break-words text-muted-foreground">
-                  {typeLabel(item.account, t)}
+                  {getAccountDisplayTypeLabel(item.account, t)}
                 </span>
                 <div className="flex shrink-0 gap-1">
                   {item.account.account_type_code === "gold" &&

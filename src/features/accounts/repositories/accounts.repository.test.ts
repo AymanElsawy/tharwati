@@ -2,7 +2,10 @@ import { describe, expect, it, vi } from "vitest"
 
 import type { TypedSupabaseClient } from "../../../lib/supabase/client"
 import { RepositoryError } from "../../../lib/supabase/types"
-import { AccountsRepository, requireAccountDecimalText } from "./accounts.repository"
+import {
+  AccountsRepository,
+  requireAccountDecimalText,
+} from "./accounts.repository"
 
 const account = {
   id: "account-1",
@@ -60,11 +63,25 @@ function createClient(result: {
 
 describe("AccountsRepository.updateAccount", () => {
   it("rejects the numeric zero shape returned without a PostgreSQL text cast", () => {
-    expect(() => requireAccountDecimalText(0, "opening_balance", "accounts.createAccount")).toThrowError(expect.objectContaining({ code: "database_error", message: "Account field opening_balance must be a PostgreSQL decimal string" }))
+    expect(() =>
+      requireAccountDecimalText(0, "opening_balance", "accounts.createAccount")
+    ).toThrowError(
+      expect.objectContaining({
+        code: "database_error",
+        message:
+          "Account field opening_balance must be a PostgreSQL decimal string",
+      })
+    )
   })
 
   it("preserves exact decimal text beyond JavaScript safe integer precision", () => {
-    expect(requireAccountDecimalText("9007199254740993.0000000001", "opening_balance", "accounts.getAccounts")).toBe("9007199254740993.0000000001")
+    expect(
+      requireAccountDecimalText(
+        "9007199254740993.0000000001",
+        "opening_balance",
+        "accounts.getAccounts"
+      )
+    ).toBe("9007199254740993.0000000001")
   })
   it("surfaces the account-currency history rule as a typed business error", async () => {
     const { client } = createClient({
@@ -76,10 +93,9 @@ describe("AccountsRepository.updateAccount", () => {
       },
     })
 
-    const request = new AccountsRepository(client).updateAccount(
-      "account-1",
-      { currencyCode: "SAR" },
-    )
+    const request = new AccountsRepository(client).updateAccount("account-1", {
+      currencyCode: "SAR",
+    })
 
     await expect(request).rejects.toMatchObject({
       code: "constraint_violation",
@@ -99,7 +115,7 @@ describe("AccountsRepository.updateAccount", () => {
       new AccountsRepository(client).updateAccount("account-1", {
         name: "Renamed account",
         notes: "Updated notes",
-      }),
+      })
     ).resolves.toEqual(account)
 
     expect(update).toHaveBeenCalledWith({
@@ -121,7 +137,7 @@ describe("AccountsRepository.updateAccount", () => {
     await expect(
       new AccountsRepository(client).updateAccount("account-1", {
         openingBalance: "200",
-      }),
+      })
     ).rejects.toMatchObject({
       code: "constraint_violation",
       message:
@@ -132,29 +148,63 @@ describe("AccountsRepository.updateAccount", () => {
 })
 
 describe("AccountsRepository.createAccount", () => {
-  it.each(["real_estate", "business"] as const)("re-reads a %s account after the valued-account RPC returns numeric legacy placeholder fields", async (accountTypeCode) => {
-    const rpc = vi.fn().mockResolvedValue({ data: { id: "valued-account", opening_balance: 0 }, error: null })
-    const single = vi.fn().mockResolvedValue({ data: { ...account, id: "valued-account", account_type_code: accountTypeCode, opening_balance: "0" }, error: null })
-    const builder = { eq: vi.fn(), select: vi.fn(), single }
-    builder.eq.mockReturnValue(builder)
-    builder.select.mockReturnValue(builder)
-    const client = {
-      auth: { getUser: vi.fn().mockResolvedValue({ data: { user: { id: "user-1" } }, error: null }) },
-      rpc,
-      from: vi.fn().mockReturnValue(builder),
-    } as unknown as TypedSupabaseClient
+  it.each(["real_estate", "business"] as const)(
+    "re-reads a %s account after the valued-account RPC returns numeric legacy placeholder fields",
+    async (accountTypeCode) => {
+      const rpc = vi
+        .fn()
+        .mockResolvedValue({
+          data: { id: "valued-account", opening_balance: 0 },
+          error: null,
+        })
+      const single = vi
+        .fn()
+        .mockResolvedValue({
+          data: {
+            ...account,
+            id: "valued-account",
+            account_type_code: accountTypeCode,
+            opening_balance: "0",
+          },
+          error: null,
+        })
+      const builder = { eq: vi.fn(), select: vi.fn(), single }
+      builder.eq.mockReturnValue(builder)
+      builder.select.mockReturnValue(builder)
+      const client = {
+        auth: {
+          getUser: vi
+            .fn()
+            .mockResolvedValue({
+              data: { user: { id: "user-1" } },
+              error: null,
+            }),
+        },
+        rpc,
+        from: vi.fn().mockReturnValue(builder),
+      } as unknown as TypedSupabaseClient
 
-    await expect(new AccountsRepository(client).createAccount({
-      accountTypeCode, name: "Valued account", currencyCode: "SAR", ownershipPercentage: "100",
-      valuationAmount: "500", valuedOn: "2026-08-28",
-      propertyType: accountTypeCode === "real_estate" ? "villa" : null,
-      businessType: accountTypeCode === "business" ? "Company" : null,
-      industry: accountTypeCode === "business" ? "Software" : null,
-    })).resolves.toMatchObject({ id: "valued-account", opening_balance: "0" })
+      await expect(
+        new AccountsRepository(client).createAccount({
+          accountTypeCode,
+          name: "Valued account",
+          currencyCode: "SAR",
+          ownershipPercentage: "100",
+          valuationAmount: "500",
+          valuedOn: "2026-08-28",
+          propertyType: accountTypeCode === "real_estate" ? "villa" : null,
+          businessType: accountTypeCode === "business" ? "Company" : null,
+          industry: accountTypeCode === "business" ? "Software" : null,
+        })
+      ).resolves.toMatchObject({ id: "valued-account", opening_balance: "0" })
 
-    expect(rpc).toHaveBeenCalledWith("create_valued_account", expect.objectContaining({ p_valuation_amount: "500" }))
-    expect(builder.select).toHaveBeenCalled()
-  })
+      expect(rpc).toHaveBeenCalledWith(
+        "create_valued_account",
+        expect.objectContaining({ p_valuation_amount: "500" })
+      )
+      expect(builder.select).toHaveBeenCalled()
+    }
+  )
 })
 
 describe("AccountsRepository.reopenAccount", () => {
@@ -174,8 +224,7 @@ describe("AccountsRepository.reopenAccount", () => {
       new AccountsRepository(client).reopenAccount("account-1")
     ).rejects.toMatchObject({
       code: "conflict",
-      message:
-        "You already have an account with this name. Choose a different name.",
+      message: "An active account with this name and type already exists.",
       operation: "accounts.reopenAccount",
     } satisfies Partial<RepositoryError>)
   })

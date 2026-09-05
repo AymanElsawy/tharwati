@@ -16,6 +16,7 @@ import {
   type AccountDisposalSubmissionAttempt,
 } from "@/features/accounts/utils/account-disposal-form"
 import { useTranslation } from "@/i18n/useTranslation"
+import { getAccountPickerOptions } from "@/features/accounts/utils/account-display-label"
 import type { AccountSummary, Decimal } from "@/lib/supabase/types"
 
 const currencies = ["USD", "SAR", "EGP", "EUR", "GBP"] as const
@@ -51,7 +52,9 @@ function AccountDisposalDialogContent({
   )
   const [error, setError] = useState<string | null>(null)
   const [isSaving, setIsSaving] = useState(false)
-  const submissionAttempt = useRef<AccountDisposalSubmissionAttempt | null>(null)
+  const submissionAttempt = useRef<AccountDisposalSubmissionAttempt | null>(
+    null
+  )
   const isProperty = account.account_type_code === "real_estate"
   const positiveProceeds = isPositiveSaleAmount(form.amount)
   const destinationAccounts = getEligibleDisposalDestinationAccounts(
@@ -204,13 +207,19 @@ function AccountDisposalDialogContent({
                   className={fieldClass}
                 >
                   <option value="">
-                    {t(areAccountsLoading ? "common.loading" : "accounts.disposal.destinationPlaceholder")}
+                    {t(
+                      areAccountsLoading
+                        ? "common.loading"
+                        : "accounts.disposal.destinationPlaceholder"
+                    )}
                   </option>
-                  {destinationAccounts.map((item) => (
-                    <option key={item.id} value={item.id}>
-                      {item.name} · {item.currency_code}
-                    </option>
-                  ))}
+                  {getAccountPickerOptions(destinationAccounts, t).map(
+                    (option) => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    )
+                  )}
                 </select>
                 {!areAccountsLoading && destinationAccounts.length === 0 ? (
                   <span className="mt-1.5 block text-xs font-normal text-muted-foreground">

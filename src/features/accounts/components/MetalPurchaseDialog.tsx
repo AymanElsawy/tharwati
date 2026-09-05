@@ -6,6 +6,7 @@ import { useForm, useWatch } from "react-hook-form"
 
 import { Button } from "@/components/ui/button"
 import { useTranslation } from "@/i18n/useTranslation"
+import { getAccountPickerOptions } from "@/features/accounts/utils/account-display-label"
 import type { AccountSummary } from "@/lib/supabase/types"
 import { formatPortfolioAmount } from "@/features/portfolio/utils/portfolio-formatters"
 import { formatLocalDateTimeInput } from "@/lib/formatting/local-date-time"
@@ -106,7 +107,9 @@ export function MetalPurchaseDialog({
               <Dialog.Title className="font-heading text-xl font-semibold">
                 {initialValues
                   ? t("accounts.metalPurchase.edit")
-                  : t("accounts.metalPurchase.title", { metal: account?.name ?? "" })}
+                  : t("accounts.metalPurchase.title", {
+                      metal: account?.name ?? "",
+                    })}
               </Dialog.Title>
               <Dialog.Description className="mt-1 text-sm text-muted-foreground">
                 {account?.currency_code}
@@ -239,11 +242,13 @@ export function MetalPurchaseDialog({
                     <option value="">
                       {t("accounts.form.selectPlaceholder")}
                     </option>
-                    {fundingAccounts.map((fundingAccount) => (
-                      <option key={fundingAccount.id} value={fundingAccount.id}>
-                        {fundingAccount.name} - {fundingAccount.currency_code}
-                      </option>
-                    ))}
+                    {getAccountPickerOptions(fundingAccounts, t).map(
+                      (option) => (
+                        <option key={option.value} value={option.value}>
+                          {option.label}
+                        </option>
+                      )
+                    )}
                   </select>
                   {errors.fundingAccountId ? (
                     <p className={errorClassName}>
@@ -289,10 +294,24 @@ export function MetalPurchaseDialog({
                 {...register("notes")}
               />
             </div>
-            {error ? <p role="alert" className={errorClassName}>{error}</p> : null}
+            {error ? (
+              <p role="alert" className={errorClassName}>
+                {error}
+              </p>
+            ) : null}
           </form>
           <footer className="flex flex-wrap justify-between gap-2 border-t border-[var(--color-border)] bg-[var(--color-surface-muted)] px-6 py-4">
-            {onDelete ? <Button variant="destructive" disabled={disabled} onClick={onDelete}>{t("accounts.metalPurchase.delete")}</Button> : <span />}
+            {onDelete ? (
+              <Button
+                variant="destructive"
+                disabled={disabled}
+                onClick={onDelete}
+              >
+                {t("accounts.metalPurchase.delete")}
+              </Button>
+            ) : (
+              <span />
+            )}
             <div className="flex gap-2">
               <Button variant="outline" disabled={disabled} onClick={onClose}>
                 {t("common.cancel")}
@@ -304,7 +323,9 @@ export function MetalPurchaseDialog({
               >
                 {disabled
                   ? t("accounts.form.saving")
-                  : initialValues ? t("accounts.metalPurchase.save") : t("accounts.metalPurchase.add")}
+                  : initialValues
+                    ? t("accounts.metalPurchase.save")
+                    : t("accounts.metalPurchase.add")}
               </Button>
             </div>
           </footer>

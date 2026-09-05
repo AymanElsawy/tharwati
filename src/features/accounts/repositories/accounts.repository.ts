@@ -79,7 +79,7 @@ const immutableOpeningBalanceMessage =
 const duplicateMetalAccountMessage =
   "You already have this type of Gold/Silver account in this currency. Go to that account and add a purchase instead of creating a new one."
 const duplicateAccountNameMessage =
-  "You already have an account with this name. Choose a different name."
+  "An active account with this name and type already exists."
 
 type DatabaseError = {
   code?: string
@@ -249,7 +249,10 @@ export class AccountsRepository {
 
   async createAccount(input: CreateAccountInput): Promise<AccountSummary> {
     const operation = "accounts.createAccount"
-    if (input.accountTypeCode === "real_estate" || input.accountTypeCode === "business") {
+    if (
+      input.accountTypeCode === "real_estate" ||
+      input.accountTypeCode === "business"
+    ) {
       const { data, error } = await this.client.rpc("create_valued_account", {
         p_account_type_code: input.accountTypeCode,
         p_name: input.name,
@@ -430,9 +433,12 @@ export class AccountsRepository {
 
   async deleteAccount(id: string): Promise<void> {
     const operation = "accounts.deleteAccount"
-    const { error } = await this.client.rpc("delete_pristine_financial_account", {
-      p_account_id: id,
-    })
+    const { error } = await this.client.rpc(
+      "delete_pristine_financial_account",
+      {
+        p_account_id: id,
+      }
+    )
     requireQueryData(true, error, operation)
   }
 }
