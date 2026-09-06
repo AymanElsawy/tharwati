@@ -6,11 +6,18 @@ import {
   ChevronLeft,
   ChevronRight,
   Coins,
+  MoreHorizontal,
   Pencil,
   Trash2,
 } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 import {
   Tooltip,
   TooltipContent,
@@ -25,6 +32,9 @@ import type { AccountSummary } from "@/lib/supabase/types"
 import type { TranslationKey } from "@/i18n/en/translations"
 import { useTranslation } from "@/i18n/useTranslation"
 import { isSoldAccount } from "@/features/accounts/utils/account-lifecycle"
+import { accountTypeVisuals } from "@/features/accounts/types/account-visuals"
+import type { AccountTypeCode } from "@/features/accounts/types/account-form"
+import { stopCardNavigation } from "./account-inventory-interactions"
 
 function ActionButton({
   ariaLabel,
@@ -296,117 +306,146 @@ export function AccountInventory({
         {items.map((item) => {
           const sold = isSoldAccount(item.account)
           const inactive = !item.account.is_active
+          const typeVisual =
+            accountTypeVisuals[
+              item.account.account_type_code as AccountTypeCode
+            ]
+          const TypeIcon = typeVisual.icon
           return (
             <div
               key={item.account.id}
-              className={`grid cursor-pointer gap-2.5 px-4 py-4 transition-colors hover:bg-[var(--color-surface-hover)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--color-primary)] ${inactive ? "bg-[var(--color-surface-muted)]/60 text-muted-foreground" : ""}`}
-              tabIndex={0}
-              role="button"
-              aria-label={t("accounts.table.openLabel", {
-                name: item.account.name,
-              })}
-              onClick={() => onOpenAccount(item.account)}
-              onKeyDown={(event) => {
-                if (event.key === "Enter" || event.key === " ") {
-                  event.preventDefault()
-                  onOpenAccount(item.account)
-                }
-              }}
+              className={`relative rounded-xl px-3.5 py-3 transition-colors hover:bg-[var(--color-surface-hover)] ${inactive ? "bg-[var(--color-surface-muted)]/60 text-muted-foreground" : ""}`}
             >
-              <div className="flex items-start justify-between gap-3">
-                <strong className="min-w-0 flex-1 break-words">
-                  {item.account.name}
-                  {sold ? (
-                    <span className="ms-2 inline-block rounded-full border border-[var(--border-subtle)] bg-[var(--color-surface-muted)] px-2 py-0.5 text-[11px] font-semibold text-muted-foreground">
-                      {t("accounts.disposal.sold")}
-                    </span>
-                  ) : null}
-                </strong>
-                <div className="flex max-w-[58%] shrink-0 items-center gap-2">
-                  <strong
-                    className="min-w-0 text-end break-words tabular-nums"
-                    dir="ltr"
+              <button
+                type="button"
+                aria-label={t("accounts.table.openLabel", {
+                  name: item.account.name,
+                })}
+                onClick={() => onOpenAccount(item.account)}
+                className="absolute inset-0 z-0 rounded-xl focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--color-primary)]"
+              />
+              <div className="pointer-events-none relative z-10 grid gap-2.5">
+                <div className="flex items-start gap-2.5">
+                  <span
+                    className={`flex size-9 shrink-0 items-center justify-center rounded-lg ${typeVisual.iconWrap}`}
                   >
-                    {balanceCell(
-                      item,
-                      locale,
-                      t("accounts.currentValueUnavailable"),
-                      t("common.loading")
-                    )}
-                  </strong>
-                  {language === "ar" ? (
-                    <ChevronLeft
-                      aria-hidden="true"
-                      size={20}
-                      className="shrink-0 text-muted-foreground"
-                    />
-                  ) : (
-                    <ChevronRight
-                      aria-hidden="true"
-                      size={20}
-                      className="shrink-0 text-muted-foreground"
-                    />
-                  )}
+                    <TypeIcon aria-hidden="true" size={18} />
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-start justify-between gap-3">
+                      <strong className="min-w-0 break-words">
+                        {item.account.name}
+                      </strong>
+                      <span
+                        className="flex max-w-[58%] shrink-0 items-start gap-1 text-end text-sm font-bold tabular-nums"
+                        dir="ltr"
+                      >
+                        {language === "ar" ? (
+                          <ChevronLeft
+                            aria-hidden="true"
+                            size={17}
+                            className="mt-0.5 shrink-0 text-muted-foreground/70"
+                          />
+                        ) : null}
+                        <span className="min-w-0 break-words">
+                          {balanceCell(
+                            item,
+                            locale,
+                            t("accounts.currentValueUnavailable"),
+                            t("common.loading")
+                          )}
+                        </span>
+                        {language === "ar" ? null : (
+                          <ChevronRight
+                            aria-hidden="true"
+                            size={17}
+                            className="mt-0.5 shrink-0 text-muted-foreground/70"
+                          />
+                        )}
+                      </span>
+                    </div>
+                    <div className="mt-0.5 flex min-h-11 items-center justify-between gap-2">
+                      <p className="min-w-0 text-xs text-muted-foreground">
+                        {getAccountDisplayTypeLabel(item.account, t)}
+                      </p>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger
+                          aria-label={t("accounts.card.actions", {
+                            name: item.account.name,
+                          })}
+                          onClick={stopCardNavigation}
+                          onPointerDown={stopCardNavigation}
+                          onKeyDown={stopCardNavigation}
+                          className="pointer-events-auto flex size-11 shrink-0 items-center justify-center rounded-lg text-[var(--color-text-secondary)] transition hover:bg-[var(--color-surface-hover)] focus-visible:ring-2 focus-visible:ring-[var(--color-primary)]"
+                        >
+                          <MoreHorizontal size={19} />
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent
+                          align="end"
+                          className="min-w-44 p-1.5 [&_[data-slot=dropdown-menu-item]]:min-h-11 [&_[data-slot=dropdown-menu-item]]:px-3"
+                          onClick={stopCardNavigation}
+                        >
+                          {item.account.account_type_code === "gold" &&
+                          item.account.is_active ? (
+                            <DropdownMenuItem
+                              onClick={() => onAddMetalPurchase(item.account)}
+                            >
+                              <Coins />
+                              {t("accounts.metalPurchase.add")}
+                            </DropdownMenuItem>
+                          ) : null}
+                          {!sold ? (
+                            <DropdownMenuItem
+                              onClick={() => onEdit(item.account)}
+                            >
+                              <Pencil />
+                              {t("accounts.actions.edit")}
+                            </DropdownMenuItem>
+                          ) : null}
+                          {!sold ? (
+                            <DropdownMenuItem
+                              onClick={() => onLifecycle(item.account)}
+                            >
+                              {item.account.is_active ? (
+                                <Archive />
+                              ) : (
+                                <ArchiveRestore />
+                              )}
+                              {t(
+                                item.account.is_active
+                                  ? "accounts.actions.close"
+                                  : "accounts.actions.reopen"
+                              )}
+                            </DropdownMenuItem>
+                          ) : null}
+                          <DropdownMenuItem
+                            variant="destructive"
+                            disabled={!canDelete(item.account.id)}
+                            onClick={() => onDelete(item.account)}
+                          >
+                            <Trash2 />
+                            {t("accounts.actions.delete")}
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </div>
+                  </div>
                 </div>
-              </div>
-              <div className="flex items-center justify-between gap-3">
-                <span className="min-w-0 text-xs break-words text-muted-foreground">
-                  {getAccountDisplayTypeLabel(item.account, t)}
-                </span>
-                <div className="flex shrink-0 gap-1">
-                  {item.account.account_type_code === "gold" &&
-                  item.account.is_active ? (
-                    <ActionButton
-                      ariaLabel={t("accounts.metalPurchase.addFor", {
-                        name: item.account.name,
-                      })}
-                      tooltip={t("accounts.metalPurchase.add")}
-                      onClick={() => onAddMetalPurchase(item.account)}
-                    >
-                      <Coins size={15} />
-                    </ActionButton>
-                  ) : null}
-                  {!sold ? (
-                    <ActionButton
-                      ariaLabel={t("accounts.table.editLabel", {
-                        name: item.account.name,
-                      })}
-                      tooltip={t("accounts.actions.edit")}
-                      onClick={() => onEdit(item.account)}
-                    >
-                      <Pencil size={15} />
-                    </ActionButton>
-                  ) : null}
-                  {!sold ? (
-                    <ActionButton
-                      ariaLabel={t("accounts.table.closeLabel", {
-                        name: item.account.name,
-                      })}
-                      tooltip={t(
-                        item.account.is_active
-                          ? "accounts.actions.close"
-                          : "accounts.actions.reopen"
-                      )}
-                      onClick={() => onLifecycle(item.account)}
-                    >
-                      {item.account.is_active ? (
-                        <Archive size={15} />
-                      ) : (
-                        <ArchiveRestore size={15} />
-                      )}
-                    </ActionButton>
-                  ) : null}
-                  <ActionButton
-                    ariaLabel={t("accounts.table.deleteLabel", {
-                      name: item.account.name,
-                    })}
-                    tooltip={t("accounts.actions.delete")}
-                    disabled={!canDelete(item.account.id)}
-                    onClick={() => onDelete(item.account)}
-                    className="text-red-600 hover:text-red-700 disabled:text-muted-foreground dark:text-red-400"
-                  >
-                    <Trash2 size={15} />
-                  </ActionButton>
+                <div className="flex items-center justify-between gap-3">
+                  <span className="inline-flex items-center gap-1.5 text-[11px] font-medium text-muted-foreground">
+                    <span
+                      className={`size-1.5 rounded-full ${inactive ? "bg-muted-foreground/60" : "bg-emerald-500"}`}
+                    />
+                    {sold
+                      ? t("accounts.disposal.sold")
+                      : t(
+                          inactive
+                            ? "accounts.card.archived"
+                            : "accounts.card.active"
+                        )}
+                    <span aria-hidden="true">·</span>
+                    <span dir="ltr">{item.account.currency_code}</span>
+                  </span>
                 </div>
               </div>
             </div>

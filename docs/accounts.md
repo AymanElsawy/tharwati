@@ -383,7 +383,7 @@ Error handling: Postgres errors are normalized into a `RepositoryError { code, o
 
 1. **Loading** — skeleton placeholders.
 2. **Hard error** (error + zero accounts) — icon + message + "Try again".
-3. **Normal** — header with "Add account" CTA, optional non-blocking inline error banner if accounts exist despite an error, filter bar, then either an **empty state** (no accounts at all, or none match filters — same copy either way) or the account list/table. The clean workspace surface uses shared spacing, theme tokens, subtle borders/shadows, a search icon, aligned 44 px filter controls, and compact responsive touch targets; it introduces no Dashboard hero, metrics, tabs, or behavior. On mobile, the header/filter spacing is tighter, and Show Closed plus result count share one row; desktop spacing and grid placement remain unchanged.
+3. **Normal** — header with "Add account" CTA, optional non-blocking inline error banner if accounts exist despite an error, filter bar, then either an **empty state** (no accounts at all, or none match filters — same copy either way) or the account list/table. The clean workspace surface uses shared spacing, theme tokens, subtle borders/shadows, a search icon, aligned 44 px desktop filter controls, and compact responsive touch targets; it introduces no Dashboard hero, metrics, tabs, or behavior. On mobile, header/filter spacing is tighter, controls are 44 px, Type and Currency sit side-by-side when responsive space allows, and Show Closed plus result count share one row; desktop spacing and grid placement remain unchanged.
 
 ### 6.2 Filtering & sorting (all client-side, over the full loaded account list)
 
@@ -415,6 +415,8 @@ On narrow mobile viewports, Add/Edit Record also follows `window.visualViewport`
 For Bank Credit, value means available credit: Expense/transfer-out decreases it; Income/payment/transfer-in increases it without exceeding the credit limit. Amount Due remains `credit_card_limit - current_balance`.
 
 On a Bank Credit Account Details/Records header, the generic large account-value amount is not shown because it could be mistaken for owned cash. A responsive Credit Summary instead labels Credit Limit, Available Credit (the ledger-projected `current_balance`), Amount Due (`credit_card_limit - current_balance` using decimal-safe subtraction), and optional Due Day. If the limit or projected balance is missing or invalid, the summary is unavailable rather than displaying zero. Bank Debit keeps the existing generic current-value header, and Account Records posting/history behavior is unchanged.
+
+On mobile, cards are compact premium surfaces: type icon, name, current value, and a decorative direction-aware disclosure chevron share the top row. In LTR the chevron follows the value; in RTL it precedes it. Localized type/subtype and the 44 px overflow trigger share the next row, followed by subtle Active/Closed plus currency metadata. A full-card native button provides the details destination, while the overflow trigger remains its semantic sibling; pointer and keyboard action events stop propagation. The overflow target has a low-emphasis visual treatment while retaining its touch target. Its touch-friendly menu preserves Add purchase, Edit, Close/Reopen, and guarded Delete behavior. Card tap and Enter/Space still open details. Desktop table behavior remains unchanged.
 
 ### 6.4 Create/edit flow (form dialog)
 

@@ -589,6 +589,7 @@ export const en = {
   "accounts.table.openLabel": "Open {{name}} details",
   "accounts.card.active": "Active",
   "accounts.card.archived": "Archived",
+  "accounts.card.actions": "Actions for {{name}}",
   "accounts.empty.title": "Add your first account",
   "accounts.empty.description":
     "Track cash, bank, brokerage, gold, real estate, business, and other accounts in one place.",

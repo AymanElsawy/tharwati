@@ -570,6 +570,7 @@ export const ar: Record<TranslationKey, string> = {
   "accounts.table.openLabel": "فتح تفاصيل {{name}}",
   "accounts.card.active": "نشط",
   "accounts.card.archived": "مؤرشف",
+  "accounts.card.actions": "إجراءات {{name}}",
   "accounts.empty.title": "أضف حسابك الأول",
   "accounts.empty.description":
     "تابع حسابات النقد والبنوك والوساطة والذهب والعقارات والأعمال وغيرها في مكان واحد.",
