@@ -10,7 +10,7 @@ import {
   Settings,
   type LucideIcon,
 } from "lucide-react"
-import { NavLink, Outlet, useNavigate } from "react-router-dom"
+import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom"
 import { useState } from "react"
 import type { TranslationKey } from "../i18n/en/translations"
 import { LanguageSwitcher } from "../i18n/LanguageSwitcher"
@@ -77,9 +77,11 @@ const themeOptions: ThemeOption[] = [
 
 export function DashboardLayout() {
   const navigate = useNavigate()
+  const location = useLocation()
   const { theme, setTheme } = useTheme()
   const { language, t } = useTranslation()
   const [isMobileNavigationOpen, setIsMobileNavigationOpen] = useState(false)
+  const isDashboard = location.pathname === "/dashboard"
 
   async function handleLogout() {
     try {
@@ -220,7 +222,10 @@ export function DashboardLayout() {
                 Tharwati
               </span>
               <div
-                className="flex size-11 items-center justify-center overflow-hidden rounded-full"
+                className={[
+                  "flex size-11 items-center justify-center overflow-hidden rounded-full",
+                  isDashboard ? "max-sm:hidden" : "",
+                ].join(" ")}
                 title={t("header.tagline")}
               >
                 <AuthenticatedUserHeader compact />

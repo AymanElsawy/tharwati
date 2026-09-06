@@ -19,7 +19,7 @@ export function DashboardPage() {
 
   return (
     <section className="tharwati-dashboard-page tharwati-page-stack">
-      <header className="tharwati-dashboard-masthead flex items-start justify-between gap-4">
+      <header className="tharwati-dashboard-masthead relative flex items-start justify-between gap-4">
         <div>
           <p className="tharwati-dashboard-greeting">
             {t("dashboard.hero.personalGreeting", {
@@ -33,7 +33,7 @@ export function DashboardPage() {
             {date}
           </p>
         </div>
-        <div className="flex shrink-0 items-center gap-2">
+        <div className="absolute end-0 top-0 flex items-center gap-2 sm:static sm:shrink-0">
           <span
             aria-label={t("dashboard.hero.notifications")}
             className="tharwati-dashboard-bell flex size-11 items-center justify-center rounded-2xl"

@@ -45,7 +45,9 @@ describe("DashboardPage composition", () => {
     expect(componentSource).toContain('t("dashboard.hero.personalGreeting"')
     expect(componentSource).toContain("useCurrentUser")
     expect(componentSource).toContain("<AuthenticatedUserHeader compact />")
-    expect(componentSource).toContain("flex shrink-0 items-center gap-2")
+    expect(componentSource).toContain(
+      "absolute end-0 top-0 flex items-center gap-2"
+    )
     expect(en["dashboard.hero.personalGreeting"]).toBe(
       "Good afternoon, {{name}} 👋"
     )
@@ -54,5 +56,14 @@ describe("DashboardPage composition", () => {
     )
     expect(en["pages.dashboard.title"]).toBe("Your wealth at a glance")
     expect(ar["pages.dashboard.title"]).toBe("ثروتك في لمحة")
+  })
+
+  it("keeps mobile hero controls out of headline flow", () => {
+    expect(componentSource).toContain(
+      "tharwati-dashboard-masthead relative flex"
+    )
+    expect(componentSource).toContain(
+      "absolute end-0 top-0 flex items-center gap-2 sm:static"
+    )
   })
 })

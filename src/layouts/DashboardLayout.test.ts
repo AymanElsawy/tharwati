@@ -16,4 +16,11 @@ describe("DashboardLayout preferences", () => {
     expect(componentSource).toContain("lg:min-h-screen")
     expect(componentSource).not.toContain("<AuthenticatedUserHeader />")
   })
+
+  it("hides only Dashboard mobile header avatar", () => {
+    expect(componentSource).toContain("useLocation")
+    expect(componentSource).toContain('location.pathname === "/dashboard"')
+    expect(componentSource).toContain('isDashboard ? "max-sm:hidden" : ""')
+    expect(componentSource).toContain('].join(" ")}')
+  })
 })
