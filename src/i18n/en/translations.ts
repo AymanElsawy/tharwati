@@ -598,6 +598,7 @@ export const en = {
   "accounts.error.mutationInProgress":
     "An account change is already in progress",
   "accounts.form.name": "Name",
+  "accounts.form.namePlaceholder": "e.g. Main account",
   "accounts.form.accountType": "Account type",
   "accounts.form.currency": "Currency",
   "accounts.form.currencyLocked":

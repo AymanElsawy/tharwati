@@ -10,10 +10,21 @@ describe("AccountFormDialog mobile type picker", () => {
     expect(dialog).toContain('role="radio"')
   })
 
-  it("shows a green selected radio and keeps footer actions visible", () => {
-    expect(dialog).toContain("border-emerald-500 bg-emerald-50/70")
-    expect(dialog).toContain("border-emerald-600")
+  it("uses selected account visual, semantic header, and persistent footer", () => {
+    expect(dialog).toContain("accent.selected")
+    expect(dialog).toContain("<Dialog.Title")
+    expect(dialog).toContain("<Dialog.Description")
+    expect(dialog).toContain("sr-only")
     expect(dialog).toContain("sticky bottom-0 z-10")
     expect(dialog).toContain("disabled={selectedType === null}")
+  })
+
+  it("keeps type identity without duplicating create or edit context", () => {
+    expect(dialog).toContain(
+      "getAccountTypeLabel(effectiveDefaults.accountTypeCode, t)"
+    )
+    expect(dialog).not.toContain(
+      "tracking-wide text-muted-foreground uppercase"
+    )
   })
 })

@@ -578,6 +578,7 @@ export const ar: Record<TranslationKey, string> = {
   "accounts.error.unexpected": "حدث خطأ غير متوقع",
   "accounts.error.mutationInProgress": "يجري حاليًا تنفيذ تغيير آخر على الحساب",
   "accounts.form.name": "الاسم",
+  "accounts.form.namePlaceholder": "مثال: الحساب الرئيسي",
   "accounts.form.accountType": "نوع الحساب",
   "accounts.form.currency": "العملة",
   "accounts.form.currencyLocked":

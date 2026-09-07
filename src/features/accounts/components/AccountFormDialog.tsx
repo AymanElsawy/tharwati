@@ -1,5 +1,5 @@
 import { Dialog } from "@base-ui/react/dialog"
-import { AlertTriangle, X } from "lucide-react"
+import { AlertTriangle, Check, ChevronRight, X } from "lucide-react"
 import { useMemo, useState } from "react"
 
 import { Button } from "@/components/ui/button"
@@ -89,17 +89,19 @@ export function AccountFormDialog({
             zIndex: 80,
           }}
         >
-          <header
-            className={`flex shrink-0 items-start justify-between gap-5 border-b border-[var(--color-border)] bg-gradient-to-br from-[var(--color-primary-soft)] via-[var(--color-primary-soft)]/30 to-transparent px-5 py-4 sm:px-7 sm:py-5`}
-          >
+          <header className="flex shrink-0 items-start justify-between gap-4 border-b border-[var(--color-border)] bg-gradient-to-br from-[var(--color-primary-soft)] via-[var(--color-surface)] to-[var(--color-surface)] px-5 py-5 sm:px-7 sm:py-6">
             <div className="min-w-0">
               {!choosingType ? (
-                <span
-                  className={`mb-2 inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold ${activeAccent.iconWrap}`}
-                >
-                  <activeAccent.icon size={13} />
-                  {getAccountTypeLabel(effectiveDefaults.accountTypeCode, t)}
-                </span>
+                <div className="mb-4 flex items-center gap-3">
+                  <span
+                    className={`grid size-11 shrink-0 place-items-center rounded-2xl shadow-sm ${activeAccent.iconWrap}`}
+                  >
+                    <activeAccent.icon size={21} aria-hidden="true" />
+                  </span>
+                  <p className="min-w-0 truncate text-base font-semibold text-[var(--color-text-primary)]">
+                    {getAccountTypeLabel(effectiveDefaults.accountTypeCode, t)}
+                  </p>
+                </div>
               ) : null}
               <Dialog.Title className="font-heading text-xl font-semibold">
                 {t(
@@ -152,7 +154,7 @@ export function AccountFormDialog({
                         role="radio"
                         aria-checked={selected}
                         onClick={() => setSelectedType(option.value)}
-                        className={`flex min-h-11 items-center gap-3 rounded-xl border px-3 py-2 text-start text-sm font-semibold transition outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)] sm:min-h-20 sm:gap-3.5 sm:rounded-2xl sm:border-2 sm:px-4 sm:py-3.5 ${selected ? "border-emerald-500 bg-emerald-50/70 text-emerald-950 dark:border-emerald-400 dark:bg-emerald-950/40 dark:text-emerald-100" : accent.idle}`}
+                        className={`flex min-h-11 items-center gap-3 rounded-xl border px-3 py-2 text-start text-sm font-semibold transition-all outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)] sm:min-h-20 sm:gap-3.5 sm:rounded-2xl sm:border-2 sm:px-4 sm:py-3.5 ${selected ? `${accent.selected} shadow-sm` : accent.idle}`}
                       >
                         <span
                           className={`flex size-8 shrink-0 items-center justify-center rounded-lg sm:size-10 sm:rounded-xl ${accent.iconWrap}`}
@@ -162,10 +164,10 @@ export function AccountFormDialog({
                         {t(option.creationLabelKey)}
                         <span
                           aria-hidden="true"
-                          className={`ms-auto flex size-5 shrink-0 items-center justify-center rounded-full border-2 ${selected ? "border-emerald-600" : "border-[var(--color-border)]"}`}
+                          className={`ms-auto grid size-5 shrink-0 place-items-center rounded-full border-2 ${selected ? "border-current bg-current/10" : "border-[var(--color-border)]"}`}
                         >
                           {selected ? (
-                            <span className="size-2 rounded-full bg-emerald-600" />
+                            <Check size={12} strokeWidth={3} />
                           ) : null}
                         </span>
                       </button>
@@ -227,6 +229,7 @@ export function AccountFormDialog({
                 onClick={() => setCreationStep("form")}
               >
                 {t("common.continue")}
+                <ChevronRight size={16} aria-hidden="true" />
               </Button>
             ) : (
               <Button
