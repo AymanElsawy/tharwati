@@ -362,7 +362,6 @@ export const ar: Record<TranslationKey, string> = {
   "goals.correct": "تصحيح",
   "goals.reverse": "عكس",
   "goals.selectPrompt": "اختر هدفاً لعرض تفاصيله وسجله.",
-  "goals.loading": "جارٍ تحميل الأهداف…",
   "goals.unavailable": "غير متاح",
   "goals.amount": "المبلغ ({{currency}})",
   "goals.date": "التاريخ",

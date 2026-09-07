@@ -40,6 +40,31 @@ function compareValues(left: string, right: string, direction: "asc" | "desc") {
   return direction === "asc" ? result : -result
 }
 
+function AccountsPageSkeleton({ label }: { label: string }) {
+  const pulse =
+    "animate-pulse rounded bg-muted motion-reduce:animate-none"
+  return (
+    <div aria-busy="true" aria-label={label} className="pb-12">
+      <header className="border-b border-[var(--border-subtle)] pb-5 sm:pb-8">
+        <div className="flex flex-wrap items-end justify-between gap-4 sm:gap-5">
+          <div className="max-w-2xl space-y-2">
+            <div className={`h-3 w-28 ${pulse}`} />
+            <div className={`h-8 w-52 ${pulse}`} />
+            <div className={`h-4 w-80 max-w-full ${pulse}`} />
+          </div>
+          <div className={`h-11 w-36 rounded-xl ${pulse}`} />
+        </div>
+      </header>
+      <div className={`mt-5 h-11 w-full rounded-xl ${pulse}`} />
+      <div className="mt-6 space-y-3">
+        {Array.from({ length: 6 }, (_, index) => (
+          <div key={index} className={`h-16 w-full rounded-xl ${pulse}`} />
+        ))}
+      </div>
+    </div>
+  )
+}
+
 export function AccountsPage() {
   const { t } = useTranslation()
   const { baseCurrencyCode } = useCurrentUser()
@@ -189,12 +214,7 @@ export function AccountsPage() {
   }
 
   if (accounts.isLoading) {
-    return (
-      <div className="pb-12">
-        <div className="h-9 w-48 animate-pulse rounded-lg bg-muted" />
-        <div className="mt-8 h-96 animate-pulse rounded-2xl bg-muted" />
-      </div>
-    )
+    return <AccountsPageSkeleton label={t("common.loading")} />
   }
 
   if (accounts.error && accounts.accounts.length === 0) {

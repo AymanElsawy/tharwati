@@ -381,7 +381,7 @@ Error handling: Postgres errors are normalized into a `RepositoryError { code, o
 
 ### 6.1 Page states
 
-1. **Loading** — skeleton placeholders.
+1. **Loading** — an `aria-busy` skeleton that mirrors the real layout: header (eyebrow, title, description, Add CTA), filter bar, and a stack of account-row placeholders. Honours `prefers-reduced-motion`.
 2. **Hard error** (error + zero accounts) — icon + message + "Try again".
 3. **Normal** — header with "Add account" CTA, optional non-blocking inline error banner if accounts exist despite an error, filter bar, then either an **empty state** (no accounts at all, or none match filters — same copy either way) or the account list/table. The clean workspace surface uses shared spacing, theme tokens, subtle borders/shadows, a search icon, aligned 44 px desktop filter controls, and compact responsive touch targets; it introduces no Dashboard hero, metrics, tabs, or behavior. On mobile, header/filter spacing is tighter, controls are 44 px, Type and Currency sit side-by-side when responsive space allows, and Show Closed plus result count share one row; desktop spacing and grid placement remain unchanged.
 

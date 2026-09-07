@@ -228,10 +228,7 @@ export function GoalsPage() {
         })
       )
   }
-  if (loading)
-    return (
-      <p className="text-[var(--color-text-secondary)]">{t("goals.loading")}</p>
-    )
+  if (loading) return <GoalsSkeleton label={t("common.loading")} />
   return (
     <section>
       <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
@@ -504,6 +501,34 @@ export function GoalsPage() {
           onSaved={load}
         />
       ) : null}
+    </section>
+  )
+}
+
+function GoalsSkeleton({ label }: { label: string }) {
+  const pulse =
+    "animate-pulse rounded bg-[var(--color-surface-hover)] motion-reduce:animate-none"
+  return (
+    <section aria-busy="true" aria-label={label}>
+      <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
+        <div>
+          <div className={`h-3 w-32 ${pulse}`} />
+          <div className={`mt-2 h-9 w-40 ${pulse}`} />
+          <div className={`mt-3 h-4 w-80 max-w-full ${pulse}`} />
+        </div>
+        <div className="flex gap-2">
+          <div className={`h-9 w-32 ${pulse}`} />
+          <div className={`h-9 w-28 ${pulse}`} />
+        </div>
+      </div>
+      <div className="mt-7 grid gap-5 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.4fr)]">
+        <div className="space-y-3">
+          {Array.from({ length: 3 }, (_, index) => (
+            <div key={index} className={`h-32 w-full ${pulse}`} />
+          ))}
+        </div>
+        <div className={`h-96 w-full ${pulse}`} />
+      </div>
     </section>
   )
 }

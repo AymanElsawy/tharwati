@@ -377,7 +377,6 @@ export const en = {
   "goals.correct": "Correct",
   "goals.reverse": "Reverse",
   "goals.selectPrompt": "Select a goal to view its details and history.",
-  "goals.loading": "Loading goals…",
   "goals.unavailable": "Unavailable",
   "goals.amount": "Amount ({{currency}})",
   "goals.date": "Date",
