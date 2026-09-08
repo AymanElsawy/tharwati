@@ -1,0 +1,744 @@
+@import "tailwindcss";
+
+:root,
+:root[data-theme="light"] {
+  color-scheme: light;
+
+  --color-primary: #157552;
+  --color-primary-hover: #0f6345;
+  --color-primary-soft: #e4f3ec;
+
+  --color-background: #eef3f0;
+  --color-background-secondary: #f3f6f4;
+
+  --color-sidebar: #f8faf9;
+  --color-header: rgba(248, 250, 249, 0.92);
+
+  --color-surface: #ffffff;
+  --color-surface-elevated: rgba(255, 255, 255, 0.9);
+  --color-surface-muted: #edf2ef;
+  --color-surface-hover: #f5f8f6;
+
+  --color-text-primary: #17211d;
+  --color-text-secondary: #637069;
+  --color-text-muted: #89958f;
+  --color-text-on-primary: #ffffff;
+
+  --color-border: #dce5e0;
+  --color-border-strong: #cad8d0;
+
+  --color-success: #128247;
+  --color-success-soft: #d8f7e4;
+
+  --color-danger: #c93f4b;
+  --color-danger-soft: #fde6e8;
+
+  --color-card-net-worth: rgba(255, 255, 255, 0.9);
+  --color-card-investments: rgba(255, 255, 255, 0.9);
+  --color-card-cash: rgba(255, 255, 255, 0.9);
+  --color-card-change: rgba(255, 255, 255, 0.9);
+
+  --shadow-card: 0 10px 30px rgba(26, 52, 39, 0.08);
+  --shadow-card-hover: 0 14px 34px rgba(26, 52, 39, 0.12);
+
+  --page-gradient-start: #eef3f0;
+  --page-gradient-middle: #f3f6f4;
+  --page-gradient-end: #e9f1ed;
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+
+  --color-primary: #4ade80;
+  --color-primary-hover: #6ee7a0;
+  --color-primary-soft: rgba(74, 222, 128, 0.12);
+
+  --color-background: #08090c;
+  --color-background-secondary: #0c0e13;
+
+  --color-sidebar: #0d0f14;
+  --color-header: rgba(13, 15, 20, 0.9);
+
+  --color-surface: #14171d;
+  --color-surface-elevated: rgba(20, 23, 29, 0.96);
+  --color-surface-muted: #1c2028;
+  --color-surface-hover: #232832;
+
+  --color-text-primary: #f4f6f8;
+  --color-text-secondary: #a9b0ba;
+  --color-text-muted: #747d89;
+  --color-text-on-primary: #06110a;
+
+  --color-border: #262b35;
+  --color-border-strong: #343b48;
+
+  --color-success: #4ade80;
+  --color-success-soft: rgba(74, 222, 128, 0.13);
+
+  --color-danger: #fb7185;
+  --color-danger-soft: rgba(251, 113, 133, 0.13);
+
+  --color-card-net-worth: rgba(20, 23, 29, 0.96);
+  --color-card-investments: rgba(20, 23, 29, 0.96);
+  --color-card-cash: rgba(20, 23, 29, 0.96);
+  --color-card-change: rgba(20, 23, 29, 0.96);
+
+  --shadow-card: 0 14px 34px rgba(0, 0, 0, 0.34);
+  --shadow-card-hover: 0 18px 42px rgba(0, 0, 0, 0.46);
+
+  --page-gradient-start: #08090c;
+  --page-gradient-middle: #0b0d12;
+  --page-gradient-end: #090a0e;
+}
+
+:root[data-theme="colorful"] {
+  color-scheme: light;
+
+  --color-primary: #5b4cf0;
+  --color-primary-hover: #4939dc;
+  --color-primary-soft: #ece9ff;
+
+  --color-background: #edf4ff;
+  --color-background-secondary: #faf0ff;
+
+  --color-sidebar: rgba(255, 255, 255, 0.88);
+  --color-header: rgba(255, 255, 255, 0.78);
+
+  --color-surface: #ffffff;
+  --color-surface-elevated: rgba(255, 255, 255, 0.88);
+  --color-surface-muted: #eef1f8;
+  --color-surface-hover: #f5f3ff;
+
+  --color-text-primary: #1d2030;
+  --color-text-secondary: #656b7d;
+  --color-text-muted: #8c92a3;
+  --color-text-on-primary: #ffffff;
+
+  --color-border: rgba(126, 137, 166, 0.24);
+  --color-border-strong: rgba(102, 112, 141, 0.38);
+
+  --color-success: #109b63;
+  --color-success-soft: #d9f7e9;
+
+  --color-danger: #dc3e5d;
+  --color-danger-soft: #ffe2e8;
+
+  --color-card-net-worth: linear-gradient(
+    145deg,
+    #d9faea 0%,
+    #effff7 50%,
+    #ffffff 100%
+  );
+
+  --color-card-investments: linear-gradient(
+    145deg,
+    #dbeafe 0%,
+    #eef6ff 50%,
+    #ffffff 100%
+  );
+
+  --color-card-cash: linear-gradient(
+    145deg,
+    #fff0be 0%,
+    #fff8df 50%,
+    #ffffff 100%
+  );
+
+  --color-card-change: linear-gradient(
+    145deg,
+    #eadcff 0%,
+    #f5eeff 50%,
+    #ffffff 100%
+  );
+
+  --shadow-card: 0 14px 32px rgba(68, 76, 120, 0.13);
+  --shadow-card-hover: 0 18px 42px rgba(68, 76, 120, 0.2);
+
+  --page-gradient-start: #e6fff5;
+  --page-gradient-middle: #eaf2ff;
+  --page-gradient-end: #f7e9ff;
+}
+
+@theme inline {
+  --color-background: var(--color-background);
+  --color-foreground: var(--color-text-primary);
+
+  --color-primary: var(--color-primary);
+  --color-primary-foreground: var(--color-text-on-primary);
+
+  --color-secondary: var(--color-surface-muted);
+  --color-secondary-foreground: var(--color-text-primary);
+
+  --color-muted: var(--color-surface-muted);
+  --color-muted-foreground: var(--color-text-secondary);
+
+  --color-accent: var(--color-surface-hover);
+  --color-accent-foreground: var(--color-text-primary);
+
+  --color-destructive: var(--color-danger);
+  --color-destructive-foreground: #ffffff;
+
+  --color-border: var(--color-border);
+  --color-input: var(--color-surface);
+  --color-ring: var(--color-primary);
+
+  --color-card: var(--color-surface);
+  --color-card-foreground: var(--color-text-primary);
+  --color-popover: var(--color-surface);
+  --color-popover-foreground: var(--color-text-primary);
+}
+
+:root {
+  /* Back-compat aliases for legacy variable names still referenced by some components. */
+  --color-text: var(--color-text-primary);
+  --color-surface-subtle: var(--color-surface-muted);
+  --color-primary-foreground: var(--color-text-on-primary);
+
+  --layout-sidebar-width: 17rem;
+  --layout-content-max: 92rem;
+
+  --space-page-inline: clamp(1rem, 3vw, 3.5rem);
+  --space-page-block: clamp(1.5rem, 4vw, 4rem);
+  --space-section: clamp(3.5rem, 6vw, 6.5rem);
+
+  --radius-control: 0.75rem;
+  --radius-surface: 1rem;
+  --radius-feature: 1.25rem;
+
+  --border-subtle: color-mix(in srgb, var(--color-border) 62%, transparent);
+  --border-quiet: color-mix(in srgb, var(--color-border) 38%, transparent);
+
+  --shadow-quiet: 0 1px 2px rgba(15, 23, 42, 0.02);
+  --shadow-feature: 0 12px 36px rgba(15, 23, 42, 0.035);
+
+  --type-eyebrow: 0.6875rem;
+  --type-caption: 0.75rem;
+  --type-body: 0.9375rem;
+  --type-section: clamp(1.35rem, 2vw, 1.75rem);
+  --type-display: clamp(2rem, 3.4vw, 3.25rem);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  min-width: 320px;
+  overflow-x: clip;
+  background: var(--color-background);
+}
+
+body {
+  min-width: 320px;
+  overflow-x: clip;
+  min-height: 100vh;
+  margin: 0;
+  background: var(--color-background);
+  color: var(--color-text-primary);
+  font-family:
+    Inter,
+    ui-sans-serif,
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    sans-serif;
+  transition:
+    background-color 180ms ease,
+    color 180ms ease;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+  max-width: 100%;
+}
+
+select {
+  appearance: none;
+  -webkit-appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%2372807a' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-size: 1rem;
+  padding-inline-end: 2.25rem !important;
+}
+
+select:dir(ltr) {
+  background-position: right 0.65rem center;
+}
+
+select:dir(rtl) {
+  background-position: left 0.65rem center;
+}
+
+[dir="rtl"] .lucide-arrow-left {
+  transform: rotate(180deg);
+}
+
+#root {
+  min-width: 0;
+}
+
+img,
+picture,
+video,
+canvas,
+svg {
+  max-width: 100%;
+}
+
+h1,
+h2,
+h3,
+h4,
+p,
+dd,
+dt,
+span,
+button,
+label {
+  overflow-wrap: anywhere;
+}
+
+button,
+select {
+  cursor: pointer;
+}
+
+.tharwati-card {
+  border: 1px solid var(--color-border);
+  border-radius: 1.5rem;
+  background: var(--color-surface-elevated);
+  box-shadow: var(--shadow-card);
+  transition:
+    background 180ms ease,
+    border-color 180ms ease,
+    box-shadow 180ms ease,
+    transform 180ms ease;
+}
+
+.tharwati-dashboard-hero {
+  border: 1px solid var(--color-border);
+  border-radius: 1.5rem;
+  background:
+    radial-gradient(
+      circle at 100% 0%,
+      color-mix(in srgb, var(--color-primary) 18%, transparent),
+      transparent 44%
+    ),
+    var(--color-surface-elevated);
+  box-shadow: var(--shadow-card);
+}
+
+.tharwati-dashboard-page {
+  position: relative;
+  isolation: isolate;
+  gap: clamp(0.75rem, 1.8vw, 1.25rem);
+}
+
+.tharwati-dashboard-masthead {
+  min-height: clamp(8.75rem, 14vw, 11rem);
+  padding-top: clamp(0.25rem, 1vw, 0.75rem);
+  color: #fff;
+  text-shadow: 0 2px 18px rgba(0, 0, 0, 0.72);
+}
+
+.tharwati-dashboard-greeting {
+  font-size: clamp(1rem, 1.6vw, 1.25rem);
+  font-weight: 600;
+}
+
+.tharwati-dashboard-title {
+  color: #fff;
+  font-size: clamp(2rem, 3.6vw, 3.5rem);
+  font-weight: 850;
+  letter-spacing: -0.045em;
+  line-height: 1.04;
+}
+
+.tharwati-dashboard-date {
+  color: rgba(255, 255, 255, 0.9);
+  font-weight: 600;
+}
+
+.tharwati-dashboard-bell {
+  border: 1px solid rgba(255, 255, 255, 0.42);
+  background: rgba(4, 15, 18, 0.35);
+  color: #fff;
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.22);
+  backdrop-filter: blur(12px);
+}
+
+.tharwati-dashboard-page::before {
+  position: absolute;
+  z-index: -1;
+  inset: calc(-1 * var(--space-page-block)) calc(-1 * var(--space-page-inline))
+    auto;
+  height: clamp(15rem, 23vw, 20rem);
+  pointer-events: none;
+  content: "";
+  background-image:
+    linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--color-background) 8%, transparent) 0%,
+      color-mix(in srgb, var(--color-background) 42%, transparent) 62%,
+      var(--color-background) 100%
+    ),
+    url("./assets/dashboard-mountain.png");
+  background-position:
+    center,
+    center top;
+  background-size: cover;
+}
+
+:root[data-theme="light"] .tharwati-dashboard-page::before {
+  background-image:
+    linear-gradient(
+      180deg,
+      rgba(238, 243, 240, 0.08) 0%,
+      rgba(238, 243, 240, 0.43) 62%,
+      #eef3f0 100%
+    ),
+    url("./assets/dashboard-mountain.png");
+}
+
+:root[data-theme="colorful"] .tharwati-dashboard-page::before {
+  background-image:
+    linear-gradient(
+      180deg,
+      rgba(237, 244, 255, 0.08) 0%,
+      rgba(237, 244, 255, 0.42) 62%,
+      #edf4ff 100%
+    ),
+    url("./assets/dashboard-mountain.png");
+}
+
+@media (max-width: 39.999rem) {
+  .tharwati-dashboard-page::before {
+    height: 17rem;
+    background-position:
+      center,
+      58% top;
+  }
+
+  .tharwati-dashboard-masthead {
+    min-height: 9rem;
+    padding-top: 0;
+  }
+}
+
+.tharwati-card-hover:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-card-hover);
+}
+
+.tharwati-button-primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  border: 1px solid transparent;
+  border-radius: 1rem;
+  background: var(--color-primary);
+  padding: 0.7rem 1.15rem;
+  color: var(--color-text-on-primary);
+  font-weight: 700;
+  transition:
+    background-color 180ms ease,
+    transform 180ms ease;
+}
+
+.tharwati-button-primary:hover {
+  background: var(--color-primary-hover);
+}
+
+.tharwati-button-primary:active {
+  transform: scale(0.98);
+}
+
+.tharwati-button-secondary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  border: 1px solid var(--color-border);
+  border-radius: 1rem;
+  background: var(--color-surface);
+  padding: 0.7rem 1.15rem;
+  color: var(--color-text-primary);
+  font-weight: 700;
+  transition:
+    background-color 180ms ease,
+    border-color 180ms ease,
+    transform 180ms ease;
+}
+
+.tharwati-button-secondary:hover {
+  border-color: var(--color-border-strong);
+  background: var(--color-surface-hover);
+}
+
+.tharwati-button-secondary:active {
+  transform: scale(0.98);
+}
+
+.tharwati-input {
+  width: 100%;
+  min-height: 44px;
+  border: 1px solid var(--color-border);
+  border-radius: 0.875rem;
+  background: var(--color-surface);
+  padding: 0.7rem 0.9rem;
+  color: var(--color-text-primary);
+  outline: none;
+  transition:
+    border-color 180ms ease,
+    box-shadow 180ms ease;
+}
+
+.tharwati-input:focus {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 4px
+    color-mix(in srgb, var(--color-primary) 12%, transparent);
+}
+
+.tharwati-label {
+  display: block;
+  margin-bottom: 0.45rem;
+  color: var(--color-text-secondary);
+  font-size: 0.875rem;
+  font-weight: 700;
+}
+
+.tharwati-page-title {
+  color: var(--color-text-primary);
+  font-size: clamp(2rem, 3vw, 2.75rem);
+  font-weight: 800;
+  letter-spacing: -0.04em;
+  line-height: 1.1;
+}
+
+.tharwati-page-description {
+  margin-top: 0.9rem;
+  color: var(--color-text-secondary);
+  font-size: 1rem;
+  line-height: 1.7;
+}
+
+.tharwati-content-frame {
+  width: min(100%, var(--layout-content-max));
+  margin-inline: auto;
+}
+
+.tharwati-page-stack {
+  display: grid;
+  gap: var(--space-section);
+}
+
+.tharwati-page-header {
+  max-width: 46rem;
+}
+
+.tharwati-eyebrow {
+  color: var(--color-primary);
+  font-size: var(--type-eyebrow);
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  line-height: 1.4;
+  text-transform: uppercase;
+}
+
+.tharwati-section-header {
+  margin-bottom: 1.75rem;
+}
+
+.tharwati-section-title {
+  color: var(--color-text-primary);
+  font-size: var(--type-section);
+  font-weight: 800;
+  letter-spacing: -0.035em;
+  line-height: 1.2;
+}
+
+.tharwati-section-description {
+  max-width: 42rem;
+  margin-top: 0.5rem;
+  color: var(--color-text-secondary);
+  font-size: var(--type-body);
+  line-height: 1.65;
+}
+
+.tharwati-surface {
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-surface);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-quiet);
+}
+
+.tharwati-surface-quiet {
+  border-block: 1px solid var(--border-subtle);
+  background: var(--color-surface);
+}
+
+.tharwati-feature-surface {
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-feature);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-feature);
+}
+
+.tharwati-metric-grid {
+  display: grid;
+  overflow: hidden;
+  border-block: 1px solid var(--border-subtle);
+  background: var(--color-surface);
+}
+
+.tharwati-metric-panel {
+  min-width: 0;
+  padding: clamp(1.4rem, 2.5vw, 2.25rem);
+  border-block-end: 1px solid var(--border-quiet);
+}
+
+.tharwati-metric-panel:last-child {
+  border-block-end: 0;
+}
+
+.tharwati-metric-label {
+  color: var(--color-text-secondary);
+  font-size: var(--type-caption);
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.tharwati-metric-value {
+  margin-top: 1rem;
+  color: var(--color-text-primary);
+  font-size: clamp(1.65rem, 2.7vw, 2.5rem);
+  font-weight: 850;
+  letter-spacing: -0.045em;
+  line-height: 1.05;
+}
+
+.tharwati-analytical-surface {
+  border-block: 1px solid var(--border-subtle);
+  background: var(--color-surface);
+}
+
+.tharwati-data-grid {
+  display: grid;
+  gap: 1.5rem;
+}
+
+.tharwati-data-point {
+  padding-inline-start: 1rem;
+  border-inline-start: 1px solid var(--border-subtle);
+}
+
+.tharwati-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--type-body);
+}
+
+.tharwati-table thead {
+  border-block-end: 1px solid var(--border-subtle);
+}
+
+.tharwati-table th {
+  padding: 0.75rem 1rem;
+  color: var(--color-text-muted);
+  font-size: var(--type-caption);
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-align: start;
+  text-transform: uppercase;
+}
+
+.tharwati-table td {
+  padding: 1rem;
+  border-block-end: 1px solid var(--border-quiet);
+}
+
+.tharwati-table tbody tr:last-child td {
+  border-block-end: 0;
+}
+
+.tharwati-chart-track {
+  height: 0.375rem;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--color-surface-muted);
+}
+
+.tharwati-chart-fill {
+  height: 100%;
+  border-radius: inherit;
+  background: var(--color-primary);
+}
+
+.tharwati-list-surface {
+  border-block: 1px solid var(--border-subtle);
+  background: var(--color-surface);
+}
+
+.tharwati-list-row {
+  border-block-end: 1px solid var(--border-quiet);
+}
+
+.tharwati-list-row:last-child {
+  border-block-end: 0;
+}
+
+@media (max-width: 39.999rem) {
+  .tharwati-page-title {
+    font-size: 1.875rem;
+  }
+
+  .tharwati-page-description {
+    margin-top: 0.7rem;
+    line-height: 1.55;
+  }
+
+  .tharwati-card {
+    border-radius: 1rem;
+  }
+
+  .tharwati-dashboard-hero {
+    border-radius: 1rem;
+  }
+}
+
+@media (min-width: 48rem) {
+  .tharwati-metric-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .tharwati-metric-panel {
+    border-block-end: 0;
+    border-inline-end: 1px solid var(--border-quiet);
+  }
+
+  .tharwati-metric-panel:last-child {
+    border-inline-end: 0;
+  }
+
+  .tharwati-data-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+.theme-transition,
+.theme-transition *,
+.theme-transition *::before,
+.theme-transition *::after {
+  transition:
+    background-color 180ms ease,
+    background 180ms ease,
+    border-color 180ms ease,
+    color 180ms ease,
+    box-shadow 180ms ease;
+}

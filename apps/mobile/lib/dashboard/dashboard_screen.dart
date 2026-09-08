@@ -1,0 +1,169 @@
+import 'package:flutter/material.dart';
+
+import '../main.dart';
+import '../theme/tokens.dart';
+import '../widgets/callout.dart';
+import '../widgets/primary_button.dart';
+import 'logic/dashboard_aggregate.dart';
+import 'state/dashboard_controller.dart';
+import 'state/dashboard_goals_controller.dart';
+import 'widgets/assets_breakdown_card.dart';
+import 'widgets/dashboard_card.dart';
+import 'widgets/dashboard_masthead.dart';
+import 'widgets/dashboard_skeletons.dart';
+import 'widgets/goals_card.dart';
+import 'widgets/key_insights_card.dart';
+import 'widgets/net_worth_hero.dart';
+import 'widgets/portfolio_allocation_card.dart';
+
+/// Flow 2 — the live dashboard. Reuses the `dashboard-valuation` Edge Function
+/// for valuation; `DashboardController` runs the ported decimal aggregate over
+/// its snapshot. Pull down or fire a [DataChange] to refresh.
+class DashboardScreen extends StatefulWidget {
+  const DashboardScreen({super.key, this.onOpenAccounts, this.onOpenGoals});
+
+  final VoidCallback? onOpenAccounts;
+  final VoidCallback? onOpenGoals;
+
+  @override
+  State<DashboardScreen> createState() => _DashboardScreenState();
+}
+
+class _DashboardScreenState extends State<DashboardScreen> {
+  final _dashboard = DashboardController();
+  final _goals = DashboardGoalsController();
+
+  @override
+  void dispose() {
+    _dashboard.dispose();
+    _goals.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    return Scaffold(
+      backgroundColor: c.canvas,
+      body: ListenableBuilder(
+        listenable: _dashboard,
+        builder: (context, _) {
+          final status = _dashboard.status;
+          final aggregate = _dashboard.aggregate;
+          return Column(
+            children: [
+              DashboardMasthead(
+                name: authService.currentFullName,
+                welcome:
+                    status == DashboardStatus.ready &&
+                    (aggregate?.isEmpty ?? false),
+              ),
+              Expanded(
+                child: RefreshIndicator(
+                  onRefresh: _dashboard.refresh,
+                  color: c.accent,
+                  child: ListView(
+                    padding: const EdgeInsets.fromLTRB(20, 20, 20, 32),
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    children: [
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: _body(status, aggregate),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+
+  List<Widget> _body(DashboardStatus status, DashboardAggregate? aggregate) {
+    switch (status) {
+      case DashboardStatus.loading:
+        return const [DashboardLoadingBody()];
+      case DashboardStatus.noBaseCurrency:
+        return [
+          DashboardCard(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Finish setting up',
+                  style: TextStyle(
+                    color: context.colors.ink,
+                    fontSize: 17,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  'Pick your country and base currency to see your net worth.',
+                  style: TextStyle(
+                    color: context.colors.inkMuted,
+                    fontSize: 13,
+                    height: 1.5,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                PrimaryButton(
+                  label: 'Complete onboarding',
+                  onPressed: authService.signOut,
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 14),
+          _goalsCard(),
+        ];
+      case DashboardStatus.error:
+        return [
+          Callout(
+            tone: CalloutTone.danger,
+            title: 'Dashboard values unavailable',
+            message:
+                'We couldn’t reach the server. Your records are safe and '
+                'unchanged.',
+            action: OutlinedButton(
+              onPressed: _dashboard.refresh,
+              child: const Text('Retry'),
+            ),
+          ),
+          const SizedBox(height: 14),
+          _goalsCard(),
+        ];
+      case DashboardStatus.ready:
+        if (aggregate == null) return const [DashboardLoadingBody()];
+        final agg = aggregate;
+        return [
+          NetWorthHero(
+            aggregate: agg,
+            animateTotal:
+                !_dashboard.lastLoadSilent &&
+                !MediaQuery.of(context).disableAnimations,
+            onAddAccount: widget.onOpenAccounts,
+          ),
+          const SizedBox(height: 14),
+          AssetsBreakdownCard(aggregate: agg),
+          const SizedBox(height: 14),
+          if (_dashboard.insight != null) ...[
+            KeyInsightsCard(insight: _dashboard.insight!),
+            const SizedBox(height: 14),
+          ],
+          PortfolioAllocationCard(
+            items: _dashboard.allocation,
+            status: _dashboard.allocationStatus,
+            currency: agg.baseCurrencyCode,
+          ),
+          const SizedBox(height: 14),
+          _goalsCard(),
+        ];
+    }
+  }
+
+  Widget _goalsCard() =>
+      GoalsCard(controller: _goals, onViewAll: widget.onOpenGoals);
+}

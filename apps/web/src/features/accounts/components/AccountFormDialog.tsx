@@ -1,0 +1,253 @@
+import { Dialog } from "@base-ui/react/dialog"
+import { AlertTriangle, Check, ChevronRight, X } from "lucide-react"
+import { useMemo, useState } from "react"
+
+import { Button } from "@/components/ui/button"
+import { useTranslation } from "@/i18n/useTranslation"
+import { accountTypeVisuals } from "../types/account-visuals"
+import {
+  accountTypeOptions,
+  getAccountTypeLabel,
+  type AccountFormValues,
+  type AccountTypeCode,
+} from "../types/account-form"
+import { AccountForm } from "./AccountForm"
+
+type AccountFormDialogProps = {
+  defaultValues: AccountFormValues
+  isOpen: boolean
+  isSaving: boolean
+  isCurrencyLocked?: boolean
+  isOpeningBalanceLocked?: boolean
+  mode: "create" | "edit"
+  onClose: () => void
+  onSubmit: (values: AccountFormValues) => Promise<void>
+  onDirtyChange: (dirty: boolean) => void
+}
+
+export function AccountFormDialog({
+  defaultValues,
+  isOpen,
+  isSaving,
+  isCurrencyLocked = false,
+  isOpeningBalanceLocked = false,
+  mode,
+  onClose,
+  onSubmit,
+  onDirtyChange,
+}: AccountFormDialogProps) {
+  const { t } = useTranslation()
+  const formId = `${mode}-account-form`
+  const [creationStep, setCreationStep] = useState<"type" | "form">("type")
+  const [selectedType, setSelectedType] = useState<AccountTypeCode | null>(null)
+  const [sessionId, setSessionId] = useState(0)
+  const [wasOpen, setWasOpen] = useState(isOpen)
+  const [submitError, setSubmitError] = useState<string | null>(null)
+
+  if (isOpen !== wasOpen) {
+    setWasOpen(isOpen)
+    if (isOpen) {
+      setCreationStep("type")
+      setSelectedType(null)
+      setSessionId((id) => id + 1)
+      setSubmitError(null)
+    }
+  }
+
+  const effectiveDefaults = useMemo(
+    () =>
+      selectedType
+        ? { ...defaultValues, accountTypeCode: selectedType }
+        : defaultValues,
+    [defaultValues, selectedType]
+  )
+  const choosingType = mode === "create" && creationStep === "type"
+  const activeAccent = accountTypeVisuals[effectiveDefaults.accountTypeCode]
+
+  return (
+    <Dialog.Root
+      open={isOpen}
+      onOpenChange={(open) => {
+        if (!open && !isSaving) onClose()
+      }}
+    >
+      <Dialog.Portal>
+        <Dialog.Backdrop
+          className="bg-black/60"
+          style={{ position: "fixed", inset: 0, zIndex: 70 }}
+        />
+        <Dialog.Popup
+          className="flex-col overflow-hidden rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-2xl outline-none"
+          style={{
+            position: "fixed",
+            top: "50%",
+            left: "50%",
+            transform: "translate(-50%, -50%)",
+            display: "flex",
+            width: "min(48rem, calc(100vw - 2rem))",
+            maxHeight: "calc(100dvh - 2rem)",
+            zIndex: 80,
+          }}
+        >
+          <header className="flex shrink-0 items-start justify-between gap-4 border-b border-[var(--color-border)] bg-gradient-to-br from-[var(--color-primary-soft)] via-[var(--color-surface)] to-[var(--color-surface)] px-5 py-5 sm:px-7 sm:py-6">
+            <div className="min-w-0">
+              {!choosingType ? (
+                <div className="mb-4 flex items-center gap-3">
+                  <span
+                    className={`grid size-11 shrink-0 place-items-center rounded-2xl shadow-sm ${activeAccent.iconWrap}`}
+                  >
+                    <activeAccent.icon size={21} aria-hidden="true" />
+                  </span>
+                  <p className="min-w-0 truncate text-base font-semibold text-[var(--color-text-primary)]">
+                    {getAccountTypeLabel(effectiveDefaults.accountTypeCode, t)}
+                  </p>
+                </div>
+              ) : null}
+              <Dialog.Title className="font-heading text-xl font-semibold">
+                {t(
+                  mode === "create"
+                    ? choosingType
+                      ? "accounts.form.chooseTypeTitle"
+                      : "accounts.form.createTitle"
+                    : "accounts.form.editTitle"
+                )}
+              </Dialog.Title>
+              <Dialog.Description className="mt-1 max-w-xl text-sm leading-6 text-muted-foreground">
+                {t(
+                  choosingType
+                    ? "accounts.form.chooseTypeDescription"
+                    : "accounts.form.description"
+                )}
+              </Dialog.Description>
+            </div>
+            <Dialog.Close
+              disabled={isSaving}
+              render={
+                <Button variant="ghost" size="icon" className="shrink-0" />
+              }
+            >
+              <X size={18} />
+              <span className="sr-only">{t("accounts.form.close")}</span>
+            </Dialog.Close>
+          </header>
+
+          <div
+            className={`min-h-0 flex-1 overscroll-contain px-5 py-5 sm:px-7 sm:py-6 ${choosingType ? "overflow-hidden" : "overflow-y-auto"}`}
+          >
+            {choosingType ? (
+              <fieldset className="h-full overflow-y-auto pe-1">
+                <legend className="sr-only">
+                  {t("accounts.form.chooseTypeTitle")}
+                </legend>
+                <div
+                  className="grid gap-2.5 sm:grid-cols-2 sm:gap-3"
+                  role="radiogroup"
+                >
+                  {accountTypeOptions.map((option) => {
+                    const accent = accountTypeVisuals[option.value]
+                    const Icon = accent.icon
+                    const selected = selectedType === option.value
+                    return (
+                      <button
+                        key={option.value}
+                        type="button"
+                        role="radio"
+                        aria-checked={selected}
+                        onClick={() => setSelectedType(option.value)}
+                        className={`flex min-h-11 items-center gap-3 rounded-xl border px-3 py-2 text-start text-sm font-semibold transition-all outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)] sm:min-h-20 sm:gap-3.5 sm:rounded-2xl sm:border-2 sm:px-4 sm:py-3.5 ${selected ? `${accent.selected} shadow-sm` : accent.idle}`}
+                      >
+                        <span
+                          className={`flex size-8 shrink-0 items-center justify-center rounded-lg sm:size-10 sm:rounded-xl ${accent.iconWrap}`}
+                        >
+                          <Icon className="size-[17px] sm:size-[19px]" />
+                        </span>
+                        {t(option.creationLabelKey)}
+                        <span
+                          aria-hidden="true"
+                          className={`ms-auto grid size-5 shrink-0 place-items-center rounded-full border-2 ${selected ? "border-current bg-current/10" : "border-[var(--color-border)]"}`}
+                        >
+                          {selected ? (
+                            <Check size={12} strokeWidth={3} />
+                          ) : null}
+                        </span>
+                      </button>
+                    )
+                  })}
+                </div>
+              </fieldset>
+            ) : (
+              <>
+                {submitError ? (
+                  <div
+                    role="alert"
+                    className="mb-4 flex items-start gap-2.5 rounded-xl border border-amber-600/35 bg-amber-500/10 px-4 py-3 text-sm text-amber-800 dark:text-amber-300"
+                  >
+                    <AlertTriangle size={16} className="mt-0.5 shrink-0" />
+                    <span>{submitError}</span>
+                  </div>
+                ) : null}
+                <AccountForm
+                  key={sessionId}
+                  defaultValues={effectiveDefaults}
+                  formId={formId}
+                  isSaving={isSaving}
+                  isCurrencyLocked={isCurrencyLocked}
+                  isOpeningBalanceLocked={isOpeningBalanceLocked}
+                  mode={mode}
+                  onSubmit={async (values) => {
+                    setSubmitError(null)
+                    try {
+                      await onSubmit(values)
+                    } catch (cause) {
+                      setSubmitError(
+                        cause instanceof Error
+                          ? cause.message
+                          : t("accounts.error.unexpected")
+                      )
+                    }
+                  }}
+                  onDirtyChange={onDirtyChange}
+                />
+              </>
+            )}
+          </div>
+
+          <footer className="sticky bottom-0 z-10 flex shrink-0 flex-col-reverse gap-2 border-t border-[var(--color-border)] bg-[var(--color-surface-muted)] px-5 py-4 sm:flex-row sm:justify-end sm:px-7">
+            <Button
+              type="button"
+              variant="outline"
+              disabled={isSaving}
+              onClick={onClose}
+            >
+              {t("common.cancel")}
+            </Button>
+            {choosingType ? (
+              <Button
+                key="continue"
+                type="button"
+                disabled={selectedType === null}
+                onClick={() => setCreationStep("form")}
+              >
+                {t("common.continue")}
+                <ChevronRight size={16} aria-hidden="true" />
+              </Button>
+            ) : (
+              <Button
+                key="submit"
+                type="submit"
+                form={formId}
+                disabled={isSaving}
+              >
+                {isSaving
+                  ? t("accounts.form.saving")
+                  : mode === "create"
+                    ? t("accounts.actions.create")
+                    : t("accounts.form.saveChanges")}
+              </Button>
+            )}
+          </footer>
+        </Dialog.Popup>
+      </Dialog.Portal>
+    </Dialog.Root>
+  )
+}

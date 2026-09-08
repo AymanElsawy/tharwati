@@ -12,8 +12,21 @@ dist
 dist-ssr
 *.local
 .env
+.env.*
+!.env.example
 
 .agents
+
+# Flutter / Dart (apps/mobile)
+apps/mobile/build/
+apps/mobile/.dart_tool/
+apps/mobile/.flutter-plugins
+apps/mobile/.flutter-plugins-dependencies
+apps/mobile/**/Pods/
+apps/mobile/**/.symlinks/
+apps/mobile/ios/Flutter/Flutter.framework
+apps/mobile/ios/Flutter/Flutter.podspec
+*.iml
 
 
 # Editor directories and files

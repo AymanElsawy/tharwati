@@ -323,3 +323,54 @@ Raw Brokerage holding quantities and effective metal-purchase gram quantities ar
 3. **New i18n keys** are needed if building the rich design (§5).
 4. **All monetary/quantity data must be handled as decimal strings**, not floats, throughout the mobile app's calculations and network payloads — port the bigint-decimal arithmetic approach (or an equivalent library) rather than relying on native numbers.
 5. **A global data-invalidation mechanism** is needed to replace the web's DOM-event-based cross-feature refresh signal (§2.9).
+
+## 7. Mobile (Flutter) implementation — built
+
+`tharwati_mobile/` ships the **production dashboard** (§3.1) as canvas Flow 2
+(artboards 07 light / 08 dark / 09 loading / 10 first-run + error). Decisions
+taken:
+
+- **Valuation source = the existing `dashboard-valuation` Edge Function**
+  (§6.1 option b). Flutter calls it with `supabase.functions.invoke`; the JWT and
+  CORS already work. The heavy work (market prices, metals, FX resolution,
+  per-account current value, 15-min server cache) stays server-side. Only the
+  thin client layer is ported to Dart — no `NetWorthService` /
+  `PortfolioValuationService` reimplementation.
+- **Net-worth semantics = the decimal-safe aggregate** (§2.2), i.e. what the live
+  card uses today (§2.8). The float `useNetWorth` path is not ported.
+- **Design = production dashboard only.** Rich surfaces (§3.2 — `DashboardSummary`
+  grid, `PerformanceCard`, `RecentActivityCard`, `MissingDataCards`,
+  `AccountsOverviewCard`) are out of scope; they are not in the canvas and not
+  live.
+- **Canvas deviation:** the "+31,200 · 2.5% this month" delta pill on artboard 07
+  has no data source (no historical series — §1.3) and is omitted.
+- **i18n:** English-only for now (§5 gap); numeric/currency/date strings are
+  forced LTR via `MoneyFormat` + `textDirection: TextDirection.ltr`.
+
+### Files
+
+| Concern | Web reference | Mobile |
+|---|---|---|
+| Decimal math | `lib/financial-calculations/decimal.ts` | `lib/core/decimals.dart` (`D`, over `package:decimal`; returns canonical decimals — trailing zeros trimmed — display re-pads) |
+| Money/percent/date formatting (§3.3) | scattered formatters | `lib/core/money_format.dart` |
+| Global "data changed" signal (§2.9) | `window` `tharwati:data-changed` | `lib/core/data_change.dart` — `DataChange.instance.ping()` singleton `ChangeNotifier`; also fired by pull-to-refresh |
+| Edge snapshot contract | `dashboard-valuation-snapshot.service.ts` | `lib/dashboard/data/dashboard_snapshot.dart` (`DashboardSnapshot.parse`, same strict validation) + `dashboard_repository.dart` |
+| Base-currency aggregate | `dashboard-aggregate.service.ts` | `lib/dashboard/logic/dashboard_aggregate.dart` (`calculateDashboardAggregate` — 7 groups, all-or-nothing `incomplete`, bank-credit → liabilities) |
+| Brokerage allocation (§2.3) | `utils/portfolio-allocation.ts` | `lib/dashboard/logic/portfolio_allocation.dart` (residual to exactly 100) + `widgets/portfolio_allocation_card.dart` (always rendered, like web: donut + category/amount/percentage legend; "unavailable" note when incomplete; "No positive Brokerage holdings to display yet." when empty) |
+| Key insights (§2.5) | `DashboardKeyInsights.tsx` | `lib/dashboard/logic/key_insights.dart` |
+| Goals card model | `goals.service.ts` `listActiveGoalSummaries` + `domain/goals.ts` | `lib/goals/` (`goals_repository.dart`, `goal_math.dart` — `fundedAmount` replay incl. reversals, `toGoalSummary` cap/surplus) |
+| Load orchestration + single-flight (§2.9) | `useDashboardAggregate` + `DashboardLoadCoordinator` | `lib/dashboard/state/dashboard_controller.dart` (loading/noBaseCurrency/error/ready; coalesces overlapping loads into one trailing silent refresh) + `dashboard_goals_controller.dart` (isolated) |
+| Screen + count-up (§3.1) | `DashboardPage.tsx` + `AnimatedNetWorthValue.tsx` | `lib/dashboard/dashboard_screen.dart` + `widgets/` (masthead, `net_worth_hero.dart` with a 500 ms `easeOutCubic` count-up that runs once and is skipped on silent refresh / reduced motion, assets-breakdown donut, key-insights, goals card, skeletons) |
+| Tab shell | web router | `lib/home_page.dart` — 5-tab `NavigationBar`; Accounts/Invest/Goals/Settings are placeholders for their flows |
+
+Unit tests: `test/dashboard_aggregate_test.dart` (complete / rate-missing →
+incomplete / null value → incomplete / bank-credit liability) and
+`test/goal_math_test.dart` (funded replay incl. reversal, display-percent cap,
+surplus).
+
+### Still deferred
+
+- Rich dashboard surfaces (§3.2) and `AccountsOverviewCard`.
+- Arabic / RTL copy (§5).
+- A dedicated shared server aggregate RPC (§4 / §6 — "better long-term"); the
+  Edge Function already serves as the shared source for now.

@@ -177,6 +177,57 @@ password?" text button beside the password label. Screens are responsive; the re
 success and forgot-sent states swap the form body for a status message plus a single
 onward action.
 
+### Mobile (Flutter) — Flow 1
+
+`tharwati_mobile/` implements the design canvas's **Flow 1 — Auth & onboarding**
+(Claude Design project `2634f553-bee9-4e9f-90a7-3c1898dac2d0`, file
+`Tharwati Mobile.dc.html`). The auth logic is unchanged from the web mirror
+(`AuthService` wraps `supabase.auth`); only presentation and the onboarding
+screens are new.
+
+- **Tokens** — `lib/theme/tokens.dart` (light + dark palettes from the Style
+  tile: accent `#15694A` / dark `#3E9E77`, canvas, surface, ink, ink-muted,
+  negative, amber `metal`, line; radius field 12 / button 16 / card 22; field &
+  button height 52, min touch 44) registered as a `ThemeExtension` by
+  `lib/theme/app_theme.dart`. Type family Plus Jakarta Sans + IBM Plex Sans
+  Arabic fallback via `google_fonts`. `MaterialApp` runs `ThemeMode.system`.
+- **Shared widgets** — `lib/widgets/`: `PrimaryButton`/`SecondaryButton`/
+  `GhostButton`, `TharwatiTextField` (label + focus ring + show/hide eye),
+  `Callout` (info / success / warning / danger advisory box), `BrandMark`,
+  `PasswordStrengthBar`, `StepDots`.
+- **Auth screens** — `auth_scaffold.dart` is the canvas-ground phone layout
+  (optional back chevron, brand header slot, left-aligned title + subtitle,
+  bottom-pinned footer, error as a danger `Callout`). Sign in adds the brand
+  mark and static العربية / EGP pills; Sign up adds full name, confirm password,
+  a 4-segment strength meter, and a required Terms checkbox (name is sent as
+  `full_name` user metadata); Forgot password and Reset password use the design
+  copy, success/expired `Callout`s, and a live "Password rules" card.
+- **Email deep link** — `signUp` passes `emailRedirectTo: Env.authDeepLink`
+  (`tharwati://auth-callback`, the same scheme the recovery email uses), so the
+  signup-confirmation link opens the app rather than the web Site URL.
+  `supabase_flutter` parses the tokens on the incoming link and emits a
+  `signedIn` event; `AuthGate` then routes to onboarding. The URL must be
+  allow-listed in **Auth → URL Configuration → Redirect URLs**. No-op when
+  "Confirm email" is off (signup returns a session directly). `SignUpPage`'s
+  non-`weak_password` errors are now mapped per `AuthException.code` (e.g.
+  `user_already_exists`), with the raw backend message surfaced in debug builds.
+- **Onboarding** — `lib/onboarding/`: `OnboardingFlow` runs the same 5 steps as
+  the web (`Welcome → Country → Currency → Goals → Ready`). The name is captured
+  at signup, not here. `steps/country_step.dart` is a searchable list over
+  `data/countries.dart` (the web's ISO list, ported); picking a country
+  preselects the base currency via `data/country_currency.dart` (ported verbatim
+  from `src/features/onboarding/data/country-currency.ts`), clamped to the five
+  supported codes in `data/currencies.dart` (USD, SAR, EGP, EUR, GBP). Goal ids
+  (`buy_home`, `buy_car`, `travel`, `education`, `other`) match `GoalsPage` so
+  `selected_goals` reads identically on both platforms. Ready calls
+  `AuthService.completeOnboarding(countryCode, baseCurrencyCode, selectedGoals)`,
+  which invokes the **`complete_onboarding` RPC** (`p_country_code`,
+  `p_base_currency_code`, `p_selected_goals`) — the same path as web. `AuthGate`
+  re-reads `onboarding_completed` via the `onboardingRefresh` notifier and routes
+  on to `HomePage`. The design canvas's simpler name + "saving toward" onboarding
+  artboards (05–06) were intentionally not followed here — the web data model
+  (country + base currency + goals) is the source of truth.
+
 ## i18n / RTL
 
 Most auth-screen copy remains hardcoded English. Password requirements, password

@@ -1,0 +1,13 @@
+{
+  "projectId": "2634f553-bee9-4e9f-90a7-3c1898dac2d0",
+  "projectUrl": "https://claude.ai/design/p/2634f553-bee9-4e9f-90a7-3c1898dac2d0?file=Tharwati+Mobile.dc.html",
+  "file": "Tharwati Mobile.dc.html",
+  "target": "tharwati_mobile/",
+  "stack": "flutter",
+  "flowsImplemented": [
+    { "flow": 1, "name": "Auth & onboarding", "date": "2026-09-08" },
+    { "flow": 2, "name": "Dashboard", "date": "2026-09-08" },
+    { "flow": 5, "name": "Goals", "date": "2026-09-08" }
+  ],
+  "notes": "Style-tile tokens live in tharwati_mobile/lib/theme/tokens.dart. Skip support.js (generated dc-runtime). Flow 1 deviation: mobile onboarding follows the WEB flow (Welcome/Country/Currency/Goals/Ready via the complete_onboarding RPC), not artboards 05-06. Flow 2: production dashboard only; valuation reuses the deployed dashboard-valuation Edge Function (supabase.functions.invoke) with the decimal aggregate ported to lib/dashboard/logic/; omitted the canvas's MoM delta pill (no historical series). Rich dashboard surfaces + AccountsOverview + Arabic deferred. See docs/dashboard.md §7. Flow 5 (Goals, screens 19-23): reuses the web goals tables + mutation RPCs (create_goal/update_goal/add_goal_progress_entry/correct_goal_progress_entry/set_goal_status/set_goal_archived); domain logic ported 1:1 to lib/goals/ (goal_math.dart validation + funded/summary, goal_history.dart correction-chain grouping). Deviation: canvas type chips (Purchase/Safety/...) -> web/DB type ids (buy_home/buy_car/travel/education/other). English only. See docs/goals.md 'Mobile (Flutter) implementation'."
+}
