@@ -19,4 +19,25 @@ describe("AccountForm ownership percentage direction", () => {
     expect(form).toContain('className="space-y-3.5 sm:space-y-4"')
     expect(form).not.toContain("sectionClassName")
   })
+
+  it("adds Business-only visual hierarchy without changing valuation fields", () => {
+    expect(form).toContain('title={t("accounts.form.businessDetails")}')
+    expect(form).toContain('accent="business"')
+    expect(form).toContain('title: "text-[var(--color-success)]"')
+    expect(form).toContain('title={t("accounts.form.initialValuation")}')
+    expect(form).toContain(
+      'description={t("accounts.form.initialValuationDescription")}'
+    )
+    expect(form).toContain('accountTypeCode === "business"')
+    expect(form).toContain('accent="valuation"')
+    expect(form).toContain(
+      'title: "text-[var(--color-valuation-accent)]"'
+    )
+    expect(form).toContain(
+      'description: "text-[var(--color-text-secondary)]"'
+    )
+    expect(form).toContain('isValuedAccount && mode === "create"')
+    expect(form).toContain("businessValuationMethodOptions.map")
+    expect(form).toContain('values.valuationMethod === "other"')
+  })
 })

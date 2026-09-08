@@ -609,7 +609,18 @@ export const en = {
   "accounts.form.location": "Location",
   "accounts.form.valuationDate": "Valuation date",
   "accounts.form.valuationMethod": "Valuation method",
+  "accounts.form.valuationMethodOther": "Specify valuation method",
   "accounts.form.valuationNotes": "Valuation note",
+  "accounts.valuationMethod.ownerEstimate": "Owner estimate",
+  "accounts.valuationMethod.professionalAppraisal": "Professional appraisal",
+  "accounts.valuationMethod.marketComparison": "Market comparison",
+  "accounts.valuationMethod.revenueMultiple": "Revenue multiple",
+  "accounts.valuationMethod.ebitdaMultiple": "EBITDA multiple",
+  "accounts.valuationMethod.discountedCashFlow": "Discounted Cash Flow (DCF)",
+  "accounts.valuationMethod.assetBased": "Asset-based valuation",
+  "accounts.valuationMethod.recentTransaction":
+    "Recent transaction / funding round",
+  "accounts.valuationMethod.other": "Other",
   "accounts.valuation.updateValue": "Update value",
   "accounts.valuation.title": "Update current value",
   "accounts.valuation.history": "Valuation history",
@@ -653,6 +664,10 @@ export const en = {
   "accounts.form.saveChanges": "Save changes",
   "accounts.form.selectPlaceholder": "Select an option",
   "accounts.form.businessType": "Business type",
+  "accounts.form.businessDetails": "Business details",
+  "accounts.form.initialValuation": "Initial valuation",
+  "accounts.form.initialValuationDescription":
+    "Record the business value when adding this account to Tharwati.",
   "accounts.form.businessType.soleProprietorship": "Sole Proprietorship",
   "accounts.form.businessType.partnership": "Partnership",
   "accounts.form.businessType.llc": "Limited Liability Company (LLC)",
@@ -718,6 +733,8 @@ export const en = {
   "accounts.validation.nameRequired": "Name is required",
   "accounts.validation.balanceRequired": "Balance is required",
   "accounts.validation.valuationDateRequired": "Valuation date is required",
+  "accounts.validation.valuationMethodOtherRequired":
+    "Specify the valuation method",
   "accounts.validation.valuationDateFuture":
     "Valuation date cannot be in the future",
   "accounts.validation.balanceInvalid":

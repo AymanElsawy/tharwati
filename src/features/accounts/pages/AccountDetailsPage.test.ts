@@ -10,5 +10,6 @@ describe("valued account details metadata", () => {
     expect(page).toContain('t("accounts.form.ownershipPercentage")')
     expect(page).toContain('t("accounts.form.location")')
     expect(page).toContain('t("accounts.form.notes")')
+    expect(page).toContain("getBusinessValuationMethodLabel(")
   })
 })

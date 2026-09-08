@@ -12,6 +12,7 @@ import {
   toAccountTypeSpecificFields,
   type AccountFormValues,
 } from "../types/account-form"
+import { toStoredBusinessValuationMethod } from "../types/business-valuation-method"
 
 type UseAccountsResult = {
   accounts: AccountSummary[]
@@ -191,17 +192,20 @@ export function useAccounts(): UseAccountsResult {
               : values.name.trim(),
           currencyCode: values.currencyCode,
           notes: nullableText(values.notes),
-          valuationAmount:
-            values.accountTypeCode === "real_estate" || values.accountTypeCode === "business"
+          valuationAmount: values.accountTypeCode === "real_estate" || values.accountTypeCode === "business"
               ? values.openingBalance.trim()
               : undefined,
-          valuedOn:
-            values.accountTypeCode === "real_estate" || values.accountTypeCode === "business"
+          valuedOn: values.accountTypeCode === "real_estate" || values.accountTypeCode === "business"
               ? values.valuationDate
               : undefined,
-          valuationMethod: values.accountTypeCode === "business" ? nullableText(values.valuationMethod) : null,
-          valuationNotes:
-            values.accountTypeCode === "real_estate" || values.accountTypeCode === "business"
+          valuationMethod:
+            values.accountTypeCode === "business"
+              ? toStoredBusinessValuationMethod(
+                  values.valuationMethod,
+                  values.valuationMethodOther
+                )
+              : null,
+          valuationNotes: values.accountTypeCode === "real_estate" || values.accountTypeCode === "business"
               ? nullableText(values.valuationNotes)
               : null,
           ...toAccountTypeSpecificFields(values),

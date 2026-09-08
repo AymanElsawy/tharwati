@@ -43,6 +43,30 @@ describe("Business account classification validation", () => {
     expect(custom.success).toBe(true)
   })
 
+  it("requires custom valuation text only for the Other method", () => {
+    const base = {
+      ...emptyAccountFormValues,
+      accountTypeCode: "business" as const,
+      name: "Studio",
+      openingBalance: "100",
+      businessType: "llc",
+      industry: "technology",
+    }
+    expect(
+      createAccountSchema(translate).safeParse({
+        ...base,
+        valuationMethod: "other",
+      }).success
+    ).toBe(false)
+    expect(
+      createAccountSchema(translate).safeParse({
+        ...base,
+        valuationMethod: "other",
+        valuationMethodOther: "Independent model",
+      }).success
+    ).toBe(true)
+  })
+
   it.each(["real_estate", "business"] as const)(
     "rejects a future initial valuation date for %s",
     (accountTypeCode) => {

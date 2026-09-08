@@ -14,6 +14,7 @@ import {
   purityCodes,
   type AccountFormValues,
 } from "../types/account-form"
+import { businessValuationMethodCodes } from "../types/business-valuation-method"
 
 const decimalAmountPattern = /^\d{1,18}(?:\.\d{1,2})?$/
 const percentagePattern = /^\d{1,3}(?:\.\d{1,2})?$/
@@ -64,7 +65,11 @@ export function createAccountSchema(
       industryOther: z.string().trim(),
       location: z.string().trim(),
       valuationDate: z.string().trim(),
-      valuationMethod: z.string().trim(),
+      valuationMethod: z.union([
+        z.enum(businessValuationMethodCodes),
+        z.literal(""),
+      ]),
+      valuationMethodOther: z.string().trim(),
       valuationNotes: z.string().trim(),
       metalType: z.union([z.enum(metalTypeCodes), z.literal("")]),
       purity: z.union([z.enum(purityCodes), z.literal("")]),
@@ -228,6 +233,17 @@ export function createAccountSchema(
               code: "custom",
               path: ["industryOther"],
               message: t("accounts.validation.industryOtherRequired"),
+            })
+          }
+          if (
+            mode === "create" &&
+            values.valuationMethod === "other" &&
+            !values.valuationMethodOther
+          ) {
+            ctx.addIssue({
+              code: "custom",
+              path: ["valuationMethodOther"],
+              message: t("accounts.validation.valuationMethodOtherRequired"),
             })
           }
           if (mode === "create") validateValuationDate(values.valuationDate, ctx, t)

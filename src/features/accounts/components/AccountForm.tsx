@@ -21,6 +21,7 @@ import {
   propertyTypeOptions,
   type AccountFormValues,
 } from "../types/account-form"
+import { businessValuationMethodOptions } from "../types/business-valuation-method"
 import { BusinessIndustrySelector } from "./BusinessIndustrySelector"
 
 type AccountFormProps = {
@@ -39,6 +40,46 @@ const fieldClassName =
 const labelClassName =
   "text-sm font-semibold tracking-tight text-[var(--color-text-primary)]"
 const errorClassName = "mt-1.5 text-sm text-red-600 dark:text-red-400"
+
+function FormSectionHeading({
+  title,
+  description,
+  accent,
+}: {
+  title: string
+  description?: string
+  accent?: "business" | "valuation"
+}) {
+  const accentClasses =
+    accent === "business"
+      ? {
+          border: "border-[var(--color-success)]/35",
+          title: "text-[var(--color-success)]",
+          description: "text-[var(--color-text-secondary)]",
+        }
+      : accent === "valuation"
+        ? {
+            border: "border-[var(--color-valuation-accent)]/35",
+            title: "text-[var(--color-valuation-accent)]",
+            description: "text-[var(--color-text-secondary)]",
+          }
+        : {
+            border: "border-[var(--color-border)]",
+            title: "text-[var(--color-text-primary)]",
+            description: "text-muted-foreground",
+          }
+
+  return (
+    <div className={`border-t pt-5 sm:pt-6 ${accentClasses.border}`}>
+      <h3 className={`text-sm font-semibold ${accentClasses.title}`}>{title}</h3>
+      {description ? (
+        <p className={`mt-1 text-sm leading-5 ${accentClasses.description}`}>
+          {description}
+        </p>
+      ) : null}
+    </div>
+  )
+}
 
 export function AccountForm({
   defaultValues,
@@ -97,6 +138,13 @@ export function AccountForm({
       noValidate
     >
       <input type="hidden" {...register("accountTypeCode")} />
+
+      {accountTypeCode === "business" ? (
+        <FormSectionHeading
+          title={t("accounts.form.businessDetails")}
+          accent="business"
+        />
+      ) : null}
 
       {accountTypeCode !== "gold" ? (
         <div>
@@ -516,6 +564,13 @@ export function AccountForm({
 
       {isValuedAccount && mode === "create" ? (
         <>
+          {accountTypeCode === "business" ? (
+            <FormSectionHeading
+              title={t("accounts.form.initialValuation")}
+              description={t("accounts.form.initialValuationDescription")}
+              accent="valuation"
+            />
+          ) : null}
           <div>
             <label
               htmlFor={`${formId}-valuation-amount`}
@@ -566,12 +621,46 @@ export function AccountForm({
                   ({t("common.optional")})
                 </span>
               </label>
-              <input
+              <select
                 id={`${formId}-valuation-method`}
                 className={fieldClassName}
                 disabled={isDisabled}
                 {...register("valuationMethod")}
-              />
+                onChange={(event) => {
+                  register("valuationMethod").onChange(event)
+                  if (event.target.value !== "other")
+                    setValue("valuationMethodOther", "")
+                }}
+              >
+                <option value="">{t("accounts.form.selectPlaceholder")}</option>
+                {businessValuationMethodOptions.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {t(option.labelKey)}
+                  </option>
+                ))}
+              </select>
+              {values.valuationMethod === "other" ? (
+                <>
+                  <label
+                    htmlFor={`${formId}-valuation-method-other`}
+                    className={`mt-3 block ${labelClassName}`}
+                  >
+                    {t("accounts.form.valuationMethodOther")}
+                  </label>
+                  <input
+                    id={`${formId}-valuation-method-other`}
+                    className={fieldClassName}
+                    disabled={isDisabled}
+                    autoComplete="off"
+                    {...register("valuationMethodOther")}
+                  />
+                  {showError("valuationMethodOther") ? (
+                    <p className={errorClassName}>
+                      {errors.valuationMethodOther?.message}
+                    </p>
+                  ) : null}
+                </>
+              ) : null}
             </div>
           ) : null}
           <div>

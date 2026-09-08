@@ -1,5 +1,5 @@
 import { Dialog } from "@base-ui/react/dialog"
-import { AlertTriangle, Check, ChevronRight, X } from "lucide-react"
+import { AlertTriangle, Check, ChevronLeft, ChevronRight, X } from "lucide-react"
 import { useMemo, useState } from "react"
 
 import { Button } from "@/components/ui/button"
@@ -36,7 +36,7 @@ export function AccountFormDialog({
   onSubmit,
   onDirtyChange,
 }: AccountFormDialogProps) {
-  const { t } = useTranslation()
+  const { direction, t } = useTranslation()
   const formId = `${mode}-account-form`
   const [creationStep, setCreationStep] = useState<"type" | "form">("type")
   const [selectedType, setSelectedType] = useState<AccountTypeCode | null>(null)
@@ -229,7 +229,11 @@ export function AccountFormDialog({
                 onClick={() => setCreationStep("form")}
               >
                 {t("common.continue")}
-                <ChevronRight size={16} aria-hidden="true" />
+                {direction === "rtl" ? (
+                  <ChevronLeft size={16} aria-hidden="true" />
+                ) : (
+                  <ChevronRight size={16} aria-hidden="true" />
+                )}
               </Button>
             ) : (
               <Button

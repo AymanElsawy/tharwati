@@ -20,7 +20,9 @@ export function normalizeAccountForm(
     industryOther: values.industryOther.trim(),
     location: values.location.trim(),
     valuationDate: values.valuationDate.trim(),
-    valuationMethod: values.valuationMethod.trim(),
+    valuationMethod:
+      values.valuationMethod.trim() as AccountFormValues["valuationMethod"],
+    valuationMethodOther: values.valuationMethodOther.trim(),
     valuationNotes: values.valuationNotes.trim(),
     purity: values.purity.trim(),
     purchaseDate: values.purchaseDate.trim(),

@@ -251,6 +251,18 @@ type AccountFormValues = {
   ownershipPercentage: string
   businessType: string
   industry: string
+  valuationMethod:
+    | "owner_estimate"
+    | "professional_appraisal"
+    | "market_comparison"
+    | "revenue_multiple"
+    | "ebitda_multiple"
+    | "discounted_cash_flow"
+    | "asset_based"
+    | "recent_transaction"
+    | "other"
+    | ""
+  valuationMethodOther: string
   metalType: "gold" | "silver" | ""
   purity: string
   purchaseDate: string
@@ -272,6 +284,8 @@ type AccountFormValues = {
 - `business`: initial valuation input + `businessType`/`industry` + `ownershipPercentage`. Business Type is a standard selector; Industry is a searchable selector. Both use stable domain codes. Selecting `other` requires a custom field and stores `other:<custom text>` so edit mode restores the selector and custom text without a schema change. Business details display localized standard labels or the clean custom text, together with the valuation and disposal history.
 
 For Real Estate and Business, the create form's value is the first immutable valuation, not an opening balance. `financial_accounts.opening_balance` is written as unused legacy technical placeholder `0` only; it is never displayed or read as their current value.
+
+Business valuation methods use stable stored codes: `owner_estimate`, `professional_appraisal`, `market_comparison`, `revenue_multiple`, `ebitda_multiple`, `discounted_cash_flow`, `asset_based`, and `recent_transaction`. Selecting `other` requires custom text containing at least one non-whitespace character and stores `other:<trimmed custom text>`; ordinary and recognized Unicode whitespace is trimmed consistently by the client and RPCs. The nullable `account_valuations.valuation_method text` column remains unchanged. Known codes display localized labels, `other:` values display clean custom text, unknown legacy free text displays unchanged, and null displays no method. Existing valuation rows are never rewritten. Real Estate continues to expose no method UI and its valuation RPC path rejects non-null methods.
 
 ### 2.6 Metal purchase form value shape
 
@@ -300,7 +314,7 @@ Per-type, on submit (Zod schema, errors shown only after first submit attempt):
 | `bank` Credit           | non-negative `openingBalance` + positive `creditCardLimit` + optional `dueDayOfMonth` from 1-31; `openingBalance <= creditCardLimit` |
 | `brokerage`             | above + `investmentType` required                                                                                                    |
 | `real_estate`           | above + `ownershipPercentage` (pattern `^\d{1,3}(\.\d{1,2})?$`, ≤ 100) + `propertyType` required                                     |
-| `business`              | above + `ownershipPercentage` + selected `businessType` and `industry`; each requires custom text when `other` is selected           |
+| `business`              | above + `ownershipPercentage` + selected `businessType` and `industry`; each requires custom text when `other` is selected; optional controlled valuation method requires custom text when `other` is selected |
 | `gold`                  | `metalType` required only (no balance field shown)                                                                                   |
 | all types except `gold` | `name` required                                                                                                                      |
 
@@ -435,6 +449,7 @@ For Income and Expense, Add Record uses a wide two-column grid on tablet/desktop
 - **Edit mode**: skips the type picker; type is effectively immutable from the UI once created.
 - The responsive form dialog uses one visual language at every breakpoint: a type-identity header (type icon and localized type name), followed by one localized Create/Edit title and its description, a compact consistent vertical field rhythm without outer Name/Currency surfaces, 44 px minimum native controls on mobile, and decorative contextual field icons. Semantic dialog title/description, explicit-LTR numeric inputs, independently scrolling body, and persistent footer remain unchanged.
 - Field visibility/labels are conditional on `accountTypeCode` exactly as described in §2.5/§3.
+- Business forms use visual-only hierarchy: **Business details** precedes Name, Currency, Business Type, Industry, and Ownership Percentage, with a subtle success-accent title and divider. In Create mode only, **Initial valuation** precedes the existing Current Value, Valuation Date, optional controlled Valuation Method, and optional Valuation Note fields, with a dedicated per-theme valuation (violet/indigo) title/divider and normal secondary-text helper copy explaining that it records the business value when the account is added to Tharwati. These theme tokens preserve contrast and distinction across Light, Dark, and Colorful appearances. The method selector uses the stable codes in §2.5 and conditionally reveals required custom text for Other. These headings do not change valuation behavior or appear with create-only valuation fields in Edit mode. Notes remains the final unsectioned field. The later Business Add/Update Value dialog uses the same method options and encoding; Real Estate shows no method control. The shared Create-flow Continue icon follows the logical direction: right in LTR and left in RTL.
 - Balance field label varies by type: `brokerage` → "Starting cash balance"; `real_estate`/`business` → "Current value"; `cash`/`bank`/`other` → "Starting balance"; hidden entirely for `gold`.
 - Bank Debit shows Name, Currency, Type, and Starting Balance. Bank Credit additionally shows a required Credit Card Limit and an optional Due Day of Month dropdown (`Unset`, then 1-31). For Bank Credit, Starting Balance means available credit, and Amount Due is derived outside the form as `Credit Card Limit - Starting Balance`; Amount Due is never entered manually.
 - Lifecycle state is not editable in this metadata form; Close/Reopen owns active state. `isActive` remains preserved as an internal submitted form value.
