@@ -29,6 +29,8 @@
 
   --color-success: #128247;
   --color-success-soft: #d8f7e4;
+  --color-real-estate-accent: #0f766e;
+  --color-valuation-accent: #5b4bc4;
 
   --color-danger: #c93f4b;
   --color-danger-soft: #fde6e8;
@@ -74,6 +76,8 @@
 
   --color-success: #4ade80;
   --color-success-soft: rgba(74, 222, 128, 0.13);
+  --color-real-estate-accent: #5eead4;
+  --color-valuation-accent: #a78bfa;
 
   --color-danger: #fb7185;
   --color-danger-soft: rgba(251, 113, 133, 0.13);
@@ -119,6 +123,8 @@
 
   --color-success: #109b63;
   --color-success-soft: #d9f7e9;
+  --color-real-estate-accent: #0f8f83;
+  --color-valuation-accent: #5b4cf0;
 
   --color-danger: #dc3e5d;
   --color-danger-soft: #ffe2e8;

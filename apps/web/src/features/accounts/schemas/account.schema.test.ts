@@ -43,6 +43,91 @@ describe("Business account classification validation", () => {
     expect(custom.success).toBe(true)
   })
 
+  it("requires custom valuation text only for the Other method", () => {
+    const base = {
+      ...emptyAccountFormValues,
+      accountTypeCode: "business" as const,
+      name: "Studio",
+      openingBalance: "100",
+      businessType: "llc",
+      industry: "technology",
+    }
+    expect(
+      createAccountSchema(translate).safeParse({
+        ...base,
+        valuationMethod: "other",
+      }).success
+    ).toBe(false)
+    expect(
+      createAccountSchema(translate).safeParse({
+        ...base,
+        valuationMethod: "other",
+        valuationMethodOther: "Independent model",
+      }).success
+    ).toBe(true)
+  })
+
+  it("validates valuation methods against the selected valued-account type", () => {
+    const realEstate = {
+      ...emptyAccountFormValues,
+      accountTypeCode: "real_estate" as const,
+      name: "Home",
+      openingBalance: "100",
+      propertyType: "villa" as const,
+    }
+    expect(
+      createAccountSchema(translate).safeParse({
+        ...realEstate,
+        valuationMethod: "income_approach",
+      }).success
+    ).toBe(true)
+    expect(
+      createAccountSchema(translate).safeParse({
+        ...realEstate,
+        valuationMethod: "revenue_multiple",
+      }).success
+    ).toBe(false)
+
+    const business = {
+      ...emptyAccountFormValues,
+      accountTypeCode: "business" as const,
+      name: "Studio",
+      openingBalance: "100",
+      businessType: "llc" as const,
+      industry: "technology" as const,
+    }
+    expect(
+      createAccountSchema(translate).safeParse({
+        ...business,
+        valuationMethod: "revenue_multiple",
+      }).success
+    ).toBe(true)
+    expect(
+      createAccountSchema(translate).safeParse({
+        ...business,
+        valuationMethod: "income_approach",
+      }).success
+    ).toBe(false)
+  })
+
+  it("requires Real Estate custom valuation text when Other is selected", () => {
+    const base = {
+      ...emptyAccountFormValues,
+      accountTypeCode: "real_estate" as const,
+      name: "Home",
+      openingBalance: "100",
+      propertyType: "villa" as const,
+      valuationMethod: "other" as const,
+    }
+    expect(createAccountSchema(translate).safeParse(base).success).toBe(false)
+    expect(
+      createAccountSchema(translate).safeParse({
+        ...base,
+        valuationMethodOther: "Broker opinion",
+      }).success
+    ).toBe(true)
+  })
+
   it.each(["real_estate", "business"] as const)(
     "rejects a future initial valuation date for %s",
     (accountTypeCode) => {

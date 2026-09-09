@@ -14,6 +14,11 @@ import {
   purityCodes,
   type AccountFormValues,
 } from "../types/account-form"
+import {
+  isValuationMethodAllowed,
+  valuationMethodCodes,
+  type ValuationAccountTypeCode,
+} from "../types/valuation-method"
 
 const decimalAmountPattern = /^\d{1,18}(?:\.\d{1,2})?$/
 const percentagePattern = /^\d{1,3}(?:\.\d{1,2})?$/
@@ -64,7 +69,8 @@ export function createAccountSchema(
       industryOther: z.string().trim(),
       location: z.string().trim(),
       valuationDate: z.string().trim(),
-      valuationMethod: z.string().trim(),
+      valuationMethod: z.union([z.enum(valuationMethodCodes), z.literal("")]),
+      valuationMethodOther: z.string().trim(),
       valuationNotes: z.string().trim(),
       metalType: z.union([z.enum(metalTypeCodes), z.literal("")]),
       purity: z.union([z.enum(purityCodes), z.literal("")]),
@@ -102,6 +108,30 @@ export function createAccountSchema(
             code: "custom",
             path: ["ownershipPercentage"],
             message: t("accounts.validation.ownershipPercentageInvalid"),
+          })
+        }
+      }
+      const validateValuationMethod = (
+        accountTypeCode: ValuationAccountTypeCode
+      ) => {
+        if (
+          values.valuationMethod &&
+          !isValuationMethodAllowed(accountTypeCode, values.valuationMethod)
+        ) {
+          ctx.addIssue({
+            code: "custom",
+            path: ["valuationMethod"],
+            message: t("accounts.validation.valuationMethodInvalid"),
+          })
+        }
+        if (
+          values.valuationMethod === "other" &&
+          !values.valuationMethodOther
+        ) {
+          ctx.addIssue({
+            code: "custom",
+            path: ["valuationMethodOther"],
+            message: t("accounts.validation.valuationMethodOtherRequired"),
           })
         }
       }
@@ -196,7 +226,10 @@ export function createAccountSchema(
               message: t("accounts.validation.propertyTypeRequired"),
             })
           }
-          if (mode === "create") validateValuationDate(values.valuationDate, ctx, t)
+          if (mode === "create") {
+            validateValuationMethod("real_estate")
+            validateValuationDate(values.valuationDate, ctx, t)
+          }
           break
         }
         case "business": {
@@ -230,7 +263,10 @@ export function createAccountSchema(
               message: t("accounts.validation.industryOtherRequired"),
             })
           }
-          if (mode === "create") validateValuationDate(values.valuationDate, ctx, t)
+          if (mode === "create") {
+            validateValuationMethod("business")
+            validateValuationDate(values.valuationDate, ctx, t)
+          }
           break
         }
       }

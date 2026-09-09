@@ -195,6 +195,10 @@ describe("AccountsRepository.createAccount", () => {
           propertyType: accountTypeCode === "real_estate" ? "villa" : null,
           businessType: accountTypeCode === "business" ? "Company" : null,
           industry: accountTypeCode === "business" ? "Software" : null,
+          valuationMethod:
+            accountTypeCode === "business"
+              ? "owner_estimate"
+              : "professional_appraisal",
         })
       ).resolves.toMatchObject({ id: "valued-account", opening_balance: "0" })
 
@@ -203,6 +207,15 @@ describe("AccountsRepository.createAccount", () => {
         expect.objectContaining({ p_valuation_amount: "500" })
       )
       expect(builder.select).toHaveBeenCalled()
+      expect(rpc).toHaveBeenCalledWith(
+        "create_valued_account",
+        expect.objectContaining({
+          p_valuation_method:
+            accountTypeCode === "business"
+              ? "owner_estimate"
+              : "professional_appraisal",
+        })
+      )
     }
   )
 })

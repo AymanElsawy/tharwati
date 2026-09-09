@@ -5,6 +5,7 @@ import {
   multiplyDecimals,
   subtractDecimals,
 } from "../../../lib/financial-calculations/decimal"
+import type { ValuationMethodCode } from "./valuation-method"
 
 export const accountTypeOptions = [
   {
@@ -272,7 +273,8 @@ export type AccountFormValues = {
   industryOther: string
   location: string
   valuationDate: string
-  valuationMethod: string
+  valuationMethod: ValuationMethodCode | ""
+  valuationMethodOther: string
   valuationNotes: string
   metalType: (typeof metalTypeCodes)[number] | ""
   purity: string
@@ -301,6 +303,7 @@ export const emptyAccountFormValues: AccountFormValues = {
   location: "",
   valuationDate: new Date().toISOString().slice(0, 10),
   valuationMethod: "",
+  valuationMethodOther: "",
   valuationNotes: "",
   metalType: "",
   purity: "",
@@ -339,6 +342,7 @@ export function accountToFormValues(
     location: account.location ?? "",
     valuationDate: "",
     valuationMethod: "",
+    valuationMethodOther: "",
     valuationNotes: "",
     metalType: (account.metal_type ?? "") as AccountFormValues["metalType"],
     purity: account.purity ?? "",

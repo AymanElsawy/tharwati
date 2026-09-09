@@ -589,7 +589,22 @@ export const ar: Record<TranslationKey, string> = {
   "accounts.form.location": "الموقع",
   "accounts.form.valuationDate": "تاريخ التقييم",
   "accounts.form.valuationMethod": "طريقة التقييم",
+  "accounts.form.valuationMethodOther": "حدد طريقة التقييم",
   "accounts.form.valuationNotes": "ملاحظة التقييم",
+  "accounts.valuationMethod.ownerEstimate": "تقدير المالك",
+  "accounts.valuationMethod.professionalAppraisal": "تقييم مهني",
+  "accounts.valuationMethod.marketComparison": "مقارنة السوق",
+  "accounts.valuationMethod.incomeApproach": "منهج الدخل",
+  "accounts.valuationMethod.costApproach": "منهج التكلفة",
+  "accounts.valuationMethod.realEstateRecentTransaction": "معاملة حديثة",
+  "accounts.valuationMethod.revenueMultiple": "مضاعف الإيرادات",
+  "accounts.valuationMethod.ebitdaMultiple":
+    "مضاعف الأرباح قبل الفوائد والضرائب والإهلاك والاستهلاك",
+  "accounts.valuationMethod.discountedCashFlow":
+    "التدفقات النقدية المخصومة (DCF)",
+  "accounts.valuationMethod.assetBased": "التقييم على أساس الأصول",
+  "accounts.valuationMethod.recentTransaction": "معاملة حديثة / جولة تمويل",
+  "accounts.valuationMethod.other": "أخرى",
   "accounts.valuation.updateValue": "تحديث القيمة",
   "accounts.valuation.title": "تحديث القيمة الحالية",
   "accounts.valuation.history": "سجل التقييمات",
@@ -633,6 +648,13 @@ export const ar: Record<TranslationKey, string> = {
   "accounts.form.saveChanges": "حفظ التغييرات",
   "accounts.form.selectPlaceholder": "اختر خيارًا",
   "accounts.form.businessType": "نوع النشاط التجاري",
+  "accounts.form.businessDetails": "تفاصيل النشاط التجاري",
+  "accounts.form.propertyDetails": "تفاصيل العقار",
+  "accounts.form.initialValuation": "التقييم الأولي",
+  "accounts.form.initialValuationDescription":
+    "سجّل قيمة النشاط التجاري عند إضافة هذا الحساب إلى ثروتي.",
+  "accounts.form.initialPropertyValuationDescription":
+    "سجّل قيمة العقار عند إضافة هذا الحساب إلى ثروتي.",
   "accounts.form.businessType.soleProprietorship": "مؤسسة فردية",
   "accounts.form.businessType.partnership": "شراكة",
   "accounts.form.businessType.llc": "شركة ذات مسؤولية محدودة",
@@ -697,6 +719,8 @@ export const ar: Record<TranslationKey, string> = {
   "accounts.validation.nameRequired": "اسم الحساب مطلوب",
   "accounts.validation.balanceRequired": "الرصيد مطلوب",
   "accounts.validation.valuationDateRequired": "تاريخ التقييم مطلوب",
+  "accounts.validation.valuationMethodOtherRequired": "حدد طريقة التقييم",
+  "accounts.validation.valuationMethodInvalid": "اختر طريقة تقييم مدعومة",
   "accounts.validation.valuationDateFuture":
     "لا يمكن أن يكون تاريخ التقييم في المستقبل",
   "accounts.validation.balanceInvalid":

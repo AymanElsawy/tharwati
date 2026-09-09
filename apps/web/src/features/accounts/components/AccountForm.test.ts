@@ -19,4 +19,32 @@ describe("AccountForm ownership percentage direction", () => {
     expect(form).toContain('className="space-y-3.5 sm:space-y-4"')
     expect(form).not.toContain("sectionClassName")
   })
+
+  it("keeps the Business hierarchy and adds the Real Estate hierarchy", () => {
+    expect(form).toContain('title={t("accounts.form.businessDetails")}')
+    expect(form).toContain('accent="business"')
+    expect(form).toContain('title: "text-[var(--color-success)]"')
+    expect(form).toContain('title={t("accounts.form.initialValuation")}')
+    expect(form).toContain('"accounts.form.initialValuationDescription"')
+    expect(form).toContain('title={t("accounts.form.propertyDetails")}')
+    expect(form).toContain('accent="realEstate"')
+    expect(form).toContain(
+      'title: "text-[var(--color-real-estate-accent)]"'
+    )
+    expect(form).toContain('className="grid gap-5 sm:grid-cols-2"')
+    expect(form).toContain('accent="valuation"')
+    expect(form).toContain(
+      'title: "text-[var(--color-valuation-accent)]"'
+    )
+    expect(form).toContain(
+      'description: "text-[var(--color-text-secondary)]"'
+    )
+    expect(form).toContain('isValuedAccount && mode === "create"')
+    expect(form).toContain("valuationMethodOptionsByAccountType")
+    expect(form).toContain("valuationMethodOptions.map")
+    expect(form).toContain(
+      '"accounts.form.initialPropertyValuationDescription"'
+    )
+    expect(form).toContain('values.valuationMethod === "other"')
+  })
 })
