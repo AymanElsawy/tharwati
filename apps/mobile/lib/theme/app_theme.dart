@@ -3,11 +3,9 @@ import 'package:google_fonts/google_fonts.dart';
 
 import 'tokens.dart';
 
-/// Builds the light / dark [ThemeData] for the app from the design's Style tile.
-///
-/// Type family: Plus Jakarta Sans for Latin, IBM Plex Sans Arabic as the
-/// fallback face so Arabic copy renders correctly under true RTL. Both are
-/// pulled by `google_fonts` on first run and cached on device.
+/// Builds the app's semantic light and dark themes. Inter is the default UI and
+/// financial face; Playfair Display is reserved for display/page/section styles;
+/// Noto Sans Arabic remains the fallback when Arabic copy is introduced.
 class AppTheme {
   static ThemeData light() => _build(AppColors.light);
   static ThemeData dark() => _build(AppColors.dark);
@@ -19,20 +17,35 @@ class AppTheme {
       scaffoldBackgroundColor: c.canvas,
     );
 
-    // Plus Jakarta Sans for Latin; IBM Plex Sans Arabic as the fallback face so
-    // Arabic copy renders correctly once RTL locales land.
-    final arabicFallback = GoogleFonts.ibmPlexSansArabic().fontFamily;
-    final textTheme = GoogleFonts.plusJakartaSansTextTheme(base.textTheme)
-        .apply(
-          bodyColor: c.ink,
-          displayColor: c.ink,
-          fontFamilyFallback: [?arabicFallback],
-        );
+    final arabicFallback = GoogleFonts.notoSansArabic().fontFamily;
+    final serifFamily = GoogleFonts.playfairDisplay().fontFamily;
+    final bodyTheme = GoogleFonts.interTextTheme(base.textTheme).apply(
+      bodyColor: c.ink,
+      displayColor: c.ink,
+      fontFamilyFallback: [?arabicFallback],
+    );
+    TextStyle? serif(TextStyle? style) =>
+        style?.copyWith(fontFamily: serifFamily, fontWeight: FontWeight.w400);
+    final textTheme = bodyTheme.copyWith(
+      displayLarge: serif(bodyTheme.displayLarge),
+      displayMedium: serif(bodyTheme.displayMedium),
+      displaySmall: serif(bodyTheme.displaySmall),
+      headlineLarge: serif(bodyTheme.headlineLarge),
+      headlineMedium: serif(bodyTheme.headlineMedium),
+      headlineSmall: serif(bodyTheme.headlineSmall),
+      titleLarge: serif(bodyTheme.titleLarge),
+    );
 
-    final scheme = ColorScheme.fromSeed(
-      seedColor: c.accent,
-      brightness: c.brightness,
-    ).copyWith(primary: c.accent, surface: c.surface, error: c.negative);
+    final scheme =
+        ColorScheme.fromSeed(
+          seedColor: c.accent,
+          brightness: c.brightness,
+        ).copyWith(
+          primary: c.accent,
+          onPrimary: c.onAccent,
+          surface: c.surface,
+          error: c.negative,
+        );
 
     return base.copyWith(
       colorScheme: scheme,
@@ -47,6 +60,7 @@ class AppTheme {
         elevation: 0,
         scrolledUnderElevation: 0,
         centerTitle: false,
+        titleTextStyle: textTheme.titleLarge?.copyWith(color: c.ink),
       ),
       textSelectionTheme: TextSelectionThemeData(cursorColor: c.accent),
       inputDecorationTheme: InputDecorationTheme(
@@ -65,7 +79,7 @@ class AppTheme {
         floatingLabelBehavior: FloatingLabelBehavior.never,
         border: _fieldBorder(c.line),
         enabledBorder: _fieldBorder(c.line),
-        focusedBorder: _fieldBorder(c.accent, width: 1.5),
+        focusedBorder: _fieldBorder(c.focusRing, width: 1.5),
         errorBorder: _fieldBorder(c.negative, width: 1.5),
         focusedErrorBorder: _fieldBorder(c.negative, width: 1.5),
         errorStyle: TextStyle(
@@ -78,7 +92,7 @@ class AppTheme {
         style: FilledButton.styleFrom(
           minimumSize: const Size.fromHeight(AppSizes.button),
           backgroundColor: c.accent,
-          foregroundColor: Colors.white,
+          foregroundColor: c.onAccent,
           disabledBackgroundColor: c.disabledFill,
           disabledForegroundColor: c.disabledFg,
           textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
@@ -87,8 +101,6 @@ class AppTheme {
           ),
         ),
       ),
-      // Same footprint as the filled button (Style tile: 52 tall, radius 16) so
-      // a filled + outlined pair reads as one control group.
       outlinedButtonTheme: OutlinedButtonThemeData(
         style: OutlinedButton.styleFrom(
           minimumSize: const Size.fromHeight(AppSizes.button),
@@ -114,7 +126,7 @@ class AppTheme {
               ? c.accent
               : Colors.transparent,
         ),
-        checkColor: const WidgetStatePropertyAll(Colors.white),
+        checkColor: WidgetStatePropertyAll(c.onAccent),
         side: BorderSide(color: c.inkMuted, width: 1.5),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(7)),
       ),

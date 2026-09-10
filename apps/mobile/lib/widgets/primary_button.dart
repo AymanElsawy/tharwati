@@ -35,12 +35,14 @@ class PrimaryButton extends StatelessWidget {
               ),
             ),
       child: busy
-          ? const SizedBox(
+          ? SizedBox(
               height: 18,
               width: 18,
               child: CircularProgressIndicator(
                 strokeWidth: 2,
-                valueColor: AlwaysStoppedAnimation(Colors.white),
+                valueColor: AlwaysStoppedAnimation(
+                  Theme.of(context).colorScheme.onPrimary,
+                ),
               ),
             )
           : Text(label, maxLines: 1, overflow: TextOverflow.ellipsis),

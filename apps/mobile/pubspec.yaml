@@ -35,8 +35,8 @@ dependencies:
   # Use with the CupertinoIcons class for iOS style icons.
   cupertino_icons: ^1.0.8
   supabase_flutter: ^2.17.2
-  # Plus Jakarta Sans (Latin) + IBM Plex Sans Arabic — the design's two type families.
-  # Fetched and cached on first run; see lib/theme/app_theme.dart.
+  # Inter, Playfair Display, and Noto Sans Arabic are fetched and cached by
+  # google_fonts; see lib/theme/app_theme.dart.
   google_fonts: ^6.2.1
   # Exact-precision decimal math for money — mirrors the web's bigint-decimal
   # library. Money/quantity values are decimal strings end-to-end (docs/dashboard.md §7).
@@ -63,6 +63,11 @@ flutter:
   # included with your application, so that you can use the icons in
   # the material Icons class.
   uses-material-design: true
+
+  assets:
+    - assets/branding/tharwati-logo-light.png
+    - assets/branding/tharwati-logo-dark.png
+    - assets/images/mountain.png
 
   # To add assets to your application, add an assets section, like this:
   # assets:

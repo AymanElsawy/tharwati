@@ -1,16 +1,12 @@
 import 'package:flutter/material.dart';
 
-/// Design tokens from the "Style tile" artboard of the Tharwati Mobile design
-/// canvas (Claude Design project 2634f553). One green accent everywhere; the
-/// amber `metal` tint is the only second hue, reserved for gold/silver.
-///
-/// Two palettes — [AppColors.light] and [AppColors.dark]. Screens never read raw
-/// hex; they pull from the [AppColors] handed to them by [AppTheme] via
-/// `context.colors` (see extension at the bottom of this file).
+/// Semantic visual tokens for the Flutter client. Screens consume these through
+/// [BuildContext.colors] rather than reading palette values directly.
 @immutable
 class AppColors extends ThemeExtension<AppColors> {
   const AppColors({
     required this.accent,
+    required this.onAccent,
     required this.accentSoft,
     required this.canvas,
     required this.surface,
@@ -19,6 +15,7 @@ class AppColors extends ThemeExtension<AppColors> {
     required this.negative,
     required this.negativeSoft,
     required this.metal,
+    required this.artworkGold,
     required this.metalSoft,
     required this.line,
     required this.fieldFill,
@@ -35,6 +32,7 @@ class AppColors extends ThemeExtension<AppColors> {
   });
 
   final Color accent;
+  final Color onAccent;
   final Color accentSoft;
   final Color canvas;
   final Color surface;
@@ -43,6 +41,7 @@ class AppColors extends ThemeExtension<AppColors> {
   final Color negative;
   final Color negativeSoft;
   final Color metal;
+  final Color artworkGold;
   final Color metalSoft;
   final Color line;
   final Color fieldFill;
@@ -59,8 +58,6 @@ class AppColors extends ThemeExtension<AppColors> {
 
   bool get isDark => brightness == Brightness.dark;
 
-  // The palette is one of two fixed constants; no per-field theming, so
-  // copyWith is an identity and lerp is a hard swap at the midpoint.
   @override
   AppColors copyWith() => this;
 
@@ -71,75 +68,76 @@ class AppColors extends ThemeExtension<AppColors> {
   }
 
   static const light = AppColors(
-    accent: Color(0xFF15694A),
-    accentSoft: Color(0xFFE4EFE8),
-    canvas: Color(0xFFE8EEEB),
-    surface: Color(0xFFFFFFFF),
-    ink: Color(0xFF0F1F1A),
-    inkMuted: Color(0xFF5A6B64),
-    negative: Color(0xFFB4443A),
-    negativeSoft: Color(0xFFFDF4F3),
-    metal: Color(0xFFC97A16),
-    metalSoft: Color(0xFFFBEFDD),
-    line: Color(0xFFDDE5E1),
-    fieldFill: Color(0xFFF4F7F5),
-    successSoft: Color(0xFFE4EFE8),
-    successBorder: Color(0xFFBEDCCB),
-    warningFg: Color(0xFF8A5A0C),
-    warningSoft: Color(0xFFFDF6EA),
-    warningBorder: Color(0xFFE4C9A8),
-    dangerBorder: Color(0xFFE7C7C3),
-    disabledFill: Color(0xFFC7D5CE),
-    disabledFg: Color(0xFF7C8B85),
-    focusRing: Color(0xFF9BC7B3),
+    accent: Color(0xFF0F3D32),
+    onAccent: Color(0xFFFFFFFF),
+    accentSoft: Color(0xFFEAF0E8),
+    canvas: Color(0xFFF8F6ED),
+    surface: Color(0xFFFFFEFA),
+    ink: Color(0xFF0B2A22),
+    inkMuted: Color(0xFF59655E),
+    negative: Color(0xFF8B3025),
+    negativeSoft: Color(0xFFF1E1D7),
+    metal: Color(0xFF9A753A),
+    artworkGold: Color(0xFFC9A96B),
+    metalSoft: Color(0xFFF2EBD9),
+    line: Color(0xFFE7E8DF),
+    fieldFill: Color(0xFFF1F0E8),
+    successSoft: Color(0xFFEAF0E8),
+    successBorder: Color(0xFFC9D9CE),
+    warningFg: Color(0xFF76591F),
+    warningSoft: Color(0xFFF2EBD9),
+    warningBorder: Color(0xFFE1D1AE),
+    dangerBorder: Color(0xFFE0BBB2),
+    disabledFill: Color(0xFFE1E4DC),
+    disabledFg: Color(0xFF7A857F),
+    focusRing: Color(0xFF4E8B76),
     brightness: Brightness.light,
   );
 
   static const dark = AppColors(
-    accent: Color(0xFF3E9E77),
-    accentSoft: Color(0xFF173025),
-    canvas: Color(0xFF0B1210),
-    surface: Color(0xFF141E1B),
-    ink: Color(0xFFEAF2EE),
-    inkMuted: Color(0xFF93A49D),
-    negative: Color(0xFFE4796D),
-    negativeSoft: Color(0xFF2A1613),
-    metal: Color(0xFFE0A040),
-    metalSoft: Color(0xFF2E2312),
-    line: Color(0xFF24312C),
-    fieldFill: Color(0xFF101917),
-    successSoft: Color(0xFF173025),
-    successBorder: Color(0xFF2E5343),
-    warningFg: Color(0xFFE0A040),
-    warningSoft: Color(0xFF2E2312),
-    warningBorder: Color(0xFF5C4726),
-    dangerBorder: Color(0xFF5C302B),
-    disabledFill: Color(0xFF24312C),
-    disabledFg: Color(0xFF6B7D76),
-    focusRing: Color(0xFF3E9E77),
+    accent: Color(0xFFC9A96B),
+    onAccent: Color(0xFF071C17),
+    accentSoft: Color(0xFF183E31),
+    canvas: Color(0xFF071C17),
+    surface: Color(0xFF102E26),
+    ink: Color(0xFFF8F6ED),
+    inkMuted: Color(0xFFB8C7BE),
+    negative: Color(0xFFF2A49B),
+    negativeSoft: Color(0xFF301E1C),
+    metal: Color(0xFFC9A96B),
+    artworkGold: Color(0xFFC9A96B),
+    metalSoft: Color(0xFF263426),
+    line: Color(0xFF244339),
+    fieldFill: Color(0xFF0B251E),
+    successSoft: Color(0xFF183E31),
+    successBorder: Color(0xFF356150),
+    warningFg: Color(0xFFC9A96B),
+    warningSoft: Color(0xFF263426),
+    warningBorder: Color(0xFF4B5F43),
+    dangerBorder: Color(0xFF70443E),
+    disabledFill: Color(0xFF244339),
+    disabledFg: Color(0xFF789087),
+    focusRing: Color(0xFF76B49C),
     brightness: Brightness.dark,
   );
 }
 
-/// Corner radii — field 12, button 16, card 22, pill full (Style tile).
 class AppRadius {
   static const field = 12.0;
   static const button = 16.0;
-  static const card = 22.0;
+  static const card = 16.0;
   static const chip = 999.0;
 }
 
-/// 4 · 8 · 12 · 16 · 20 · 28 spacing steps (Style tile).
 class AppSpacing {
   static const hairline = 4.0;
   static const inRow = 8.0;
   static const rowGap = 12.0;
   static const card = 16.0;
-  static const gutter = 20.0;
-  static const section = 28.0;
+  static const gutter = 18.0;
+  static const section = 24.0;
 }
 
-/// Minimum interactive height / list-row height from the Style tile.
 class AppSizes {
   static const touchTarget = 44.0;
   static const field = 52.0;
@@ -147,36 +145,32 @@ class AppSizes {
   static const listRow = 60.0;
 }
 
-/// Categorical series colours for the dashboard donuts. Not role tokens — these
-/// are the four hues the Dashboard artboards (07/08) use for the assets
-/// breakdown: accent, metal, plus a slate blue and a soft green that only ever
-/// appear inside a chart. Order is stable so a category keeps its colour.
+/// Categorical chart colours. Their order remains stable so a category keeps
+/// its colour; charts still require accompanying text labels.
 class AppChartColors {
   static const light = <Color>[
-    Color(0xFF15694A), // accent
-    Color(0xFFC97A16), // metal
-    Color(0xFF3D5A80), // slate
-    Color(0xFF9BC7B3), // mint
-    Color(0xFF6E8B84), // muted (5th+ categories)
-    Color(0xFFB4443A), // negative-ish (rare)
-    Color(0xFFCBB79A), // sand
+    Color(0xFF0F3D32),
+    Color(0xFF4E8B76),
+    Color(0xFFC9A96B),
+    Color(0xFFB8734F),
+    Color(0xFFA7B9A7),
+    Color(0xFF8B3025),
+    Color(0xFFE7DDC9),
   ];
 
   static const dark = <Color>[
-    Color(0xFF3E9E77),
-    Color(0xFFE0A040),
-    Color(0xFF7FA3CF),
-    Color(0xFF2C5F49),
-    Color(0xFF8FB6A3),
-    Color(0xFFE4796D),
-    Color(0xFF6A5C45),
+    Color(0xFF258F72),
+    Color(0xFF76B49C),
+    Color(0xFFC9A96B),
+    Color(0xFFC98369),
+    Color(0xFFA7B9A7),
+    Color(0xFFF2A49B),
+    Color(0xFF8A775B),
   ];
 
   static List<Color> of(AppColors c) => c.isDark ? dark : light;
 }
 
-/// `context.colors` — the active [AppColors], registered as a [ThemeExtension]
-/// by [AppTheme]. Falls back to the light palette if the theme lacks it.
 extension AppColorsX on BuildContext {
   AppColors get colors =>
       Theme.of(this).extension<AppColors>() ?? AppColors.light;

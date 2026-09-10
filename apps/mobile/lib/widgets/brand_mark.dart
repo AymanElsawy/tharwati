@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 
 import '../theme/tokens.dart';
+import 'tharwati_brand.dart';
 
-/// The `ث` accent tile plus the "Tharwati" wordmark and tagline, as on the
-/// Sign in artboard (Flow 1 · 01).
+/// Auth-facing arrangement of the shared source-derived Tharwati mark,
+/// wordmark, and tagline.
 class BrandMark extends StatelessWidget {
   const BrandMark({super.key, this.showTagline = true});
 
@@ -15,32 +16,15 @@ class BrandMark extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Container(
-          width: 52,
-          height: 52,
-          alignment: Alignment.center,
-          decoration: BoxDecoration(
-            color: c.accent,
-            borderRadius: BorderRadius.circular(16),
-          ),
-          child: const Text(
-            'ث',
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: 24,
-              fontWeight: FontWeight.w800,
-            ),
-          ),
-        ),
+        const TharwatiBrand(width: 72),
         const SizedBox(height: 18),
         Text(
           'Tharwati',
-          style: TextStyle(
-            color: c.accent,
+          style: Theme.of(context).textTheme.displaySmall?.copyWith(
+            color: c.ink,
             fontSize: 34,
             height: 1.05,
-            letterSpacing: -1,
-            fontWeight: FontWeight.w800,
+            letterSpacing: -0.6,
           ),
         ),
         if (showTagline) ...[
