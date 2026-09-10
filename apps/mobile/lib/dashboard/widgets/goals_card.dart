@@ -34,9 +34,8 @@ class GoalsCard extends StatelessWidget {
                 children: [
                   Text(
                     'Goals',
-                    style: TextStyle(
+                    style: Theme.of(context).textTheme.titleSmall?.copyWith(
                       color: c.ink,
-                      fontSize: 15,
                       fontWeight: FontWeight.w700,
                     ),
                   ),

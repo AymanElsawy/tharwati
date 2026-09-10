@@ -49,7 +49,7 @@ class PortfolioAllocationCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _title(c),
+            _title(context),
             const SizedBox(height: 4),
             Text(
               'Current Brokerage investments by asset type',
@@ -79,7 +79,7 @@ class PortfolioAllocationCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _title(c),
+          _title(context),
           const SizedBox(height: 4),
           Text(
             'Current Brokerage investments by asset type',
@@ -134,9 +134,12 @@ class PortfolioAllocationCard extends StatelessWidget {
     );
   }
 
-  Widget _title(AppColors c) => Text(
+  Widget _title(BuildContext context) => Text(
     'Portfolio allocation',
-    style: TextStyle(color: c.ink, fontSize: 15, fontWeight: FontWeight.w700),
+    style: Theme.of(context).textTheme.titleSmall?.copyWith(
+      color: context.colors.ink,
+      fontWeight: FontWeight.w700,
+    ),
   );
 }
 

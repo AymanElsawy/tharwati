@@ -368,6 +368,22 @@ incomplete / null value → incomplete / bank-credit liability) and
 `test/goal_math_test.dart` (funded replay incl. reversal, display-percent cap,
 surplus).
 
+### Flutter presentation note
+
+The current Flutter Dashboard presentation uses the approved Dashboard-only
+mountain asset in `widgets/dashboard_masthead.dart` (cropped at its source
+image's left edge to remove baked-in clipped lettering), a safe-area-positioned,
+theme-aware `TharwatiBrand`, and a 32px-overlapping `NetWorthHero`. The
+masthead keeps the greeting/date and `Your wealth at a glance` copy above the
+hero, with a fixed logo-to-greeting gap. Its light overlay remains subdued to
+retain mountain detail while strengthening slightly behind the semantic-ink
+slogan; its dark overlay is independently stronger. Its
+summary metrics are Total Assets, Liabilities, and account count. These are
+presentation-only
+changes: controller/repository calls, snapshot parsing, decimal aggregation,
+stale/unavailable handling, and brokerage-only allocation semantics remain as
+described above.
+
 ### Still deferred
 
 - Rich dashboard surfaces (§3.2) and `AccountsOverviewCard`.

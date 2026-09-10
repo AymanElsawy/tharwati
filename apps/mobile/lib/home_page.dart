@@ -34,31 +34,63 @@ class _HomePageState extends State<HomePage> {
     return Scaffold(
       backgroundColor: c.canvas,
       body: IndexedStack(index: _index, children: pages),
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: _index,
-        onDestinationSelected: (i) => setState(() => _index = i),
-        backgroundColor: c.surface,
-        indicatorColor: c.accentSoft,
-        destinations: const [
-          NavigationDestination(
-            icon: Icon(Icons.grid_view_outlined),
-            selectedIcon: Icon(Icons.grid_view_rounded),
-            label: 'Dashboard',
+      bottomNavigationBar: DecoratedBox(
+        decoration: BoxDecoration(
+          color: c.surface,
+          border: Border(top: BorderSide(color: c.line)),
+        ),
+        child: SafeArea(
+          top: false,
+          child: NavigationBarTheme(
+            data: NavigationBarThemeData(
+              height: 64,
+              backgroundColor: Colors.transparent,
+              indicatorColor: Colors.transparent,
+              labelTextStyle: WidgetStateProperty.resolveWith((states) {
+                final selected = states.contains(WidgetState.selected);
+                return TextStyle(
+                  color: selected ? c.accent : c.inkMuted,
+                  fontSize: 10,
+                  fontWeight: selected ? FontWeight.w700 : FontWeight.w600,
+                );
+              }),
+              iconTheme: WidgetStateProperty.resolveWith(
+                (states) => IconThemeData(
+                  color: states.contains(WidgetState.selected)
+                      ? c.accent
+                      : c.inkMuted,
+                ),
+              ),
+            ),
+            child: NavigationBar(
+              selectedIndex: _index,
+              onDestinationSelected: (i) => setState(() => _index = i),
+              destinations: const [
+                NavigationDestination(
+                  icon: Icon(Icons.grid_view_outlined),
+                  selectedIcon: Icon(Icons.grid_view_rounded),
+                  label: 'Dashboard',
+                ),
+                NavigationDestination(
+                  icon: Icon(Icons.account_balance_wallet_outlined),
+                  label: 'Accounts',
+                ),
+                NavigationDestination(
+                  icon: Icon(Icons.show_chart),
+                  label: 'Invest',
+                ),
+                NavigationDestination(
+                  icon: Icon(Icons.track_changes_outlined),
+                  label: 'Goals',
+                ),
+                NavigationDestination(
+                  icon: Icon(Icons.settings_outlined),
+                  label: 'Settings',
+                ),
+              ],
+            ),
           ),
-          NavigationDestination(
-            icon: Icon(Icons.account_balance_wallet_outlined),
-            label: 'Accounts',
-          ),
-          NavigationDestination(icon: Icon(Icons.show_chart), label: 'Invest'),
-          NavigationDestination(
-            icon: Icon(Icons.track_changes_outlined),
-            label: 'Goals',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.settings_outlined),
-            label: 'Settings',
-          ),
-        ],
+        ),
       ),
     );
   }

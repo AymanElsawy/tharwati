@@ -36,9 +36,8 @@ class KeyInsightsCard extends StatelessWidget {
             children: [
               Text(
                 'Key insights',
-                style: TextStyle(
+                style: Theme.of(context).textTheme.titleSmall?.copyWith(
                   color: c.ink,
-                  fontSize: 15,
                   fontWeight: FontWeight.w700,
                 ),
               ),

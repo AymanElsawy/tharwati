@@ -4,9 +4,9 @@ import '../../core/money_format.dart';
 import '../../theme/tokens.dart';
 import '../logic/dashboard_aggregate.dart';
 
-/// The net-worth hero card (Dashboard artboards 07/08/10). Assumes the load
-/// already succeeded — the loading / transport-error / no-base-currency states
-/// live on the screen, not here. Renders one of: complete, incomplete, empty.
+/// The net-worth hero card. Assumes the load already succeeded — the loading /
+/// transport-error / no-base-currency states live on the screen, not here.
+/// Renders one of: complete, incomplete, empty.
 class NetWorthHero extends StatelessWidget {
   const NetWorthHero({
     super.key,
@@ -28,16 +28,18 @@ class NetWorthHero extends StatelessWidget {
 
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(18),
+      padding: const EdgeInsets.all(AppSpacing.card),
       decoration: BoxDecoration(
         color: c.surface,
         border: Border.all(color: c.line),
         borderRadius: BorderRadius.circular(AppRadius.card),
         boxShadow: [
           BoxShadow(
-            color: c.ink.withValues(alpha: c.isDark ? 0.0 : 0.10),
-            blurRadius: 30,
-            offset: const Offset(0, 12),
+            color: const Color(
+              0xFF0B2A22,
+            ).withValues(alpha: c.isDark ? 0 : 0.08),
+            blurRadius: 24,
+            offset: const Offset(0, 10),
           ),
         ],
       ),
@@ -52,15 +54,15 @@ class NetWorthHero extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'NET WORTH',
+                      'TOTAL NET WORTH',
                       style: TextStyle(
                         color: c.inkMuted,
                         fontSize: 11,
-                        letterSpacing: 1.4,
+                        letterSpacing: 1.2,
                         fontWeight: FontWeight.w700,
                       ),
                     ),
-                    const SizedBox(height: 2),
+                    const SizedBox(height: 3),
                     Text(
                       aggregate.isEmpty
                           ? 'Sum of the accounts you add'
@@ -87,7 +89,7 @@ class NetWorthHero extends StatelessWidget {
               ),
             ],
           ),
-          const SizedBox(height: 14),
+          const SizedBox(height: 16),
           if (aggregate.status == AggregateStatus.incomplete)
             _IncompleteBody(aggregate: aggregate)
           else ...[
@@ -96,11 +98,11 @@ class NetWorthHero extends StatelessWidget {
               currency: currency,
               animate: animateTotal,
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 16),
             if (aggregate.isEmpty)
               _EmptyBody(onAddAccount: onAddAccount)
             else
-              _AssetLiabilityRow(aggregate: aggregate),
+              _SummaryMetrics(aggregate: aggregate),
           ],
         ],
       ),
@@ -122,9 +124,8 @@ class _Total extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
-    final style = TextStyle(
+    final style = Theme.of(context).textTheme.headlineMedium?.copyWith(
       color: c.ink,
-      fontSize: 31,
       height: 1.1,
       letterSpacing: -0.9,
       fontWeight: FontWeight.w800,
@@ -148,8 +149,8 @@ class _Total extends StatelessWidget {
   }
 }
 
-class _AssetLiabilityRow extends StatelessWidget {
-  const _AssetLiabilityRow({required this.aggregate});
+class _SummaryMetrics extends StatelessWidget {
+  const _SummaryMetrics({required this.aggregate});
 
   final DashboardAggregate aggregate;
 
@@ -157,12 +158,13 @@ class _AssetLiabilityRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = context.colors;
     final currency = aggregate.baseCurrencyCode;
-    Widget tile(String label, String? amount, Color valueColor) => Expanded(
+
+    Widget tile(String label, Widget value, {Color? valueColor}) => Expanded(
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 11),
         decoration: BoxDecoration(
           color: c.fieldFill,
-          borderRadius: BorderRadius.circular(13),
+          borderRadius: BorderRadius.circular(AppRadius.field),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -172,20 +174,19 @@ class _AssetLiabilityRow extends StatelessWidget {
               style: TextStyle(
                 color: c.inkMuted,
                 fontSize: 10,
-                letterSpacing: 1,
+                letterSpacing: 0.8,
                 fontWeight: FontWeight.w700,
               ),
             ),
             const SizedBox(height: 3),
-            Text(
-              MoneyFormat.money(amount, currency),
-              textDirection: TextDirection.ltr,
+            DefaultTextStyle(
               style: TextStyle(
-                color: valueColor,
-                fontSize: 14,
+                color: valueColor ?? c.ink,
+                fontSize: 13,
                 fontWeight: FontWeight.w700,
                 fontFeatures: const [FontFeature.tabularFigures()],
               ),
+              child: value,
             ),
           ],
         ),
@@ -194,17 +195,39 @@ class _AssetLiabilityRow extends StatelessWidget {
 
     return Row(
       children: [
-        tile('ASSETS', aggregate.totalAssets, c.ink),
+        tile(
+          'ASSETS',
+          FittedBox(
+            alignment: Alignment.centerLeft,
+            fit: BoxFit.scaleDown,
+            child: Text(
+              MoneyFormat.money(aggregate.totalAssets, currency),
+              textDirection: TextDirection.ltr,
+            ),
+          ),
+        ),
         const SizedBox(width: 8),
         tile(
           'LIABILITIES',
-          aggregate.totalLiabilities == null
-              ? null
-              : MoneyFormat.signedMoney(
-                  '-${aggregate.totalLiabilities}',
-                  currency,
-                ),
-          c.negative,
+          FittedBox(
+            alignment: Alignment.centerLeft,
+            fit: BoxFit.scaleDown,
+            child: Text(
+              aggregate.totalLiabilities == null
+                  ? MoneyFormat.money(null, currency)
+                  : MoneyFormat.signedMoney(
+                      '-${aggregate.totalLiabilities}',
+                      currency,
+                    ),
+              textDirection: TextDirection.ltr,
+            ),
+          ),
+          valueColor: c.negative,
+        ),
+        const SizedBox(width: 8),
+        tile(
+          'ACCOUNTS',
+          Text('${aggregate.accountCount}', textDirection: TextDirection.ltr),
         ),
       ],
     );
@@ -225,11 +248,7 @@ class _IncompleteBody extends StatelessWidget {
       children: [
         Text(
           'Totals unavailable',
-          style: TextStyle(
-            color: c.ink,
-            fontSize: 22,
-            fontWeight: FontWeight.w800,
-          ),
+          style: Theme.of(context).textTheme.titleLarge?.copyWith(color: c.ink),
         ),
         const SizedBox(height: 6),
         Text(

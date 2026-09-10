@@ -83,7 +83,10 @@ preferences only: they create neither Goals nor balances.
 ## Navigation and screens
 
 The authenticated `HomePage` is an `IndexedStack` with a Material 3 bottom
-`NavigationBar`:
+`NavigationBar`. Its visual shell uses a 64px navigation row inside a bottom
+`SafeArea`, with a surface background, top border, and semantic active/inactive
+icon and label colours. The five destinations and their `IndexedStack` behavior
+are unchanged:
 
 | Destination / reachable screen | State | Current behavior and principal files |
 | --- | --- | --- |
@@ -104,9 +107,20 @@ onboarding directly.
 
 When ready, the dashboard renders `DashboardMasthead`, `NetWorthHero`,
 `AssetsBreakdownCard`, deterministic `KeyInsightsCard`,
-`PortfolioAllocationCard`, and `GoalsCard`. The notification bell/avatar are
-visual only. The dashboard intentionally omits a performance/delta claim,
-recent activity, accounts overview, historical charts, and account editing.
+`PortfolioAllocationCard`, and `GoalsCard`. `DashboardMasthead` is a
+Dashboard-only 286px mountain image with theme-aware readability overlay. The
+source mountain bitmap contains cropped lettering at its far-left edge, so the
+masthead crops that source edge from the rendered composition. The masthead uses
+top safe-area positioning for the theme-aware `TharwatiBrand` and decorative
+bell/avatar controls, then current English greeting/date and `Your wealth at a
+glance` header copy. Its light-theme overlay is deliberately subdued to retain mountain detail; its
+lower gradient is slightly denser behind the semantic-ink slogan, while its
+dark-theme overlay remains independently stronger for readability.
+`NetWorthHero` overlaps it by 32px, below that header content, and shows Total
+Net Worth plus Assets, Liabilities, and account-count summary metrics. The notification
+bell/avatar are visual only. The dashboard intentionally omits a
+performance/delta claim, recent activity, accounts overview, historical charts,
+and account editing.
 
 Financial rules implemented in `calculateDashboardAggregate` are important:
 
@@ -168,13 +182,17 @@ validation/replay/history (`apps/mobile/test/`).
 
 ## UI, theme, localization, and responsiveness
 
-`AppTheme` uses Material 3, system light/dark mode, `AppColors` theme extension,
-Plus Jakarta Sans, and IBM Plex Sans Arabic fallback. Shared tokens define the
-palette, radii, spacing, 44px minimum touch targets, and 52px fields/buttons.
-Auth/onboarding share scaffolds, buttons, text fields, callouts, brand mark,
-strength bar, and step indicator; Goals shares mobile-aware modal sheets.
-Dashboard has custom-painted donut/dashed/hatch components and honors reduced
-motion for skeleton fade and net-worth count-up.
+`AppTheme` uses Material 3, system light/dark mode, and the `AppColors` theme
+extension. Inter is the body and financial-value face; Playfair Display is used
+for brand, page, section, and display headings; Noto Sans Arabic is the fallback
+when Arabic copy is introduced. Shared tokens define the palette, radii,
+spacing, 44px minimum touch targets, and 52px fields/buttons. Auth/onboarding
+share scaffolds, buttons, text fields, callouts, brand mark, strength bar, and
+step indicator; Goals shares mobile-aware modal sheets. The approved logo light/
+dark assets are rendered by `widgets/tharwati_brand.dart`; the approved mountain
+asset is used only by `DashboardMasthead`. Dashboard has custom-painted
+donut/dashed/hatch components and honors reduced motion for skeleton fade and
+net-worth count-up.
 
 The UI is English hardcoded. There is no locale state, localization delegates,
 translation catalog, or application-wide `Directionality`/RTL switch. Arabic font
@@ -197,7 +215,8 @@ design.
 - Raw exception detail is generally hidden from users. Dashboard `errorReason`
   is retained but not displayed, which helps safety but complicates diagnosis.
 - `HomePage` constructs all tab pages inside an `IndexedStack`; dashboard and
-  Goals controllers can load while their tab is not visible. Navigation is
+  Goals controllers can load while their tab is not visible. Its current visual
+  shell is a 64px row plus bottom safe-area inset; navigation is
   ad-hoc index changes and `MaterialPageRoute`, not declarative/deep-link routing.
 - Country/default-currency data is copied from web files; currency support is
   deliberately narrower than country defaults. Static source comments, the

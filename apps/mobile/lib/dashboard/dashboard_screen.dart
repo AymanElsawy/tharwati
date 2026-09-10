@@ -50,31 +50,36 @@ class _DashboardScreenState extends State<DashboardScreen> {
         builder: (context, _) {
           final status = _dashboard.status;
           final aggregate = _dashboard.aggregate;
-          return Column(
-            children: [
-              DashboardMasthead(
-                name: authService.currentFullName,
-                welcome:
-                    status == DashboardStatus.ready &&
-                    (aggregate?.isEmpty ?? false),
-              ),
-              Expanded(
-                child: RefreshIndicator(
-                  onRefresh: _dashboard.refresh,
-                  color: c.accent,
-                  child: ListView(
-                    padding: const EdgeInsets.fromLTRB(20, 20, 20, 32),
-                    physics: const AlwaysScrollableScrollPhysics(),
-                    children: [
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: _body(status, aggregate),
-                      ),
-                    ],
+          return RefreshIndicator(
+            onRefresh: _dashboard.refresh,
+            color: c.accent,
+            child: ListView(
+              padding: EdgeInsets.zero,
+              physics: const AlwaysScrollableScrollPhysics(),
+              children: [
+                DashboardMasthead(
+                  name: authService.currentFullName,
+                  welcome:
+                      status == DashboardStatus.ready &&
+                      (aggregate?.isEmpty ?? false),
+                ),
+                Transform.translate(
+                  offset: const Offset(0, -32),
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(
+                      AppSpacing.gutter,
+                      0,
+                      AppSpacing.gutter,
+                      0,
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: _body(status, aggregate),
+                    ),
                   ),
                 ),
-              ),
-            ],
+              ],
+            ),
           );
         },
       ),

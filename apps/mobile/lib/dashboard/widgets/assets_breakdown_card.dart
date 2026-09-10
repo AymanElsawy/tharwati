@@ -169,9 +169,8 @@ class _Header extends StatelessWidget {
       children: [
         Text(
           'Assets breakdown',
-          style: TextStyle(
+          style: Theme.of(context).textTheme.titleSmall?.copyWith(
             color: c.ink,
-            fontSize: 15,
             fontWeight: FontWeight.w700,
           ),
         ),
