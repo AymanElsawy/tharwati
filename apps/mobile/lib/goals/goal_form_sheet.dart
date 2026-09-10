@@ -129,17 +129,22 @@ class _GoalFormSheetState extends State<GoalFormSheet> {
             ),
             SheetField(
               label: 'Goal type',
-              child: Wrap(
-                spacing: 7,
-                runSpacing: 7,
-                children: [
-                  for (final type in goalTypes)
-                    _TypeChip(
+              child: SizedBox(
+                height: AppSizes.touchTarget,
+                child: ListView.separated(
+                  scrollDirection: Axis.horizontal,
+                  padding: const EdgeInsets.only(right: 2),
+                  itemCount: goalTypes.length,
+                  separatorBuilder: (_, _) => const SizedBox(width: 8),
+                  itemBuilder: (context, index) {
+                    final type = goalTypes[index];
+                    return _TypeChip(
                       label: goalTypeLabel(type),
                       selected: _type == type,
                       onTap: () => setState(() => _type = type),
-                    ),
-                ],
+                    );
+                  },
+                ),
               ),
             ),
             if (showsCustomGoalType(_type))
@@ -399,18 +404,18 @@ class _TypeChip extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        constraints: const BoxConstraints(minHeight: 40),
+      constraints: const BoxConstraints(minHeight: AppSizes.touchTarget),
         alignment: Alignment.center,
         padding: const EdgeInsets.symmetric(horizontal: 14),
         decoration: BoxDecoration(
-          color: selected ? c.accent : Colors.transparent,
+          color: selected ? c.accent : c.fieldFill,
           border: Border.all(color: selected ? c.accent : c.line),
           borderRadius: BorderRadius.circular(AppRadius.field),
         ),
         child: Text(
           label,
           style: TextStyle(
-            color: selected ? Colors.white : c.inkMuted,
+            color: selected ? c.onAccent : c.inkMuted,
             fontSize: 13,
             fontWeight: FontWeight.w600,
           ),
@@ -428,9 +433,10 @@ class _Box extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = context.colors;
     return Container(
-      constraints: const BoxConstraints(minHeight: 50),
+      constraints: const BoxConstraints(minHeight: AppSizes.field),
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       decoration: BoxDecoration(
+        color: c.fieldFill,
         border: Border.all(color: c.line),
         borderRadius: BorderRadius.circular(AppRadius.field),
       ),

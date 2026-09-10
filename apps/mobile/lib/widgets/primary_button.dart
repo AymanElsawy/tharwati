@@ -107,7 +107,7 @@ class NeutralButton extends StatelessWidget {
       style: FilledButton.styleFrom(
         minimumSize: const Size.fromHeight(AppSizes.button),
         backgroundColor: c.fieldFill,
-        foregroundColor: c.inkMuted,
+        foregroundColor: c.ink,
         textStyle: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(AppRadius.button),

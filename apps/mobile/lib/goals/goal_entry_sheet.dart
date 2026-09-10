@@ -266,9 +266,10 @@ class _Box extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = context.colors;
     return Container(
-      constraints: const BoxConstraints(minHeight: 50),
+      constraints: const BoxConstraints(minHeight: AppSizes.field),
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       decoration: BoxDecoration(
+        color: c.fieldFill,
         border: Border.all(color: c.line),
         borderRadius: BorderRadius.circular(AppRadius.field),
       ),

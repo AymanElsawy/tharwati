@@ -75,6 +75,27 @@ entry). Widgets: `goal_money.dart` (sign-first, LTR, ISO code last),
 `goal_status_pill.dart`, `goal_list_card.dart`. Tab 4 of `home_page.dart` (was a
 placeholder).
 
+Goals presentation uses the shared semantic light/dark surfaces: restrained
+16px cards and field insets, semantic borders, light-mode subtle shadows,
+Playfair Display headings, and Inter tabular/LTR monetary values. The Current
+and Archived lists, detail hero/history, action/form/entry sheets, and
+empty/error states retain their existing content and action paths; list loading
+uses non-animated card-shaped placeholders rather than a text spinner.
+The shared sheet header stays above its scrollable fields when the keyboard is
+open. Add/Edit Goal keeps the same five type values in a compact horizontally
+scrollable 44px chip rail; it does not change their stored identifiers or
+validation.
+Each mobile goal card keeps a plain semantic surface and renders one compact
+Flutter type icon beside its title: home, car, travel, education, or other.
+It has no decorative background artwork. Progress bars use the same solid
+semantic green fill at every funding level and use the summary's capped display
+percentage only for their width; the uncapped percentage and over-target copy
+remain visible to the user.
+Mobile detail presents Funded and Target side by side only when their card has
+enough width; otherwise it stacks them while preserving their full LTR/tabular
+money strings. Overfunded copy remains uncapped, while the bar alone clamps to
+a completely filled track.
+
 Buttons across Flow 5 share one footprint (Style tile: 52 tall, radius 16):
 `PrimaryButton` (filled accent) for Add progress / Save, `SecondaryButton`
 (accent 1.5px outline) for Withdraw, `NeutralButton` (field-tint fill + hairline)
@@ -108,5 +129,4 @@ sign inheritance).
 
 Account/asset links, automatic transaction detection, FX funding, allocation guarantees, and forecasting/on-track logic are outside this MVP.
 
-Mobile-specific: Arabic/RTL copy; a dedicated `aria-busy`-style skeleton (a
-plain spinner is used); reordering/searching the goal list.
+Mobile-specific: Arabic/RTL copy; reordering/searching the goal list.

@@ -138,7 +138,8 @@ class _ActionRow extends StatelessWidget {
       child: InkWell(
         onTap: enabled ? onTap : null,
         child: Container(
-          constraints: const BoxConstraints(minHeight: 52),
+          constraints: const BoxConstraints(minHeight: AppSizes.button),
+          padding: const EdgeInsets.symmetric(horizontal: 4),
           decoration: BoxDecoration(
             border: Border(
               top: BorderSide(color: c.line.withValues(alpha: 0.6)),

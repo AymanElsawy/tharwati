@@ -51,7 +51,12 @@ class GoalDetailPage extends StatelessWidget {
         return Scaffold(
           backgroundColor: c.canvas,
           appBar: AppBar(
-            title: Text(goal.name),
+            title: Text(
+              goal.name,
+              style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                color: c.ink,
+              ),
+            ),
             actions: [
               IconButton(
                 icon: const Icon(Icons.more_horiz),
@@ -108,7 +113,8 @@ class _HeroCard extends StatelessWidget {
     final goal = summary.goal;
     final overdue = summary.isOverdue(controller.today);
     final overTarget = D.isPositive(summary.surplusAmount);
-    final capped = (D.compare(summary.progressPercent, '100') ?? 0) > 0;
+    // Keep the true percentage for copy and use only the capped display value
+    // for the visual bar.
     final fill = (double.tryParse(summary.displayPercent) ?? 0) / 100;
     final remaining = D.subtract(goal.targetAmount, summary.fundedAmount);
 
@@ -122,6 +128,15 @@ class _HeroCard extends StatelessWidget {
         color: c.surface,
         border: Border.all(color: c.line),
         borderRadius: BorderRadius.circular(AppRadius.card),
+        boxShadow: c.isDark
+            ? null
+            : [
+                BoxShadow(
+                  color: c.ink.withValues(alpha: 0.045),
+                  blurRadius: 14,
+                  offset: const Offset(0, 4),
+                ),
+              ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -135,11 +150,8 @@ class _HeroCard extends StatelessWidget {
                   children: [
                     Text(
                       goal.name,
-                      style: TextStyle(
-                        color: c.ink,
-                        fontSize: 20,
-                        fontWeight: FontWeight.w800,
-                      ),
+                      style: Theme.of(context).textTheme.headlineSmall
+                          ?.copyWith(color: c.ink, fontSize: 23),
                     ),
                     const SizedBox(height: 3),
                     Text(
@@ -157,51 +169,19 @@ class _HeroCard extends StatelessWidget {
           Container(
             padding: const EdgeInsets.all(14),
             decoration: BoxDecoration(
-              color: c.fieldFill,
-              borderRadius: BorderRadius.circular(16),
+                  color: c.fieldFill,
+                  border: Border.all(color: c.line.withValues(alpha: 0.7)),
+                  borderRadius: BorderRadius.circular(AppRadius.card),
             ),
             child: Column(
               children: [
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  children: [
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        _label(c, 'FUNDED'),
-                        const SizedBox(height: 2),
-                        GoalMoney(
-                          amount: summary.fundedAmount,
-                          currencyCode: goal.currencyCode,
-                          style: TextStyle(
-                            color: c.ink,
-                            fontSize: 24,
-                            fontWeight: FontWeight.w800,
-                          ),
-                        ),
-                      ],
-                    ),
-                    const Spacer(),
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.end,
-                      children: [
-                        _label(c, 'TARGET'),
-                        const SizedBox(height: 2),
-                        GoalMoney(
-                          amount: goal.targetAmount,
-                          currencyCode: goal.currencyCode,
-                          style: TextStyle(
-                            color: c.inkMuted,
-                            fontSize: 15,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
+                _FundingAmounts(
+                  fundedAmount: summary.fundedAmount,
+                  targetAmount: goal.targetAmount,
+                  currencyCode: goal.currencyCode,
                 ),
                 const SizedBox(height: 10),
-                GoalProgressBar(fill: fill, hatched: capped),
+                GoalProgressBar(fill: fill),
                 const SizedBox(height: 8),
                 Row(
                   children: [
@@ -284,15 +264,6 @@ class _HeroCard extends StatelessWidget {
     );
   }
 
-  Widget _label(AppColors c, String text) => Text(
-    text,
-    style: TextStyle(
-      color: c.inkMuted,
-      fontSize: 10,
-      letterSpacing: 1.2,
-      fontWeight: FontWeight.w700,
-    ),
-  );
 }
 
 /// A 52×52 bordered icon button that lines up with the 52px button row.
@@ -318,6 +289,117 @@ class _SquareIconButton extends StatelessWidget {
         ),
         child: Icon(icon, size: 20, color: c.inkMuted),
       ),
+    );
+  }
+}
+
+/// Keeps full LTR money strings visible by using two columns only where the
+/// available card width can support them.
+class _FundingAmounts extends StatelessWidget {
+  const _FundingAmounts({
+    required this.fundedAmount,
+    required this.targetAmount,
+    required this.currencyCode,
+  });
+
+  final String fundedAmount;
+  final String targetAmount;
+  final String currencyCode;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    final funded = _AmountColumn(
+      label: 'FUNDED',
+      amount: fundedAmount,
+      currencyCode: currencyCode,
+      color: c.ink,
+      fontSize: 24,
+      alignment: Alignment.centerLeft,
+    );
+    final target = _AmountColumn(
+      label: 'TARGET',
+      amount: targetAmount,
+      currencyCode: currencyCode,
+      color: c.inkMuted,
+      fontSize: 16,
+      alignment: Alignment.centerRight,
+    );
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        if (constraints.maxWidth < 380) {
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [funded, const SizedBox(height: 12), target],
+          );
+        }
+        return Row(
+          crossAxisAlignment: CrossAxisAlignment.end,
+          children: [
+            Expanded(child: funded),
+            const SizedBox(width: 16),
+            Expanded(child: target),
+          ],
+        );
+      },
+    );
+  }
+}
+
+class _AmountColumn extends StatelessWidget {
+  const _AmountColumn({
+    required this.label,
+    required this.amount,
+    required this.currencyCode,
+    required this.color,
+    required this.fontSize,
+    required this.alignment,
+  });
+
+  final String label;
+  final String amount;
+  final String currencyCode;
+  final Color color;
+  final double fontSize;
+  final Alignment alignment;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    final textAlign = alignment == Alignment.centerRight
+        ? CrossAxisAlignment.end
+        : CrossAxisAlignment.start;
+    return Column(
+      crossAxisAlignment: textAlign,
+      children: [
+        Text(
+          label,
+          style: TextStyle(
+            color: c.inkMuted,
+            fontSize: 10,
+            letterSpacing: 1.2,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+        const SizedBox(height: 2),
+        SizedBox(
+          width: double.infinity,
+          child: FittedBox(
+            alignment: alignment,
+            fit: BoxFit.scaleDown,
+            child: GoalMoney(
+              amount: amount,
+              currencyCode: currencyCode,
+              style: TextStyle(
+                color: color,
+                fontSize: fontSize,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+          ),
+        ),
+      ],
     );
   }
 }
@@ -373,7 +455,16 @@ class _HistoryCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: c.surface,
         border: Border.all(color: c.line),
-        borderRadius: BorderRadius.circular(20),
+          borderRadius: BorderRadius.circular(AppRadius.card),
+          boxShadow: c.isDark
+              ? null
+              : [
+                  BoxShadow(
+                    color: c.ink.withValues(alpha: 0.045),
+                    blurRadius: 14,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -382,10 +473,9 @@ class _HistoryCard extends StatelessWidget {
             children: [
               Text(
                 'History',
-                style: TextStyle(
+                style: Theme.of(context).textTheme.titleLarge?.copyWith(
                   color: c.ink,
-                  fontSize: 15,
-                  fontWeight: FontWeight.w700,
+                  fontSize: 19,
                 ),
               ),
               const Spacer(),

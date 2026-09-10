@@ -107,14 +107,18 @@ class _GoalsPageState extends State<GoalsPage> {
     switch (_controller.status) {
       case GoalsStatus.loading:
         return ListView(
+          padding: const EdgeInsets.fromLTRB(18, 16, 18, 32),
           children: const [
-            SizedBox(height: 120),
-            Center(child: CircularProgressIndicator()),
+            _GoalsLoadingCard(height: 176),
+            SizedBox(height: 12),
+            _GoalsLoadingCard(height: 176),
+            SizedBox(height: 12),
+            _GoalsLoadingCard(height: 132),
           ],
         );
       case GoalsStatus.error:
         return ListView(
-          padding: const EdgeInsets.all(20),
+          padding: const EdgeInsets.all(18),
           children: [
             Callout(
               tone: CalloutTone.danger,
@@ -130,7 +134,7 @@ class _GoalsPageState extends State<GoalsPage> {
       case GoalsStatus.ready:
         final goals = _controller.visible;
         return ListView(
-          padding: const EdgeInsets.fromLTRB(20, 4, 20, 32),
+          padding: const EdgeInsets.fromLTRB(18, 4, 18, 32),
           children: [
             if (_controller.actionError != null) ...[
               Callout(
@@ -145,7 +149,7 @@ class _GoalsPageState extends State<GoalsPage> {
                 decoration: BoxDecoration(
                   color: c.surface,
                   border: Border.all(color: c.line),
-                  borderRadius: BorderRadius.circular(20),
+                  borderRadius: BorderRadius.circular(AppRadius.card),
                 ),
                 child: Text(
                   _controller.showArchived
@@ -206,7 +210,7 @@ class _Header extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = context.colors;
     return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 8, 20, 12),
+      padding: const EdgeInsets.fromLTRB(18, 12, 18, 14),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -219,12 +223,8 @@ class _Header extends StatelessWidget {
                   children: [
                     Text(
                       'Goals',
-                      style: TextStyle(
-                        color: c.ink,
-                        fontSize: 26,
-                        fontWeight: FontWeight.w800,
-                        letterSpacing: -0.5,
-                      ),
+                      style: Theme.of(context).textTheme.headlineMedium
+                          ?.copyWith(color: c.ink, fontSize: 30),
                     ),
                     const SizedBox(height: 2),
                     Text(
@@ -235,18 +235,18 @@ class _Header extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: 12),
-              InkWell(
-                onTap: onAdd,
-                borderRadius: BorderRadius.circular(14),
-                child: Container(
-                  width: 44,
-                  height: 44,
-                  decoration: BoxDecoration(
-                    color: c.accent,
-                    borderRadius: BorderRadius.circular(14),
+              IconButton(
+                onPressed: onAdd,
+                tooltip: 'Add goal',
+                style: IconButton.styleFrom(
+                  minimumSize: const Size(44, 44),
+                  backgroundColor: c.accent,
+                  foregroundColor: c.onAccent,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(AppRadius.field),
                   ),
-                  child: const Icon(Icons.add, color: Colors.white, size: 22),
                 ),
+                icon: const Icon(Icons.add, size: 22),
               ),
             ],
           ),
@@ -254,7 +254,7 @@ class _Header extends StatelessWidget {
           Container(
             padding: const EdgeInsets.all(3),
             decoration: BoxDecoration(
-              color: c.surface,
+              color: c.fieldFill,
               border: Border.all(color: c.line),
               borderRadius: BorderRadius.circular(13),
             ),
@@ -297,16 +297,17 @@ class _Segment extends StatelessWidget {
       child: GestureDetector(
         onTap: onTap,
         child: Container(
-          height: 38,
+          constraints: const BoxConstraints(minHeight: AppSizes.touchTarget),
           alignment: Alignment.center,
           decoration: BoxDecoration(
-            color: selected ? c.accent : Colors.transparent,
+            color: selected ? c.surface : Colors.transparent,
+            border: selected ? Border.all(color: c.line) : null,
             borderRadius: BorderRadius.circular(10),
           ),
           child: Text(
             label,
             style: TextStyle(
-              color: selected ? Colors.white : c.inkMuted,
+              color: selected ? c.ink : c.inkMuted,
               fontSize: 13,
               fontWeight: selected ? FontWeight.w700 : FontWeight.w600,
             ),
@@ -315,4 +316,47 @@ class _Segment extends StatelessWidget {
       ),
     );
   }
+}
+
+class _GoalsLoadingCard extends StatelessWidget {
+  const _GoalsLoadingCard({required this.height});
+
+  final double height;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    return Container(
+      height: height,
+      decoration: BoxDecoration(
+        color: c.surface,
+        border: Border.all(color: c.line),
+        borderRadius: BorderRadius.circular(AppRadius.card),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _line(c, 132),
+            const SizedBox(height: 12),
+            _line(c, 92),
+            const Spacer(),
+            _line(c, double.infinity, height: 8),
+            const SizedBox(height: 12),
+            _line(c, 176),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _line(AppColors c, double width, {double height = 12}) => Container(
+    width: width,
+    height: height,
+    decoration: BoxDecoration(
+      color: c.fieldFill,
+      borderRadius: BorderRadius.circular(AppRadius.chip),
+    ),
+  );
 }

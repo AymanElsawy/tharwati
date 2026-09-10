@@ -6,7 +6,9 @@ import '../../theme/tokens.dart';
 import '../goal_models.dart';
 import 'goal_money.dart';
 import 'goal_progress_bar.dart';
+import 'goal_sheet.dart';
 import 'goal_status_pill.dart';
+import 'goal_type_visual.dart';
 
 /// One goal on the Goals list (Flow 5 screens 19/20). Tapping the card opens the
 /// detail page; active goals also get inline Add progress / Withdraw / overflow.
@@ -34,7 +36,8 @@ class GoalListCard extends StatelessWidget {
     final goal = summary.goal;
     final overdue = summary.isOverdue(today);
     final overTarget = D.isPositive(summary.surplusAmount);
-    final capped = (D.compare(summary.progressPercent, '100') ?? 0) > 0;
+    // The card keeps the real percentage in its caption. The summary's capped
+    // display value is only used by the visual bar.
     final fill = (double.tryParse(summary.displayPercent) ?? 0) / 100;
     final muted = goal.isArchived || !goal.isActive;
 
@@ -65,20 +68,16 @@ class GoalListCard extends StatelessWidget {
 
     return InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(20),
-      child: Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: c.surface,
-          border: Border.all(color: c.line),
-          borderRadius: BorderRadius.circular(20),
-        ),
+      borderRadius: BorderRadius.circular(AppRadius.card),
+      child: GoalSurfaceCard(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                GoalTypeIcon(goalType: goal.goalType, muted: muted),
+                const SizedBox(width: 10),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -87,10 +86,9 @@ class GoalListCard extends StatelessWidget {
                         goal.name,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
+                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
                           color: muted ? c.inkMuted : c.ink,
-                          fontSize: 17,
-                          fontWeight: FontWeight.w700,
+                          fontSize: 19,
                         ),
                       ),
                       const SizedBox(height: 3),
@@ -129,8 +127,12 @@ class GoalListCard extends StatelessWidget {
                 ),
               ],
             ),
-            const SizedBox(height: 7),
-            GoalProgressBar(fill: fill, hatched: capped, muted: muted),
+            const SizedBox(height: 8),
+            GoalProgressBar(
+              fill: fill,
+              muted: muted,
+              height: 10,
+            ),
             const SizedBox(height: 7),
             Text(
               caption,
@@ -207,7 +209,7 @@ class _MiniButton extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 16),
         alignment: Alignment.center,
         decoration: BoxDecoration(
-          color: filled ? c.accentSoft : c.surface,
+          color: filled ? c.accentSoft : c.fieldFill,
           border: Border.all(color: filled ? c.accentSoft : c.line),
           borderRadius: BorderRadius.circular(13),
         ),

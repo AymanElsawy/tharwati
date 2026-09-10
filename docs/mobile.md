@@ -141,7 +141,9 @@ Financial rules implemented in `calculateDashboardAggregate` are important:
   final percentage receives the rounding residual so displayed percentages total
   100. Incomplete/no-positive holdings produce explicit card messages.
 
-Goals is a complete manual tracker MVP (`goals/`). `GoalsPage` has Current and
+Goals is a complete manual tracker MVP (`goals/`). Its presentation uses the
+semantic light/dark card, field, and typography system across lists, detail,
+and write/action sheets; loading uses static card placeholders. `GoalsPage` has Current and
 Archived filters, pull-to-refresh, load/mutation errors, empty states, create,
 edit, detail, progress, withdrawal, correction/reversal, complete/cancel,
 reopen, archive, and unarchive. `GoalDetailPage` shows an immutable timeline;
