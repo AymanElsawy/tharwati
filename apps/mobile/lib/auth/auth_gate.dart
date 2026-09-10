@@ -5,7 +5,6 @@ import '../home_page.dart';
 import '../main.dart';
 import '../onboarding/onboarding_flow.dart';
 import '../theme/tokens.dart';
-import '../widgets/brand_mark.dart';
 import '../widgets/callout.dart';
 import '../widgets/primary_button.dart';
 import 'login_page.dart';
@@ -102,22 +101,28 @@ class _Loading extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final c = context.colors;
     return Scaffold(
-      backgroundColor: c.canvas,
+      backgroundColor: const Color(0xFF071C17),
       body: const SafeArea(
-        child: Padding(
-          padding: EdgeInsets.all(24),
+        child: Center(
           child: Column(
+            mainAxisSize: MainAxisSize.min,
             mainAxisAlignment: MainAxisAlignment.center,
-            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              BrandMark(),
-              SizedBox(height: 32),
+              Image(
+                image: AssetImage('assets/branding/tharwati-app-icon.png'),
+                width: 132,
+                height: 132,
+                semanticLabel: 'Tharwati',
+              ),
+              SizedBox(height: 28),
               SizedBox(
-                height: 22,
-                width: 22,
-                child: CircularProgressIndicator(strokeWidth: 2),
+                height: 18,
+                width: 18,
+                child: CircularProgressIndicator(
+                  strokeWidth: 1.75,
+                  color: Color(0xFFC9A96B),
+                ),
               ),
             ],
           ),

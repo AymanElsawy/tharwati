@@ -67,6 +67,7 @@ flutter:
   assets:
     - assets/branding/tharwati-logo-light.png
     - assets/branding/tharwati-logo-dark.png
+    - assets/branding/tharwati-app-icon.png
     - assets/images/mountain.png
 
   # To add assets to your application, add an assets section, like this:

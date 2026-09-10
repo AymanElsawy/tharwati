@@ -5,6 +5,7 @@ import 'auth/auth_gate.dart';
 import 'auth/auth_service.dart';
 import 'auth/reset_password_page.dart';
 import 'env.dart';
+import 'splash/splash_screen.dart';
 import 'theme/app_theme.dart';
 
 late final AuthService authService;
@@ -29,6 +30,7 @@ class TharwatiApp extends StatefulWidget {
 
 class _TharwatiAppState extends State<TharwatiApp> {
   final _navigatorKey = GlobalKey<NavigatorState>();
+  var _showAuthGate = false;
 
   @override
   void initState() {
@@ -53,7 +55,11 @@ class _TharwatiAppState extends State<TharwatiApp> {
       theme: AppTheme.light(),
       darkTheme: AppTheme.dark(),
       themeMode: ThemeMode.system,
-      home: const AuthGate(),
+      home: _showAuthGate
+          ? const AuthGate()
+          : SplashScreen(
+              onComplete: () => setState(() => _showAuthGate = true),
+            ),
     );
   }
 }

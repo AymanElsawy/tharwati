@@ -13,9 +13,14 @@ code currently under `apps/mobile/lib/`.
 `lib/main.dart` initializes `Supabase` with `Env.supabaseUrl` / `Env.supabaseAnonKey`,
 constructs the global `AuthService`, and runs `TharwatiApp`. `MaterialApp` uses
 `AppTheme.light()`/`dark()` with `ThemeMode.system`, no named route table, and
-`AuthGate` as `home`. A `GlobalKey<NavigatorState>` listens for Supabase's
-`AuthChangeEvent.passwordRecovery` and pushes `ResetPasswordPage` over the
-current tree.
+starts with the presentation-only `SplashScreen`. Its 1000ms logo fade/scale/
+settle
+then mounts the unchanged `AuthGate` as the normal home flow. While a signed-in
+user's onboarding completion is resolving, its presentation-only loading state
+continues the same deep-green surface with a centered approved mark and a
+subordinate gold spinner. A
+`GlobalKey<NavigatorState>` listens for Supabase's `AuthChangeEvent.passwordRecovery`
+and pushes `ResetPasswordPage` over the current tree.
 
 Top-level structure:
 
@@ -193,6 +198,19 @@ dark assets are rendered by `widgets/tharwati_brand.dart`; the approved mountain
 asset is used only by `DashboardMasthead`. Dashboard has custom-painted
 donut/dashed/hatch components and honors reduced motion for skeleton fade and
 net-worth count-up.
+
+Native launch branding is a static `#071C17` surface with the approved square
+Tharwati mark centered: Android uses `drawable/launch_background.xml` (and its
+Android 12 launch theme), while iOS uses `LaunchScreen.storyboard` plus the
+`LaunchLogo.imageset`. Android launcher density icons and every iOS AppIcon slot
+are resized from the same approved mark. Android API 26+ resolves normal and
+round launcher references to an adaptive icon with a separate deep-green
+background and a centered transparent mark foreground sized to 66% of the
+adaptive viewport (18dp outer margin at mdpi); the legacy density icons remain as
+the pre-26 fallback. The Flutter `SplashScreen` continues
+that surface with a 1000ms fade-in, a centered 200-to-132 logical-pixel scale,
+and vertical settle before
+mounting `AuthGate`; it owns no authentication or routing decisions.
 
 The UI is English hardcoded. There is no locale state, localization delegates,
 translation catalog, or application-wide `Directionality`/RTL switch. Arabic font
