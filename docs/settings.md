@@ -15,6 +15,13 @@ id. A successful save refreshes the existing shared profile provider, so the app
 shell/header reflects the new name without a page reload. Email is display-only because no confirmed in-app email-change workflow is
 implemented. Avatar, country, and base currency remain out of scope.
 
+Flutter Settings uses the same canonical `profiles.full_name` read/update path
+through `SettingsProfileRepository`; it sources its display-only email from the
+authenticated Auth user. It trims names before saving and persists a blank name
+as `null`, matching web behavior. Flutter has no shared profile provider yet, so
+the page updates its own displayed field after a successful save. Its existing
+Sign out action is kept in a separate Session section at the bottom of the page.
+
 ## Privacy & Data
 
 Download my data calls the shared `UserDataExportService`, which requests the

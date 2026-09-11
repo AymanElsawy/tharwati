@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 
 import 'dashboard/dashboard_screen.dart';
 import 'goals/goals_page.dart';
-import 'main.dart';
+import 'settings/settings_page.dart';
 import 'theme/tokens.dart';
 
 /// Authenticated shell — the five-tab bottom navigation from the design. Only
@@ -28,7 +28,7 @@ class _HomePageState extends State<HomePage> {
       const _ComingSoon(title: 'Accounts', flow: 'Flow 3'),
       const _ComingSoon(title: 'Investments', flow: 'Flow 4'),
       const GoalsPage(),
-      const _SettingsPlaceholder(),
+      const SettingsPage(),
     ];
 
     return Scaffold(
@@ -95,7 +95,6 @@ class _HomePageState extends State<HomePage> {
     );
   }
 }
-
 class _ComingSoon extends StatelessWidget {
   const _ComingSoon({required this.title, required this.flow});
 
@@ -118,38 +117,4 @@ class _ComingSoon extends StatelessWidget {
   }
 }
 
-class _SettingsPlaceholder extends StatelessWidget {
-  const _SettingsPlaceholder();
-
-  @override
-  Widget build(BuildContext context) {
-    final c = context.colors;
-    final email = authService.currentUser?.email ?? '';
-    return Scaffold(
-      backgroundColor: c.canvas,
-      appBar: AppBar(title: const Text('Settings')),
-      body: Padding(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Text(
-              'Signed in as $email',
-              style: TextStyle(color: c.inkMuted, fontSize: 13),
-            ),
-            const SizedBox(height: 16),
-            Text(
-              'Full settings come with Flow 6.',
-              style: TextStyle(color: c.inkMuted, fontSize: 13),
-            ),
-            const Spacer(),
-            OutlinedButton(
-              onPressed: authService.signOut,
-              child: const Text('Sign out'),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
+// Settings presentation is defined in settings/settings_page.dart.

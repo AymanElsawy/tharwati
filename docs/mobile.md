@@ -99,7 +99,7 @@ are unchanged:
 | Accounts | Placeholder | `_ComingSoon` only; no account creation/list/edit flow. |
 | Invest | Placeholder | `_ComingSoon` only; no investment flow. |
 | Goals | Implemented | `GoalsPage`, detail page, form/entry/actions bottom sheets. |
-| Settings | Placeholder | `_SettingsPlaceholder` shows the current email and signs out; profile/preferences/privacy settings are absent. |
+| Settings | Implemented profile/session surface | `settings/settings_page.dart` reads and edits canonical `profiles.full_name` through `SettingsProfileRepository`, displays the Auth-session email read-only, and signs out. Whitespace-only names save as null; preferences, privacy, and support settings are absent. |
 
 Dashboard (`dashboard/dashboard_screen.dart`) is the implemented production
 summary, not the richer web-only dashboard. `DashboardController` loads profile
@@ -225,7 +225,7 @@ design.
 ## Gaps, coupling, and risks
 
 - Accounts, Invest, full Settings, notification behavior, locale/currency
-  switching, Arabic/RTL, legal links, profile editing, export/delete-account,
+  switching, Arabic/RTL, legal links, export/delete-account,
   OAuth/MFA/phone auth, and offline/realtime support are not implemented.
 - Dashboard calls the shared Edge Function but reproduces web aggregate and Goal
   rules in Dart. Comments identify these as ports; changes to web/database
