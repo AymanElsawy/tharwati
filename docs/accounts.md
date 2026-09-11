@@ -793,6 +793,8 @@ feed must not hide the portfolio (web keeps separate `holdingsError` /
   through the shared device-local language controller. The list header, filters,
   states/actions, cards, and the account form's labels, selectors, UI-level
   validation messages, and actions use RTL labels with LTR-isolated dynamic
-  financial values. Generic account-detail labels and lifecycle dialogs are also
-  translated. Records, valued-account details, metal, and brokerage flows remain
-  English-only pending later passes.
+  financial values. Generic account-detail labels and lifecycle dialogs, plus
+  the Real Estate/Business valued-detail surface (metadata, valuation/disposal
+  history, update-value and disposal sheets, and UI-side validation) are also
+  translated. Records, metal, and brokerage flows remain English-only pending
+  later passes; lower-layer repository/RPC errors are not language-aware.

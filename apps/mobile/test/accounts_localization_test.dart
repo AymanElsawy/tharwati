@@ -53,6 +53,38 @@ void main() {
     },
   );
 
+  test(
+    'Valued-account copy localizes detail, valuation, and disposal flows',
+    () {
+      final english = AccountsCopy.of(AppLanguage.en);
+      final arabic = AccountsCopy.of(AppLanguage.ar);
+
+      expect(english.attributableValue, 'Your attributable value');
+      expect(english.updateCurrentValue, 'Update current value');
+      expect(english.markAsSold, 'Mark as sold');
+      expect(
+        english.saleDestinationRequired,
+        'Select where the sale proceeds were deposited.',
+      );
+
+      expect(arabic.attributableValue, 'قيمتك المنسوبة');
+      expect(arabic.valuationHistory, 'سجل التقييمات');
+      expect(arabic.saleHistory, 'سجل المبيعات');
+      expect(arabic.updateValue, 'تحديث القيمة');
+      expect(arabic.sellOwnership, 'بيع الملكية');
+      expect(arabic.saleDestination, 'إلى أين ذهبت الأموال؟');
+      expect(
+        arabic.propertySaleExitsOwnership('25%'),
+        contains('\u206625%\u2069'),
+      );
+      expect(
+        arabic.fullValueWithAmount('1,250.00 EGP'),
+        contains('\u20661,250.00 EGP\u2069'),
+      );
+      expect(arabic.soldOwnership('25%'), contains('\u206625%\u2069'));
+    },
+  );
+
   testWidgets(
     'Arabic list cards localize unavailable values and preserve LTR data',
     (tester) async {

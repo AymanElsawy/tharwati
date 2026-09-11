@@ -256,4 +256,83 @@ class AccountsCopy {
     'reopen' => _ar ? 'إعادة فتح' : 'Reopen',
     _ => delete,
   };
+
+  // Valued account detail, valuation, and disposal presentation.
+  String get financialAccountsHeading =>
+      _ar ? 'الحسابات المالية' : 'FINANCIAL ACCOUNTS';
+  String get attributableValue =>
+      _ar ? 'قيمتك المنسوبة' : 'Your attributable value';
+  String get accountDetails => _ar ? 'تفاصيل الحساب' : 'Account details';
+  String get valuationHistory => _ar ? 'سجل التقييمات' : 'Valuation history';
+  String get saleHistory => _ar ? 'سجل المبيعات' : 'Sale history';
+  String get updateValue => _ar ? 'تحديث القيمة' : 'Update value';
+  String get markAsSold => _ar ? 'تحديد كمباع' : 'Mark as sold';
+  String get sellOwnership => _ar ? 'بيع الملكية' : 'Sell ownership';
+  String get fullValue => _ar ? 'القيمة الكاملة' : 'Full value';
+  String fullValueWithAmount(String value) =>
+      _ar ? '$fullValue: ${ltr(value)}' : '$fullValue: $value';
+  String soldOwnership(String value) =>
+      _ar ? 'تم بيع ${ltr(value)}' : '$value sold';
+  String get businessTypeLabel => _ar ? 'نوع النشاط' : 'Business type';
+  String get ownershipPercentageLabel =>
+      _ar ? 'نسبة الملكية' : 'Ownership percentage';
+  String get unavailableAccountData => _ar ? 'غير متاح' : 'Unavailable';
+  String get updateCurrentValue =>
+      _ar ? 'تحديث القيمة الحالية' : 'Update current value';
+  String get currentValueLabel => _ar ? 'القيمة الحالية' : 'Current value';
+  String get valuationDateLabel => _ar ? 'تاريخ التقييم' : 'Valuation date';
+  String get valuationMethodLabel => _ar ? 'طريقة التقييم' : 'Valuation method';
+  String get valuationNoteLabel => _ar ? 'ملاحظة التقييم' : 'Valuation note';
+  String get valuationDateRequired =>
+      _ar ? 'تاريخ التقييم مطلوب' : 'Valuation date is required';
+  String get valuationDateFuture => _ar
+      ? 'لا يمكن أن يكون تاريخ التقييم في المستقبل'
+      : 'Valuation date cannot be in the future';
+  String get unexpectedError =>
+      _ar ? 'حدث خطأ غير متوقع' : 'An unexpected error occurred';
+  String get saleAmountReceived =>
+      _ar ? 'مبلغ البيع المستلم' : 'Sale amount received';
+  String get saleCurrency => _ar ? 'عملة البيع' : 'Sale currency';
+  String get saleDestination =>
+      _ar ? 'إلى أين ذهبت الأموال؟' : 'Where did the money go?';
+  String get noEligibleDestination => _ar
+      ? 'لا يوجد حساب نقدي أو بنكي نشط بهذه العملة.'
+      : 'No active Cash or Bank account uses this currency.';
+  String get selectCashOrBank =>
+      _ar ? 'اختر حسابًا نقديًا أو بنكيًا' : 'Select a Cash or Bank account';
+  String destinationAccount(String name, AccountType type) =>
+      '$name · ${accountType(type)}';
+  String propertySaleExitsOwnership(String value) => _ar
+      ? 'ينهي هذا البيع ملكيتك المتبقية البالغة ${ltr(value)}.'
+      : 'This sale exits your remaining $value ownership.';
+  String get ownershipSold =>
+      _ar ? 'الملكية المباعة (%)' : 'Ownership sold (%)';
+  String get saleDate => _ar ? 'تاريخ البيع' : 'Sale date';
+  String get saleNote => _ar ? 'ملاحظة البيع' : 'Sale note';
+  String get validSaleAmount => _ar
+      ? 'أدخل مبلغ بيع صالحًا غير سالب.'
+      : 'Enter a valid non-negative sale amount.';
+  String get saleDestinationRequired => _ar
+      ? 'اختر مكان إيداع عائدات البيع.'
+      : 'Select where the sale proceeds were deposited.';
+
+  String propertyTypeValue(String? value) {
+    if (value == null || value.isEmpty) return unavailable;
+    return propertyType(value);
+  }
+
+  String businessTypeValue(String? value) =>
+      _classificationValue(value, businessOption);
+
+  String industryValue(String? value) =>
+      _classificationValue(value, industryOption);
+
+  String _classificationValue(
+    String? value,
+    String Function(String) knownLabel,
+  ) {
+    if (value == null || value.isEmpty) return unavailable;
+    if (value.startsWith('other:')) return value.substring('other:'.length);
+    return knownLabel(value);
+  }
 }

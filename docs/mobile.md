@@ -96,7 +96,7 @@ are unchanged:
 | Destination / reachable screen | State | Current behavior and principal files |
 | --- | --- | --- |
 | Dashboard | Implemented | `DashboardScreen` loads valuations and a separate read-only goals card. “Add account” switches to Accounts; “View all” switches to Goals. |
-| Accounts | List, form, and generic-detail localization implemented | The list, create/edit form, and generic detail labels/lifecycle dialogs support English/Arabic. Records, valued details, metal, and brokerage flows remain English-only. |
+| Accounts | List, form, generic-detail, and valued-detail localization implemented | The list, create/edit form, generic detail labels/lifecycle dialogs, and Real Estate/Business valued-detail presentation support English/Arabic. Records, metal, and brokerage flows remain English-only. |
 | Invest | Placeholder | `_ComingSoon` only; no investment flow. |
 | Goals | Implemented | `GoalsPage`, detail page, form/entry/actions bottom sheets. |
 | Settings | Implemented profile/session surface | `settings/settings_page.dart` reads and edits canonical `profiles.full_name` through `SettingsProfileRepository`, displays the Auth-session email read-only, changes the shared device-local English/Arabic preference, and signs out. Whitespace-only names save as null; privacy and support settings are absent. |
@@ -219,8 +219,8 @@ web-parity `tharwati-language` key. `MaterialApp.locale` and an app-wide
 `Directionality`, with Flutter's Material/Widgets/Cupertino localization
 delegates, update before or after authentication; Login, bottom navigation,
 Dashboard, Settings, Goals presentation across lists, details, forms, actions,
-confirmations, and history, plus the Accounts list and create/edit form
-presentation, are translated.
+confirmations, and history, plus the Accounts list, create/edit form, generic
+detail, and Real Estate/Business valued-detail presentation, are translated.
 Arabic font fallback exists. Numeric, money, email, and date values remain LTR;
 within Arabic captions, only dynamic values use bidi isolation while surrounding
 labels retain RTL direction. Layout is phone-oriented

@@ -2,15 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../../core/money_format.dart';
+import '../../i18n/accounts_copy.dart';
+import '../../i18n/app_language.dart';
 import '../../theme/tokens.dart';
 import '../../widgets/app_sheet.dart';
 import '../../widgets/primary_button.dart';
-import '../account_form.dart'
-    show
-        classificationLabel,
-        businessTypeCodes,
-        industryCodes,
-        propertyTypeLabels;
 import '../account_form_sheet.dart';
 import '../account_models.dart';
 import '../accounts_controller.dart';
@@ -41,6 +37,7 @@ class _ValuedAccountDetailPageState extends State<ValuedAccountDetailPage> {
   List<AccountDisposal> _disposals = const [];
   AccountOwnershipProjection? _ownership;
   bool _loading = true;
+  bool _loadError = false;
 
   Account? get _account {
     for (final i in widget.controller.model?.items ?? const []) {
@@ -80,9 +77,15 @@ class _ValuedAccountDetailPageState extends State<ValuedAccountDetailPage> {
         _ownership = results[1] as AccountOwnershipProjection?;
         _disposals = results[2] as List<AccountDisposal>;
         _loading = false;
+        _loadError = false;
       });
     } catch (_) {
-      if (mounted) setState(() => _loading = false);
+      if (mounted) {
+        setState(() {
+          _loading = false;
+          _loadError = true;
+        });
+      }
     }
   }
 
@@ -96,38 +99,23 @@ class _ValuedAccountDetailPageState extends State<ValuedAccountDetailPage> {
   }
 
   Future<void> _lifecycle(Account a, String action) async {
+    final copy = AccountsCopy.of(AppLanguageScope.of(context).language);
     final confirm = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text(switch (action) {
-          'close' => 'Close “${a.name}”?',
-          'reopen' => 'Reopen “${a.name}”?',
-          _ => 'Delete “${a.name}”?',
-        }),
-        content: Text(switch (action) {
-          'close' =>
-            'The account will be hidden from active accounts and current '
-                'wealth while its full financial history remains preserved.',
-          'reopen' => 'It returns to the active list and net worth.',
-          _ =>
-            'This permanently removes the account. Only possible while it has '
-                'no financial history.',
-        }),
+        title: Text(copy.lifecycleTitle(action, a.name)),
+        content: Text(copy.lifecycleBody(action)),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Cancel'),
+            child: Text(copy.cancel),
           ),
           CompactButton(
             tone: action == 'delete'
                 ? CompactButtonTone.danger
                 : CompactButtonTone.accent,
             onPressed: () => Navigator.of(context).pop(true),
-            label: switch (action) {
-              'close' => 'Close account',
-              'reopen' => 'Reopen',
-              _ => 'Delete',
-            },
+            label: copy.lifecycleAction(action),
           ),
         ],
       ),
@@ -146,12 +134,13 @@ class _ValuedAccountDetailPageState extends State<ValuedAccountDetailPage> {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
+    final copy = AccountsCopy.of(AppLanguageScope.of(context).language);
     final a = _account;
     if (a == null) {
       return Scaffold(
         backgroundColor: c.canvas,
         appBar: AppBar(),
-        body: const Center(child: Text('This account is no longer available.')),
+        body: Center(child: Text(copy.accountUnavailable)),
       );
     }
     final latest = _valuations.isEmpty ? null : _valuations.first;
@@ -175,22 +164,19 @@ class _ValuedAccountDetailPageState extends State<ValuedAccountDetailPage> {
               _ => _lifecycle(a, 'delete'),
             },
             itemBuilder: (context) => [
-              const PopupMenuItem(value: 'edit', child: Text('Edit')),
+              PopupMenuItem(value: 'edit', child: Text(copy.edit)),
               if (a.isActive && !isSold)
                 PopupMenuItem(
                   value: 'close',
                   enabled: lifecycle?.canClose ?? true,
-                  child: const Text('Close account'),
+                  child: Text(copy.closeAccount),
                 )
               else if (a.isClosed)
-                const PopupMenuItem(
-                  value: 'reopen',
-                  child: Text('Reopen account'),
-                ),
+                PopupMenuItem(value: 'reopen', child: Text(copy.reopenAccount)),
               PopupMenuItem(
                 value: 'delete',
                 enabled: lifecycle?.canDelete ?? false,
-                child: Text('Delete', style: TextStyle(color: c.negative)),
+                child: Text(copy.delete, style: TextStyle(color: c.negative)),
               ),
             ],
           ),
@@ -213,7 +199,7 @@ class _ValuedAccountDetailPageState extends State<ValuedAccountDetailPage> {
               const SizedBox(height: 12),
             ],
             Text(
-              'FINANCIAL ACCOUNTS',
+              copy.financialAccountsHeading,
               style: TextStyle(
                 color: c.inkMuted,
                 fontSize: 11,
@@ -244,7 +230,7 @@ class _ValuedAccountDetailPageState extends State<ValuedAccountDetailPage> {
                       borderRadius: BorderRadius.circular(999),
                     ),
                     child: Text(
-                      'Sold',
+                      copy.sold,
                       style: TextStyle(
                         color: c.inkMuted,
                         fontSize: 11,
@@ -257,7 +243,7 @@ class _ValuedAccountDetailPageState extends State<ValuedAccountDetailPage> {
             ),
             const SizedBox(height: 10),
             Text(
-              'Your attributable value',
+              copy.attributableValue,
               style: TextStyle(color: c.inkMuted, fontSize: 13),
             ),
             const SizedBox(height: 4),
@@ -277,7 +263,7 @@ class _ValuedAccountDetailPageState extends State<ValuedAccountDetailPage> {
                 children: [
                   Expanded(
                     child: SecondaryButton(
-                      label: isProperty ? 'Mark as sold' : 'Sell ownership',
+                      label: isProperty ? copy.markAsSold : copy.sellOwnership,
                       fontSize: 14,
                       onPressed: ownershipPct == null
                           ? null
@@ -287,7 +273,7 @@ class _ValuedAccountDetailPageState extends State<ValuedAccountDetailPage> {
                   const SizedBox(width: 10),
                   Expanded(
                     child: PrimaryButton(
-                      label: 'Update value',
+                      label: copy.updateValue,
                       fontSize: 14,
                       onPressed: () => _openValuation(a),
                     ),
@@ -297,14 +283,14 @@ class _ValuedAccountDetailPageState extends State<ValuedAccountDetailPage> {
             const SizedBox(height: 20),
             _section(
               context,
-              'Account details',
-              _metadataRows(a, ownershipPct),
+              copy.accountDetails,
+              _metadataRows(a, ownershipPct, copy),
             ),
             const SizedBox(height: 16),
-            _valuationHistory(context, a),
+            _valuationHistory(context, a, copy),
             if (_disposals.isNotEmpty) ...[
               const SizedBox(height: 16),
-              _disposalHistory(context, a),
+              _disposalHistory(context, a, copy),
             ],
           ],
         ),
@@ -319,36 +305,34 @@ class _ValuedAccountDetailPageState extends State<ValuedAccountDetailPage> {
     return null;
   }
 
-  List<(String, String)> _metadataRows(Account a, String? ownershipPct) {
+  List<(String, String, TextDirection?)> _metadataRows(
+    Account a,
+    String? ownershipPct,
+    AccountsCopy copy,
+  ) {
     final owned = ownershipPct == null
         ? '—'
         : MoneyFormat.percent(ownershipPct);
     if (a.type == AccountType.business) {
       return [
-        (
-          'Business type',
-          classificationLabel(a.businessType, businessTypeCodes),
-        ),
-        ('Industry', classificationLabel(a.industry, industryCodes)),
-        ('Ownership percentage', owned),
-        if ((a.notes ?? '').isNotEmpty) ('Description / Notes', a.notes!),
+        (copy.businessTypeLabel, copy.businessTypeValue(a.businessType), null),
+        (copy.industry, copy.industryValue(a.industry), null),
+        (copy.ownershipPercentageLabel, owned, TextDirection.ltr),
+        if ((a.notes ?? '').isNotEmpty) (copy.descriptionNotes, a.notes!, null),
       ];
     }
     return [
-      (
-        'Property type',
-        propertyTypeLabels[a.propertyType] ?? (a.propertyType ?? '—'),
-      ),
-      ('Ownership percentage', owned),
-      if ((a.location ?? '').isNotEmpty) ('Location', a.location!),
-      if ((a.notes ?? '').isNotEmpty) ('Description / Notes', a.notes!),
+      (copy.propertyTypeLabel, copy.propertyTypeValue(a.propertyType), null),
+      (copy.ownershipPercentageLabel, owned, TextDirection.ltr),
+      if ((a.location ?? '').isNotEmpty) (copy.location, a.location!, null),
+      if ((a.notes ?? '').isNotEmpty) (copy.descriptionNotes, a.notes!, null),
     ];
   }
 
   Widget _section(
     BuildContext context,
     String title,
-    List<(String, String)> rows,
+    List<(String, String, TextDirection?)> rows,
   ) {
     final c = context.colors;
     return Container(
@@ -370,7 +354,7 @@ class _ValuedAccountDetailPageState extends State<ValuedAccountDetailPage> {
             ),
           ),
           const SizedBox(height: 12),
-          for (final (label, value) in rows)
+          for (final (label, value, direction) in rows)
             Padding(
               padding: const EdgeInsets.only(bottom: 10),
               child: Column(
@@ -383,6 +367,7 @@ class _ValuedAccountDetailPageState extends State<ValuedAccountDetailPage> {
                   const SizedBox(height: 2),
                   Text(
                     value,
+                    textDirection: direction,
                     style: TextStyle(
                       color: c.ink,
                       fontSize: 14,
@@ -397,7 +382,7 @@ class _ValuedAccountDetailPageState extends State<ValuedAccountDetailPage> {
     );
   }
 
-  Widget _valuationHistory(BuildContext context, Account a) {
+  Widget _valuationHistory(BuildContext context, Account a, AccountsCopy copy) {
     final c = context.colors;
     return Container(
       padding: const EdgeInsets.all(16),
@@ -410,7 +395,7 @@ class _ValuedAccountDetailPageState extends State<ValuedAccountDetailPage> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Valuation history',
+            copy.valuationHistory,
             style: TextStyle(
               color: c.ink,
               fontSize: 15,
@@ -420,7 +405,7 @@ class _ValuedAccountDetailPageState extends State<ValuedAccountDetailPage> {
           const SizedBox(height: 12),
           if (!_loading && _valuations.isEmpty)
             Text(
-              'Unavailable',
+              _loadError ? copy.loadError : copy.unavailableAccountData,
               style: TextStyle(color: c.inkMuted, fontSize: 13),
             )
           else
@@ -444,8 +429,12 @@ class _ValuedAccountDetailPageState extends State<ValuedAccountDetailPage> {
                           style: TextStyle(color: c.ink, fontSize: 13),
                         ),
                         Text(
-                          'Full value: ${MoneyFormat.money(v.valuationAmount, a.currencyCode)}',
-                          textDirection: TextDirection.ltr,
+                          copy.fullValueWithAmount(
+                            MoneyFormat.money(
+                              v.valuationAmount,
+                              a.currencyCode,
+                            ),
+                          ),
                           style: TextStyle(
                             color: c.ink,
                             fontSize: 13,
@@ -478,7 +467,7 @@ class _ValuedAccountDetailPageState extends State<ValuedAccountDetailPage> {
     );
   }
 
-  Widget _disposalHistory(BuildContext context, Account a) {
+  Widget _disposalHistory(BuildContext context, Account a, AccountsCopy copy) {
     final c = context.colors;
     return Container(
       padding: const EdgeInsets.all(16),
@@ -491,7 +480,7 @@ class _ValuedAccountDetailPageState extends State<ValuedAccountDetailPage> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Sale history',
+            copy.saleHistory,
             style: TextStyle(
               color: c.ink,
               fontSize: 15,
@@ -532,7 +521,9 @@ class _ValuedAccountDetailPageState extends State<ValuedAccountDetailPage> {
                   Padding(
                     padding: const EdgeInsets.only(top: 4),
                     child: Text(
-                      '${MoneyFormat.percent(d.ownershipPercentageSold)} sold',
+                      copy.soldOwnership(
+                        MoneyFormat.percent(d.ownershipPercentageSold),
+                      ),
                       style: TextStyle(color: c.inkMuted, fontSize: 12),
                     ),
                   ),
@@ -615,12 +606,13 @@ class _ValuationSheetState extends State<_ValuationSheet> {
   }
 
   Future<void> _save() async {
+    final copy = AccountsCopy.of(AppLanguageScope.of(context).language);
     if (_valuedOn.isEmpty) {
-      setState(() => _error = 'Valuation date is required');
+      setState(() => _error = copy.valuationDateRequired);
       return;
     }
     if (_valuedOn.compareTo(_today()) > 0) {
-      setState(() => _error = 'Valuation date cannot be in the future');
+      setState(() => _error = copy.valuationDateFuture);
       return;
     }
     setState(() {
@@ -640,8 +632,8 @@ class _ValuationSheetState extends State<_ValuationSheet> {
         ),
       );
       if (mounted) Navigator.of(context).pop(true);
-    } catch (e) {
-      setState(() => _error = 'An unexpected error occurred');
+    } catch (_) {
+      setState(() => _error = copy.unexpectedError);
     } finally {
       if (mounted) setState(() => _saving = false);
     }
@@ -650,12 +642,13 @@ class _ValuationSheetState extends State<_ValuationSheet> {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
+    final copy = AccountsCopy.of(AppLanguageScope.of(context).language);
     return AppSheet(
-      title: 'Update current value',
+      title: copy.updateCurrentValue,
       subtitle: widget.account.name,
       children: [
         SheetField(
-          label: 'Current value',
+          label: copy.currentValueLabel,
           child: SheetBox(
             child: TextField(
               controller: _amount,
@@ -680,7 +673,7 @@ class _ValuationSheetState extends State<_ValuationSheet> {
           ),
         ),
         SheetField(
-          label: 'Valuation date',
+          label: copy.valuationDateLabel,
           child: InkWell(
             onTap: () async {
               final now = DateTime.now();
@@ -709,7 +702,7 @@ class _ValuationSheetState extends State<_ValuationSheet> {
         ),
         if (widget.account.type == AccountType.business)
           SheetField(
-            label: 'Valuation method',
+            label: copy.valuationMethodLabel,
             optional: true,
             child: SheetBox(
               child: TextField(
@@ -723,7 +716,7 @@ class _ValuationSheetState extends State<_ValuationSheet> {
             ),
           ),
         SheetField(
-          label: 'Valuation note',
+          label: copy.valuationNoteLabel,
           optional: true,
           child: SheetBox(
             child: TextField(
@@ -746,7 +739,7 @@ class _ValuationSheetState extends State<_ValuationSheet> {
           children: [
             Expanded(
               child: NeutralButton(
-                label: 'Cancel',
+                label: copy.cancel,
                 onPressed: _saving ? null : () => Navigator.of(context).pop(),
               ),
             ),
@@ -754,7 +747,7 @@ class _ValuationSheetState extends State<_ValuationSheet> {
             Expanded(
               flex: 2,
               child: PrimaryButton(
-                label: _saving ? 'Saving…' : 'Update value',
+                label: _saving ? copy.saving : copy.updateValue,
                 busy: _saving,
                 onPressed: _save,
               ),
@@ -821,13 +814,14 @@ class _DisposalSheetState extends State<_DisposalSheet> {
   ];
 
   Future<void> _save() async {
+    final copy = AccountsCopy.of(AppLanguageScope.of(context).language);
     final raw = _amount.text.trim();
     if (!_amountRe.hasMatch(raw)) {
-      setState(() => _error = 'Enter a valid non-negative sale amount.');
+      setState(() => _error = copy.validSaleAmount);
       return;
     }
     if (_positiveProceeds && _destinationId.isEmpty) {
-      setState(() => _error = 'Select where the sale proceeds were deposited.');
+      setState(() => _error = copy.saleDestinationRequired);
       return;
     }
     setState(() {
@@ -850,8 +844,8 @@ class _DisposalSheetState extends State<_DisposalSheet> {
         ),
       );
       if (mounted) Navigator.of(context).pop(true);
-    } catch (e) {
-      setState(() => _error = 'An unexpected error occurred');
+    } catch (_) {
+      setState(() => _error = copy.unexpectedError);
     } finally {
       if (mounted) setState(() => _saving = false);
     }
@@ -860,14 +854,15 @@ class _DisposalSheetState extends State<_DisposalSheet> {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
-    final title = widget.isProperty ? 'Mark as sold' : 'Sell ownership';
+    final copy = AccountsCopy.of(AppLanguageScope.of(context).language);
+    final title = widget.isProperty ? copy.markAsSold : copy.sellOwnership;
     return AppSheet(
       title: title,
       subtitle: widget.account.name,
       children: [
-        SheetField(label: 'Sale amount received', child: _num(_amount)),
+        SheetField(label: copy.saleAmountReceived, child: _num(_amount)),
         SheetField(
-          label: 'Sale currency',
+          label: copy.saleCurrency,
           child: SheetBox(
             child: DropdownButtonHideUnderline(
               child: DropdownButton<String>(
@@ -880,7 +875,10 @@ class _DisposalSheetState extends State<_DisposalSheet> {
                 }),
                 items: [
                   for (final code in kAccountCurrencies)
-                    DropdownMenuItem(value: code, child: Text(code)),
+                    DropdownMenuItem(
+                      value: code,
+                      child: Text(code, textDirection: TextDirection.ltr),
+                    ),
                 ],
                 style: TextStyle(color: c.ink, fontSize: 15),
               ),
@@ -889,10 +887,8 @@ class _DisposalSheetState extends State<_DisposalSheet> {
         ),
         if (_positiveProceeds)
           SheetField(
-            label: 'Where did the money go?',
-            hint: _destinations.isEmpty
-                ? 'No active Cash or Bank account uses this currency.'
-                : null,
+            label: copy.saleDestination,
+            hint: _destinations.isEmpty ? copy.noEligibleDestination : null,
             child: SheetBox(
               child: DropdownButtonHideUnderline(
                 child: DropdownButton<String>(
@@ -901,15 +897,15 @@ class _DisposalSheetState extends State<_DisposalSheet> {
                   isExpanded: true,
                   onChanged: (v) => setState(() => _destinationId = v ?? ''),
                   items: [
-                    const DropdownMenuItem(
+                    DropdownMenuItem(
                       value: '',
-                      child: Text('Select a Cash or Bank account'),
+                      child: Text(copy.selectCashOrBank),
                     ),
                     for (final a in _destinations)
                       DropdownMenuItem(
                         value: a.id,
                         child: Text(
-                          '${a.name} · ${a.typeLabel}',
+                          copy.destinationAccount(a.name, a.type),
                           overflow: TextOverflow.ellipsis,
                         ),
                       ),
@@ -923,15 +919,16 @@ class _DisposalSheetState extends State<_DisposalSheet> {
           Padding(
             padding: const EdgeInsets.only(bottom: 14),
             child: Text(
-              'This sale exits your remaining '
-              '${MoneyFormat.percent(widget.currentOwnership)} ownership.',
+              copy.propertySaleExitsOwnership(
+                MoneyFormat.percent(widget.currentOwnership),
+              ),
               style: TextStyle(color: c.inkMuted, fontSize: 12),
             ),
           )
         else
-          SheetField(label: 'Ownership sold (%)', child: _num(_ownershipSold)),
+          SheetField(label: copy.ownershipSold, child: _num(_ownershipSold)),
         SheetField(
-          label: 'Sale date',
+          label: copy.saleDate,
           child: InkWell(
             onTap: () async {
               final now = DateTime.now();
@@ -959,7 +956,7 @@ class _DisposalSheetState extends State<_DisposalSheet> {
           ),
         ),
         SheetField(
-          label: 'Sale note',
+          label: copy.saleNote,
           optional: true,
           child: SheetBox(
             child: TextField(
@@ -982,7 +979,7 @@ class _DisposalSheetState extends State<_DisposalSheet> {
           children: [
             Expanded(
               child: NeutralButton(
-                label: 'Cancel',
+                label: copy.cancel,
                 onPressed: _saving ? null : () => Navigator.of(context).pop(),
               ),
             ),
@@ -990,7 +987,7 @@ class _DisposalSheetState extends State<_DisposalSheet> {
             Expanded(
               flex: 2,
               child: PrimaryButton(
-                label: _saving ? 'Saving…' : title,
+                label: _saving ? copy.saving : title,
                 busy: _saving,
                 onPressed: _save,
               ),
