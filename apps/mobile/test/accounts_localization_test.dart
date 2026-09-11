@@ -28,51 +28,76 @@ void main() {
     expect(AppLanguage.en.direction, TextDirection.ltr);
   });
 
-  testWidgets('Arabic list cards localize unavailable values and preserve LTR data', (
-    tester,
-  ) async {
-    await _pumpCard(
-      tester,
-      language: AppLanguage.ar,
-      account: _account(type: AccountType.cash),
-      value: const ResolvedValue(null, CurrentValueSource.ledger),
-    );
+  test(
+    'Accounts form copy localizes create, edit, selectors, and validation',
+    () {
+      final english = AccountsCopy.of(AppLanguage.en);
+      final arabic = AccountsCopy.of(AppLanguage.ar);
 
-    final unavailable = tester.widget<Text>(find.text('غير متاح'));
-    expect(unavailable.textDirection, TextDirection.rtl);
-    expect(find.byIcon(Icons.chevron_left), findsOneWidget);
-    expect(find.byIcon(Icons.chevron_right), findsNothing);
-    expect(find.text('\u2066EGP\u2069'), findsOneWidget);
-  });
+      expect(english.createAccountTitle, 'Create account');
+      expect(english.editAccountTitle, 'Edit account');
+      expect(arabic.createAccountTitle, 'إنشاء حساب');
+      expect(arabic.editAccountTitle, 'تعديل الحساب');
+      expect(arabic.accountType(AccountType.realEstate, short: true), 'عقار');
+      expect(arabic.bankOption('credit'), 'ائتمان');
+      expect(arabic.investmentOption('stock_etf'), 'أسهم وصناديق مؤشرات');
+      expect(arabic.propertyType('apartment'), 'شقة');
+      expect(arabic.currencyLabel('EGP'), contains('\u2066EGP\u2069'));
+      expect(arabic.validation('Name is required'), 'الاسم مطلوب');
+      expect(
+        arabic.validation('Enter a value between 0 and 100'),
+        'أدخل قيمة بين 0 و100',
+      );
+    },
+  );
 
-  testWidgets('Arabic metal card isolates purity and English keeps its affordance', (
-    tester,
-  ) async {
-    await _pumpCard(
-      tester,
-      language: AppLanguage.ar,
-      account: _account(
-        type: AccountType.gold,
-        purity: '24k',
-        balanceGrams: '2.5',
-      ),
-      value: const ResolvedValue('100', CurrentValueSource.snapshot),
-    );
+  testWidgets(
+    'Arabic list cards localize unavailable values and preserve LTR data',
+    (tester) async {
+      await _pumpCard(
+        tester,
+        language: AppLanguage.ar,
+        account: _account(type: AccountType.cash),
+        value: const ResolvedValue(null, CurrentValueSource.ledger),
+      );
 
-    expect(find.textContaining('\u206624K\u2069'), findsOneWidget);
-    final value = tester.widget<Text>(find.text('100.00 EGP'));
-    expect(value.textDirection, TextDirection.ltr);
+      final unavailable = tester.widget<Text>(find.text('غير متاح'));
+      expect(unavailable.textDirection, TextDirection.rtl);
+      expect(find.byIcon(Icons.chevron_left), findsOneWidget);
+      expect(find.byIcon(Icons.chevron_right), findsNothing);
+      expect(find.text('\u2066EGP\u2069'), findsOneWidget);
+    },
+  );
 
-    await _pumpCard(
-      tester,
-      language: AppLanguage.en,
-      account: _account(type: AccountType.cash),
-      value: const ResolvedValue(null, CurrentValueSource.ledger),
-    );
+  testWidgets(
+    'Arabic metal card isolates purity and English keeps its affordance',
+    (tester) async {
+      await _pumpCard(
+        tester,
+        language: AppLanguage.ar,
+        account: _account(
+          type: AccountType.gold,
+          purity: '24k',
+          balanceGrams: '2.5',
+        ),
+        value: const ResolvedValue('100', CurrentValueSource.snapshot),
+      );
 
-    expect(find.text('Unavailable'), findsOneWidget);
-    expect(find.byIcon(Icons.chevron_right), findsOneWidget);
-  });
+      expect(find.textContaining('\u206624K\u2069'), findsOneWidget);
+      final value = tester.widget<Text>(find.text('100.00 EGP'));
+      expect(value.textDirection, TextDirection.ltr);
+
+      await _pumpCard(
+        tester,
+        language: AppLanguage.en,
+        account: _account(type: AccountType.cash),
+        value: const ResolvedValue(null, CurrentValueSource.ledger),
+      );
+
+      expect(find.text('Unavailable'), findsOneWidget);
+      expect(find.byIcon(Icons.chevron_right), findsOneWidget);
+    },
+  );
 }
 
 Future<void> _pumpCard(

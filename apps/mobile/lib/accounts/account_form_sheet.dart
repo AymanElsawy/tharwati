@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../dashboard/data/dashboard_repository.dart';
+import '../i18n/accounts_copy.dart';
+import '../i18n/app_language.dart';
 import '../theme/tokens.dart';
 import '../widgets/app_sheet.dart';
 import '../widgets/primary_button.dart';
@@ -130,7 +132,10 @@ class _AccountFormSheetState extends State<AccountFormSheet> {
     if (ok && mounted) Navigator.of(context).pop(true);
   }
 
-  String? _err(String field) => _submitted ? _errors[field] : null;
+  String? _err(AccountsCopy copy, String field) =>
+      _submitted && _errors[field] != null
+      ? copy.validation(_errors[field]!)
+      : null;
 
   // ---- lock state (web `isCurrencyLocked` / `isOpeningBalanceLocked`) --------
 
@@ -156,20 +161,23 @@ class _AccountFormSheetState extends State<AccountFormSheet> {
       listenable: widget.controller,
       builder: (context, _) {
         final c = context.colors;
+        final copy = AccountsCopy.of(AppLanguageScope.of(context).language);
         final t = _v.type;
         final isValued = t.isValued;
         final isDisabled = widget.controller.busy;
 
         return AppSheet(
-          title: widget.isEditing ? 'Edit account' : 'Create account',
+          title: widget.isEditing
+              ? copy.editAccountTitle
+              : copy.createAccountTitle,
           subtitle: widget.isEditing
-              ? t.label
-              : 'Select the account category that accurately describes this '
-                    'account.',
+              ? copy.accountType(t)
+              : copy.accountCategoryHint,
           children: [
             if (!widget.isEditing) ...[
               _TypeGrid(
                 selected: t,
+                copy: copy,
                 onSelect: (type) => setState(() {
                   _v.accountTypeCode = type.code;
                   if (type != AccountType.bank) _v.bankSubtype = '';
@@ -187,16 +195,16 @@ class _AccountFormSheetState extends State<AccountFormSheet> {
             // 1 — Name (hidden for gold; auto-named "Gold" / "Silver").
             if (t != AccountType.gold)
               SheetField(
-                label: 'Name',
-                error: _err('name'),
+                label: copy.name,
+                error: _err(copy, 'name'),
                 child: SheetBox(
                   child: TextField(
                     controller: _name,
                     enabled: !isDisabled,
-                    decoration: const InputDecoration(
+                    decoration: InputDecoration(
                       border: InputBorder.none,
                       isCollapsed: true,
-                      hintText: 'e.g. Main account',
+                      hintText: copy.nameHint,
                     ),
                     style: TextStyle(color: c.ink, fontSize: 15),
                   ),
@@ -205,15 +213,13 @@ class _AccountFormSheetState extends State<AccountFormSheet> {
 
             // 2 — Currency (always shown, full width).
             SheetField(
-              label: 'Currency',
-              hint: _currencyLocked
-                  ? 'This account already contains financial history. Its '
-                        'currency cannot be changed.'
-                  : null,
+              label: copy.currency,
+              hint: _currencyLocked ? copy.currencyLockedHint : null,
               child: _select(
                 value: _v.currencyCode,
                 codes: kAccountCurrencies,
-                labels: currencyLabels,
+                labelFor: copy.currencyLabel,
+                placeholder: copy.selectOption,
                 enabled: !isDisabled && !_currencyLocked,
                 withPlaceholder: false,
                 onChanged: (v) => setState(() => _v.currencyCode = v),
@@ -221,17 +227,14 @@ class _AccountFormSheetState extends State<AccountFormSheet> {
             ),
 
             // 3 — Type-specific block (web DOM order).
-            ..._typeFields(c, isDisabled),
+            ..._typeFields(c, copy, isDisabled),
 
             // 4 — Opening balance (non-gold, non-valued).
             if (t != AccountType.gold && !isValued)
               SheetField(
-                label: balanceLabelFor(t),
-                error: _err('openingBalance'),
-                hint: _openingBalanceLocked
-                    ? 'This account already contains financial history. Its '
-                          'balance cannot be changed.'
-                    : null,
+                label: copy.balanceLabelFor(t),
+                error: _err(copy, 'openingBalance'),
+                hint: _openingBalanceLocked ? copy.balanceLockedHint : null,
                 child: _openingBalanceLocked
                     ? _ReadOnlyBox(text: _v.openingBalance)
                     : _amountField(_balance, enabled: !isDisabled),
@@ -240,23 +243,23 @@ class _AccountFormSheetState extends State<AccountFormSheet> {
             // 5 — Valued account (Real Estate / Business), create only.
             if (isValued && !widget.isEditing) ...[
               SheetField(
-                label: balanceLabelFor(t),
-                error: _err('openingBalance'),
+                label: copy.balanceLabelFor(t),
+                error: _err(copy, 'openingBalance'),
                 child: _amountField(_balance, enabled: !isDisabled),
               ),
               SheetField(
-                label: 'Valuation date',
-                error: _err('valuationDate'),
+                label: copy.valuationDate,
+                error: _err(copy, 'valuationDate'),
                 child: _valuationDateField(),
               ),
               if (t == AccountType.business)
                 SheetField(
-                  label: 'Valuation method',
+                  label: copy.valuationMethod,
                   optional: true,
                   child: _plainField(_method, enabled: !isDisabled),
                 ),
               SheetField(
-                label: 'Valuation note',
+                label: copy.valuationNote,
                 optional: true,
                 child: _plainField(
                   _valNotes,
@@ -270,7 +273,7 @@ class _AccountFormSheetState extends State<AccountFormSheet> {
             // 6 — Description / Notes (hidden for gold).
             if (t != AccountType.gold)
               SheetField(
-                label: 'Description / Notes',
+                label: copy.descriptionNotes,
                 optional: true,
                 child: _plainField(
                   _notes,
@@ -292,7 +295,7 @@ class _AccountFormSheetState extends State<AccountFormSheet> {
               children: [
                 Expanded(
                   child: NeutralButton(
-                    label: 'Cancel',
+                    label: copy.cancel,
                     onPressed: widget.controller.busy
                         ? null
                         : () => Navigator.of(context).pop(),
@@ -303,10 +306,10 @@ class _AccountFormSheetState extends State<AccountFormSheet> {
                   flex: 2,
                   child: PrimaryButton(
                     label: widget.controller.busy
-                        ? 'Saving…'
+                        ? copy.saving
                         : widget.isEditing
-                        ? 'Save changes'
-                        : 'Create account',
+                        ? copy.saveChanges
+                        : copy.createAccountTitle,
                     busy: widget.controller.busy,
                     onPressed: _submit,
                   ),
@@ -321,38 +324,40 @@ class _AccountFormSheetState extends State<AccountFormSheet> {
 
   // ---- type-specific fields (web AccountForm conditional blocks) -------------
 
-  List<Widget> _typeFields(AppColors c, bool isDisabled) {
+  List<Widget> _typeFields(AppColors c, AccountsCopy copy, bool isDisabled) {
     switch (_v.type) {
       case AccountType.bank:
         return [
           SheetField(
-            label: 'Type',
-            error: _err('bankSubtype'),
+            label: copy.type,
+            error: _err(copy, 'bankSubtype'),
             child: _select(
               value: _v.bankSubtype,
               codes: bankSubtypeCodes,
-              labels: bankSubtypeLabels,
+              labelFor: copy.bankOption,
+              placeholder: copy.selectOption,
               enabled: !isDisabled,
               onChanged: (v) => setState(() => _v.bankSubtype = v),
             ),
           ),
           if (_v.bankSubtype == 'credit') ...[
             SheetField(
-              label: 'Credit Card Limit',
-              error: _err('creditCardLimit'),
+              label: copy.creditCardLimit,
+              error: _err(copy, 'creditCardLimit'),
               child: _amountField(
                 _creditLimit,
                 enabled: !isDisabled && !_openingBalanceLocked,
               ),
             ),
             SheetField(
-              label: 'Due Day of Month',
-              error: _err('dueDayOfMonth'),
+              label: copy.dueDayOfMonth,
+              error: _err(copy, 'dueDayOfMonth'),
               child: _select(
                 value: _v.dueDayOfMonth,
                 codes: [for (var d = 1; d <= 31; d++) '$d'],
-                labels: const {'': 'Unset'},
-                placeholder: 'Unset',
+                labelFor: (value) =>
+                    value.isEmpty ? copy.unset : copy.ltr(value),
+                placeholder: copy.unset,
                 enabled: !isDisabled,
                 onChanged: (v) => setState(() => _v.dueDayOfMonth = v),
               ),
@@ -362,12 +367,13 @@ class _AccountFormSheetState extends State<AccountFormSheet> {
       case AccountType.brokerage:
         return [
           SheetField(
-            label: 'Type of investments',
-            error: _err('investmentType'),
+            label: copy.investmentsType,
+            error: _err(copy, 'investmentType'),
             child: _select(
               value: _v.investmentType,
               codes: investmentTypeCodes,
-              labels: investmentTypeLabels,
+              labelFor: copy.investmentOption,
+              placeholder: copy.selectOption,
               enabled: !isDisabled,
               onChanged: (v) => setState(() => _v.investmentType = v),
             ),
@@ -376,32 +382,38 @@ class _AccountFormSheetState extends State<AccountFormSheet> {
       case AccountType.realEstate:
         return [
           SheetField(
-            label: 'Property type',
-            error: _err('propertyType'),
+            label: copy.propertyTypeLabel,
+            error: _err(copy, 'propertyType'),
             child: _select(
               value: _v.propertyType,
               codes: propertyTypeCodes,
-              labels: propertyTypeLabels,
+              labelFor: copy.propertyType,
+              placeholder: copy.selectOption,
               enabled: !isDisabled,
               onChanged: (v) => setState(() => _v.propertyType = v),
             ),
           ),
           SheetField(
-            label: 'Location',
+            label: copy.location,
             optional: true,
             child: _plainField(_location, enabled: !isDisabled),
           ),
-          _ownershipField(c, enabled: !isDisabled && !_openingBalanceLocked),
+          _ownershipField(
+            c,
+            copy,
+            enabled: !isDisabled && !_openingBalanceLocked,
+          ),
         ];
       case AccountType.business:
         return [
           SheetField(
-            label: 'Business type',
-            error: _err('businessType'),
+            label: copy.businessType,
+            error: _err(copy, 'businessType'),
             child: _select(
               value: _v.businessType,
               codes: businessTypeCodes,
-              labels: businessTypeLabels,
+              labelFor: copy.businessOption,
+              placeholder: copy.selectOption,
               enabled: !isDisabled,
               onChanged: (v) => setState(() {
                 _v.businessType = v;
@@ -411,15 +423,16 @@ class _AccountFormSheetState extends State<AccountFormSheet> {
           ),
           if (_v.businessType == 'other')
             SheetField(
-              label: 'Specify business type',
-              error: _err('businessTypeOther'),
+              label: copy.specifyBusinessType,
+              error: _err(copy, 'businessTypeOther'),
               child: _plainField(_businessOther, enabled: !isDisabled),
             ),
           SheetField(
-            label: 'Industry',
-            error: _err('industry'),
+            label: copy.industry,
+            error: _err(copy, 'industry'),
             child: _IndustrySelector(
               value: _v.industry,
+              copy: copy,
               enabled: !isDisabled,
               onChanged: (v) => setState(() {
                 _v.industry = v;
@@ -429,21 +442,26 @@ class _AccountFormSheetState extends State<AccountFormSheet> {
           ),
           if (_v.industry == 'other')
             SheetField(
-              label: 'Specify industry',
-              error: _err('industryOther'),
+              label: copy.specifyIndustry,
+              error: _err(copy, 'industryOther'),
               child: _plainField(_industryOther, enabled: !isDisabled),
             ),
-          _ownershipField(c, enabled: !isDisabled && !_openingBalanceLocked),
+          _ownershipField(
+            c,
+            copy,
+            enabled: !isDisabled && !_openingBalanceLocked,
+          ),
         ];
       case AccountType.gold:
         return [
           SheetField(
-            label: 'Type',
-            error: _err('metalType'),
+            label: copy.type,
+            error: _err(copy, 'metalType'),
             child: _select(
               value: _v.metalType,
               codes: metalTypeCodes,
-              labels: metalTypeLabels,
+              labelFor: copy.metalOption,
+              placeholder: copy.selectOption,
               enabled: !isDisabled,
               onChanged: (v) => setState(() {
                 _v.metalType = v;
@@ -458,9 +476,13 @@ class _AccountFormSheetState extends State<AccountFormSheet> {
     }
   }
 
-  Widget _ownershipField(AppColors c, {bool enabled = true}) => SheetField(
-    label: 'Ownership percentage',
-    error: _err('ownershipPercentage'),
+  Widget _ownershipField(
+    AppColors c,
+    AccountsCopy copy, {
+    bool enabled = true,
+  }) => SheetField(
+    label: copy.ownershipPercentage,
+    error: _err(copy, 'ownershipPercentage'),
     child: SheetBox(
       child: Row(
         children: [
@@ -576,16 +598,15 @@ class _AccountFormSheetState extends State<AccountFormSheet> {
   Widget _select({
     required String value,
     required List<String> codes,
-    required Map<String, String> labels,
+    required String Function(String) labelFor,
     required ValueChanged<String> onChanged,
-    String placeholder = 'Select an option',
+    required String placeholder,
     bool withPlaceholder = true,
     bool enabled = true,
   }) {
     final c = context.colors;
     final items = <String>[if (withPlaceholder) '', ...codes];
-    String labelOf(String code) =>
-        code.isEmpty ? placeholder : (labels[code] ?? humanLabel(code));
+    String labelOf(String code) => code.isEmpty ? placeholder : labelFor(code);
     return SheetBox(
       child: DropdownButtonHideUnderline(
         child: DropdownButton<String>(
@@ -641,11 +662,13 @@ class _ReadOnlyBox extends StatelessWidget {
 class _IndustrySelector extends StatelessWidget {
   const _IndustrySelector({
     required this.value,
+    required this.copy,
     required this.enabled,
     required this.onChanged,
   });
 
   final String value;
+  final AccountsCopy copy;
   final bool enabled;
   final ValueChanged<String> onChanged;
 
@@ -653,8 +676,8 @@ class _IndustrySelector extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = context.colors;
     final label = value.isEmpty
-        ? 'Select an option'
-        : (industryLabels[value] ?? humanLabel(value));
+        ? copy.selectOption
+        : copy.industryOption(value);
     return InkWell(
       onTap: enabled ? () => _open(context) : null,
       borderRadius: BorderRadius.circular(AppRadius.field),
@@ -689,15 +712,16 @@ class _IndustrySelector extends StatelessWidget {
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(26)),
       ),
-      builder: (context) => _IndustrySearchSheet(selected: value),
+      builder: (context) => _IndustrySearchSheet(selected: value, copy: copy),
     );
     if (picked != null) onChanged(picked);
   }
 }
 
 class _IndustrySearchSheet extends StatefulWidget {
-  const _IndustrySearchSheet({required this.selected});
+  const _IndustrySearchSheet({required this.selected, required this.copy});
   final String selected;
+  final AccountsCopy copy;
 
   @override
   State<_IndustrySearchSheet> createState() => _IndustrySearchSheetState();
@@ -716,8 +740,12 @@ class _IndustrySearchSheetState extends State<_IndustrySearchSheet> {
   Widget build(BuildContext context) {
     final c = context.colors;
     final q = _query.text.trim().toLowerCase();
-    final entries = industryLabels.entries
-        .where((e) => q.isEmpty || e.value.toLowerCase().contains(q))
+    final entries = industryCodes
+        .where(
+          (code) =>
+              q.isEmpty ||
+              widget.copy.industryOption(code).toLowerCase().contains(q),
+        )
         .toList();
     return Padding(
       padding: EdgeInsets.only(
@@ -753,10 +781,10 @@ class _IndustrySearchSheetState extends State<_IndustrySearchSheet> {
                           controller: _query,
                           autofocus: true,
                           onChanged: (_) => setState(() {}),
-                          decoration: const InputDecoration(
+                          decoration: InputDecoration(
                             border: InputBorder.none,
                             isCollapsed: true,
-                            hintText: 'Select an option',
+                            hintText: widget.copy.selectOption,
                           ),
                           style: TextStyle(color: c.ink, fontSize: 15),
                         ),
@@ -770,7 +798,7 @@ class _IndustrySearchSheetState extends State<_IndustrySearchSheet> {
                     ? Padding(
                         padding: const EdgeInsets.all(20),
                         child: Text(
-                          'No matching industries',
+                          widget.copy.noMatchingIndustries,
                           style: TextStyle(color: c.inkMuted, fontSize: 14),
                         ),
                       )
@@ -778,23 +806,23 @@ class _IndustrySearchSheetState extends State<_IndustrySearchSheet> {
                         shrinkWrap: true,
                         padding: const EdgeInsets.fromLTRB(12, 0, 12, 16),
                         children: [
-                          for (final e in entries)
+                          for (final code in entries)
                             ListTile(
                               title: Text(
-                                e.value,
+                                widget.copy.industryOption(code),
                                 style: TextStyle(
-                                  color: e.key == widget.selected
+                                  color: code == widget.selected
                                       ? c.accent
                                       : c.ink,
-                                  fontWeight: e.key == widget.selected
+                                  fontWeight: code == widget.selected
                                       ? FontWeight.w700
                                       : FontWeight.w500,
                                 ),
                               ),
-                              trailing: e.key == widget.selected
+                              trailing: code == widget.selected
                                   ? Icon(Icons.check, size: 18, color: c.accent)
                                   : null,
-                              onTap: () => Navigator.of(context).pop(e.key),
+                              onTap: () => Navigator.of(context).pop(code),
                             ),
                         ],
                       ),
@@ -808,9 +836,14 @@ class _IndustrySearchSheetState extends State<_IndustrySearchSheet> {
 }
 
 class _TypeGrid extends StatelessWidget {
-  const _TypeGrid({required this.selected, required this.onSelect});
+  const _TypeGrid({
+    required this.selected,
+    required this.copy,
+    required this.onSelect,
+  });
 
   final AccountType selected;
+  final AccountsCopy copy;
   final ValueChanged<AccountType> onSelect;
 
   @override
@@ -822,7 +855,7 @@ class _TypeGrid extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Account type',
+            copy.accountTypeLabel,
             style: TextStyle(
               color: c.ink,
               fontSize: 13,
@@ -862,7 +895,7 @@ class _TypeGrid extends StatelessWidget {
                         ),
                         const SizedBox(height: 5),
                         Text(
-                          type.shortLabel,
+                          copy.accountType(type, short: true),
                           style: TextStyle(
                             color: selected == type ? c.accent : c.inkMuted,
                             fontSize: 10,
