@@ -2,12 +2,64 @@
   "projectId": "2634f553-bee9-4e9f-90a7-3c1898dac2d0",
   "projectUrl": "https://claude.ai/design/p/2634f553-bee9-4e9f-90a7-3c1898dac2d0?file=Tharwati+Mobile.dc.html",
   "file": "Tharwati Mobile.dc.html",
-  "target": "tharwati_mobile/",
+  "target": "apps/mobile/",
   "stack": "flutter",
   "flowsImplemented": [
-    { "flow": 1, "name": "Auth & onboarding", "date": "2026-09-08" },
-    { "flow": 2, "name": "Dashboard", "date": "2026-09-08" },
-    { "flow": 5, "name": "Goals", "date": "2026-09-08" }
+    {
+      "flow": 1,
+      "name": "Auth & onboarding",
+      "date": "2026-09-08"
+    },
+    {
+      "flow": 2,
+      "name": "Dashboard",
+      "date": "2026-09-08"
+    },
+    {
+      "flow": 5,
+      "name": "Goals",
+      "date": "2026-09-08"
+    },
+    {
+      "flow": 3,
+      "name": "Accounts",
+      "date": "2026-09-08"
+    },
+    {
+      "flow": "3-parity",
+      "name": "Accounts web parity (entire tab)",
+      "date": "2026-09-09",
+      "status": "complete",
+      "phases": {
+        "1-form": "done",
+        "2-list+filterbar+sort": "done",
+        "3-valued-detail+valuation+disposal": "done",
+        "4-metal-purity-breakdown": "done (2026-09-09)",
+        "5-brokerage": "done (2026-09-09): holdings, market prices, buy/sell, asset search, dividends (cash/full/partial reinvest), activity feed, holding detail + existing-holding correct/reverse.",
+        "6-cash/bank-records-ledger+categories": "done"
+      }
+    },
+    {
+      "flow": "3-components",
+      "name": "Accounts component-sheet conformance",
+      "date": "2026-09-09",
+      "status": "done",
+      "notes": "Audited the Accounts tab against the canvas Component sheet + screen 11. Added CompactButton (accent/neutral/danger, 44/r14/18px/700-14) to widgets/primary_button.dart; added widgets/form_controls.dart with ControlBox + SearchField + FieldDropdown (44/r14/surface/line, 17px disabledFg glyph); added AppRadius.control=14. Removed the ad-hoc Container+TextField search boxes in accounts_page.dart and account_records_page.dart, the local _dropdown helper, the _Box alias in account_form_sheet.dart, and the inlineButtonStyle stopgap in theme/tokens.dart. Destructive dialog buttons are now the sheet's OUTLINED red, not a red fill. Deviation left in place: sheet says buttons are 48 tall, AppSizes.button is 52 app-wide since Flow 1."
+    },
+    {
+      "flow": "3-phase4-5a",
+      "name": "Accounts metal purity + brokerage core",
+      "date": "2026-09-09",
+      "status": "done",
+      "notes": "Phase 4: accounts/metal/{metal_purity.dart,metal_purity_detail_page.dart}; correct_metal_purchase/reverse_metal_purchase wired; purchase sheet edit mode; By-purity section on the gold detail. Spot price DERIVED from the dashboard-valuation total (price = accountValue / SUM(grams*factor)) instead of calling api.gold-api.com from the device - keeps mobile consistent with the dashboard and drops a network dep. Phase 5a: accounts/brokerage/{brokerage_models,brokerage_valuation,brokerage_repository,brokerage_controller,trade_sheet,brokerage_account_detail_page}.dart - holdings read (holdings+assets, ::text casts), market-prices Edge Function, asset-search Edge Function + resolve_external_brokerage_asset, add_brokerage_buy/add_brokerage_sell. Valuation returns null (unavailable) where web throws; account totals null if ANY holding unpriced (partial sum would read as a phantom loss). resolveCurrentValue for brokerage now uses the dashboard-valuation snapshot instead of raw opening_balance. Verified: flutter analyze clean, flutter test 72/72."
+    },
+    {
+      "flow": "3-phase5b",
+      "name": "Brokerage dividends + activity + holding detail",
+      "date": "2026-09-09",
+      "status": "done",
+      "notes": "brokerage_activity.dart (presentActivity/activityLabel/activityAssetEntry/sumEntries/groupActivityByLocalDate - ported from BrokerageAccountDetailsPage presentedActivity), dividend preview+validation in brokerage_valuation.dart, dividend_sheet.dart (3 modes -> 3 RPCs), holding_detail_page.dart (+ correct_existing_holding/reverse_existing_holding), activity feed on the account page, holdings rows open the drill-down. ALL 6 PHASES COMPLETE. Verified: flutter analyze clean, flutter test 96/96."
+    }
   ],
-  "notes": "Style-tile tokens live in tharwati_mobile/lib/theme/tokens.dart. Skip support.js (generated dc-runtime). Flow 1 deviation: mobile onboarding follows the WEB flow (Welcome/Country/Currency/Goals/Ready via the complete_onboarding RPC), not artboards 05-06. Flow 2: production dashboard only; valuation reuses the deployed dashboard-valuation Edge Function (supabase.functions.invoke) with the decimal aggregate ported to lib/dashboard/logic/; omitted the canvas's MoM delta pill (no historical series). Rich dashboard surfaces + AccountsOverview + Arabic deferred. See docs/dashboard.md §7. Flow 5 (Goals, screens 19-23): reuses the web goals tables + mutation RPCs (create_goal/update_goal/add_goal_progress_entry/correct_goal_progress_entry/set_goal_status/set_goal_archived); domain logic ported 1:1 to lib/goals/ (goal_math.dart validation + funded/summary, goal_history.dart correction-chain grouping). Deviation: canvas type chips (Purchase/Safety/...) -> web/DB type ids (buy_home/buy_car/travel/education/other). English only. See docs/goals.md 'Mobile (Flutter) implementation'."
+  "notes": "Mobile app lives at apps/mobile/ (renamed from tharwati_mobile/). Style-tile tokens in apps/mobile/lib/theme/tokens.dart. Skip support.js (generated dc-runtime). Flow 1 deviation: mobile onboarding follows the WEB flow (Welcome/Country/Currency/Goals/Ready via the complete_onboarding RPC), not artboards 05-06. Flow 2: production dashboard only; valuation reuses the deployed dashboard-valuation Edge Function (supabase.functions.invoke) with the decimal aggregate ported to lib/dashboard/logic/; omitted the canvas's MoM delta pill. See docs/dashboard.md §7. Flow 5 (Goals, screens 19-23): reuses the web goals tables + mutation RPCs; domain logic ported 1:1 to lib/goals/. Deviation: canvas type chips -> web/DB type ids. See docs/goals.md. Flow 3 (Accounts, screens 11-14): reuses financial_accounts + metal_purchases + RPCs (create_valued_account for RE/business, direct insert otherwise; add_metal_purchase; get_account_balances / get_effective_account_valuations / get_account_lifecycle_eligibility / close|reopen|delete_..._financial_account). Logic ported to lib/accounts/ (account_form.dart toAccountTypeSpecificFields, account_schema.dart validation, account_valuation.dart weighted-avg §2.3-step-5 + current-value resolution). Gold current value via dashboard-valuation snapshot. Deferred: full Cash/Bank ledger UI, Brokerage holdings, RE/Business valuation+disposal dialogs, metal corrections, Arabic. Money code suffix (not prefix) app-wide. See docs/accounts.md §10. English only. --- Flow 3 web-parity pass (source of truth: apps/web/src/features/accounts/, 11.5k LOC / 60 files). User wants the ENTIRE tab identical to web in logic + inputs + buttons, rendered with mobile tokens; keep mobile single-sheet type grid (not web's 2-step choose-type); all enum pickers are dropdowns (was: some segmented). DONE: Phase 1 (account_form_sheet.dart rewritten to web AccountForm field order/controls/labels/placeholders; account_schema.dart messages -> web i18n strings verbatim; valuation method free-text; dropped businessValuationMethodCodes + valuationMethodOther; added Valuation note; gold hides Notes; locked currency/balance read-only + hint). Phase 2 (accounts_page.dart + accounts_controller.dart: flat sorted active list w/ Name/Type/Current-Value sort + direction toggle, Closed/Archived + Sold sections, <select> filters, Show Closed, {n} accounts count, web empty/error copy; removed mobile-only group-by-type + section totals). Phase 3 (accounts/valued/: valued_repository.dart RPCs, valued_account_detail_page.dart w/ attributable value + metadata + valuation history + sale history + Update value sheet + Mark sold/Sell ownership disposal sheet; account_detail_page.dart routes RE/Business here). Phase 6 (accounts/records/: records_repository.dart RPCs get_account_record_history/add|correct|reverse_account_record/get_account_balances + record_categories tables; records_service.dart mapping/grouping/tree/search; records_controller.dart cursor-paginated filtered history + mutations; account_records_page.dart ledger w/ Bank-Credit summary + day groups + Daily Net + scroll-load + filter sheet; record_form_sheet.dart income/expense/transfer add-edit-delete; record_category_picker.dart searchable picker + manager; account_detail_page.dart routes cash/bank here; core/local_datetime.dart added). DEFERRED w/ rationale in docs/accounts.md 10.1: Phase 4 metal purity breakdown + correct/reverse; Phase 5 brokerage (needs quote service + holdings read models). Verified: flutter analyze lib/ clean (1 pre-existing main.dart deprecation), flutter test 33/33 pass."
 }

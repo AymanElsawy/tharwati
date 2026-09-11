@@ -80,7 +80,13 @@ class AuthService {
         .from('profiles')
         .select('onboarding_completed')
         .eq('id', currentUser!.id)
-        .single();
+        .single()
+        .timeout(
+          const Duration(seconds: 15),
+          onTimeout: () => throw Exception(
+            'Timed out reaching the server. Check your connection.',
+          ),
+        );
     return row['onboarding_completed'] as bool? ?? false;
   }
 }

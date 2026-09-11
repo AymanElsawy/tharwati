@@ -520,3 +520,273 @@ Authenticated mobile shell uses a three-part header at narrow widths: logical-st
 7. **Metal purchase fees are hardcoded to `"0"`** from the client — no fee input UI exists yet, despite full schema/RPC support. Adding it on mobile is net-new, not parity.
 8. Gold/silver historical totals are calculated from immutable purchase records with decimal-safe helpers. Current values combine those immutable quantities with the shared XAU/XAG live price-per-gram path and never fall back to historical cost. The RPC's account-shaped response is not a purchase-history payload and must not be used to render the history.
 9. Currency set is a fixed 5-item enum (`USD, SAR, EGP, EUR, GBP`), enforced at both DB and schema level — not user-extensible from this feature today.
+
+## 10. Mobile (Flutter) implementation — built (Flow 3)
+
+`apps/mobile/lib/accounts/` ships the Accounts tab as design canvas **Flow 3**
+(artboards 11 Accounts list, 12 Account detail · gold, 13 Add account, 14
+type-field component sheet). It reuses the **same `financial_accounts` /
+`metal_purchases` tables and RPCs** as the web — no new schema — and ports the
+form/valuation logic 1:1.
+
+### Logic (ported from `src/features/accounts/` + `docs/accounts.md`)
+
+| Web | Mobile |
+|---|---|
+| `types/account-form.ts` `AccountFormValues` / `toAccountTypeSpecificFields` / `accountToFormValues` / `getCreditCardAmountDue` / `other:<text>` classification encoding | `account_form.dart` |
+| `schemas/account.schema.ts` `createAccountSchema` superRefine (per-type required fields, credit ≤ limit, ownership ≤ 100, valuation-date not future, create-only checks) | `account_schema.dart` `validateAccountForm(values, {isCreate})` → field→message map |
+| §2.3 step 5 weighted-average cost (`newCost = (oldGrams·oldCost + subtotal + fees) / newGrams`) | `account_valuation.dart` `applyMetalPurchase` / `foldMetalPurchases` / `totalMetalCost` |
+| §6.2 Current Value resolution | `account_valuation.dart` `resolveCurrentValue` — Cash/Bank → `get_account_balances`; Gold → `dashboard-valuation` snapshot `currentValues[id]` (grams × live price), **"unavailable" never a cost fallback** (§9.8); Real Estate/Business → latest `get_effective_account_valuations` × `ownership_percentage`; Brokerage/Other → raw `opening_balance` (§9.5) |
+| §2.6 `MetalPurchaseFormValues` + schema | `metal_purchase_form.dart` (subtotal / total-cost getters; adds an optional fees input — §9.7) |
+| `AccountsRepository` / `MetalPurchasesRepository` | `accounts_repository.dart` (all `::text`-cast selects; `create_valued_account` RPC for RE/Business, direct insert for the rest; gold auto-named "Gold"/"Silver" §9.1; friendly-error map for `23505` gold-singleton / duplicate-name and `23514` immutability / lifecycle-blocked) + `metal_purchases_repository.dart` (`add_metal_purchase`, `get_effective_metal_purchases`) |
+| lifecycle RPCs | `close_financial_account` / `reopen_financial_account` / `delete_pristine_financial_account`; `get_account_lifecycle_eligibility` drives the enabled/disabled Close & Delete actions (clients never re-derive the rules — §4) |
+| §4 mutation guard + `tharwati:data-changed` | `accounts_service.dart` `_guard` (single-flight) + `DataChange.instance.ping()` after every mutation → dashboard cards refresh |
+| load orchestration + client-side filter bar | `accounts_controller.dart` (`loading`/`error`/`ready`; search / type / currency / show-closed; active-by-type then Closed then Sold sections) |
+
+### UI
+
+`accounts_page.dart` (screen 11 — header + count, search, type/currency/Closed
+filter chips, type-grouped sections with per-section totals, empty/error) →
+`account_detail_page.dart` (screen 12 — gold hero: weight, purity,
+weighted-average cost, total cost, unrealized gain + append-only purchase
+history; Bank Credit shows a Credit summary; every type gets Edit /
+Close·Reopen / guarded Delete via the ⋯ menu). Sheets: `account_form_sheet.dart`
+(screen 13 — 7-type picker grid + type-specific fields), `metal_purchase_sheet.dart`
+(purity / date-time / grams / cost-per-gram / optional fees / Paid-from Cash-Bank
+picker / live subtotal + total / notes → `add_metal_purchase`). Widgets:
+`widgets/account_type_icon.dart`, `widgets/account_row_card.dart`, shared
+`lib/widgets/app_sheet.dart`. Tab 2 of `home_page.dart` (was a placeholder).
+
+Tests: `test/account_schema_test.dart` (per-type validation) and
+`test/metal_valuation_test.dart` (weighted-average incl. fees, `foldMetalPurchases`,
+`totalMetalCost`, RE valuation × ownership + unavailable, credit amount-due).
+
+### 10.1 Web-parity pass (2026-09-09)
+
+A follow-up pass made the mobile tab match `apps/web/src/features/accounts/`
+structure/logic/inputs/buttons 1:1 (rendered with the mobile tokens). Kept the
+mobile single-sheet type grid instead of web's 2-step "choose type"; every enum
+picker is now a dropdown (was: some segmented).
+
+- **Account form** (`account_form_sheet.dart`) — field order, controls, labels,
+  placeholders and the submit button now mirror the web `AccountForm` /
+  `AccountFormDialog`. Validation messages in `account_schema.dart` are the web
+  `accounts.validation.*` strings verbatim. `valuation method` is a free-text
+  field (matches web) — removed the mobile-only dropdown + `valuationMethodOther`.
+  Added the `Valuation note` field for RE/Business create; gold hides Notes;
+  locked currency/balance render read-only + the web hint.
+- **List** (`accounts_page.dart` + `accounts_controller.dart`) — a flat sorted
+  active list (Name / Type / Current Value sort with a direction toggle), then
+  `Closed / Archived` and `Sold` sections. Dropped the mobile-only group-by-type
+  + per-section totals. `<select>`-style type/currency filters, `Show Closed`,
+  `{n} accounts` count, and the web empty/error copy.
+- **Cash / Bank detail → Account Records ledger** (`accounts/records/`) — the
+  web routes cash & bank accounts to `AccountRecordsPage`; mobile now does the
+  same. `records_repository.dart` calls `get_account_record_history`,
+  `add_account_record`, `correct_account_record`, `reverse_account_record`,
+  `get_account_balances`; `records_service.dart` ports the mapping / local-day
+  grouping / category tree / search; `records_controller.dart` owns the
+  cursor-paginated, filtered history + mutations. `account_records_page.dart` is
+  the ledger (header value or Bank-Credit summary, Add record, search + a filter
+  sheet, day groups with Daily Net, tap-to-edit editable rows, scroll-to-load);
+  `record_form_sheet.dart` is the income/expense/transfer add·edit form (category
+  picker for non-transfer, destination + manual cross-currency "amount received"
+  for transfer, delete → `reverse_account_record`); `record_category_picker.dart`
+  is the searchable category picker + the category manager (add/rename/hide/
+  restore/archive via `record_categories` + `record_category_overrides`).
+- **Real Estate / Business detail → valued account page** (`accounts/valued/`) —
+  the web routes RE/Business to `ValuedAccountDetailsPage`; mobile now does the
+  same. `valued_repository.dart` calls `get_effective_account_valuations`,
+  `add_account_valuation` / `correct_account_valuation`,
+  `get_account_current_ownership`, `get_account_disposals`,
+  `add_account_disposal`. `valued_account_detail_page.dart` shows the
+  attributable value (latest valuation × current ownership), Account-details
+  metadata, Valuation history, Sale history, an **Update value** sheet, and the
+  **Mark as sold** / **Sell ownership** disposal sheet.
+
+#### Component-sheet pass (2026-09-09)
+
+The parity pass had hand-rolled the tab's page-level controls instead of reaching
+for the shared component widgets. Three components were added from the canvas's
+Component sheet and the Accounts artboard (screen 11), and the ad-hoc copies
+deleted:
+
+- **`CompactButton`** (`widgets/primary_button.dart`) — the sheet's 44-tall /
+  radius-14 / 18px-padding / 700-14 compact action, in three tones: `accent`
+  (soft accent fill, the sheet's *Add progress*), `neutral` (hairline outline on
+  surface, the 44×44 overflow control's treatment), and `danger` (**outlined**
+  red on white — the sheet's *Delete account*; it is never a red fill). Replaces
+  the raw `FilledButton.icon` / `OutlinedButton.icon` in the Accounts header, the
+  ledger's *Add record* / *Filters*, and the three destructive confirm dialogs.
+- **`ControlBox` + `SearchField` + `FieldDropdown`** (`widgets/form_controls.dart`)
+  — the artboard's 44-tall / radius-14 / `surface` / hairline-`line` control
+  shell, plus the search field (17px `disabledFg` glyph, themed hint, clear
+  affordance) and the filter `<select>`. Replaces the duplicated `Container` +
+  `TextField` search boxes in `accounts_page.dart` and `account_records_page.dart`
+  and the local `_dropdown` helper.
+- **`AppRadius.control` = 14** — the compact-control radius step.
+
+`SheetBox` (52px form field) stays the shell for everything inside a sheet; the
+private `_Box` alias in `account_form_sheet.dart` was inlined so the shared
+component is visible at its call sites.
+
+##### Fields inside a shell must not draw their own box
+
+`AppTheme.inputDecorationTheme` sets `filled: true` + rounded `enabledBorder` /
+`focusedBorder`, so a bare `TextField` paints its own filled, bordered, rounded
+box. Every call site that embeds one in a shell passed
+`decoration: InputDecoration(border: InputBorder.none, isCollapsed: true)` — but
+that clears only `border`, and `enabledBorder` / `focusedBorder` take precedence
+over `border` whenever the field is enabled, while `filled` is untouched. The
+result was a rounded box nested inside the shell's rounded box, in **every**
+`SheetBox` field app-wide (Goals included), not just Accounts.
+
+Fixed structurally rather than at ~24 call sites: `SheetBox` and `ControlBox`
+now wrap their child in **`BareFieldScope`** (`widgets/form_controls.dart`),
+which overrides the inherited `inputDecorationTheme` for that subtree —
+`filled: false`, every border state `InputBorder.none`, zero content padding —
+while keeping `hintStyle` / `labelStyle` / `errorStyle`. New fields inside a
+shell inherit the fix without having to ask for it.
+
+The Accounts filter bar also lost its card wrapper: the artboard sits the search
+field and selects straight on the canvas with a 12px gap, and a bordered field
+inside a bordered card reads as a box in a box.
+
+`test/form_controls_test.dart` asserts the *resolved* `InputDecorator.decoration`
+inside each shell, plus a negative control — a `TextField` outside a shell must
+still get `filled: true` — so the override cannot silently go global.
+
+Why `CompactButton` and not a themed button: `AppTheme`'s filled/outlined button
+themes set `minimumSize: Size.fromHeight(52)` — `minWidth == double.infinity` —
+so a stretched column child spans its container. In a `Row` or an `AlertDialog`'s
+`OverflowBar` that infinite minimum stays latent while constraints are bounded
+(they clamp it), then a route being sized offstage lays the subtree out with
+`BoxConstraints()` — fully unconstrained — where it resolves to a *tight*
+infinity and throws `BoxConstraints forces an infinite width`, aborting layout
+for the whole page (surfacing downstream as `RenderBox was not laid out` on the
+`Scaffold`). `CompactButton` hugs its label instead.
+`test/accounts_page_layout_test.dart` pumps `AccountsPage` inside an `Offstage`
+to keep that from regressing.
+
+**Known deviation:** the Component sheet draws buttons **48px** tall;
+`AppSizes.button` is **52**, applied app-wide since Flow 1. Left alone here —
+changing it would restyle Flows 1, 2 and 5 as a side effect of an Accounts pass.
+
+### 10.2 Metal purity breakdown + corrections (Phase 4, 2026-09-09)
+
+`accounts/metal/metal_purity.dart` ports the web `metal-purchases.service`
+purity functions; `metal_purity_detail_page.dart` ports `MetalPurityDetailsPage`
+(purity totals, unrealised gain, per-purchase Edit / Reverse). The gold detail
+page gained a **By purity** section that opens it, the purchase sheet gained an
+edit mode, and `correct_metal_purchase` / `reverse_metal_purchase` are wired
+through repository → service → controller.
+
+**Deviation — where the spot price comes from.** The web calls
+`api.gold-api.com` from the browser and converts with its own FX service. Mobile
+derives it instead: the `dashboard-valuation` Edge Function already values a
+gold account as `Σ(gramsᵢ × price × factorᵢ)` — applying purity factors
+server-side — which factors to `price × Σ(gramsᵢ × factorᵢ)`. Every gram and
+factor is known on the device, so `derivePricePerGram` recovers `price` by
+division. No metal-price call from the phone, and the breakdown cannot disagree
+with the dashboard headline. `test/metal_purity_test.dart` pins both the
+round-trip and the "per-purity values sum back to the account total" invariant.
+
+An unknown purity — the account form allows `other` — yields **unavailable**,
+never a guessed or zero value, matching how the Edge Function nulls the whole
+account. The mobile factor table is byte-identical to the Edge Function's.
+
+### 10.3 Brokerage core (Phase 5a, 2026-09-09)
+
+`accounts/brokerage/` ports the web `features/holdings` read model, the
+`market-prices` transport from `services/market-data`, `services/asset-search`,
+and the `BrokerageAccountDetailsPage` header + holdings table. Buy and Sell are
+live via `add_brokerage_buy` / `add_brokerage_sell`, with instrument selection
+from existing holdings or external search (`asset-search` →
+`resolve_external_brokerage_asset`).
+
+**Deviation — unavailable instead of thrown.** The web
+`lib/financial-calculations/valuation.ts` raises `FinancialCalculationError` on
+a missing price, a cost/price currency mismatch, or a zero cost basis. On a
+phone one unpriced asset must not blank the screen, so
+`brokerage_valuation.dart` returns null for those and the UI renders "—". The
+account totals go null the moment *any* holding is unpriced rather than summing
+the priced subset: a partial sum against a full cost basis reads as a loss the
+user never took. `unpricedCount` drives a callout explaining the gap. This is
+the same information the web carries in `missingPriceHoldings` /
+`completenessStatus`.
+
+**Accounts-list value.** `resolveCurrentValue` previously returned raw
+`opening_balance` for brokerage. It now uses the `dashboard-valuation` snapshot
+(cash + holdings marked to market), which the Edge Function has computed all
+along — so the list, the dashboard and the detail header agree.
+
+### 10.4 Brokerage — dividends, activity, holding detail (Phase 5b, 2026-09-09)
+
+Completes the brokerage surface.
+
+**Dividends** (`dividend_sheet.dart`, `previewDividend` / `validateDividend`) —
+three settlements, three RPCs: `add_brokerage_cash_dividend`,
+`add_brokerage_dividend_reinvestment`, and
+`add_brokerage_partial_dividend_reinvestment`. `net = gross − tax − fees`;
+a full reinvestment buys `net ÷ unitPrice`, a partial one buys
+`reinvested ÷ unitPrice` and leaves `net − reinvested` as cash. Two rules from
+the web `canSave` carry real meaning and are pinned by tests: the net must be
+**positive**, and a partial reinvestment must be **strictly less than** the net
+— at or above it, it is a full reinvestment and the other RPC applies.
+
+**Activity feed** (`brokerage_activity.dart`) — the ledger is append-only, so
+`presentActivity` resolves which rows are still true, porting the web
+`presentedActivity`: `opening_position_reversal` rows never surface; a row that
+was both reversed *and* corrected is dropped (the correction already replaced
+it, showing both would double-count); otherwise a row is `deleted` when
+something reverses it, `updated` when it is itself a correction, `current`
+otherwise. Reversed rows stay visible, struck through and tagged — hiding them
+would misrepresent the history. `activityLabel` and `activityAssetEntry` are
+ported verbatim, including the rule that a reinvestment leg wins over the gross
+cash leg (a reinvested dividend has both).
+
+**Holding detail** (`holding_detail_page.dart`) — the position's figures and its
+history, with `correct_existing_holding` / `reverse_existing_holding`. Only a
+hand-entered `opening_position` is editable; a buy or sell is a real ledger
+event, corrected by trading rather than editing.
+
+The activity feed loads alongside holdings but fails independently — a broken
+feed must not hide the portfolio (web keeps separate `holdingsError` /
+`activityError`).
+
+### Deviations
+
+- **Money format:** the web spec (§7) prefixes the ISO code (`EGP 1,234.56`);
+  mobile suffixes it (`1,234.56 EGP`) — consistent with Flows 1/2/5 and the
+  canvas.
+- **Brokerage investment type:** the canvas chips read "stocks · ETFs · cash ·
+  other"; mobile follows the web/DB enum `stock_etf | crypto | other`.
+- **No "include in net worth" toggle** (canvas component sheet mentions one); the
+  web has no such column — `is_active` (lifecycle) is the only inclusion gate.
+- **Gold current value depends on the `dashboard-valuation` Edge Function** for
+  the live metal price (same reuse decision as Flow 2); if it fails the value
+  reads "Unavailable".
+- **Cross-currency transfers** in the record form require a manual "amount
+  received" — mobile has no live FX-rate service, so the web auto-estimate
+  (`estimateTransferReceived` → `exchangeRateService`) is not ported.
+- **Disposal idempotency key** is a timestamp string (mobile has no
+  `crypto.randomUUID`); the web fingerprint-dedup of repeat submissions is not
+  ported — the single-flight guard covers the common double-tap case.
+- **Records local time zone** — `get_account_record_history`'s `p_time_zone`
+  falls back to `"UTC"` unless the platform reports an IANA name; the ISO
+  timestamps still carry the real offset so day bucketing is close.
+
+### Deferred to later flows
+
+- **Brokerage** — holdings aggregation, activity, Buy / Sell / Dividend / DRIP,
+  existing-holding detail, asset search. Needs a market-data / quote service and
+  holdings read models the mobile app does not have; brokerage detail still shows
+  the cash balance only (§2.1a, §9.5).
+- **Metal purity breakdown** — the web groups gold/silver purchases by purity
+  with a per-purity current value and a `/purities/:purity` sub-page + purchase
+  corrections (`correct_metal_purchase` / `reverse_metal_purchase`). Mobile keeps
+  the flat append-only history + Add purchase; corrections and the purity
+  sub-pages are not ported (§6.7).
+- **Account records infinite scroll** uses a simple scroll-threshold trigger +
+  "Load more" fallback rather than the web `IntersectionObserver`.
+- Arabic / RTL copy.

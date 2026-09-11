@@ -124,6 +124,10 @@ class AppColors extends ThemeExtension<AppColors> {
 
 class AppRadius {
   static const field = 12.0;
+
+  /// Compact 44px controls — the Component sheet's small accent action, the
+  /// 44×44 overflow square, and the Accounts search field (screen 11).
+  static const control = 14.0;
   static const button = 16.0;
   static const card = 16.0;
   static const chip = 999.0;

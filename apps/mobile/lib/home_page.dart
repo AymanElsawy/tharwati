@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import 'accounts/accounts_page.dart';
 import 'dashboard/dashboard_screen.dart';
 import 'goals/goals_page.dart';
 import 'settings/settings_page.dart';
@@ -25,7 +26,7 @@ class _HomePageState extends State<HomePage> {
         onOpenAccounts: () => setState(() => _index = 1),
         onOpenGoals: () => setState(() => _index = 3),
       ),
-      const _ComingSoon(title: 'Accounts', flow: 'Flow 3'),
+      const AccountsPage(),
       const _ComingSoon(title: 'Investments', flow: 'Flow 4'),
       const GoalsPage(),
       const SettingsPage(),
