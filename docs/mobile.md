@@ -96,7 +96,7 @@ are unchanged:
 | Destination / reachable screen | State | Current behavior and principal files |
 | --- | --- | --- |
 | Dashboard | Implemented | `DashboardScreen` loads valuations and a separate read-only goals card. “Add account” switches to Accounts; “View all” switches to Goals. |
-| Accounts | List and form localization implemented | The list and create/edit account form support English/Arabic. Account details, records, metal, and brokerage flows remain English-only. |
+| Accounts | List, form, and generic-detail localization implemented | The list, create/edit form, and generic detail labels/lifecycle dialogs support English/Arabic. Records, valued details, metal, and brokerage flows remain English-only. |
 | Invest | Placeholder | `_ComingSoon` only; no investment flow. |
 | Goals | Implemented | `GoalsPage`, detail page, form/entry/actions bottom sheets. |
 | Settings | Implemented profile/session surface | `settings/settings_page.dart` reads and edits canonical `profiles.full_name` through `SettingsProfileRepository`, displays the Auth-session email read-only, changes the shared device-local English/Arabic preference, and signs out. Whitespace-only names save as null; privacy and support settings are absent. |

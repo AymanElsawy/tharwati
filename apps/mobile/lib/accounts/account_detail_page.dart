@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 
 import '../core/decimals.dart';
 import '../core/money_format.dart';
+import '../i18n/accounts_copy.dart';
+import '../i18n/app_language.dart';
 import '../theme/tokens.dart';
 import '../widgets/app_sheet.dart';
 import '../widgets/callout.dart';
@@ -103,38 +105,23 @@ class _AccountDetailPageState extends State<AccountDetailPage> {
 
   Future<void> _lifecycle(AccountItem item, String action) async {
     final a = item.account;
+    final copy = AccountsCopy.of(AppLanguageScope.of(context).language);
     final confirm = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text(switch (action) {
-          'close' => 'Close “${a.name}”?',
-          'reopen' => 'Reopen “${a.name}”?',
-          _ => 'Delete “${a.name}”?',
-        }),
-        content: Text(switch (action) {
-          'close' =>
-            'It keeps all its history and leaves the active list and net '
-                'worth. You can reopen it later.',
-          'reopen' => 'It returns to the active list and net worth.',
-          _ =>
-            'This permanently removes the account. Only possible while it has '
-                'no financial history.',
-        }),
+        title: Text(copy.lifecycleTitle(action, a.name)),
+        content: Text(copy.lifecycleBody(action)),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Cancel'),
+            child: Text(copy.cancel),
           ),
           CompactButton(
             onPressed: () => Navigator.of(context).pop(true),
             tone: action == 'delete'
                 ? CompactButtonTone.danger
                 : CompactButtonTone.accent,
-            label: switch (action) {
-              'close' => 'Close',
-              'reopen' => 'Reopen',
-              _ => 'Delete',
-            },
+            label: copy.lifecycleAction(action),
           ),
         ],
       ),
@@ -153,12 +140,13 @@ class _AccountDetailPageState extends State<AccountDetailPage> {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
+    final copy = AccountsCopy.of(AppLanguageScope.of(context).language);
     final item = _item;
     if (item == null) {
       return Scaffold(
         backgroundColor: c.canvas,
         appBar: AppBar(),
-        body: const Center(child: Text('This account is no longer available.')),
+        body: Center(child: Text(copy.accountUnavailable)),
       );
     }
     final a = item.account;
@@ -216,22 +204,22 @@ class _AccountDetailPageState extends State<AccountDetailPage> {
                   value: 'add_purchase',
                   child: Text('Add purchase'),
                 ),
-              const PopupMenuItem(value: 'edit', child: Text('Edit')),
+              PopupMenuItem(value: 'edit', child: Text(copy.edit)),
               if (a.isActive && !a.isSold)
                 PopupMenuItem(
                   value: 'close',
                   enabled: lifecycle?.canClose ?? true,
-                  child: const Text('Close account'),
+                  child: Text(copy.closeAccount),
                 )
               else if (a.isClosed)
-                const PopupMenuItem(
+                PopupMenuItem(
                   value: 'reopen',
-                  child: Text('Reopen account'),
+                  child: Text(copy.reopenAccount),
                 ),
               PopupMenuItem(
                 value: 'delete',
                 enabled: lifecycle?.canDelete ?? false,
-                child: Text('Delete', style: TextStyle(color: c.negative)),
+                child: Text(copy.delete, style: TextStyle(color: c.negative)),
               ),
             ],
           ),
@@ -273,7 +261,7 @@ class _AccountDetailPageState extends State<AccountDetailPage> {
                 ],
                 Expanded(
                   child: SecondaryButton(
-                    label: 'Edit account',
+                    label: copy.editAccount,
                     fontSize: 14,
                     onPressed: widget.controller.busy ? null : () => _edit(a),
                   ),
@@ -335,13 +323,14 @@ class _GenericHero extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
+    final copy = AccountsCopy.of(AppLanguageScope.of(context).language);
     final a = item.account;
     return _HeroShell(
       account: a,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _label(c, 'CURRENT VALUE'),
+          _label(c, copy.currentValue),
           const SizedBox(height: 4),
           Text(
             MoneyFormat.money(item.value.amount, a.currencyCode),
@@ -359,7 +348,7 @@ class _GenericHero extends StatelessWidget {
             Padding(
               padding: const EdgeInsets.only(top: 4),
               child: Text(
-                'Latest valuation × ${a.ownershipPercentage ?? "100"}% ownership',
+                copy.latestValuationOwnership(a.ownershipPercentage ?? '100'),
                 style: TextStyle(color: c.inkMuted, fontSize: 12),
               ),
             ),
@@ -376,6 +365,7 @@ class _CreditSummary extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
+    final copy = AccountsCopy.of(AppLanguageScope.of(context).language);
     final a = item.account;
     final limit = a.creditCardLimit;
     final available = item.value.amount; // ledger-projected current_balance
@@ -408,7 +398,7 @@ class _CreditSummary extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Credit summary',
+            copy.creditSummary,
             style: TextStyle(
               color: c.ink,
               fontSize: 15,
@@ -416,14 +406,14 @@ class _CreditSummary extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 6),
-          row('Credit limit', limit),
-          row('Available credit', available),
-          row('Amount due', amountDue),
+          row(copy.creditLimit, limit),
+          row(copy.availableCredit, available),
+          row(copy.amountDue, amountDue),
           if (a.dueDayOfMonth != null)
             Padding(
               padding: const EdgeInsets.only(top: 6),
               child: Text(
-                'Payment due on day ${a.dueDayOfMonth} each month',
+                copy.paymentDueDay('${a.dueDayOfMonth}'),
                 style: TextStyle(color: c.inkMuted, fontSize: 12),
               ),
             ),

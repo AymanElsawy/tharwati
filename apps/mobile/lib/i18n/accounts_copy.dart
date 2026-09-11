@@ -212,4 +212,48 @@ class AccountsCopy {
       _ar ? 'لا يمكن أن يكون تاريخ التقييم في المستقبل' : message,
     _ => message,
   };
+
+  String get accountUnavailable => _ar
+      ? 'هذا الحساب لم يعد متاحًا.'
+      : 'This account is no longer available.';
+  String get edit => _ar ? 'تعديل' : 'Edit';
+  String get editAccount => _ar ? 'تعديل الحساب' : 'Edit account';
+  String get closeAccount => _ar ? 'إغلاق الحساب' : 'Close account';
+  String get reopenAccount => _ar ? 'إعادة فتح الحساب' : 'Reopen account';
+  String get delete => _ar ? 'حذف' : 'Delete';
+  String get currentValue => _ar ? 'القيمة الحالية' : 'CURRENT VALUE';
+  String get creditSummary => _ar ? 'ملخص الائتمان' : 'Credit summary';
+  String get creditLimit => _ar ? 'حد الائتمان' : 'Credit limit';
+  String get availableCredit => _ar ? 'الائتمان المتاح' : 'Available credit';
+  String get amountDue => _ar ? 'المبلغ المستحق' : 'Amount due';
+  String latestValuationOwnership(String value) => _ar
+      ? 'أحدث تقييم × ${ltr(value)}% ملكية'
+      : 'Latest valuation × $value% ownership';
+  String paymentDueDay(String day) => _ar
+      ? 'يستحق الدفع في اليوم ${ltr(day)} من كل شهر'
+      : 'Payment due on day $day each month';
+  String lifecycleTitle(String action, String name) => switch (action) {
+    'close' => _ar ? 'إغلاق «$name»؟' : 'Close “$name”?',
+    'reopen' => _ar ? 'إعادة فتح «$name»؟' : 'Reopen “$name”?',
+    _ => _ar ? 'حذف «$name»؟' : 'Delete “$name”?',
+  };
+  String lifecycleBody(String action) => switch (action) {
+    'close' =>
+      _ar
+          ? 'سيحتفظ بكل سجله ويغادر القائمة النشطة وصافي الثروة. يمكنك إعادة فتحه لاحقًا.'
+          : 'It keeps all its history and leaves the active list and net worth. You can reopen it later.',
+    'reopen' =>
+      _ar
+          ? 'سيعود إلى القائمة النشطة وصافي الثروة.'
+          : 'It returns to the active list and net worth.',
+    _ =>
+      _ar
+          ? 'سيؤدي ذلك إلى إزالة الحساب نهائيًا. لا يمكن ذلك إلا عند عدم وجود سجل مالي.'
+          : 'This permanently removes the account. Only possible while it has no financial history.',
+  };
+  String lifecycleAction(String action) => switch (action) {
+    'close' => _ar ? 'إغلاق' : 'Close',
+    'reopen' => _ar ? 'إعادة فتح' : 'Reopen',
+    _ => delete,
+  };
 }

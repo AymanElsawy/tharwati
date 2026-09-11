@@ -44,6 +44,8 @@ void main() {
       expect(arabic.propertyType('apartment'), 'شقة');
       expect(arabic.currencyLabel('EGP'), contains('\u2066EGP\u2069'));
       expect(arabic.validation('Name is required'), 'الاسم مطلوب');
+      expect(arabic.accountUnavailable, 'هذا الحساب لم يعد متاحًا.');
+      expect(arabic.lifecycleAction('close'), 'إغلاق');
       expect(
         arabic.validation('Enter a value between 0 and 100'),
         'أدخل قيمة بين 0 و100',

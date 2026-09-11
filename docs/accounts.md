@@ -793,5 +793,6 @@ feed must not hide the portfolio (web keeps separate `holdingsError` /
   through the shared device-local language controller. The list header, filters,
   states/actions, cards, and the account form's labels, selectors, UI-level
   validation messages, and actions use RTL labels with LTR-isolated dynamic
-  financial values. Account details, records, metal, and brokerage flows remain
+  financial values. Generic account-detail labels and lifecycle dialogs are also
+  translated. Records, valued-account details, metal, and brokerage flows remain
   English-only pending later passes.
