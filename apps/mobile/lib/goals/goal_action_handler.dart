@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../i18n/app_language.dart';
+import '../i18n/goals_copy.dart';
 import 'goal_actions_sheet.dart';
 import 'goal_entry_sheet.dart';
 import 'goal_form_sheet.dart';
@@ -50,6 +52,7 @@ Future<void> openGoalActions(
   controller.clearActionError();
   final history = controller.historyFor(summary.goal.id);
   final correctable = lastCorrectableEntry(history);
+  final copy = GoalsCopy.of(AppLanguageScope.of(context).language);
 
   final action = await showGoalSheet<GoalAction>(
     context,
@@ -77,18 +80,10 @@ Future<void> openGoalActions(
       }
     case GoalAction.reverseLast:
       if (correctable != null) {
-        final ok = await _confirm(
-          context,
-          'Reverse this entry?',
-          'The entry stays in the history but its effect on the funded amount '
-              'is undone. This cannot be edited afterwards.',
-        );
+        final ok = await _confirm(context, copy.reverseTitle, copy.reverseBody);
         if (ok) {
           await controller.run(
-            (s) => s.correctGoalEntry(
-              correctable.id,
-              note: 'Reversed from the goal actions sheet',
-            ),
+            (s) => s.correctGoalEntry(correctable.id, note: copy.reversalNote),
           );
         }
       }
@@ -99,9 +94,8 @@ Future<void> openGoalActions(
     case GoalAction.cancel:
       final ok = await _confirm(
         context,
-        'Cancel this goal?',
-        'It moves to the archived tab. You can reopen it later — nothing is '
-            'deleted.',
+        copy.cancelGoalTitle,
+        copy.cancelGoalBody,
       );
       if (ok) {
         await controller.run(
@@ -137,6 +131,7 @@ Future<void> _entry(
 }
 
 Future<bool> _confirm(BuildContext context, String title, String body) async {
+  final copy = GoalsCopy.of(AppLanguageScope.of(context).language);
   return await showDialog<bool>(
         context: context,
         builder: (context) => AlertDialog(
@@ -145,11 +140,11 @@ Future<bool> _confirm(BuildContext context, String title, String body) async {
           actions: [
             TextButton(
               onPressed: () => Navigator.of(context).pop(false),
-              child: const Text('Keep as is'),
+              child: Text(copy.keepAsIs),
             ),
             FilledButton(
               onPressed: () => Navigator.of(context).pop(true),
-              child: const Text('Continue'),
+              child: Text(copy.continueLabel),
             ),
           ],
         ),

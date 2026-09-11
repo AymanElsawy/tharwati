@@ -4,19 +4,12 @@ import 'package:flutter/material.dart';
 
 import '../../core/decimals.dart';
 import '../../core/money_format.dart';
+import '../../i18n/app_language.dart';
+import '../../i18n/dashboard_copy.dart';
 import '../../theme/tokens.dart';
 import '../data/dashboard_snapshot.dart';
 import '../logic/portfolio_allocation.dart';
 import 'dashboard_card.dart';
-
-const _labels = <AllocationGroup, String>{
-  AllocationGroup.stocks: 'Stocks',
-  AllocationGroup.etfs: 'ETFs',
-  AllocationGroup.bonds: 'Bonds',
-  AllocationGroup.mutualFunds: 'Mutual funds',
-  AllocationGroup.cryptocurrency: 'Cryptocurrency',
-  AllocationGroup.other: 'Other',
-};
 
 /// Dashboard "Portfolio allocation" card (docs/dashboard.md §2.3). Brokerage
 /// holdings only: a donut with the exact total Brokerage investments in the
@@ -39,12 +32,12 @@ class PortfolioAllocationCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
+    final copy = DashboardCopy.of(AppLanguageScope.of(context).language);
 
     if (items.isEmpty) {
       final message = status == PortfolioAllocationStatus.incomplete
-          ? 'Allocation is unavailable while a holding can’t be valued. '
-                'Nothing partial is shown.'
-          : 'No positive Brokerage holdings to display yet.';
+          ? copy.allocationUnavailable
+          : copy.noBrokerage;
       return DashboardCard(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -52,7 +45,7 @@ class PortfolioAllocationCard extends StatelessWidget {
             _title(context),
             const SizedBox(height: 4),
             Text(
-              'Current Brokerage investments by asset type',
+              copy.brokerageSubtitle,
               style: TextStyle(color: c.inkMuted, fontSize: 12),
             ),
             const SizedBox(height: 14),
@@ -82,7 +75,7 @@ class PortfolioAllocationCard extends StatelessWidget {
           _title(context),
           const SizedBox(height: 4),
           Text(
-            'Current Brokerage investments by asset type',
+            copy.brokerageSubtitle,
             style: TextStyle(color: c.inkMuted, fontSize: 12),
           ),
           const SizedBox(height: 16),
@@ -97,7 +90,7 @@ class PortfolioAllocationCard extends StatelessWidget {
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Text(
-                        'INVESTED',
+                        copy.invested,
                         style: TextStyle(
                           color: c.inkMuted,
                           fontSize: 9,
@@ -135,7 +128,7 @@ class PortfolioAllocationCard extends StatelessWidget {
   }
 
   Widget _title(BuildContext context) => Text(
-    'Portfolio allocation',
+    DashboardCopy.of(AppLanguageScope.of(context).language).portfolioAllocation,
     style: Theme.of(context).textTheme.titleSmall?.copyWith(
       color: context.colors.ink,
       fontWeight: FontWeight.w700,
@@ -173,7 +166,7 @@ class _LegendRow extends StatelessWidget {
           const SizedBox(width: 10),
           Expanded(
             child: Text(
-              _labels[item.group]!,
+              DashboardCopy.of(AppLanguageScope.of(context).language).assetGroup(item.group.name),
               style: TextStyle(
                 color: c.ink,
                 fontSize: 12,

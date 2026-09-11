@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 
 import '../../core/decimals.dart';
 import '../../core/money_format.dart';
+import '../../i18n/app_language.dart';
+import '../../i18n/dashboard_copy.dart';
 import '../../goals/goal_models.dart';
 import '../../theme/tokens.dart';
 import '../state/dashboard_goals_controller.dart';
@@ -18,6 +20,7 @@ class GoalsCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
+    final copy = DashboardCopy.of(AppLanguageScope.of(context).language);
     return ListenableBuilder(
       listenable: controller,
       builder: (context, _) {
@@ -33,7 +36,7 @@ class GoalsCard extends StatelessWidget {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Text(
-                    'Goals',
+                    copy.goals,
                     style: Theme.of(context).textTheme.titleSmall?.copyWith(
                       color: c.ink,
                       fontWeight: FontWeight.w700,
@@ -54,7 +57,7 @@ class GoalsCard extends StatelessWidget {
                             borderRadius: BorderRadius.circular(AppRadius.chip),
                           ),
                           child: Text(
-                            'Read-only · $activeCount active',
+                            copy.activeGoals(activeCount),
                             style: TextStyle(
                               color: c.inkMuted,
                               fontSize: 11,
@@ -76,7 +79,7 @@ class GoalsCard extends StatelessWidget {
                               mainAxisSize: MainAxisSize.min,
                               children: [
                                 Text(
-                                  'View all',
+                                  copy.viewAll,
                                   style: TextStyle(
                                     color: c.accent,
                                     fontSize: 12,
@@ -99,27 +102,25 @@ class GoalsCard extends StatelessWidget {
               ),
               const SizedBox(height: 4),
               Text(
-                'Tracked by hand — goals never change your net worth.',
+                copy.goalsHint,
                 style: TextStyle(color: c.inkMuted, fontSize: 12),
               ),
               const SizedBox(height: 14),
               switch (status) {
                 GoalsCardStatus.loading => const _GoalSkeletons(),
                 GoalsCardStatus.error => _GoalsMessage(
-                  text: 'Couldn’t load your goals.',
-                  actionLabel: 'Retry',
+                  text: copy.goalsLoadError,
+                  actionLabel: copy.retry,
                   onAction: controller.load,
                 ),
-                GoalsCardStatus.ready when model!.goals.isEmpty => _GoalsMessage(
-                  text: model.hasAnyGoals
-                      ? 'No active goals right now.'
-                      : 'Goals track savings on their own — they never change '
-                            'your net worth.',
-                  actionLabel: model.hasAnyGoals
-                      ? 'View all goals'
-                      : 'Create a goal',
-                  onAction: onViewAll,
-                ),
+                GoalsCardStatus.ready when model!.goals.isEmpty =>
+                  _GoalsMessage(
+                    text: model.hasAnyGoals ? copy.noActiveGoals : copy.noGoals,
+                    actionLabel: model.hasAnyGoals
+                        ? copy.viewAllGoals
+                        : copy.createGoal,
+                    onAction: onViewAll,
+                  ),
                 GoalsCardStatus.ready => Column(
                   children: [
                     for (final goal in model!.goals) ...[
@@ -152,6 +153,7 @@ class _GoalRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
+    final copy = DashboardCopy.of(AppLanguageScope.of(context).language);
     final goal = summary.goal;
     final overdue = summary.isOverdue(today);
     final overTarget = D.isPositive(summary.surplusAmount);
@@ -201,9 +203,8 @@ class _GoalRow extends StatelessWidget {
                   const SizedBox(width: 4),
                   Text(
                     overdue
-                        ? 'Overdue · ${goal.targetDate}'
-                        : 'Due ${goal.targetDate}',
-                    textDirection: TextDirection.ltr,
+                        ? copy.overdue(goal.targetDate!)
+                        : copy.due(goal.targetDate!),
                     style: TextStyle(
                       color: overdue ? c.negative : c.inkMuted,
                       fontSize: 11,
@@ -238,8 +239,9 @@ class _GoalRow extends StatelessWidget {
             if (overTarget) ...[
               const SizedBox(height: 4),
               Text(
-                '${MoneyFormat.money(summary.surplusAmount, goal.currencyCode)} over target',
-                textDirection: TextDirection.ltr,
+                copy.overTarget(
+                  MoneyFormat.money(summary.surplusAmount, goal.currencyCode),
+                ),
                 style: TextStyle(
                   color: c.accent,
                   fontSize: 11,

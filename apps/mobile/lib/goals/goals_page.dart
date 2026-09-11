@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 
 import '../dashboard/data/dashboard_repository.dart';
+import '../i18n/app_language.dart';
+import '../i18n/goals_copy.dart';
 import '../theme/tokens.dart';
 import '../widgets/callout.dart';
 import 'goal_action_handler.dart';
@@ -104,6 +106,7 @@ class _GoalsPageState extends State<GoalsPage> {
 
   Widget _body(BuildContext context) {
     final c = context.colors;
+    final copy = GoalsCopy.of(AppLanguageScope.of(context).language);
     switch (_controller.status) {
       case GoalsStatus.loading:
         return ListView(
@@ -122,11 +125,11 @@ class _GoalsPageState extends State<GoalsPage> {
           children: [
             Callout(
               tone: CalloutTone.danger,
-              title: 'Couldn’t load your goals',
-              message: 'Your records are safe. Pull to refresh or try again.',
+              title: copy.loadError,
+              message: copy.safeRecords,
               action: OutlinedButton(
                 onPressed: _controller.load,
-                child: const Text('Retry'),
+                child: Text(copy.retry),
               ),
             ),
           ],
@@ -152,11 +155,7 @@ class _GoalsPageState extends State<GoalsPage> {
                   borderRadius: BorderRadius.circular(AppRadius.card),
                 ),
                 child: Text(
-                  _controller.showArchived
-                      ? 'No archived goals. Archived goals keep their full '
-                            'history — nothing is ever deleted.'
-                      : 'No current goals yet. A goal tracks savings on its own '
-                            'and never changes your net worth.',
+                  _controller.showArchived ? copy.noArchived : copy.noCurrent,
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     color: c.inkMuted,
@@ -189,8 +188,7 @@ class _GoalsPageState extends State<GoalsPage> {
                 borderRadius: BorderRadius.circular(16),
               ),
               child: Text(
-                'Goal progress is a separate ledger. Moving money in real life? '
-                'Update the account too.',
+                copy.ledgerNote,
                 style: TextStyle(color: c.inkMuted, fontSize: 12, height: 1.5),
               ),
             ),
@@ -209,6 +207,7 @@ class _Header extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
+    final copy = GoalsCopy.of(AppLanguageScope.of(context).language);
     return Padding(
       padding: const EdgeInsets.fromLTRB(18, 12, 18, 14),
       child: Column(
@@ -222,13 +221,13 @@ class _Header extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Goals',
+                      copy.goals,
                       style: Theme.of(context).textTheme.headlineMedium
                           ?.copyWith(color: c.ink, fontSize: 30),
                     ),
                     const SizedBox(height: 2),
                     Text(
-                      'Savings tracked by hand · net worth untouched',
+                      copy.subtitle,
                       style: TextStyle(color: c.inkMuted, fontSize: 13),
                     ),
                   ],
@@ -237,7 +236,7 @@ class _Header extends StatelessWidget {
               const SizedBox(width: 12),
               IconButton(
                 onPressed: onAdd,
-                tooltip: 'Add goal',
+                tooltip: copy.addGoal,
                 style: IconButton.styleFrom(
                   minimumSize: const Size(44, 44),
                   backgroundColor: c.accent,
@@ -261,12 +260,12 @@ class _Header extends StatelessWidget {
             child: Row(
               children: [
                 _Segment(
-                  label: 'Current · ${controller.currentCount}',
+                  label: copy.current(controller.currentCount),
                   selected: !controller.showArchived,
                   onTap: () => controller.setShowArchived(false),
                 ),
                 _Segment(
-                  label: 'Archived · ${controller.archivedCount}',
+                  label: copy.archived(controller.archivedCount),
                   selected: controller.showArchived,
                   onTap: () => controller.setShowArchived(true),
                 ),

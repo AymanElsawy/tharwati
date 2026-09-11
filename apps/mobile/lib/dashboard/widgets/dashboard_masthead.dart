@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 
 import '../../theme/tokens.dart';
+import '../../i18n/app_language.dart';
+import '../../i18n/dashboard_copy.dart';
 import '../../widgets/tharwati_brand.dart';
 
 /// Dashboard-only mountain masthead: localized date, personalized greeting, a
@@ -23,45 +25,15 @@ class DashboardMasthead extends StatelessWidget {
   /// evening".
   final bool welcome;
 
-  static String _partOfDay(int hour) {
-    if (hour < 12) return 'Good morning';
-    if (hour < 18) return 'Good afternoon';
-    return 'Good evening';
-  }
-
-  static const _months = [
-    'January',
-    'February',
-    'March',
-    'April',
-    'May',
-    'June',
-    'July',
-    'August',
-    'September',
-    'October',
-    'November',
-    'December',
-  ];
-  static const _weekdays = [
-    'Monday',
-    'Tuesday',
-    'Wednesday',
-    'Thursday',
-    'Friday',
-    'Saturday',
-    'Sunday',
-  ];
-
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
+    final copy = DashboardCopy.of(AppLanguageScope.of(context).language);
     final now = DateTime.now();
     final firstName = (name == null || name!.trim().isEmpty)
         ? null
         : name!.trim().split(RegExp(r'\s+')).first;
-    final lead = welcome ? 'Welcome' : _partOfDay(now.hour);
-    final greeting = firstName == null ? lead : '$lead, $firstName';
+    final greeting = copy.greeting(firstName ?? '', now.hour, welcome: welcome);
 
     return SizedBox(
       height: height,
@@ -141,8 +113,7 @@ class DashboardMasthead extends StatelessWidget {
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    '${_weekdays[now.weekday - 1]}, ${now.day} ${_months[now.month - 1]}',
-                    textDirection: TextDirection.ltr,
+                    copy.date(now),
                     style: TextStyle(
                       color: c.ink,
                       fontSize: 12,
@@ -151,7 +122,7 @@ class DashboardMasthead extends StatelessWidget {
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    'Your wealth at a glance',
+                    copy.wealthAtGlance,
                     style: TextStyle(
                       color: c.ink,
                       fontSize: 12,

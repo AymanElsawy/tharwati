@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 
 import '../../theme/tokens.dart';
+import '../../i18n/app_language.dart';
+import '../../i18n/goals_copy.dart';
 
 /// The small uppercase status chip on the Flow 5 cards / detail header.
 /// `OVERDUE` (an active goal past its target date) reads as its own state.
@@ -13,6 +15,7 @@ class GoalStatusPill extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
+    final copy = GoalsCopy.of(AppLanguageScope.of(context).language);
     late final Color bg;
     late final Color fg;
     late final String label;
@@ -20,21 +23,21 @@ class GoalStatusPill extends StatelessWidget {
     if (overdue) {
       bg = c.negativeSoft;
       fg = c.negative;
-      label = 'OVERDUE';
+      label = copy.overdue;
     } else {
       switch (status) {
         case 'completed':
           bg = c.isDark ? const Color(0xFF1B2A3A) : const Color(0xFFEAF0F6);
           fg = c.isDark ? const Color(0xFF9BBBDD) : const Color(0xFF3D5A80);
-          label = 'COMPLETED';
+          label = copy.completed;
         case 'cancelled':
           bg = c.warningSoft;
           fg = c.warningFg;
-          label = 'CANCELLED';
+          label = copy.cancelled;
         default:
           bg = c.accentSoft;
           fg = c.accent;
-          label = 'ACTIVE';
+          label = copy.active;
       }
     }
 

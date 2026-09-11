@@ -21,6 +21,9 @@ authenticated Auth user. It trims names before saving and persists a blank name
 as `null`, matching web behavior. Flutter has no shared profile provider yet, so
 the page updates its own displayed field after a successful save. Its existing
 Sign out action is kept in a separate Session section at the bottom of the page.
+Flutter Settings also exposes the shared device-local Language preference;
+switching English/Arabic immediately updates the same app-level locale and
+direction used by Login and persists through `shared_preferences`.
 
 ## Privacy & Data
 

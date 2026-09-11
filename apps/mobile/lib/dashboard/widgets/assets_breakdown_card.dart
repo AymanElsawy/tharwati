@@ -4,19 +4,11 @@ import 'package:flutter/material.dart';
 
 import '../../core/decimals.dart';
 import '../../core/money_format.dart';
+import '../../i18n/app_language.dart';
+import '../../i18n/dashboard_copy.dart';
 import '../../theme/tokens.dart';
 import '../logic/dashboard_aggregate.dart';
 import 'dashboard_card.dart';
-
-const _labels = <AssetGroup, String>{
-  AssetGroup.cashAndBank: 'Cash & bank',
-  AssetGroup.brokerage: 'Brokerage',
-  AssetGroup.goldAndSilver: 'Gold & silver',
-  AssetGroup.realEstate: 'Real estate',
-  AssetGroup.business: 'Business',
-  AssetGroup.certificates: 'Certificates',
-  AssetGroup.other: 'Other',
-};
 
 class AssetsBreakdownCard extends StatelessWidget {
   const AssetsBreakdownCard({super.key, required this.aggregate});
@@ -44,7 +36,7 @@ class AssetsBreakdownCard extends StatelessWidget {
             ),
             const SizedBox(height: 10),
             Text(
-              'No breakdown yet',
+              DashboardCopy.of(AppLanguageScope.of(context).language).noBreakdown,
               style: TextStyle(
                 color: c.ink,
                 fontSize: 15,
@@ -53,7 +45,7 @@ class AssetsBreakdownCard extends StatelessWidget {
             ),
             const SizedBox(height: 6),
             Text(
-              'Allocation appears once at least one account holds a value.',
+              DashboardCopy.of(AppLanguageScope.of(context).language).breakdownEmpty,
               textAlign: TextAlign.center,
               style: TextStyle(color: c.inkMuted, fontSize: 13, height: 1.5),
             ),
@@ -70,8 +62,7 @@ class AssetsBreakdownCard extends StatelessWidget {
             _Header(),
             const SizedBox(height: 12),
             Text(
-              'Breakdown is unavailable while a value or exchange rate is '
-              'missing.',
+              DashboardCopy.of(AppLanguageScope.of(context).language).breakdownUnavailable,
               style: TextStyle(color: c.inkMuted, fontSize: 13, height: 1.5),
             ),
           ],
@@ -89,8 +80,7 @@ class AssetsBreakdownCard extends StatelessWidget {
       final pct = D.multiply(D.divide(value, total, scale: 6), '100') ?? '0';
       slices.add(
         _Slice(
-          label: _labels[group]!,
-          value: value,
+          label: DashboardCopy.of(AppLanguageScope.of(context).language).assetGroup(group.name),
           percent: pct,
           color: palette[colorIndex % palette.length],
         ),
@@ -117,7 +107,7 @@ class AssetsBreakdownCard extends StatelessWidget {
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         Text(
-                          'TOTAL',
+                          DashboardCopy.of(AppLanguageScope.of(context).language).total,
                           style: TextStyle(
                             color: c.inkMuted,
                             fontSize: 9,
@@ -168,7 +158,7 @@ class _Header extends StatelessWidget {
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
         Text(
-          'Assets breakdown',
+          DashboardCopy.of(AppLanguageScope.of(context).language).assetsBreakdown,
           style: Theme.of(context).textTheme.titleSmall?.copyWith(
             color: c.ink,
             fontWeight: FontWeight.w700,
@@ -223,13 +213,11 @@ class _LegendRow extends StatelessWidget {
 class _Slice {
   const _Slice({
     required this.label,
-    required this.value,
     required this.percent,
     required this.color,
   });
 
   final String label;
-  final String value;
   final String percent;
   final Color color;
 }

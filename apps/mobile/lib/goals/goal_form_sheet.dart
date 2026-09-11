@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../theme/tokens.dart';
+import '../i18n/app_language.dart';
+import '../i18n/goals_copy.dart';
 import '../widgets/primary_button.dart';
 import 'goal_math.dart';
 import 'goal_models.dart';
@@ -103,32 +105,31 @@ class _GoalFormSheetState extends State<GoalFormSheet> {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
+    final copy = GoalsCopy.of(AppLanguageScope.of(context).language);
     return ListenableBuilder(
       listenable: widget.controller,
       builder: (context, _) {
         final error = _localError ?? widget.controller.actionError;
         return GoalSheet(
-          title: widget.isEditing ? 'Edit goal' : 'New goal',
-          subtitle:
-              'This goal won’t change your net worth. It tracks intention, not '
-              'account balances.',
+          title: widget.isEditing ? copy.editGoal : copy.newGoal,
+          subtitle: copy.formSubtitle,
           children: [
             SheetField(
-              label: 'Goal name',
+              label: copy.goalName,
               child: _Box(
                 child: TextField(
                   controller: _name,
-                  decoration: const InputDecoration(
+                  decoration: InputDecoration(
                     border: InputBorder.none,
                     isCollapsed: true,
-                    hintText: 'e.g. Buy a car',
+                    hintText: copy.goalNameHint,
                   ),
                   style: TextStyle(color: c.ink, fontSize: 15),
                 ),
               ),
             ),
             SheetField(
-              label: 'Goal type',
+              label: copy.goalType,
               child: SizedBox(
                 height: AppSizes.touchTarget,
                 child: ListView.separated(
@@ -139,7 +140,7 @@ class _GoalFormSheetState extends State<GoalFormSheet> {
                   itemBuilder: (context, index) {
                     final type = goalTypes[index];
                     return _TypeChip(
-                      label: goalTypeLabel(type),
+                      label: copy.type(type),
                       selected: _type == type,
                       onTap: () => setState(() => _type = type),
                     );
@@ -149,14 +150,14 @@ class _GoalFormSheetState extends State<GoalFormSheet> {
             ),
             if (showsCustomGoalType(_type))
               SheetField(
-                label: 'Custom type name',
+                label: copy.customTypeName,
                 child: _Box(
                   child: TextField(
                     controller: _customType,
-                    decoration: const InputDecoration(
+                    decoration: InputDecoration(
                       border: InputBorder.none,
                       isCollapsed: true,
-                      hintText: 'What are you saving for?',
+                      hintText: copy.customTypeHint,
                     ),
                     style: TextStyle(color: c.ink, fontSize: 15),
                   ),
@@ -167,7 +168,7 @@ class _GoalFormSheetState extends State<GoalFormSheet> {
               children: [
                 Expanded(
                   child: SheetField(
-                    label: 'Target amount',
+                    label: copy.targetAmount,
                     child: _Box(
                       child: TextField(
                         controller: _target,
@@ -196,7 +197,7 @@ class _GoalFormSheetState extends State<GoalFormSheet> {
                 SizedBox(
                   width: 110,
                   child: SheetField(
-                    label: 'Currency',
+                    label: copy.currency,
                     child: _Box(
                       child: DropdownButtonHideUnderline(
                         child: DropdownButton<String>(
@@ -226,12 +227,12 @@ class _GoalFormSheetState extends State<GoalFormSheet> {
               Padding(
                 padding: const EdgeInsets.only(bottom: 14),
                 child: Text(
-                  'Currency is locked once a goal has progress history.',
+                  copy.currencyLocked,
                   style: TextStyle(color: c.disabledFg, fontSize: 11),
                 ),
               ),
             SheetField(
-              label: 'Target date',
+              label: copy.targetDateLabel,
               optional: true,
               child: InkWell(
                 onTap: _pickTargetDate,
@@ -241,8 +242,10 @@ class _GoalFormSheetState extends State<GoalFormSheet> {
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Text(
-                        _targetDate ?? 'No target date',
-                        textDirection: TextDirection.ltr,
+                        _targetDate ?? copy.noTargetDate,
+                        textDirection: _targetDate == null
+                            ? null
+                            : TextDirection.ltr,
                         style: TextStyle(
                           color: _targetDate == null ? c.disabledFg : c.ink,
                           fontSize: 15,
@@ -274,9 +277,9 @@ class _GoalFormSheetState extends State<GoalFormSheet> {
             ),
             if (!widget.isEditing) ...[
               SheetField(
-                label: 'Starting amount',
+                label: copy.startingAmount,
                 optional: true,
-                hint: 'Recorded as the first history entry.',
+                hint: copy.startingAmountHint,
                 child: _Box(
                   child: TextField(
                     controller: _saved,
@@ -303,7 +306,7 @@ class _GoalFormSheetState extends State<GoalFormSheet> {
               ),
               if (_saved.text.trim().isNotEmpty)
                 SheetField(
-                  label: 'Starting date',
+                  label: copy.startingDate,
                   child: InkWell(
                     onTap: () async {
                       final now = DateTime.now();
@@ -349,8 +352,7 @@ class _GoalFormSheetState extends State<GoalFormSheet> {
                 borderRadius: BorderRadius.circular(14),
               ),
               child: Text(
-                'Goals track savings on their own. Moving money in real life? '
-                'Update the account too.',
+                copy.ledgerNote,
                 style: TextStyle(color: c.inkMuted, fontSize: 12, height: 1.5),
               ),
             ),
@@ -363,7 +365,7 @@ class _GoalFormSheetState extends State<GoalFormSheet> {
               children: [
                 Expanded(
                   child: NeutralButton(
-                    label: 'Cancel',
+                    label: copy.cancel,
                     onPressed: widget.controller.busy
                         ? null
                         : () => Navigator.of(context).pop(),
@@ -373,7 +375,7 @@ class _GoalFormSheetState extends State<GoalFormSheet> {
                 Expanded(
                   flex: 2,
                   child: PrimaryButton(
-                    label: widget.isEditing ? 'Save goal' : 'Create goal',
+                    label: widget.isEditing ? copy.saveGoal : copy.createGoal,
                     busy: widget.controller.busy,
                     onPressed: _submit,
                   ),
@@ -404,7 +406,7 @@ class _TypeChip extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-      constraints: const BoxConstraints(minHeight: AppSizes.touchTarget),
+        constraints: const BoxConstraints(minHeight: AppSizes.touchTarget),
         alignment: Alignment.center,
         padding: const EdgeInsets.symmetric(horizontal: 14),
         decoration: BoxDecoration(

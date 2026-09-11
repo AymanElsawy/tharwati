@@ -123,10 +123,17 @@ sign inheritance).
   entry" / "Reverse last entry"), as on canvas screen 22 — not as per-row links.
   The web page offers per-entry Correct/Reverse on any entry; mobile targets the
   most recent correctable entry.
-- **i18n:** English only (matches Flow 1/2; the web Goals strings are localized).
+- **i18n:** Mobile Goals presentation supports English and Arabic through the
+  shared device-local language controller. Lists, details, forms, action sheets,
+  confirmations, statuses, and history copy switch direction with the app;
+  money, percentages, dates, quantities, and embedded financial values retain
+  explicit LTR isolation. Lower-layer validation and RPC error strings remain
+  English pending a language-neutral error-code architecture; repositories,
+  services, and domain validation do not depend on UI locale.
 
 ## Deferred
 
 Account/asset links, automatic transaction detection, FX funding, allocation guarantees, and forecasting/on-track logic are outside this MVP.
 
-Mobile-specific: Arabic/RTL copy; reordering/searching the goal list.
+Mobile-specific: reordering/searching the goal list and localization of
+lower-layer validation/RPC errors that surface in the presentation.

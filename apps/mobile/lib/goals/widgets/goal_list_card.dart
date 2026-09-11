@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 
 import '../../core/decimals.dart';
 import '../../core/money_format.dart';
+import '../../i18n/app_language.dart';
+import '../../i18n/goals_copy.dart';
 import '../../theme/tokens.dart';
 import '../goal_models.dart';
 import 'goal_money.dart';
@@ -33,6 +35,7 @@ class GoalListCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
+    final copy = GoalsCopy.of(AppLanguageScope.of(context).language);
     final goal = summary.goal;
     final overdue = summary.isOverdue(today);
     final overTarget = D.isPositive(summary.surplusAmount);
@@ -41,29 +44,33 @@ class GoalListCard extends StatelessWidget {
     final fill = (double.tryParse(summary.displayPercent) ?? 0) / 100;
     final muted = goal.isArchived || !goal.isActive;
 
-    final subtitleParts = <String>[goal.typeLabel];
+    final subtitleParts = <String>[
+      copy.type(goal.goalType, custom: goal.customTypeName),
+    ];
     if (overdue) {
       subtitleParts.add(
-        '${_daysOverdue(goal.targetDate!, today)} days overdue',
+        copy.daysOverdue(_daysOverdue(goal.targetDate!, today)),
       );
     } else if (goal.targetDate != null) {
-      subtitleParts.add('target ${goal.targetDate}');
+      subtitleParts.add(copy.targetDate(goal.targetDate!));
     } else if (goal.isActive) {
-      subtitleParts.add('no target date');
+      subtitleParts.add(copy.noTargetDate);
     }
 
     String caption;
     final pct = MoneyFormat.percent(summary.progressPercent);
     if (overTarget) {
-      caption =
-          '$pct funded · ${goalMoney(summary.surplusAmount, goal.currencyCode)} over target';
+      caption = copy.overTarget(
+        pct,
+        goalMoney(summary.surplusAmount, goal.currencyCode),
+      );
     } else if (goal.isActive) {
       final toGo = D.subtract(goal.targetAmount, summary.fundedAmount);
       caption = (toGo != null && D.isPositive(toGo))
-          ? '$pct funded · ${goalMoney(toGo, goal.currencyCode)} to go'
-          : '$pct funded';
+          ? copy.toGo(pct, goalMoney(toGo, goal.currencyCode))
+          : copy.funded(pct);
     } else {
-      caption = '$pct funded';
+      caption = copy.funded(pct);
     }
 
     return InkWell(
@@ -121,18 +128,16 @@ class GoalListCard extends StatelessWidget {
                 ),
                 const Spacer(),
                 Text(
-                  'of ${MoneyFormat.money(goal.targetAmount, goal.currencyCode)}',
+                  copy.ofTarget(
+                    MoneyFormat.money(goal.targetAmount, goal.currencyCode),
+                  ),
                   textDirection: TextDirection.ltr,
                   style: TextStyle(color: c.inkMuted, fontSize: 12),
                 ),
               ],
             ),
             const SizedBox(height: 8),
-            GoalProgressBar(
-              fill: fill,
-              muted: muted,
-              height: 10,
-            ),
+            GoalProgressBar(fill: fill, muted: muted, height: 10),
             const SizedBox(height: 7),
             Text(
               caption,
@@ -148,12 +153,12 @@ class GoalListCard extends StatelessWidget {
               Row(
                 children: [
                   _MiniButton(
-                    label: 'Add progress',
+                    label: copy.addProgress,
                     filled: true,
                     onTap: onAddProgress,
                   ),
                   const SizedBox(width: 8),
-                  _MiniButton(label: 'Withdraw', onTap: onWithdraw),
+                  _MiniButton(label: copy.withdraw, onTap: onWithdraw),
                   const Spacer(),
                   if (onOverflow != null)
                     InkWell(

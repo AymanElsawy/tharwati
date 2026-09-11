@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 
 import '../../theme/tokens.dart';
+import '../../i18n/app_language.dart';
+import '../../i18n/goals_copy.dart';
 
 /// Shows a goals bottom sheet (Flow 5 screens 22/23 + entry). Returns whatever
 /// the sheet pops with.
@@ -184,6 +186,7 @@ class SheetField extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
+    final copy = GoalsCopy.of(AppLanguageScope.of(context).language);
     return Padding(
       padding: const EdgeInsets.only(bottom: 14),
       child: Column(
@@ -200,7 +203,7 @@ class SheetField extends StatelessWidget {
               children: [
                 if (optional)
                   TextSpan(
-                    text: '  · optional',
+                    text: '  · ${copy.optional}',
                     style: TextStyle(
                       color: c.disabledFg,
                       fontWeight: FontWeight.w400,

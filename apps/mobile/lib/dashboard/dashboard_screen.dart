@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 
 import '../main.dart';
+import '../i18n/app_language.dart';
+import '../i18n/dashboard_copy.dart';
 import '../theme/tokens.dart';
 import '../widgets/callout.dart';
 import '../widgets/primary_button.dart';
@@ -87,6 +89,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   List<Widget> _body(DashboardStatus status, DashboardAggregate? aggregate) {
+    final copy = DashboardCopy.of(AppLanguageScope.of(context).language);
     switch (status) {
       case DashboardStatus.loading:
         return const [DashboardLoadingBody()];
@@ -97,7 +100,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Finish setting up',
+                  copy.finishSetup,
                   style: TextStyle(
                     color: context.colors.ink,
                     fontSize: 17,
@@ -106,7 +109,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 ),
                 const SizedBox(height: 6),
                 Text(
-                  'Pick your country and base currency to see your net worth.',
+                  copy.baseCurrencyMessage,
                   style: TextStyle(
                     color: context.colors.inkMuted,
                     fontSize: 13,
@@ -115,7 +118,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 ),
                 const SizedBox(height: 12),
                 PrimaryButton(
-                  label: 'Complete onboarding',
+                  label: copy.completeOnboarding,
                   onPressed: authService.signOut,
                 ),
               ],
@@ -128,13 +131,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
         return [
           Callout(
             tone: CalloutTone.danger,
-            title: 'Dashboard values unavailable',
-            message:
-                'We couldn’t reach the server. Your records are safe and '
-                'unchanged.',
+            title: copy.valuesUnavailable,
+            message: copy.serverUnavailable,
             action: OutlinedButton(
               onPressed: _dashboard.refresh,
-              child: const Text('Retry'),
+              child: Text(copy.retry),
             ),
           ),
           const SizedBox(height: 14),

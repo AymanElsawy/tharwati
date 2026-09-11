@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 
 import '../../theme/tokens.dart';
+import '../../i18n/app_language.dart';
+import '../../i18n/dashboard_copy.dart';
 import '../logic/key_insights.dart';
 import 'dashboard_card.dart';
 
@@ -12,6 +14,7 @@ class KeyInsightsCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
+    final copy = DashboardCopy.of(AppLanguageScope.of(context).language);
     final (Color bg, Color fg, IconData icon) = switch (insight.tone) {
       InsightTone.ready => (c.accentSoft, c.accent, Icons.verified_outlined),
       InsightTone.stale => (
@@ -35,14 +38,14 @@ class KeyInsightsCard extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                'Key insights',
+                copy.keyInsights,
                 style: Theme.of(context).textTheme.titleSmall?.copyWith(
                   color: c.ink,
                   fontWeight: FontWeight.w700,
                 ),
               ),
               Text(
-                'Data quality',
+                copy.dataQuality,
                 style: TextStyle(color: c.inkMuted, fontSize: 11),
               ),
             ],
@@ -64,7 +67,7 @@ class KeyInsightsCard extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        insight.title,
+                        copy.insightTitle(insight.tone),
                         style: TextStyle(
                           color: c.ink,
                           fontSize: 13,
@@ -73,7 +76,7 @@ class KeyInsightsCard extends StatelessWidget {
                       ),
                       const SizedBox(height: 3),
                       Text(
-                        insight.body,
+                        copy.insightBody(insight.tone),
                         style: TextStyle(
                           color: c.ink.withValues(alpha: 0.8),
                           fontSize: 13,

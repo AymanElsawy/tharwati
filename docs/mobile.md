@@ -31,7 +31,7 @@ Top-level structure:
 | `dashboard/` | Edge-snapshot repository, decimal aggregate/allocation logic, controllers, cards. |
 | `goals/` | Goal domain, Supabase repository/RPCs, controllers, pages, sheets and widgets. |
 | `core/` | Decimal arithmetic, money formatting, app-wide data-change notifier. |
-| `theme/`, `widgets/` | Material theme/tokens and reusable presentation components. |
+| `theme/`, `widgets/`, `i18n/` | Material theme/tokens, reusable presentation components, and device-local language state/copy. |
 | `home_page.dart` | Authenticated five-tab shell. |
 
 Feature state is local `State` plus `ChangeNotifier` controllers and
@@ -64,8 +64,8 @@ anon credential is embedded by default and can be overridden with
 Implemented auth screens:
 
 - `LoginPage`: required nonblank email/password, Supabase sign-in, generic or
-  incorrect-credential error, links to signup/reset. The Arabic and EGP pills
-  are static visuals, not selectors.
+  incorrect-credential error, links to signup/reset. English and Arabic controls
+  switch the app language before login; the former static EGP pill is absent.
 - `SignUpPage`: required name/email, confirmation, terms checkbox, and password
   policy (12+ characters, upper/lowercase and digit). It maps common Supabase
   errors; if confirmation is enabled and no session returns, it shows the
@@ -99,7 +99,7 @@ are unchanged:
 | Accounts | Placeholder | `_ComingSoon` only; no account creation/list/edit flow. |
 | Invest | Placeholder | `_ComingSoon` only; no investment flow. |
 | Goals | Implemented | `GoalsPage`, detail page, form/entry/actions bottom sheets. |
-| Settings | Implemented profile/session surface | `settings/settings_page.dart` reads and edits canonical `profiles.full_name` through `SettingsProfileRepository`, displays the Auth-session email read-only, and signs out. Whitespace-only names save as null; preferences, privacy, and support settings are absent. |
+| Settings | Implemented profile/session surface | `settings/settings_page.dart` reads and edits canonical `profiles.full_name` through `SettingsProfileRepository`, displays the Auth-session email read-only, changes the shared device-local English/Arabic preference, and signs out. Whitespace-only names save as null; privacy and support settings are absent. |
 
 Dashboard (`dashboard/dashboard_screen.dart`) is the implemented production
 summary, not the richer web-only dashboard. `DashboardController` loads profile
@@ -214,18 +214,23 @@ that surface with a 1000ms fade-in, a centered 200-to-132 logical-pixel scale,
 and vertical settle before
 mounting `AuthGate`; it owns no authentication or routing decisions.
 
-The UI is English hardcoded. There is no locale state, localization delegates,
-translation catalog, or application-wide `Directionality`/RTL switch. Arabic font
-fallback exists and numbers/currency/dates are explicitly LTR where rendered;
-this is preparation, not Arabic/RTL implementation. Layout is phone-oriented
+`AppLanguageController` persists `en`/`ar` with `shared_preferences` under the
+web-parity `tharwati-language` key. `MaterialApp.locale` and an app-wide
+`Directionality`, with Flutter's Material/Widgets/Cupertino localization
+delegates, update before or after authentication; Login, bottom navigation,
+Dashboard, Settings, and Goals presentation across lists, details, forms,
+actions, confirmations, and history are translated.
+Arabic font fallback exists. Numeric, money, email, and date values remain LTR;
+within Arabic captions, only dynamic values use bidi isolation while surrounding
+labels retain RTL direction. Layout is phone-oriented
 with `SafeArea`, scrolling, keyboard-inset sheets, flexible/expanded lists, and
 some responsive wrapping; it has not been established as a tablet-specific
 design.
 
 ## Gaps, coupling, and risks
 
-- Accounts, Invest, full Settings, notification behavior, locale/currency
-  switching, Arabic/RTL, legal links, export/delete-account,
+- Accounts, Invest, full Settings, notification behavior, currency switching,
+  app-wide translated copy/RTL layout review, legal links, export/delete-account,
   OAuth/MFA/phone auth, and offline/realtime support are not implemented.
 - Dashboard calls the shared Edge Function but reproduces web aggregate and Goal
   rules in Dart. Comments identify these as ports; changes to web/database

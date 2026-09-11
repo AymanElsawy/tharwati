@@ -22,6 +22,9 @@ class TharwatiTextField extends StatefulWidget {
     this.onChanged,
     this.onFieldSubmitted,
     this.autofocus = false,
+    this.textDirection,
+    this.showPasswordTooltip,
+    this.hidePasswordTooltip,
   });
 
   final String label;
@@ -39,6 +42,9 @@ class TharwatiTextField extends StatefulWidget {
   final ValueChanged<String>? onChanged;
   final ValueChanged<String>? onFieldSubmitted;
   final bool autofocus;
+  final TextDirection? textDirection;
+  final String? showPasswordTooltip;
+  final String? hidePasswordTooltip;
 
   @override
   State<TharwatiTextField> createState() => _TharwatiTextFieldState();
@@ -74,6 +80,7 @@ class _TharwatiTextFieldState extends State<TharwatiTextField> {
           validator: widget.validator,
           onChanged: widget.onChanged,
           onFieldSubmitted: widget.onFieldSubmitted,
+          textDirection: widget.textDirection,
           style: TextStyle(
             color: c.ink,
             fontSize: 15,
@@ -91,7 +98,9 @@ class _TharwatiTextFieldState extends State<TharwatiTextField> {
                       size: 20,
                       color: c.inkMuted,
                     ),
-                    tooltip: _obscured ? 'Show password' : 'Hide password',
+                    tooltip: _obscured
+                        ? widget.showPasswordTooltip
+                        : widget.hidePasswordTooltip,
                   )
                 : null,
           ),

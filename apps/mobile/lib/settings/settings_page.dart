@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 
 import '../main.dart';
+import '../i18n/app_language.dart';
+import '../i18n/settings_copy.dart';
 import '../theme/tokens.dart';
 import '../widgets/primary_button.dart';
 import 'settings_profile_repository.dart';
@@ -57,7 +59,7 @@ class _SettingsPageState extends State<SettingsPage> {
       if (!mounted) return;
       setState(() {
         _loading = false;
-        _loadError = 'We couldn\'t load your profile. Try again.';
+        _loadError = SettingsCopy.of(AppLanguageScope.of(context).language).loadError;
       });
     }
   }
@@ -80,7 +82,7 @@ class _SettingsPageState extends State<SettingsPage> {
       if (!mounted) return;
       setState(() {
         _saving = false;
-        _saveError = 'We couldn\'t save your profile. Try again.';
+        _saveError = SettingsCopy.of(AppLanguageScope.of(context).language).saveError;
       });
     }
   }
@@ -88,6 +90,7 @@ class _SettingsPageState extends State<SettingsPage> {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
+    final copy = SettingsCopy.of(AppLanguageScope.of(context).language);
     final email = widget.email ?? authService.currentUser?.email ?? '';
     return Scaffold(
       backgroundColor: c.canvas,
@@ -105,14 +108,14 @@ class _SettingsPageState extends State<SettingsPage> {
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     Text(
-                      'Settings',
+                      copy.title,
                       style: Theme.of(context).textTheme.headlineMedium?.copyWith(
                         color: c.ink,
                         fontSize: 31,
                       ),
                     ),
                     const SizedBox(height: AppSpacing.section),
-                    _SectionLabel('PROFILE'),
+                    _SectionLabel(copy.profile),
                     const SizedBox(height: AppSpacing.rowGap),
                     _ProfileCard(
                       fullName: _fullName,
@@ -124,17 +127,22 @@ class _SettingsPageState extends State<SettingsPage> {
                       saved: _saved,
                       onRetry: _loadProfile,
                       onSave: _saveProfile,
+                      copy: copy,
                     ),
+                    const SizedBox(height: AppSpacing.section),
+                    _SectionLabel(copy.preferences),
+                    const SizedBox(height: AppSpacing.rowGap),
+                    _LanguagePreferenceCard(copy: copy),
                     const Spacer(),
                     const SizedBox(height: AppSpacing.section),
-                    _SectionLabel('SESSION'),
+                    _SectionLabel(copy.session),
                     const SizedBox(height: AppSpacing.rowGap),
                     SizedBox(
                       height: AppSizes.button,
                       child: OutlinedButton.icon(
                         onPressed: _saving ? null : _signOut,
                         icon: const Icon(Icons.logout_rounded, size: 20),
-                        label: const Text('Sign out'),
+                        label: Text(copy.signOut),
                         style: OutlinedButton.styleFrom(
                           foregroundColor: c.negative,
                           side: BorderSide(color: c.dangerBorder),
@@ -153,6 +161,100 @@ class _SettingsPageState extends State<SettingsPage> {
   }
 
   Future<void> _signOut() => widget.onSignOut?.call() ?? authService.signOut();
+}
+
+class _LanguagePreferenceCard extends StatelessWidget {
+  const _LanguagePreferenceCard({required this.copy});
+
+  final SettingsCopy copy;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    final controller = AppLanguageScope.of(context);
+    final language = controller.language;
+    return Container(
+      padding: const EdgeInsets.all(AppSpacing.card),
+      decoration: BoxDecoration(
+        color: c.surface,
+        border: Border.all(color: c.line),
+        borderRadius: BorderRadius.circular(AppRadius.card),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.language_rounded, color: c.inkMuted, size: 20),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  copy.languageLabel,
+                  style: TextStyle(
+                    color: c.ink,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+              Text(
+                language.displayName,
+                style: TextStyle(color: c.inkMuted, fontSize: 13),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          Row(
+            children: [
+              Expanded(
+                child: _LanguageOption(
+                  label: AppLanguage.en.displayName,
+                  selected: language == AppLanguage.en,
+                  onPressed: () => controller.setLanguage(AppLanguage.en),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: _LanguageOption(
+                  label: AppLanguage.ar.displayName,
+                  selected: language == AppLanguage.ar,
+                  onPressed: () => controller.setLanguage(AppLanguage.ar),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _LanguageOption extends StatelessWidget {
+  const _LanguageOption({
+    required this.label,
+    required this.selected,
+    required this.onPressed,
+  });
+
+  final String label;
+  final bool selected;
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    return OutlinedButton(
+      onPressed: onPressed,
+      style: OutlinedButton.styleFrom(
+        minimumSize: const Size.fromHeight(AppSizes.touchTarget),
+        foregroundColor: selected ? c.accent : c.inkMuted,
+        backgroundColor: selected ? c.accentSoft : c.surface,
+        side: BorderSide(color: selected ? c.accent : c.line),
+        textStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
+      ),
+      child: Text(label),
+    );
+  }
 }
 
 class _SectionLabel extends StatelessWidget {
@@ -182,6 +284,7 @@ class _ProfileCard extends StatelessWidget {
     required this.saved,
     required this.onRetry,
     required this.onSave,
+    required this.copy,
   });
 
   final TextEditingController fullName;
@@ -193,6 +296,7 @@ class _ProfileCard extends StatelessWidget {
   final bool saved;
   final VoidCallback onRetry;
   final VoidCallback onSave;
+  final SettingsCopy copy;
 
   @override
   Widget build(BuildContext context) {
@@ -211,23 +315,23 @@ class _ProfileCard extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 Text(loadError!, style: TextStyle(color: c.negative)),
-                TextButton(onPressed: onRetry, child: const Text('Try again')),
+                TextButton(onPressed: onRetry, child: Text(copy.tryAgain)),
               ],
             )
           : Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Text('Full name', style: TextStyle(color: c.ink, fontSize: 13)),
+                Text(copy.fullName, style: TextStyle(color: c.ink, fontSize: 13)),
                 const SizedBox(height: 6),
                 TextField(
                   controller: fullName,
                   enabled: !saving,
                   textCapitalization: TextCapitalization.words,
                   autofillHints: const [AutofillHints.name],
-                  decoration: const InputDecoration(hintText: 'Your full name'),
+                  decoration: InputDecoration(hintText: copy.fullNameHint),
                 ),
                 const SizedBox(height: 16),
-                Text('Email', style: TextStyle(color: c.ink, fontSize: 13)),
+                Text(copy.email, style: TextStyle(color: c.ink, fontSize: 13)),
                 const SizedBox(height: 6),
                 Container(
                   height: AppSizes.field,
@@ -239,7 +343,7 @@ class _ProfileCard extends StatelessWidget {
                     borderRadius: BorderRadius.circular(AppRadius.field),
                   ),
                   child: Text(
-                    email.isEmpty ? 'Email unavailable' : email,
+                    email.isEmpty ? copy.emailUnavailable : email,
                     overflow: TextOverflow.ellipsis,
                     textDirection: TextDirection.ltr,
                     style: TextStyle(color: c.inkMuted, fontSize: 14),
@@ -251,11 +355,11 @@ class _ProfileCard extends StatelessWidget {
                   const SizedBox(height: 12),
                 ],
                 if (saved) ...[
-                  Text('Profile updated.', style: TextStyle(color: c.accent)),
+                  Text(copy.profileUpdated, style: TextStyle(color: c.accent)),
                   const SizedBox(height: 12),
                 ],
                 PrimaryButton(
-                  label: saving ? 'Saving…' : 'Save changes',
+                  label: saving ? copy.saving : copy.saveChanges,
                   busy: saving,
                   onPressed: onSave,
                 ),

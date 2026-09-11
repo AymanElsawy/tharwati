@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../theme/tokens.dart';
+import '../i18n/app_language.dart';
+import '../i18n/goals_copy.dart';
 import '../widgets/primary_button.dart';
 import 'goal_math.dart';
 import 'goal_models.dart';
@@ -53,9 +55,15 @@ class _GoalEntrySheetState extends State<GoalEntrySheet> {
   }
 
   String get _title => switch (widget.mode) {
-    GoalEntryMode.progress => 'Add progress',
-    GoalEntryMode.withdrawal => 'Withdraw from goal',
-    GoalEntryMode.correct => 'Correct entry',
+    GoalEntryMode.progress => GoalsCopy.of(
+      AppLanguageScope.of(context).language,
+    ).entryTitle('progress'),
+    GoalEntryMode.withdrawal => GoalsCopy.of(
+      AppLanguageScope.of(context).language,
+    ).entryTitle('withdrawal'),
+    GoalEntryMode.correct => GoalsCopy.of(
+      AppLanguageScope.of(context).language,
+    ).entryTitle('correct'),
   };
 
   Future<void> _pickDate() async {
@@ -92,9 +100,8 @@ class _GoalEntrySheetState extends State<GoalEntrySheet> {
         return;
       }
       final ok = await _confirm(
-        'Record a correction?',
-        'The original entry stays in the history; the corrected value is added '
-            'alongside it. Funded amount is recalculated.',
+        GoalsCopy.of(AppLanguageScope.of(context).language).correctionTitle,
+        GoalsCopy.of(AppLanguageScope.of(context).language).correctionBody,
       );
       if (!ok) return;
       final done = await widget.controller.run(
@@ -129,6 +136,7 @@ class _GoalEntrySheetState extends State<GoalEntrySheet> {
   }
 
   Future<bool> _confirm(String title, String body) async {
+    final copy = GoalsCopy.of(AppLanguageScope.of(context).language);
     return await showDialog<bool>(
           context: context,
           builder: (context) => AlertDialog(
@@ -137,11 +145,11 @@ class _GoalEntrySheetState extends State<GoalEntrySheet> {
             actions: [
               TextButton(
                 onPressed: () => Navigator.of(context).pop(false),
-                child: const Text('Cancel'),
+                child: Text(copy.cancel),
               ),
               FilledButton(
                 onPressed: () => Navigator.of(context).pop(true),
-                child: const Text('Continue'),
+                child: Text(copy.continueLabel),
               ),
             ],
           ),
@@ -152,18 +160,17 @@ class _GoalEntrySheetState extends State<GoalEntrySheet> {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
+    final copy = GoalsCopy.of(AppLanguageScope.of(context).language);
     return ListenableBuilder(
       listenable: widget.controller,
       builder: (context, _) {
         final error = _localError ?? widget.controller.actionError;
         return GoalSheet(
           title: _title,
-          subtitle:
-              'Goal progress is a separate ledger — this never moves account '
-              'money.',
+          subtitle: copy.ledgerSubtitle,
           children: [
             SheetField(
-              label: 'Amount (${widget.goal.currencyCode})',
+              label: '${copy.amount} (${widget.goal.currencyCode})',
               child: _Box(
                 child: TextField(
                   controller: _amount,
@@ -174,7 +181,7 @@ class _GoalEntrySheetState extends State<GoalEntrySheet> {
                     FilteringTextInputFormatter.allow(RegExp(r'[0-9.]')),
                   ],
                   textDirection: TextDirection.ltr,
-                  decoration: const InputDecoration(
+                  decoration: InputDecoration(
                     border: InputBorder.none,
                     isCollapsed: true,
                     hintText: '0.00',
@@ -188,7 +195,7 @@ class _GoalEntrySheetState extends State<GoalEntrySheet> {
               ),
             ),
             SheetField(
-              label: 'Date',
+              label: copy.date,
               child: InkWell(
                 onTap: _pickDate,
                 borderRadius: BorderRadius.circular(AppRadius.field),
@@ -208,17 +215,17 @@ class _GoalEntrySheetState extends State<GoalEntrySheet> {
               ),
             ),
             SheetField(
-              label: 'Note',
+              label: copy.note,
               optional: true,
               child: _Box(
                 child: TextField(
                   controller: _note,
                   minLines: 2,
                   maxLines: 4,
-                  decoration: const InputDecoration(
+                  decoration: InputDecoration(
                     border: InputBorder.none,
                     isCollapsed: true,
-                    hintText: 'What this entry is for',
+                    hintText: copy.noteHint,
                   ),
                   style: TextStyle(color: c.ink, fontSize: 14),
                 ),
@@ -234,7 +241,7 @@ class _GoalEntrySheetState extends State<GoalEntrySheet> {
               children: [
                 Expanded(
                   child: NeutralButton(
-                    label: 'Cancel',
+                    label: copy.cancel,
                     onPressed: widget.controller.busy
                         ? null
                         : () => Navigator.of(context).pop(),
@@ -244,7 +251,7 @@ class _GoalEntrySheetState extends State<GoalEntrySheet> {
                 Expanded(
                   flex: 2,
                   child: PrimaryButton(
-                    label: 'Save entry',
+                    label: copy.saveEntry,
                     busy: widget.controller.busy,
                     onPressed: _submit,
                   ),

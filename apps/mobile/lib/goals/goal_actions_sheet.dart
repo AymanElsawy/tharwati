@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 
 import '../theme/tokens.dart';
+import '../i18n/app_language.dart';
+import '../i18n/goals_copy.dart';
 import '../widgets/primary_button.dart';
 import 'goal_models.dart';
 import 'widgets/goal_money.dart';
@@ -35,6 +37,7 @@ class GoalActionsSheet extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
+    final copy = GoalsCopy.of(AppLanguageScope.of(context).language);
     final goal = summary.goal;
     final rows = <Widget>[];
 
@@ -57,31 +60,43 @@ class GoalActionsSheet extends StatelessWidget {
     }
 
     if (goal.isMutable) {
-      row(Icons.add, 'Add progress', GoalAction.addProgress);
-      row(Icons.south, 'Withdraw from goal', GoalAction.withdraw);
+      row(Icons.add, copy.addProgress, GoalAction.addProgress);
+      row(Icons.south, copy.action('withdraw'), GoalAction.withdraw);
       row(
         Icons.undo,
-        'Correct last entry',
+        copy.action('correct'),
         GoalAction.correctLast,
         enabled: hasCorrectableEntry,
       );
       row(
         Icons.redo,
-        'Reverse last entry',
+        copy.action('reverse'),
         GoalAction.reverseLast,
         enabled: hasCorrectableEntry,
       );
-      row(Icons.check, 'Mark complete', GoalAction.complete);
-      row(Icons.inventory_2_outlined, 'Archive', GoalAction.archive);
-      row(Icons.close, 'Cancel goal', GoalAction.cancel, danger: true);
+      row(Icons.check, copy.action('complete'), GoalAction.complete);
+      row(
+        Icons.inventory_2_outlined,
+        copy.action('archive'),
+        GoalAction.archive,
+      );
+      row(Icons.close, copy.action('cancel'), GoalAction.cancel, danger: true);
     } else {
       if (!goal.isActive) {
-        row(Icons.refresh, 'Reopen goal', GoalAction.reopen);
+        row(Icons.refresh, copy.action('reopen'), GoalAction.reopen);
       }
       if (goal.isArchived) {
-        row(Icons.unarchive_outlined, 'Unarchive', GoalAction.unarchive);
+        row(
+          Icons.unarchive_outlined,
+          copy.action('unarchive'),
+          GoalAction.unarchive,
+        );
       } else {
-        row(Icons.inventory_2_outlined, 'Archive', GoalAction.archive);
+        row(
+          Icons.inventory_2_outlined,
+          copy.action('archive'),
+          GoalAction.archive,
+        );
       }
     }
 
@@ -100,14 +115,12 @@ class GoalActionsSheet extends StatelessWidget {
         ...rows,
         const SizedBox(height: 8),
         Text(
-          'Add progress and Withdraw stay on the card; everything else collapses '
-          'here. Nothing is ever deleted — archived goals keep their full '
-          'history.',
+          copy.actionHint,
           style: TextStyle(color: c.disabledFg, fontSize: 11, height: 1.5),
         ),
         const SizedBox(height: 12),
         NeutralButton(
-          label: 'Close',
+          label: copy.close,
           onPressed: () => Navigator.of(context).pop(),
         ),
       ],

@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 
 import '../core/decimals.dart';
 import '../core/money_format.dart';
+import '../i18n/app_language.dart';
+import '../i18n/goals_copy.dart';
 import '../theme/tokens.dart';
 import '../widgets/callout.dart';
 import '../widgets/primary_button.dart';
@@ -31,6 +33,7 @@ class GoalDetailPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
+    final copy = GoalsCopy.of(AppLanguageScope.of(context).language);
     return ListenableBuilder(
       listenable: controller,
       builder: (context, _) {
@@ -39,9 +42,7 @@ class GoalDetailPage extends StatelessWidget {
           return Scaffold(
             backgroundColor: c.canvas,
             appBar: AppBar(),
-            body: const Center(
-              child: Text('This goal is no longer available.'),
-            ),
+            body: Center(child: Text(copy.unavailableGoal)),
           );
         }
         final goal = summary.goal;
@@ -53,9 +54,9 @@ class GoalDetailPage extends StatelessWidget {
           appBar: AppBar(
             title: Text(
               goal.name,
-              style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                color: c.ink,
-              ),
+              style: Theme.of(
+                context,
+              ).textTheme.titleLarge?.copyWith(color: c.ink),
             ),
             actions: [
               IconButton(
@@ -110,6 +111,7 @@ class _HeroCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
+    final copy = GoalsCopy.of(AppLanguageScope.of(context).language);
     final goal = summary.goal;
     final overdue = summary.isOverdue(controller.today);
     final overTarget = D.isPositive(summary.surplusAmount);
@@ -118,8 +120,12 @@ class _HeroCard extends StatelessWidget {
     final fill = (double.tryParse(summary.displayPercent) ?? 0) / 100;
     final remaining = D.subtract(goal.targetAmount, summary.fundedAmount);
 
-    final metaParts = <String>[goal.typeLabel];
-    if (goal.targetDate != null) metaParts.add('target ${goal.targetDate}');
+    final metaParts = <String>[
+      copy.type(goal.goalType, custom: goal.customTypeName),
+    ];
+    if (goal.targetDate != null) {
+      metaParts.add(copy.targetDate(goal.targetDate!));
+    }
     metaParts.add(goal.currencyCode);
 
     return Container(
@@ -169,9 +175,9 @@ class _HeroCard extends StatelessWidget {
           Container(
             padding: const EdgeInsets.all(14),
             decoration: BoxDecoration(
-                  color: c.fieldFill,
-                  border: Border.all(color: c.line.withValues(alpha: 0.7)),
-                  borderRadius: BorderRadius.circular(AppRadius.card),
+              color: c.fieldFill,
+              border: Border.all(color: c.line.withValues(alpha: 0.7)),
+              borderRadius: BorderRadius.circular(AppRadius.card),
             ),
             child: Column(
               children: [
@@ -186,7 +192,7 @@ class _HeroCard extends StatelessWidget {
                 Row(
                   children: [
                     Text(
-                      '${MoneyFormat.percent(summary.progressPercent)} funded',
+                      copy.funded(MoneyFormat.percent(summary.progressPercent)),
                       style: TextStyle(
                         color: overTarget ? c.accent : c.inkMuted,
                         fontSize: 12,
@@ -196,11 +202,17 @@ class _HeroCard extends StatelessWidget {
                     const Spacer(),
                     Text(
                       overTarget
-                          ? '${goalMoney(summary.surplusAmount, goal.currencyCode)} over target'
+                          ? copy.surplus(
+                              goalMoney(
+                                summary.surplusAmount,
+                                goal.currencyCode,
+                              ),
+                            )
                           : (remaining != null && D.isPositive(remaining))
-                          ? '${goalMoney(remaining, goal.currencyCode)} remaining'
+                          ? copy.remaining(
+                              goalMoney(remaining, goal.currencyCode),
+                            )
                           : '',
-                      textDirection: TextDirection.ltr,
                       style: TextStyle(
                         color: c.inkMuted,
                         fontSize: 12,
@@ -218,7 +230,7 @@ class _HeroCard extends StatelessWidget {
               children: [
                 Expanded(
                   child: PrimaryButton(
-                    label: 'Add progress',
+                    label: copy.addProgress,
                     fontSize: 14,
                     onPressed: controller.busy
                         ? null
@@ -228,7 +240,7 @@ class _HeroCard extends StatelessWidget {
                 const SizedBox(width: 8),
                 Expanded(
                   child: SecondaryButton(
-                    label: 'Withdraw',
+                    label: copy.withdraw,
                     fontSize: 14,
                     onPressed: controller.busy
                         ? null
@@ -251,11 +263,7 @@ class _HeroCard extends StatelessWidget {
                 borderRadius: BorderRadius.circular(14),
               ),
               child: Text(
-                goal.isArchived
-                    ? 'This goal is archived. Unarchive it from the ⋯ menu to '
-                          'add progress again.'
-                    : 'This goal is ${goal.status}. Reopen it from the ⋯ menu to '
-                          'add progress again.',
+                copy.inactiveGoal(goal.status, archived: goal.isArchived),
                 style: TextStyle(color: c.inkMuted, fontSize: 12, height: 1.5),
               ),
             ),
@@ -263,7 +271,6 @@ class _HeroCard extends StatelessWidget {
       ),
     );
   }
-
 }
 
 /// A 52×52 bordered icon button that lines up with the 52px button row.
@@ -309,8 +316,9 @@ class _FundingAmounts extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
+    final copy = GoalsCopy.of(AppLanguageScope.of(context).language);
     final funded = _AmountColumn(
-      label: 'FUNDED',
+      label: copy.fundedLabel,
       amount: fundedAmount,
       currencyCode: currencyCode,
       color: c.ink,
@@ -318,7 +326,7 @@ class _FundingAmounts extends StatelessWidget {
       alignment: Alignment.centerLeft,
     );
     final target = _AmountColumn(
-      label: 'TARGET',
+      label: copy.targetLabel,
       amount: targetAmount,
       currencyCode: currencyCode,
       color: c.inkMuted,
@@ -404,29 +412,6 @@ class _AmountColumn extends StatelessWidget {
   }
 }
 
-const _months = [
-  'Jan',
-  'Feb',
-  'Mar',
-  'Apr',
-  'May',
-  'Jun',
-  'Jul',
-  'Aug',
-  'Sep',
-  'Oct',
-  'Nov',
-  'Dec',
-];
-
-String _fmtDate(String iso) {
-  final parts = iso.split('T').first.split('-');
-  if (parts.length != 3) return iso;
-  final month = int.tryParse(parts[1]) ?? 1;
-  final day = int.tryParse(parts[2]) ?? 0;
-  return '$day ${_months[(month - 1).clamp(0, 11)]} ${parts[0]}';
-}
-
 String? _fmtTime(String createdIso) {
   final d = DateTime.tryParse(createdIso)?.toLocal();
   if (d == null) return null;
@@ -450,21 +435,22 @@ class _HistoryCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
+    final copy = GoalsCopy.of(AppLanguageScope.of(context).language);
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: c.surface,
         border: Border.all(color: c.line),
-          borderRadius: BorderRadius.circular(AppRadius.card),
-          boxShadow: c.isDark
-              ? null
-              : [
-                  BoxShadow(
-                    color: c.ink.withValues(alpha: 0.045),
-                    blurRadius: 14,
-                    offset: const Offset(0, 4),
-                  ),
-                ],
+        borderRadius: BorderRadius.circular(AppRadius.card),
+        boxShadow: c.isDark
+            ? null
+            : [
+                BoxShadow(
+                  color: c.ink.withValues(alpha: 0.045),
+                  blurRadius: 14,
+                  offset: const Offset(0, 4),
+                ),
+              ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -472,11 +458,10 @@ class _HistoryCard extends StatelessWidget {
           Row(
             children: [
               Text(
-                'History',
-                style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                  color: c.ink,
-                  fontSize: 19,
-                ),
+                copy.history,
+                style: Theme.of(
+                  context,
+                ).textTheme.titleLarge?.copyWith(color: c.ink, fontSize: 19),
               ),
               const Spacer(),
               Container(
@@ -487,7 +472,7 @@ class _HistoryCard extends StatelessWidget {
                   borderRadius: BorderRadius.circular(AppRadius.chip),
                 ),
                 child: Text(
-                  'IMMUTABLE',
+                  copy.immutable,
                   style: TextStyle(
                     color: c.inkMuted,
                     fontSize: 9,
@@ -530,6 +515,7 @@ class _TimelineRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
+    final copy = GoalsCopy.of(AppLanguageScope.of(context).language);
     final goal = summary.goal;
 
     if (entry == null) {
@@ -538,11 +524,13 @@ class _TimelineRow extends StatelessWidget {
         dotColor: c.disabledFill,
         railTail: false,
         faded: false,
-        title: 'Goal created',
+        title: copy.goalCreated,
         amount: null,
         amountColor: c.inkMuted,
-        subtitle:
-            '${_fmtDate(goal.createdAt)} · target ${MoneyFormat.money(goal.targetAmount, goal.currencyCode)}',
+        subtitle: copy.createdTarget(
+          copy.formatDate(goal.createdAt),
+          MoneyFormat.money(goal.targetAmount, goal.currencyCode),
+        ),
         relationship: null,
       );
     }
@@ -585,8 +573,8 @@ class _TimelineRow extends StatelessWidget {
 
     final time = _fmtTime(e.createdAt);
     final subtitle = [
-      _fmtDate(e.effectiveOn),
-      ?time,
+      copy.ltr(copy.formatDate(e.effectiveOn)),
+      if (time != null) copy.ltr(time),
       if (e.note != null && e.note!.isNotEmpty) '“${e.note}”',
     ].join(' · ');
 
@@ -595,11 +583,11 @@ class _TimelineRow extends StatelessWidget {
       dotColor: dot,
       railTail: true,
       faded: faded,
-      title: _title(),
+      title: _title(copy),
       amount: amountText,
       amountColor: amountColor,
       subtitle: subtitle,
-      relationship: _relationship(),
+      relationship: _relationship(copy),
     );
   }
 
@@ -688,7 +676,6 @@ class _TimelineRow extends StatelessWidget {
                     const SizedBox(height: 3),
                     Text(
                       subtitle,
-                      textDirection: TextDirection.ltr,
                       style: TextStyle(color: c.inkMuted, fontSize: 12),
                     ),
                     if (relationship != null) ...[
@@ -708,47 +695,50 @@ class _TimelineRow extends StatelessWidget {
     );
   }
 
-  String _title() {
+  String _title(GoalsCopy copy) {
     final h = entry!;
     final e = h.entry;
     final kind = historyEntryKind(h, byId);
     if (e.entryType == 'reversal') {
       final original = byId[e.reversesEntryId];
       return original?.replacementEntryId != null
-          ? 'Correction recorded'
-          : 'Reversal recorded';
+          ? copy.historyTitle('correction')
+          : copy.historyTitle('reversal');
     }
     if (e.replacementForEntryId != null) {
       return kind == 'withdrawal'
-          ? 'Corrected withdrawal'
-          : 'Corrected progress';
+          ? copy.historyTitle('correctedWithdrawal')
+          : copy.historyTitle('correctedProgress');
     }
-    return kind == 'withdrawal' ? 'Withdrawn' : 'Progress added';
+    return copy.historyTitle(kind == 'withdrawal' ? 'withdrawal' : 'progress');
   }
 
-  String? _relationship() {
+  String? _relationship(GoalsCopy copy) {
     final h = entry!;
     final e = h.entry;
     if (e.reversesEntryId != null) {
       final original = byId[e.reversesEntryId];
       if (original == null) return null;
       final t = original.entry.entryType == 'withdrawal'
-          ? 'withdrawal'
-          : 'progress';
-      return 'Reverses the $t from ${_fmtDate(original.entry.effectiveOn)}';
+          ? copy.withdrawalNoun
+          : copy.progressNoun;
+      return copy.reverses(t, copy.formatDate(original.entry.effectiveOn));
     }
     if (e.replacementForEntryId != null) {
       final original = byId[e.replacementForEntryId];
       if (original == null) return null;
-      return 'Corrects an earlier entry — both values stay in the history';
+      return copy.correctsEarlier;
     }
     if (h.reversedByEntryId != null) {
       final replacement = h.replacementEntryId != null
           ? byId[h.replacementEntryId]
           : null;
       return replacement != null
-          ? 'Corrected to ${goalMoney(replacement.entry.amount, summary.goal.currencyCode)} on ${_fmtDate(replacement.entry.effectiveOn)}'
-          : 'Reversed — no longer counted';
+          ? copy.correctedTo(
+              goalMoney(replacement.entry.amount, summary.goal.currencyCode),
+              copy.formatDate(replacement.entry.effectiveOn),
+            )
+          : copy.reversedNotCounted;
     }
     return null;
   }

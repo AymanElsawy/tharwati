@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../main.dart';
+import '../i18n/app_language.dart';
+import '../i18n/login_copy.dart';
 import '../theme/tokens.dart';
 import '../widgets/brand_mark.dart';
 import '../widgets/primary_button.dart';
@@ -32,7 +34,10 @@ class _LoginPageState extends State<LoginPage> {
   }
 
   Future<void> _submit() async {
-    if (!_formKey.currentState!.validate()) return;
+    if (!_formKey.currentState!.validate()) {
+      return;
+    }
+    final copy = LoginCopy.of(AppLanguageScope.of(context).language);
     setState(() {
       _busy = true;
       _error = null;
@@ -41,17 +46,21 @@ class _LoginPageState extends State<LoginPage> {
       await authService.signIn(_email.text.trim(), _password.text);
       // AuthGate picks up the new session from the auth stream.
     } on AuthException {
-      setState(() => _error = 'Incorrect email or password.');
+      setState(() => _error = copy.incorrectCredentials);
     } catch (_) {
-      setState(() => _error = 'Something went wrong. Please try again.');
+      setState(() => _error = copy.genericError);
     } finally {
-      if (mounted) setState(() => _busy = false);
+      if (mounted) {
+        setState(() => _busy = false);
+      }
     }
   }
 
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
+    final language = AppLanguageScope.of(context).language;
+    final copy = LoginCopy.of(language);
     return AuthScaffold(
       header: const BrandMark(),
       error: _error,
@@ -60,7 +69,7 @@ class _LoginPageState extends State<LoginPage> {
         children: [
           Text.rich(
             TextSpan(
-              text: 'New to Tharwati? ',
+              text: copy.newToTharwati,
               style: TextStyle(color: c.inkMuted, fontSize: 14),
               children: [
                 WidgetSpan(
@@ -74,7 +83,7 @@ class _LoginPageState extends State<LoginPage> {
                             ),
                           ),
                     child: Text(
-                      'Create an account',
+                      copy.createAccount,
                       style: TextStyle(
                         color: c.accent,
                         fontSize: 14,
@@ -87,14 +96,7 @@ class _LoginPageState extends State<LoginPage> {
             ),
           ),
           const SizedBox(height: 16),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: const [
-              _LocalePill(label: 'العربية'),
-              SizedBox(width: 8),
-              _LocalePill(label: 'EGP'),
-            ],
-          ),
+          _LanguagePicker(language: language, copy: copy),
         ],
       ),
       children: [
@@ -104,23 +106,26 @@ class _LoginPageState extends State<LoginPage> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               TharwatiTextField(
-                label: 'Email',
+                label: copy.email,
                 controller: _email,
                 keyboardType: TextInputType.emailAddress,
+                textDirection: TextDirection.ltr,
                 textInputAction: TextInputAction.next,
                 autofillHints: const [AutofillHints.email],
                 validator: (v) =>
-                    (v == null || v.trim().isEmpty) ? 'Enter your email' : null,
+                    (v == null || v.trim().isEmpty) ? copy.emailRequired : null,
               ),
               const SizedBox(height: 16),
               TharwatiTextField(
-                label: 'Password',
+                label: copy.password,
                 controller: _password,
                 obscurable: true,
+                showPasswordTooltip: copy.showPassword,
+                hidePasswordTooltip: copy.hidePassword,
                 textInputAction: TextInputAction.done,
                 autofillHints: const [AutofillHints.password],
                 validator: (v) =>
-                    (v == null || v.isEmpty) ? 'Enter your password' : null,
+                    (v == null || v.isEmpty) ? copy.passwordRequired : null,
                 onFieldSubmitted: (_) => _submit(),
               ),
               Align(
@@ -133,46 +138,75 @@ class _LoginPageState extends State<LoginPage> {
                             builder: (_) => const ForgotPasswordPage(),
                           ),
                         ),
-                  child: const Text('Forgot password?'),
+                  child: Text(copy.forgotPassword),
                 ),
               ),
             ],
           ),
         ),
         const SizedBox(height: 8),
-        PrimaryButton(label: 'Sign in', busy: _busy, onPressed: _submit),
+        PrimaryButton(label: copy.signIn, busy: _busy, onPressed: _submit),
       ],
     );
   }
 }
 
-/// Static language / currency chips from the Sign in artboard. Wiring for the
-/// bilingual + multi-currency switch lands with those flows; these are the
-/// visual entry points only.
-class _LocalePill extends StatelessWidget {
-  const _LocalePill({required this.label});
+class _LanguagePicker extends StatelessWidget {
+  const _LanguagePicker({required this.language, required this.copy});
+
+  final AppLanguage language;
+  final LoginCopy copy;
+
+  @override
+  Widget build(BuildContext context) {
+    final controller = AppLanguageScope.of(context);
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        _LanguagePill(
+          label: copy.english,
+          selected: language == AppLanguage.en,
+          onPressed: () => controller.setLanguage(AppLanguage.en),
+        ),
+        const SizedBox(width: 8),
+        _LanguagePill(
+          label: copy.arabic,
+          selected: language == AppLanguage.ar,
+          onPressed: () => controller.setLanguage(AppLanguage.ar),
+        ),
+      ],
+    );
+  }
+}
+
+class _LanguagePill extends StatelessWidget {
+  const _LanguagePill({
+    required this.label,
+    required this.selected,
+    required this.onPressed,
+  });
 
   final String label;
+  final bool selected;
+  final VoidCallback onPressed;
 
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
-    return Container(
-      constraints: const BoxConstraints(minHeight: AppSizes.touchTarget),
-      alignment: Alignment.center,
-      padding: const EdgeInsets.symmetric(horizontal: 14),
-      decoration: BoxDecoration(
-        color: c.surface,
-        border: Border.all(color: c.line),
-        borderRadius: BorderRadius.circular(AppRadius.field),
-      ),
-      child: Text(
-        label,
-        style: TextStyle(
-          color: c.ink.withValues(alpha: 0.8),
-          fontSize: 13,
-          fontWeight: FontWeight.w700,
+    return Semantics(
+      selected: selected,
+      button: true,
+      child: OutlinedButton(
+        onPressed: onPressed,
+        style: OutlinedButton.styleFrom(
+          minimumSize: const Size(0, AppSizes.touchTarget),
+          padding: const EdgeInsets.symmetric(horizontal: 14),
+          foregroundColor: selected ? c.accent : c.inkMuted,
+          backgroundColor: selected ? c.accentSoft : c.surface,
+          side: BorderSide(color: selected ? c.accent : c.line),
+          textStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
         ),
+        child: Text(label),
       ),
     );
   }

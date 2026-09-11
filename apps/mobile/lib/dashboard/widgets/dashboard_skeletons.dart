@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 
 import '../../theme/tokens.dart';
+import '../../i18n/app_language.dart';
+import '../../i18n/dashboard_copy.dart';
 import 'dashboard_card.dart';
 
 /// Full-screen loading state (Dashboard artboard 09). Fades only — no sliding
@@ -44,7 +46,7 @@ class DashboardLoadingBody extends StatelessWidget {
           const SizedBox(height: 20),
           Center(
             child: Text(
-              'Loading your net worth…',
+              DashboardCopy.of(AppLanguageScope.of(context).language).loadingNetWorth,
               style: TextStyle(color: context.colors.inkMuted, fontSize: 12),
             ),
           ),

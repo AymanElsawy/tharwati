@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 
 import '../../core/money_format.dart';
+import '../../i18n/app_language.dart';
+import '../../i18n/dashboard_copy.dart';
 import '../../theme/tokens.dart';
 import '../logic/dashboard_aggregate.dart';
 
@@ -24,6 +26,7 @@ class NetWorthHero extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
+    final copy = DashboardCopy.of(AppLanguageScope.of(context).language);
     final currency = aggregate.baseCurrencyCode;
 
     return Container(
@@ -54,7 +57,7 @@ class NetWorthHero extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'TOTAL NET WORTH',
+                      copy.totalNetWorth,
                       style: TextStyle(
                         color: c.inkMuted,
                         fontSize: 11,
@@ -65,9 +68,8 @@ class NetWorthHero extends StatelessWidget {
                     const SizedBox(height: 3),
                     Text(
                       aggregate.isEmpty
-                          ? 'Sum of the accounts you add'
-                          : 'Across ${aggregate.accountCount} '
-                                '${aggregate.accountCount == 1 ? "account" : "accounts"} · $currency',
+                          ? copy.accountSumHint
+                          : copy.accountsSummary(aggregate.accountCount, currency),
                       style: TextStyle(color: c.inkMuted, fontSize: 12),
                     ),
                   ],
@@ -157,6 +159,7 @@ class _SummaryMetrics extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
+    final copy = DashboardCopy.of(AppLanguageScope.of(context).language);
     final currency = aggregate.baseCurrencyCode;
 
     Widget tile(String label, Widget value, {Color? valueColor}) => Expanded(
@@ -196,7 +199,7 @@ class _SummaryMetrics extends StatelessWidget {
     return Row(
       children: [
         tile(
-          'ASSETS',
+          copy.assets,
           FittedBox(
             alignment: Alignment.centerLeft,
             fit: BoxFit.scaleDown,
@@ -208,7 +211,7 @@ class _SummaryMetrics extends StatelessWidget {
         ),
         const SizedBox(width: 8),
         tile(
-          'LIABILITIES',
+          copy.liabilities,
           FittedBox(
             alignment: Alignment.centerLeft,
             fit: BoxFit.scaleDown,
@@ -226,7 +229,7 @@ class _SummaryMetrics extends StatelessWidget {
         ),
         const SizedBox(width: 8),
         tile(
-          'ACCOUNTS',
+          copy.accounts,
           Text('${aggregate.accountCount}', textDirection: TextDirection.ltr),
         ),
       ],
@@ -242,21 +245,18 @@ class _IncompleteBody extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
+    final copy = DashboardCopy.of(AppLanguageScope.of(context).language);
     final missingFx = aggregate.unavailablePairs.isNotEmpty;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          'Totals unavailable',
+          copy.totalsUnavailable,
           style: Theme.of(context).textTheme.titleLarge?.copyWith(color: c.ink),
         ),
         const SizedBox(height: 6),
         Text(
-          missingFx
-              ? 'An exchange rate is missing, so we can’t total your accounts '
-                    'right now. Nothing partial is shown.'
-              : 'One or more accounts have no current value yet, so we can’t '
-                    'total your net worth. Nothing partial is shown.',
+          missingFx ? copy.missingRate : copy.missingValue,
           style: TextStyle(color: c.inkMuted, fontSize: 13, height: 1.5),
         ),
       ],
@@ -272,18 +272,18 @@ class _EmptyBody extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
+    final copy = DashboardCopy.of(AppLanguageScope.of(context).language);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          'Nothing tracked yet. Your net worth is the sum of the accounts you '
-          'add.',
+          copy.nothingTracked,
           style: TextStyle(color: c.inkMuted, fontSize: 13, height: 1.5),
         ),
         const SizedBox(height: 12),
         FilledButton(
           onPressed: onAddAccount,
-          child: const Text('Add your first account'),
+          child: Text(copy.addFirstAccount),
         ),
       ],
     );
