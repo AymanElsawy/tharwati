@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import '../../core/decimals.dart';
 import '../../core/money_format.dart';
 import '../../theme/tokens.dart';
+import '../../i18n/app_language.dart';
+import '../../i18n/accounts_copy.dart';
 import '../account_models.dart';
 import '../accounts_service.dart';
 import 'account_type_icon.dart';
@@ -25,10 +27,12 @@ class AccountRowCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
+    final copy = AccountsCopy.of(AppLanguageScope.of(context).language);
     final a = item.account;
     final amount = item.value.amount;
     final negative = amount != null && (D.compare(amount, '0') ?? 0) < 0;
     final nameColor = deEmphasized ? c.inkMuted : c.ink;
+    final direction = Directionality.of(context);
 
     return InkWell(
       onTap: onTap,
@@ -67,16 +71,22 @@ class AccountRowCard extends StatelessWidget {
                         ),
                         if (a.isSold) ...[
                           const SizedBox(width: 6),
-                          _Badge(label: 'SOLD', color: c.inkMuted),
+                          _Badge(
+                            label: copy.sold.toUpperCase(),
+                            color: c.inkMuted,
+                          ),
                         ] else if (a.isClosed) ...[
                           const SizedBox(width: 6),
-                          _Badge(label: 'CLOSED', color: c.inkMuted),
+                          _Badge(
+                            label: copy.closed.toUpperCase(),
+                            color: c.inkMuted,
+                          ),
                         ],
                       ],
                     ),
                     const SizedBox(height: 2),
                     Text(
-                      _subtitle(a),
+                      _subtitle(a, copy),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(color: c.inkMuted, fontSize: 12),
@@ -86,8 +96,14 @@ class AccountRowCard extends StatelessWidget {
               ),
               const SizedBox(width: 10),
               Text(
-                MoneyFormat.money(amount, a.currencyCode),
-                textDirection: TextDirection.ltr,
+                MoneyFormat.money(
+                  amount,
+                  a.currencyCode,
+                  unavailableLabel: copy.unavailable,
+                ),
+                textDirection: item.value.isUnavailable
+                    ? direction
+                    : TextDirection.ltr,
                 style: TextStyle(
                   color: item.value.isUnavailable
                       ? c.inkMuted
@@ -98,7 +114,13 @@ class AccountRowCard extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: 4),
-              Icon(Icons.chevron_right, size: 18, color: c.inkMuted),
+              Icon(
+                direction == TextDirection.rtl
+                    ? Icons.chevron_left
+                    : Icons.chevron_right,
+                size: 18,
+                color: c.inkMuted,
+              ),
             ],
           ),
         ),
@@ -106,51 +128,50 @@ class AccountRowCard extends StatelessWidget {
     );
   }
 
-  String _subtitle(Account a) {
+  String _subtitle(Account a, AccountsCopy copy) {
     switch (a.type) {
       case AccountType.bank:
-        final parts = <String>[a.typeLabel];
+        final parts = <String>[copy.bankSubtype(a.bankSubtype)];
         if (a.isBankCredit && a.creditCardLimit != null) {
           parts.add(
-            'limit ${MoneyFormat.money(a.creditCardLimit, a.currencyCode)}',
+            '${copy.limit} ${copy.ltr(MoneyFormat.money(a.creditCardLimit, a.currencyCode))}',
           );
-          if (a.dueDayOfMonth != null) parts.add('due ${a.dueDayOfMonth}');
+          if (a.dueDayOfMonth != null) {
+            parts.add(copy.due('${a.dueDayOfMonth}'));
+          }
         }
         return parts.join(' · ');
       case AccountType.gold:
         final grams = a.balanceGrams;
         final parts = <String>[
-          if (a.purity != null) a.purity!.toUpperCase(),
+          if (a.purity != null) copy.ltr(a.purity!.toUpperCase()),
           if (grams != null)
-            '${MoneyFormat.money(grams, 'g').replaceAll(' g', '')} g',
+            copy.ltr('${MoneyFormat.money(grams, 'g').replaceAll(' g', '')} g'),
         ];
-        return parts.isEmpty ? a.typeLabel : parts.join(' · ');
+        return parts.isEmpty ? copy.accountType(a.type) : parts.join(' · ');
       case AccountType.brokerage:
         final label = switch (a.investmentType) {
-          'stock_etf' => 'Stocks & ETFs',
-          'crypto' => 'Crypto',
-          _ => 'Mixed',
+          'stock_etf' => copy.stocksEtfs,
+          'crypto' => copy.crypto,
+          _ => copy.mixed,
         };
-        return '$label · ${a.currencyCode}';
+        return '$label · ${copy.ltr(a.currencyCode)}';
       case AccountType.realEstate:
         return [
-          if (a.propertyType != null) _cap(a.propertyType!),
+          if (a.propertyType != null) copy.propertyType(a.propertyType!),
           if (a.ownershipPercentage != null)
-            '${_trimPct(a.ownershipPercentage!)}% owned',
+            copy.owned('${_trimPct(a.ownershipPercentage!)}%'),
         ].join(' · ');
       case AccountType.business:
         return [
           if (a.ownershipPercentage != null)
-            '${_trimPct(a.ownershipPercentage!)}% owned',
+            copy.owned('${_trimPct(a.ownershipPercentage!)}%'),
         ].join(' · ');
       case AccountType.cash:
       case AccountType.other:
-        return a.currencyCode;
+        return copy.ltr(a.currencyCode);
     }
   }
-
-  static String _cap(String s) =>
-      s.isEmpty ? s : '${s[0].toUpperCase()}${s.substring(1)}';
 
   static String _trimPct(String s) {
     final n = double.tryParse(s);

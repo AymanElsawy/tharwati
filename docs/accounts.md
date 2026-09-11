@@ -789,4 +789,8 @@ feed must not hide the portfolio (web keeps separate `holdingsError` /
   sub-pages are not ported (§6.7).
 - **Account records infinite scroll** uses a simple scroll-threshold trigger +
   "Load more" fallback rather than the web `IntersectionObserver`.
-- Arabic / RTL copy.
+- Mobile Accounts list-level presentation supports English and Arabic through
+  the shared device-local language controller: the tab header, filters, list
+  states/actions, list-card type/subtype labels, and mixed financial captions
+  use RTL labels with LTR-isolated dynamic values. Account forms, details,
+  records, metal, and brokerage flows remain English-only pending later passes.

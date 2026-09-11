@@ -5,8 +5,8 @@
 `apps/mobile` is the iOS/Android Flutter client (`tharwati_mobile`, version
 `1.0.0+1`). It is not limited to the older `apps/mobile/README.md` description:
 Auth, onboarding, the production dashboard, and manual Goals are implemented.
-Accounts, investments, and full settings are not. This document describes the
-code currently under `apps/mobile/lib/`.
+The Accounts list, investments, and full settings are not complete. This
+document describes the code currently under `apps/mobile/lib/`.
 
 ## Architecture and startup
 
@@ -96,7 +96,7 @@ are unchanged:
 | Destination / reachable screen | State | Current behavior and principal files |
 | --- | --- | --- |
 | Dashboard | Implemented | `DashboardScreen` loads valuations and a separate read-only goals card. “Add account” switches to Accounts; “View all” switches to Goals. |
-| Accounts | Placeholder | `_ComingSoon` only; no account creation/list/edit flow. |
+| Accounts | List localization implemented | The list title, filters, list cards, states, and list actions support English/Arabic. Account create/edit, detail, records, metal, and brokerage flows remain English-only. |
 | Invest | Placeholder | `_ComingSoon` only; no investment flow. |
 | Goals | Implemented | `GoalsPage`, detail page, form/entry/actions bottom sheets. |
 | Settings | Implemented profile/session surface | `settings/settings_page.dart` reads and edits canonical `profiles.full_name` through `SettingsProfileRepository`, displays the Auth-session email read-only, changes the shared device-local English/Arabic preference, and signs out. Whitespace-only names save as null; privacy and support settings are absent. |
@@ -218,8 +218,8 @@ mounting `AuthGate`; it owns no authentication or routing decisions.
 web-parity `tharwati-language` key. `MaterialApp.locale` and an app-wide
 `Directionality`, with Flutter's Material/Widgets/Cupertino localization
 delegates, update before or after authentication; Login, bottom navigation,
-Dashboard, Settings, and Goals presentation across lists, details, forms,
-actions, confirmations, and history are translated.
+Dashboard, Settings, Goals presentation across lists, details, forms, actions,
+confirmations, and history, and the Accounts list presentation are translated.
 Arabic font fallback exists. Numeric, money, email, and date values remain LTR;
 within Arabic captions, only dynamic values use bidi isolation while surrounding
 labels retain RTL direction. Layout is phone-oriented

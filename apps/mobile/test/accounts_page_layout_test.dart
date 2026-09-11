@@ -7,6 +7,7 @@ import 'package:tharwati_mobile/accounts/accounts_repository.dart';
 import 'package:tharwati_mobile/accounts/accounts_service.dart';
 import 'package:tharwati_mobile/accounts/metal_purchases_repository.dart';
 import 'package:tharwati_mobile/dashboard/data/dashboard_repository.dart';
+import 'package:tharwati_mobile/i18n/app_language.dart';
 import 'package:tharwati_mobile/theme/app_theme.dart';
 
 void main() {
@@ -36,7 +37,13 @@ void main() {
     tester.view.devicePixelRatio = 1.0;
     tester.view.physicalSize = phone;
     addTearDown(tester.view.reset);
-    await tester.pumpWidget(MaterialApp(theme: AppTheme.light(), home: child));
+    final language = AppLanguageController(store: _MemoryLanguageStore());
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.light(),
+        home: AppLanguageScope(controller: language, child: child),
+      ),
+    );
   }
 
   testWidgets('AccountsPage lays out standalone on a phone viewport', (
@@ -87,4 +94,12 @@ void main() {
     await tester.pump();
     expect(tester.takeException(), isNull);
   });
+}
+
+class _MemoryLanguageStore implements LanguageStore {
+  @override
+  Future<String?> readLanguage() async => null;
+
+  @override
+  Future<void> writeLanguage(String code) async {}
 }

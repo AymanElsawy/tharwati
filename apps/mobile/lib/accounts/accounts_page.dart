@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 
 import '../theme/tokens.dart';
+import '../i18n/app_language.dart';
+import '../i18n/accounts_copy.dart';
 import '../widgets/app_sheet.dart';
 import '../widgets/callout.dart';
 import '../widgets/form_controls.dart';
@@ -89,6 +91,7 @@ class _AccountsPageState extends State<AccountsPage> {
 
   Widget _body(BuildContext context) {
     final c = context.colors;
+    final copy = AccountsCopy.of(AppLanguageScope.of(context).language);
     switch (_controller.status) {
       case AccountsStatus.loading:
         return ListView(
@@ -103,10 +106,10 @@ class _AccountsPageState extends State<AccountsPage> {
           children: [
             Callout(
               tone: CalloutTone.danger,
-              title: 'We couldn’t load your accounts',
-              message: 'Your records are safe. Pull to refresh or try again.',
+              title: copy.loadError,
+              message: copy.recordsSafe,
               action: CompactButton(
-                label: 'Try again',
+                label: copy.tryAgain,
                 tone: CompactButtonTone.neutral,
                 onPressed: _controller.load,
               ),
@@ -143,8 +146,8 @@ class _AccountsPageState extends State<AccountsPage> {
                   children: [
                     Text(
                       (_controller.model?.isEmpty ?? true)
-                          ? 'Add your first account'
-                          : 'No accounts match your filters.',
+                          ? copy.addFirstAccount
+                          : copy.noFilteredAccounts,
                       style: TextStyle(
                         color: c.ink,
                         fontSize: 15,
@@ -153,8 +156,7 @@ class _AccountsPageState extends State<AccountsPage> {
                     ),
                     const SizedBox(height: 6),
                     Text(
-                      'Track cash, bank, brokerage, gold, real estate, '
-                      'business, and other accounts in one place.',
+                      copy.emptyDescription,
                       textAlign: TextAlign.center,
                       style: TextStyle(
                         color: c.inkMuted,
@@ -175,7 +177,7 @@ class _AccountsPageState extends State<AccountsPage> {
               ],
               if (closed.isNotEmpty) ...[
                 const SizedBox(height: 8),
-                _SectionTitle('Closed / Archived'),
+                _SectionTitle(copy.closedArchived),
                 const SizedBox(height: 8),
                 for (final item in closed) ...[
                   AccountRowCard(
@@ -188,7 +190,7 @@ class _AccountsPageState extends State<AccountsPage> {
               ],
               if (sold.isNotEmpty) ...[
                 const SizedBox(height: 8),
-                _SectionTitle('Sold'),
+                _SectionTitle(copy.sold),
                 const SizedBox(height: 8),
                 for (final item in sold) ...[
                   AccountRowCard(
@@ -213,6 +215,7 @@ class _Header extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
+    final copy = AccountsCopy.of(AppLanguageScope.of(context).language);
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 10, 20, 8),
       child: Row(
@@ -223,7 +226,7 @@ class _Header extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Financial accounts',
+                  copy.financialAccounts,
                   style: TextStyle(
                     color: c.inkMuted,
                     fontSize: 11,
@@ -233,7 +236,7 @@ class _Header extends StatelessWidget {
                 ),
                 const SizedBox(height: 3),
                 Text(
-                  'Accounts',
+                  copy.accounts,
                   style: TextStyle(
                     color: c.ink,
                     fontSize: 26,
@@ -243,7 +246,7 @@ class _Header extends StatelessWidget {
                 ),
                 const SizedBox(height: 2),
                 Text(
-                  'Manage the accounts that hold and organize your wealth.',
+                  copy.accountsSubtitle,
                   style: TextStyle(color: c.inkMuted, fontSize: 13),
                 ),
               ],
@@ -251,7 +254,7 @@ class _Header extends StatelessWidget {
           ),
           const SizedBox(width: 12),
           CompactButton(
-            label: 'Add account',
+            label: copy.addAccount,
             icon: Icons.add,
             onPressed: onAdd,
           ),
@@ -269,6 +272,7 @@ class _FilterBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
+    final copy = AccountsCopy.of(AppLanguageScope.of(context).language);
     // The artboard sits these controls straight on the canvas (gap 12) — no
     // card. Nesting a bordered field inside a bordered card reads as a box in
     // a box.
@@ -279,7 +283,7 @@ class _FilterBar extends StatelessWidget {
         children: [
           SearchField(
             controller: search,
-            hintText: 'Search by account name',
+            hintText: copy.searchAccounts,
             onChanged: controller.setSearch,
           ),
           const SizedBox(height: 8),
@@ -290,12 +294,15 @@ class _FilterBar extends StatelessWidget {
                   value: controller.typeFilter,
                   onChanged: controller.setTypeFilter,
                   items: [
-                    const DropdownMenuItem(
+                    DropdownMenuItem(
                       value: null,
-                      child: Text('All account types'),
+                      child: Text(copy.allAccountTypes),
                     ),
                     for (final t in AccountType.values)
-                      DropdownMenuItem(value: t, child: Text(t.label)),
+                      DropdownMenuItem(
+                        value: t,
+                        child: Text(copy.accountType(t)),
+                      ),
                   ],
                 ),
               ),
@@ -305,12 +312,18 @@ class _FilterBar extends StatelessWidget {
                   value: controller.currencyFilter,
                   onChanged: controller.setCurrencyFilter,
                   items: [
-                    const DropdownMenuItem(
+                    DropdownMenuItem(
                       value: null,
-                      child: Text('All currencies'),
+                      child: Text(copy.allCurrencies),
                     ),
                     for (final code in controller.availableCurrencies)
-                      DropdownMenuItem(value: code, child: Text(code)),
+                      DropdownMenuItem(
+                        value: code,
+                        child: Directionality(
+                          textDirection: TextDirection.ltr,
+                          child: Text(code),
+                        ),
+                      ),
                   ],
                 ),
               ),
@@ -332,7 +345,7 @@ class _FilterBar extends StatelessWidget {
                     ),
                     const SizedBox(width: 6),
                     Text(
-                      'Show Closed',
+                      copy.showClosed,
                       style: TextStyle(color: c.ink, fontSize: 13),
                     ),
                   ],
@@ -340,8 +353,7 @@ class _FilterBar extends StatelessWidget {
               ),
               const Spacer(),
               Text(
-                '${controller.resultCount} '
-                '${controller.resultCount == 1 ? "account" : "accounts"}',
+                copy.accountCount(controller.resultCount),
                 style: TextStyle(color: c.inkMuted, fontSize: 12),
               ),
             ],
@@ -359,6 +371,7 @@ class _SortRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
+    final copy = AccountsCopy.of(AppLanguageScope.of(context).language);
     Widget chip(String label, AccountSort key) {
       final active = controller.sort == key;
       return Padding(
@@ -407,7 +420,7 @@ class _SortRow extends StatelessWidget {
         child: Row(
           children: [
             Text(
-              'Sort',
+              copy.sort,
               style: TextStyle(
                 color: c.inkMuted,
                 fontSize: 11,
@@ -416,9 +429,9 @@ class _SortRow extends StatelessWidget {
               ),
             ),
             const SizedBox(width: 10),
-            chip('Account name', AccountSort.name),
-            chip('Type', AccountSort.type),
-            chip('Current Value', AccountSort.balance),
+            chip(copy.sortAccountName, AccountSort.name),
+            chip(copy.sortType, AccountSort.type),
+            chip(copy.sortCurrentValue, AccountSort.balance),
           ],
         ),
       ),
