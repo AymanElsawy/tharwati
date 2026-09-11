@@ -335,4 +335,44 @@ class AccountsCopy {
     if (value.startsWith('other:')) return value.substring('other:'.length);
     return knownLabel(value);
   }
+
+  // Cash/Bank account records read surface.
+  String get accountRecords => _ar ? 'سجلات الحساب' : 'Account records';
+  String get addRecord => _ar ? 'إضافة سجل' : 'Add record';
+  String get searchRecords =>
+      _ar ? 'ابحث في الملاحظات والفئات' : 'Search notes and categories';
+  String get filters => _ar ? 'عوامل التصفية' : 'Filters';
+  String filtersCount(int count) =>
+      _ar ? 'عوامل التصفية (${ltr('$count')})' : 'Filters ($count)';
+  String get recordsLoadError =>
+      _ar ? 'تعذر تحميل سجلات الحساب.' : 'We couldn’t load account records.';
+  String get noAccountRecords =>
+      _ar ? 'لا توجد سجلات للحساب بعد.' : 'No account records yet.';
+  String get loadMore => _ar ? 'تحميل المزيد' : 'Load more';
+  String get creditSummaryUnavailable => _ar
+      ? 'ملخص الائتمان غير متاح حتى تكون قيمة حد الائتمان والائتمان المتاح صحيحة.'
+      : 'Credit summary is unavailable until the credit limit and available credit are valid.';
+  String get dueDay => _ar ? 'يوم الاستحقاق' : 'Due Day';
+  String get notSet => _ar ? 'غير محدد' : 'Not set';
+  String dayValue(String value) => _ar ? 'اليوم ${ltr(value)}' : 'Day $value';
+  String get recordType => _ar ? 'نوع السجل' : 'Record type';
+  String get allRecordTypes => _ar ? 'كل الأنواع' : 'All types';
+  String recordTypeValue(String value) => switch (value) {
+    'income' => _ar ? 'دخل' : 'Income',
+    'expense' => _ar ? 'مصروف' : 'Expense',
+    'transfer' => _ar ? 'تحويل' : 'Transfer',
+    _ => value,
+  };
+  String get from => _ar ? 'من' : 'From';
+  String get to => _ar ? 'إلى' : 'To';
+  String get mainCategory => _ar ? 'الفئة الرئيسية' : 'Main category';
+  String get subcategory => _ar ? 'الفئة الفرعية' : 'Subcategory';
+  String get allCategories => _ar ? 'كل الفئات' : 'All categories';
+  String get allSubcategories =>
+      _ar ? 'كل الفئات الفرعية' : 'All subcategories';
+  String get minAmount => _ar ? 'الحد الأدنى للمبلغ' : 'Min amount';
+  String get maxAmount => _ar ? 'الحد الأقصى للمبلغ' : 'Max amount';
+  String get clearAll => _ar ? 'مسح الكل' : 'Clear all';
+  String get apply => _ar ? 'تطبيق' : 'Apply';
+  String get any => _ar ? 'أي' : 'Any';
 }

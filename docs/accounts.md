@@ -796,5 +796,8 @@ feed must not hide the portfolio (web keeps separate `holdingsError` /
   financial values. Generic account-detail labels and lifecycle dialogs, plus
   the Real Estate/Business valued-detail surface (metadata, valuation/disposal
   history, update-value and disposal sheets, and UI-side validation) are also
-  translated. Records, metal, and brokerage flows remain English-only pending
-  later passes; lower-layer repository/RPC errors are not language-aware.
+  translated. The Cash/Bank records read surface (ledger header, summaries,
+  search, filters, list states, day groups, rows, and pagination) is also
+  translated; record create/edit/delete and category-management forms remain
+  English-only. Metal and brokerage flows remain English-only pending later
+  passes; lower-layer repository/RPC errors are not language-aware.

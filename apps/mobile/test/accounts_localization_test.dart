@@ -85,6 +85,24 @@ void main() {
     },
   );
 
+  test(
+    'Cash and Bank records copy localizes read-only ledger presentation',
+    () {
+      final english = AccountsCopy.of(AppLanguage.en);
+      final arabic = AccountsCopy.of(AppLanguage.ar);
+
+      expect(english.accountRecords, 'Account records');
+      expect(english.recordTypeValue('income'), 'Income');
+      expect(english.loadMore, 'Load more');
+      expect(arabic.accountRecords, 'سجلات الحساب');
+      expect(arabic.searchRecords, 'ابحث في الملاحظات والفئات');
+      expect(arabic.recordTypeValue('expense'), 'مصروف');
+      expect(arabic.filtersCount(2), contains('\u20662\u2069'));
+      expect(arabic.dayValue('15'), contains('\u206615\u2069'));
+      expect(arabic.any, 'أي');
+    },
+  );
+
   testWidgets(
     'Arabic list cards localize unavailable values and preserve LTR data',
     (tester) async {

@@ -5,6 +5,8 @@ import 'package:flutter/material.dart';
 import '../../core/decimals.dart';
 import '../../core/local_datetime.dart';
 import '../../core/money_format.dart';
+import '../../i18n/accounts_copy.dart';
+import '../../i18n/app_language.dart';
 import '../../theme/tokens.dart';
 import '../../widgets/app_sheet.dart';
 import '../../widgets/form_controls.dart';
@@ -105,6 +107,7 @@ class _AccountRecordsPageState extends State<AccountRecordsPage> {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
+    final copy = AccountsCopy.of(AppLanguageScope.of(context).language);
     final a = widget.account;
     return Scaffold(
       backgroundColor: c.canvas,
@@ -112,7 +115,7 @@ class _AccountRecordsPageState extends State<AccountRecordsPage> {
         title: Text(a.name),
         actions: [
           IconButton(
-            tooltip: 'Edit account',
+            tooltip: copy.editAccount,
             icon: const Icon(Icons.edit_outlined),
             onPressed: widget.onEditAccount,
           ),
@@ -151,7 +154,7 @@ class _AccountRecordsPageState extends State<AccountRecordsPage> {
                     style: TextStyle(color: c.negative, fontSize: 13),
                   ),
                 ),
-              Expanded(child: _body(context)),
+              Expanded(child: _body(context, copy)),
             ],
           );
         },
@@ -172,7 +175,7 @@ class _AccountRecordsPageState extends State<AccountRecordsPage> {
     return n;
   }
 
-  Widget _body(BuildContext context) {
+  Widget _body(BuildContext context, AccountsCopy copy) {
     final c = context.colors;
     switch (_controller.status) {
       case RecordsStatus.loading:
@@ -180,7 +183,7 @@ class _AccountRecordsPageState extends State<AccountRecordsPage> {
       case RecordsStatus.error:
         return Center(
           child: Text(
-            'We couldn’t load account records.',
+            copy.recordsLoadError,
             style: TextStyle(color: c.negative, fontSize: 14),
           ),
         );
@@ -189,7 +192,7 @@ class _AccountRecordsPageState extends State<AccountRecordsPage> {
         if (groups.isEmpty) {
           return Center(
             child: Text(
-              'No account records yet.',
+              copy.noAccountRecords,
               style: TextStyle(color: c.inkMuted, fontSize: 14),
             ),
           );
@@ -206,6 +209,7 @@ class _AccountRecordsPageState extends State<AccountRecordsPage> {
                   group: group,
                   categories: _controller.categories,
                   onTapRecord: _edit,
+                  copy: copy,
                 ),
               if (_controller.loadingMore)
                 const Padding(
@@ -218,7 +222,7 @@ class _AccountRecordsPageState extends State<AccountRecordsPage> {
                   child: Center(
                     child: TextButton(
                       onPressed: _controller.loadMore,
-                      child: const Text('Load more'),
+                      child: Text(copy.loadMore),
                     ),
                   ),
                 ),
@@ -242,6 +246,7 @@ class _Header extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
+    final copy = AccountsCopy.of(AppLanguageScope.of(context).language);
     final isBankCredit = account.isBankCredit;
     return Container(
       padding: const EdgeInsets.fromLTRB(20, 12, 20, 16),
@@ -252,7 +257,7 @@ class _Header extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Account records',
+            copy.accountRecords,
             style: TextStyle(
               color: c.inkMuted,
               fontSize: 11,
@@ -280,7 +285,7 @@ class _Header extends StatelessWidget {
               ),
               if (onAdd != null)
                 CompactButton(
-                  label: 'Add record',
+                  label: copy.addRecord,
                   icon: Icons.add,
                   onPressed: onAdd,
                 ),
@@ -300,6 +305,7 @@ class _CreditSummary extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
+    final copy = AccountsCopy.of(AppLanguageScope.of(context).language);
     final limit = account.creditCardLimit;
     // web getBankCreditSummary: needs limit > 0 and balance >= 0 and due >= 0.
     final valid =
@@ -309,8 +315,7 @@ class _CreditSummary extends StatelessWidget {
         (D.compare(balance!, '0') ?? -1) != -1;
     if (!valid) {
       return Text(
-        'Credit summary is unavailable until the credit limit and available '
-        'credit are valid.',
+        copy.creditSummaryUnavailable,
         style: TextStyle(color: c.metal, fontSize: 13),
       );
     }
@@ -335,18 +340,21 @@ class _CreditSummary extends StatelessWidget {
       spacing: 18,
       runSpacing: 8,
       children: [
-        cell('Credit Limit', limit),
-        cell('Available Credit', balance),
-        cell('Amount Due', amountDue),
+        cell(copy.creditLimit, limit),
+        cell(copy.availableCredit, balance),
+        cell(copy.amountDue, amountDue),
         Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Due Day', style: TextStyle(color: c.inkMuted, fontSize: 11)),
+            Text(
+              copy.dueDay,
+              style: TextStyle(color: c.inkMuted, fontSize: 11),
+            ),
             const SizedBox(height: 2),
             Text(
               account.dueDayOfMonth == null
-                  ? 'Not set'
-                  : 'Day ${account.dueDayOfMonth}',
+                  ? copy.notSet
+                  : copy.dayValue(account.dueDayOfMonth.toString()),
               style: TextStyle(
                 color: c.ink,
                 fontSize: 13,
@@ -374,6 +382,7 @@ class _SearchRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final copy = AccountsCopy.of(AppLanguageScope.of(context).language);
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
       child: Row(
@@ -381,13 +390,15 @@ class _SearchRow extends StatelessWidget {
           Expanded(
             child: SearchField(
               controller: controller,
-              hintText: 'Search notes and categories',
+              hintText: copy.searchRecords,
               onChanged: onChanged,
             ),
           ),
           const SizedBox(width: 8),
           CompactButton(
-            label: activeCount == 0 ? 'Filters' : 'Filters ($activeCount)',
+            label: activeCount == 0
+                ? copy.filters
+                : copy.filtersCount(activeCount),
             icon: Icons.tune,
             tone: CompactButtonTone.neutral,
             onPressed: onFilters,
@@ -403,10 +414,12 @@ class _DayGroup extends StatelessWidget {
     required this.group,
     required this.categories,
     required this.onTapRecord,
+    required this.copy,
   });
   final AccountRecordDateGroup group;
   final List<VisibleRecordMainCategory> categories;
   final ValueChanged<AccountRecord> onTapRecord;
+  final AccountsCopy copy;
 
   @override
   Widget build(BuildContext context) {
@@ -424,6 +437,7 @@ class _DayGroup extends StatelessWidget {
             children: [
               Text(
                 formatLocalCalendarDate(group.date),
+                textDirection: TextDirection.ltr,
                 style: TextStyle(color: c.inkMuted, fontSize: 12),
               ),
               Text(
@@ -444,8 +458,9 @@ class _DayGroup extends StatelessWidget {
           _RecordRow(
             record: record,
             category: record.type == 'transfer'
-                ? 'Transfer'
+                ? copy.recordTypeValue('transfer')
                 : accountRecordCategoryLabel(record, categories),
+            fallbackCategory: copy.recordTypeValue(record.type),
             onTap: () => onTapRecord(record),
           ),
         const SizedBox(height: 6),
@@ -458,10 +473,12 @@ class _RecordRow extends StatelessWidget {
   const _RecordRow({
     required this.record,
     required this.category,
+    required this.fallbackCategory,
     required this.onTap,
   });
   final AccountRecord record;
   final String? category;
+  final String fallbackCategory;
   final VoidCallback onTap;
 
   @override
@@ -504,7 +521,7 @@ class _RecordRow extends StatelessWidget {
             ),
             const SizedBox(height: 2),
             Text(
-              category ?? record.type,
+              category ?? fallbackCategory,
               style: TextStyle(
                 color: c.ink,
                 fontSize: 14,
@@ -564,11 +581,12 @@ class _FilterSheetState extends State<_FilterSheet> {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
+    final copy = AccountsCopy.of(AppLanguageScope.of(context).language);
     return AppSheet(
-      title: 'Filters',
+      title: copy.filters,
       children: [
         SheetField(
-          label: 'Record type',
+          label: copy.recordType,
           child: SheetBox(
             child: DropdownButtonHideUnderline(
               child: DropdownButton<String>(
@@ -580,11 +598,20 @@ class _FilterSheetState extends State<_FilterSheet> {
                       ? null
                       : AccountRecordTypeX.fromCode(v),
                 ),
-                items: const [
-                  DropdownMenuItem(value: '', child: Text('All types')),
-                  DropdownMenuItem(value: 'income', child: Text('Income')),
-                  DropdownMenuItem(value: 'expense', child: Text('Expense')),
-                  DropdownMenuItem(value: 'transfer', child: Text('Transfer')),
+                items: [
+                  DropdownMenuItem(value: '', child: Text(copy.allRecordTypes)),
+                  DropdownMenuItem(
+                    value: 'income',
+                    child: Text(copy.recordTypeValue('income')),
+                  ),
+                  DropdownMenuItem(
+                    value: 'expense',
+                    child: Text(copy.recordTypeValue('expense')),
+                  ),
+                  DropdownMenuItem(
+                    value: 'transfer',
+                    child: Text(copy.recordTypeValue('transfer')),
+                  ),
                 ],
                 style: TextStyle(color: c.ink, fontSize: 15),
               ),
@@ -594,14 +621,21 @@ class _FilterSheetState extends State<_FilterSheet> {
         Row(
           children: [
             Expanded(
-              child: _dateField('From', _f.fromDate, (v) => _f.fromDate = v),
+              child: _dateField(
+                copy.from,
+                _f.fromDate,
+                (v) => _f.fromDate = v,
+                copy,
+              ),
             ),
             const SizedBox(width: 10),
-            Expanded(child: _dateField('To', _f.toDate, (v) => _f.toDate = v)),
+            Expanded(
+              child: _dateField(copy.to, _f.toDate, (v) => _f.toDate = v, copy),
+            ),
           ],
         ),
         SheetField(
-          label: 'Main category',
+          label: copy.mainCategory,
           child: SheetBox(
             child: DropdownButtonHideUnderline(
               child: DropdownButton<String>(
@@ -613,10 +647,7 @@ class _FilterSheetState extends State<_FilterSheet> {
                   _f.subcategoryId = '';
                 }),
                 items: [
-                  const DropdownMenuItem(
-                    value: '',
-                    child: Text('All categories'),
-                  ),
+                  DropdownMenuItem(value: '', child: Text(copy.allCategories)),
                   for (final m in widget.categories)
                     DropdownMenuItem(value: m.id, child: Text(m.name)),
                 ],
@@ -627,7 +658,7 @@ class _FilterSheetState extends State<_FilterSheet> {
         ),
         if (_subs.isNotEmpty)
           SheetField(
-            label: 'Subcategory',
+            label: copy.subcategory,
             child: SheetBox(
               child: DropdownButtonHideUnderline(
                 child: DropdownButton<String>(
@@ -636,9 +667,9 @@ class _FilterSheetState extends State<_FilterSheet> {
                   isExpanded: true,
                   onChanged: (v) => setState(() => _f.subcategoryId = v ?? ''),
                   items: [
-                    const DropdownMenuItem(
+                    DropdownMenuItem(
                       value: '',
-                      child: Text('All subcategories'),
+                      child: Text(copy.allSubcategories),
                     ),
                     for (final s in _subs)
                       DropdownMenuItem(value: s.id, child: Text(s.name)),
@@ -652,14 +683,14 @@ class _FilterSheetState extends State<_FilterSheet> {
           children: [
             Expanded(
               child: SheetField(
-                label: 'Min amount',
+                label: copy.minAmount,
                 child: _amountBox(_min, (v) => _f.minAmount = v),
               ),
             ),
             const SizedBox(width: 10),
             Expanded(
               child: SheetField(
-                label: 'Max amount',
+                label: copy.maxAmount,
                 child: _amountBox(_max, (v) => _f.maxAmount = v),
               ),
             ),
@@ -671,7 +702,7 @@ class _FilterSheetState extends State<_FilterSheet> {
               child: OutlinedButton(
                 onPressed: () =>
                     Navigator.of(context).pop(AccountRecordHistoryFilters()),
-                child: const Text('Clear all'),
+                child: Text(copy.clearAll),
               ),
             ),
             const SizedBox(width: 10),
@@ -679,7 +710,7 @@ class _FilterSheetState extends State<_FilterSheet> {
               flex: 2,
               child: FilledButton(
                 onPressed: () => Navigator.of(context).pop(_f),
-                child: const Text('Apply'),
+                child: Text(copy.apply),
               ),
             ),
           ],
@@ -688,7 +719,12 @@ class _FilterSheetState extends State<_FilterSheet> {
     );
   }
 
-  Widget _dateField(String label, String value, ValueChanged<String> set) {
+  Widget _dateField(
+    String label,
+    String value,
+    ValueChanged<String> set,
+    AccountsCopy copy,
+  ) {
     final c = context.colors;
     return SheetField(
       label: label,
@@ -712,7 +748,8 @@ class _FilterSheetState extends State<_FilterSheet> {
         borderRadius: BorderRadius.circular(AppRadius.field),
         child: SheetBox(
           child: Text(
-            value.isEmpty ? 'Any' : value,
+            value.isEmpty ? copy.any : value,
+            textDirection: value.isEmpty ? null : TextDirection.ltr,
             style: TextStyle(
               color: value.isEmpty ? c.disabledFg : c.ink,
               fontSize: 15,
