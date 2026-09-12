@@ -296,8 +296,7 @@ class _AccountDetailPageState extends State<AccountDetailPage> {
                   borderRadius: BorderRadius.circular(20),
                 ),
                 child: Text(
-                  'The full income / expense / transfer ledger for this account '
-                  'arrives in a later flow. The value above is ledger-adjusted.',
+                  copy.cashBankLedgerHelper,
                   style: TextStyle(
                     color: c.inkMuted,
                     fontSize: 13,
@@ -624,7 +623,11 @@ class _HeroShell extends StatelessWidget {
                               account.metalType,
                               account.currencyCode,
                             )
-                          : '${account.typeLabel} · ${account.currencyCode}',
+                          : copy.accountTypeCurrencyCaption(
+                              account.type,
+                              account.currencyCode,
+                              bankSubtype: account.bankSubtype,
+                            ),
                       style: TextStyle(color: c.inkMuted, fontSize: 12),
                     ),
                   ],

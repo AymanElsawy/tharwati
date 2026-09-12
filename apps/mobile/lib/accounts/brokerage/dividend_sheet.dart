@@ -3,6 +3,8 @@ import 'package:flutter/services.dart';
 
 import '../../core/local_datetime.dart';
 import '../../core/money_format.dart';
+import '../../i18n/accounts_copy.dart';
+import '../../i18n/app_language.dart';
 import '../../theme/tokens.dart';
 import '../../widgets/app_sheet.dart';
 import '../../widgets/primary_button.dart';
@@ -79,6 +81,7 @@ class _DividendSheetState extends State<DividendSheet> {
       _asset == null || _asset!.currencyCode == widget.account.currencyCode;
 
   Future<void> _pickAsset() async {
+    final copy = AccountsCopy.of(AppLanguageScope.of(context).language);
     final holdings = widget.controller.sellableHoldings;
     if (holdings.isEmpty) return;
     final picked = await showModalBottomSheet<Holding>(
@@ -94,9 +97,16 @@ class _DividendSheetState extends State<DividendSheet> {
           children: [
             for (final h in holdings)
               ListTile(
-                title: Text(h.asset.symbol ?? h.asset.name),
+                title: Text(
+                  h.asset.symbol == null
+                      ? h.asset.name
+                      : copy.symbolValue(h.asset.symbol!),
+                ),
                 subtitle: Text(h.asset.name),
-                trailing: Text(h.asset.currencyCode),
+                trailing: Text(
+                  h.asset.currencyCode,
+                  textDirection: TextDirection.ltr,
+                ),
                 onTap: () => Navigator.of(context).pop(h),
               ),
           ],
@@ -164,7 +174,8 @@ class _DividendSheetState extends State<DividendSheet> {
     if (ok && mounted) Navigator.of(context).pop(true);
   }
 
-  String? _err(String field) => _submitted ? _errors[field] : null;
+  String? _err(String field, AccountsCopy copy) =>
+      _submitted ? copy.dividendValidation(_errors[field]) : null;
 
   @override
   Widget build(BuildContext context) {
@@ -172,6 +183,7 @@ class _DividendSheetState extends State<DividendSheet> {
       listenable: widget.controller,
       builder: (context, _) {
         final c = context.colors;
+        final copy = AccountsCopy.of(AppLanguageScope.of(context).language);
         final currency = widget.account.currencyCode;
         final preview = previewDividend(
           mode: _mode,
@@ -185,24 +197,23 @@ class _DividendSheetState extends State<DividendSheet> {
 
         return AppSheet(
           title: switch (_mode) {
-            DividendMode.cash => 'Dividend',
-            DividendMode.full => 'Reinvest dividend',
-            DividendMode.partial => 'Partially reinvest dividend',
+            DividendMode.cash => copy.dividend,
+            DividendMode.full => copy.reinvestDividend,
+            DividendMode.partial => copy.partiallyReinvestDividend,
           },
-          subtitle:
-              'Recorded in the account currency. Tax and fees come out of the '
-              'gross amount.',
+          subtitle: copy.dividendSubtitle,
           children: [
             SheetField(
-              label: 'Settlement',
+              label: copy.settlement,
               child: _ModeToggle(
                 mode: _mode,
+                copy: copy,
                 onChanged: (m) => setState(() => _mode = m),
               ),
             ),
             SheetField(
-              label: 'Instrument',
-              error: _err('assetId'),
+              label: copy.instrument,
+              error: _err('assetId', copy),
               child: InkWell(
                 onTap: widget.controller.busy ? null : _pickAsset,
                 borderRadius: BorderRadius.circular(AppRadius.field),
@@ -212,8 +223,11 @@ class _DividendSheetState extends State<DividendSheet> {
                       Expanded(
                         child: Text(
                           _asset == null
-                              ? 'Choose a holding'
-                              : '${_asset!.symbol ?? _asset!.name} · ${_asset!.name}',
+                              ? copy.chooseHolding
+                              : copy.instrumentCaption(
+                                  _asset!.symbol,
+                                  _asset!.name,
+                                ),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: TextStyle(
@@ -232,9 +246,9 @@ class _DividendSheetState extends State<DividendSheet> {
               ),
             ),
             SheetField(
-              label: 'Gross dividend',
-              hint: currency,
-              error: _err('gross'),
+              label: copy.grossDividend,
+              hint: copy.currencyValue(currency),
+              error: _err('gross', copy),
               child: _num(_gross, '0.00'),
             ),
             Row(
@@ -242,16 +256,16 @@ class _DividendSheetState extends State<DividendSheet> {
               children: [
                 Expanded(
                   child: SheetField(
-                    label: 'Withholding tax',
-                    error: _err('tax'),
+                    label: copy.withholdingTax,
+                    error: _err('tax', copy),
                     child: _num(_tax, '0.00'),
                   ),
                 ),
                 const SizedBox(width: 10),
                 Expanded(
                   child: SheetField(
-                    label: 'Fees',
-                    error: _err('fees'),
+                    label: copy.fees,
+                    error: _err('fees', copy),
                     child: _num(_fees, '0.00'),
                   ),
                 ),
@@ -259,21 +273,21 @@ class _DividendSheetState extends State<DividendSheet> {
             ),
             if (_mode == DividendMode.partial)
               SheetField(
-                label: 'Amount reinvested',
-                hint: 'The rest stays as cash',
-                error: _err('reinvestedAmount'),
+                label: copy.amountReinvested,
+                hint: copy.restStaysAsCash,
+                error: _err('reinvestedAmount', copy),
                 child: _num(_reinvested, '0.00'),
               ),
             if (reinvesting)
               SheetField(
-                label: 'Reinvestment price per unit',
-                hint: _asset?.currencyCode ?? currency,
-                error: _err('unitPrice'),
+                label: copy.reinvestmentPricePerUnit,
+                hint: copy.currencyValue(_asset?.currencyCode ?? currency),
+                error: _err('unitPrice', copy),
                 child: _num(_unitPrice, '0.00'),
               ),
             SheetField(
-              label: 'Date & time',
-              error: _err('occurredAt'),
+              label: copy.dateTime,
+              error: _err('occurredAt', copy),
               child: InkWell(
                 onTap: _pickDateTime,
                 borderRadius: BorderRadius.circular(AppRadius.field),
@@ -293,14 +307,14 @@ class _DividendSheetState extends State<DividendSheet> {
               ),
             ),
             SheetField(
-              label: 'Notes',
+              label: copy.notes,
               optional: true,
               child: SheetBox(
                 minHeight: 78,
                 child: TextField(
                   controller: _notes,
                   maxLines: 3,
-                  decoration: const InputDecoration(hintText: 'Optional'),
+                  decoration: InputDecoration(hintText: copy.optional),
                   style: TextStyle(color: c.ink, fontSize: 15),
                 ),
               ),
@@ -314,15 +328,19 @@ class _DividendSheetState extends State<DividendSheet> {
               ),
               child: Column(
                 children: [
-                  _row(c, 'Gross', MoneyFormat.money(preview.gross, currency)),
+                  _row(
+                    c,
+                    copy.gross,
+                    MoneyFormat.money(preview.gross, currency),
+                  ),
                   const SizedBox(height: 6),
-                  _row(c, 'Tax', MoneyFormat.money(preview.tax, currency)),
+                  _row(c, copy.tax, MoneyFormat.money(preview.tax, currency)),
                   const SizedBox(height: 6),
-                  _row(c, 'Fees', MoneyFormat.money(preview.fees, currency)),
+                  _row(c, copy.fees, MoneyFormat.money(preview.fees, currency)),
                   const SizedBox(height: 6),
                   _row(
                     c,
-                    'Net dividend',
+                    copy.netDividend,
                     MoneyFormat.money(preview.net, currency),
                     strong: true,
                   ),
@@ -330,7 +348,7 @@ class _DividendSheetState extends State<DividendSheet> {
                     const SizedBox(height: 6),
                     _row(
                       c,
-                      'Cash remainder',
+                      copy.cashRemainder,
                       MoneyFormat.money(preview.cashRemainder, currency),
                     ),
                   ],
@@ -338,7 +356,7 @@ class _DividendSheetState extends State<DividendSheet> {
                     const SizedBox(height: 6),
                     _row(
                       c,
-                      'Units added',
+                      copy.unitsAdded,
                       preview.quantityAdded == null
                           ? '—'
                           : trimTrailingZeros(preview.quantityAdded!),
@@ -360,7 +378,7 @@ class _DividendSheetState extends State<DividendSheet> {
               children: [
                 Expanded(
                   child: NeutralButton(
-                    label: 'Cancel',
+                    label: copy.cancel,
                     onPressed: widget.controller.busy
                         ? null
                         : () => Navigator.of(context).pop(),
@@ -370,7 +388,7 @@ class _DividendSheetState extends State<DividendSheet> {
                 Expanded(
                   flex: 2,
                   child: PrimaryButton(
-                    label: 'Record dividend',
+                    label: copy.recordDividend,
                     busy: widget.controller.busy,
                     onPressed: _submit,
                   ),
@@ -433,18 +451,23 @@ String trimTrailingZeros(String value) {
 }
 
 class _ModeToggle extends StatelessWidget {
-  const _ModeToggle({required this.mode, required this.onChanged});
+  const _ModeToggle({
+    required this.mode,
+    required this.copy,
+    required this.onChanged,
+  });
 
   final DividendMode mode;
+  final AccountsCopy copy;
   final ValueChanged<DividendMode> onChanged;
 
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
-    const items = [
-      (DividendMode.cash, 'Cash'),
-      (DividendMode.full, 'Reinvest all'),
-      (DividendMode.partial, 'Partial'),
+    final items = [
+      (DividendMode.cash, copy.cash),
+      (DividendMode.full, copy.reinvestAll),
+      (DividendMode.partial, copy.partial),
     ];
     return Container(
       padding: const EdgeInsets.all(3),

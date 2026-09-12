@@ -5,6 +5,8 @@ import 'package:flutter/services.dart';
 
 import '../../core/local_datetime.dart';
 import '../../core/money_format.dart';
+import '../../i18n/accounts_copy.dart';
+import '../../i18n/app_language.dart';
 import '../../theme/tokens.dart';
 import '../../widgets/app_sheet.dart';
 import '../../widgets/form_controls.dart';
@@ -175,7 +177,8 @@ class _TradeSheetState extends State<TradeSheet> {
     if (ok && mounted) Navigator.of(context).pop(true);
   }
 
-  String? _err(String field) => _submitted ? _errors[field] : null;
+  String? _err(String field, AccountsCopy copy) =>
+      _submitted ? copy.tradeValidation(_errors[field]) : null;
 
   @override
   Widget build(BuildContext context) {
@@ -183,6 +186,7 @@ class _TradeSheetState extends State<TradeSheet> {
       listenable: widget.controller,
       builder: (context, _) {
         final c = context.colors;
+        final copy = AccountsCopy.of(AppLanguageScope.of(context).language);
         _sync();
         final assetCurrency =
             _asset?.currencyCode ?? widget.account.currencyCode;
@@ -195,14 +199,12 @@ class _TradeSheetState extends State<TradeSheet> {
         );
 
         return AppSheet(
-          title: _isBuy ? 'Buy' : 'Sell',
-          subtitle: _isBuy
-              ? 'Records a purchase and debits this account’s cash.'
-              : 'Records a sale and credits this account’s cash.',
+          title: _isBuy ? copy.buy : copy.sell,
+          subtitle: _isBuy ? copy.buyTradeSubtitle : copy.sellTradeSubtitle,
           children: [
             SheetField(
-              label: 'Instrument',
-              error: _err('assetId'),
+              label: copy.instrument,
+              error: _err('assetId', copy),
               child: InkWell(
                 onTap: widget.controller.busy ? null : _pickAsset,
                 borderRadius: BorderRadius.circular(AppRadius.field),
@@ -213,9 +215,12 @@ class _TradeSheetState extends State<TradeSheet> {
                         child: Text(
                           _asset == null
                               ? (_isBuy
-                                    ? 'Search or choose a holding'
-                                    : 'Choose a holding')
-                              : '${_asset!.symbol ?? _asset!.name} · ${_asset!.name}',
+                                    ? copy.searchOrChooseHolding
+                                    : copy.chooseHolding)
+                              : copy.instrumentCaption(
+                                  _asset!.symbol,
+                                  _asset!.name,
+                                ),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: TextStyle(
@@ -238,40 +243,41 @@ class _TradeSheetState extends State<TradeSheet> {
               children: [
                 Expanded(
                   child: SheetField(
-                    label: 'Quantity',
-                    error: _err('quantity'),
+                    label: copy.quantity,
+                    error: _err('quantity', copy),
                     child: _num(_quantity, '0'),
                   ),
                 ),
                 const SizedBox(width: 10),
                 Expanded(
                   child: SheetField(
-                    label: _isBuy ? 'Unit price' : 'Unit sale price',
-                    hint: assetCurrency,
-                    error: _err('unitPrice'),
+                    label: _isBuy ? copy.unitPrice : copy.unitSalePrice,
+                    hint: copy.currencyValue(assetCurrency),
+                    error: _err('unitPrice', copy),
                     child: _num(_price, '0.00'),
                   ),
                 ),
               ],
             ),
             SheetField(
-              label: 'Fees',
+              label: copy.fees,
               optional: true,
-              hint: assetCurrency,
-              error: _err('fees'),
+              hint: copy.currencyValue(assetCurrency),
+              error: _err('fees', copy),
               child: _num(_fees, '0.00'),
             ),
             if (_crossCurrency)
               SheetField(
-                label:
-                    'Exchange rate · 1 $assetCurrency to '
-                    '${widget.account.currencyCode}',
-                error: _err('accountFxRate'),
+                label: copy.tradeExchangeRate(
+                  assetCurrency,
+                  widget.account.currencyCode,
+                ),
+                error: _err('accountFxRate', copy),
                 child: _num(_rate, '0.00'),
               ),
             SheetField(
-              label: 'Date & time',
-              error: _err('occurredAt'),
+              label: copy.dateTime,
+              error: _err('occurredAt', copy),
               child: InkWell(
                 onTap: _pickDateTime,
                 borderRadius: BorderRadius.circular(AppRadius.field),
@@ -291,14 +297,14 @@ class _TradeSheetState extends State<TradeSheet> {
               ),
             ),
             SheetField(
-              label: 'Notes',
+              label: copy.notes,
               optional: true,
               child: SheetBox(
                 minHeight: 78,
                 child: TextField(
                   controller: _notes,
                   maxLines: 3,
-                  decoration: const InputDecoration(hintText: 'Optional'),
+                  decoration: InputDecoration(hintText: copy.optional),
                   style: TextStyle(color: c.ink, fontSize: 15),
                 ),
               ),
@@ -314,19 +320,19 @@ class _TradeSheetState extends State<TradeSheet> {
                 children: [
                   _summaryRow(
                     c,
-                    _isBuy ? 'Purchase amount' : 'Gross proceeds',
+                    _isBuy ? copy.purchaseAmount : copy.grossProceeds,
                     MoneyFormat.money(preview.grossAmount, assetCurrency),
                   ),
                   const SizedBox(height: 6),
                   _summaryRow(
                     c,
-                    'Fees',
+                    copy.fees,
                     MoneyFormat.money(preview.fees, assetCurrency),
                   ),
                   const SizedBox(height: 6),
                   _summaryRow(
                     c,
-                    _isBuy ? 'Total cost' : 'Net proceeds',
+                    _isBuy ? copy.totalCost : copy.netProceeds,
                     MoneyFormat.money(preview.assetTotal, assetCurrency),
                     strong: true,
                   ),
@@ -334,7 +340,7 @@ class _TradeSheetState extends State<TradeSheet> {
                     const SizedBox(height: 6),
                     _summaryRow(
                       c,
-                      _isBuy ? 'Cash debited' : 'Cash credited',
+                      _isBuy ? copy.cashDebited : copy.cashCredited,
                       MoneyFormat.money(
                         preview.accountTotal,
                         widget.account.currencyCode,
@@ -357,7 +363,7 @@ class _TradeSheetState extends State<TradeSheet> {
               children: [
                 Expanded(
                   child: NeutralButton(
-                    label: 'Cancel',
+                    label: copy.cancel,
                     onPressed: widget.controller.busy
                         ? null
                         : () => Navigator.of(context).pop(),
@@ -367,7 +373,7 @@ class _TradeSheetState extends State<TradeSheet> {
                 Expanded(
                   flex: 2,
                   child: PrimaryButton(
-                    label: _isBuy ? 'Record buy' : 'Record sell',
+                    label: _isBuy ? copy.recordBuy : copy.recordSell,
                     busy: widget.controller.busy,
                     onPressed: _submit,
                   ),
@@ -497,6 +503,7 @@ class _AssetPickerSheetState extends State<_AssetPickerSheet> {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
+    final copy = AccountsCopy.of(AppLanguageScope.of(context).language);
     final query = _query.text.trim().toLowerCase();
     final held = [
       for (final h in widget.holdings)
@@ -507,33 +514,38 @@ class _AssetPickerSheetState extends State<_AssetPickerSheet> {
     ];
 
     return AppSheet(
-      title: 'Choose an instrument',
+      title: copy.chooseInstrument,
       subtitle: widget.allowSearch
-          ? 'Pick something you already hold, or search for a new one.'
-          : 'You can only sell what this account holds.',
+          ? copy.buyInstrumentPickerSubtitle
+          : copy.sellInstrumentPickerSubtitle,
       children: [
         SearchField(
           controller: _query,
           hintText: widget.allowSearch
-              ? 'Search by name or symbol'
-              : 'Filter your holdings',
+              ? copy.searchByNameOrSymbol
+              : copy.filterYourHoldings,
           onChanged: _onQueryChanged,
         ),
         const SizedBox(height: 14),
         if (held.isNotEmpty) ...[
-          _sectionLabel(c, 'YOUR HOLDINGS'),
+          _sectionLabel(c, copy.yourHoldings),
           for (final h in held)
             _row(
               c,
-              title: h.asset.symbol ?? h.asset.name,
-              subtitle:
-                  '${h.asset.name} · ${h.quantity} ${h.asset.quantityUnit}',
+              title: h.asset.symbol == null
+                  ? h.asset.name
+                  : copy.symbolValue(h.asset.symbol!),
+              subtitle: copy.holdingPickerCaption(
+                h.asset.name,
+                h.quantity,
+                h.asset.quantityUnit,
+              ),
               onTap: () => Navigator.of(context).pop(h),
             ),
         ],
         if (widget.allowSearch) ...[
           const SizedBox(height: 10),
-          _sectionLabel(c, 'SEARCH RESULTS'),
+          _sectionLabel(c, copy.searchResults),
           if (_searching)
             const Padding(
               padding: EdgeInsets.all(16),
@@ -557,7 +569,7 @@ class _AssetPickerSheetState extends State<_AssetPickerSheet> {
             Padding(
               padding: const EdgeInsets.symmetric(vertical: 10),
               child: Text(
-                'Type at least two characters to search.',
+                copy.typeTwoCharacters,
                 style: TextStyle(color: c.inkMuted, fontSize: 13),
               ),
             )
@@ -565,7 +577,7 @@ class _AssetPickerSheetState extends State<_AssetPickerSheet> {
             Padding(
               padding: const EdgeInsets.symmetric(vertical: 10),
               child: Text(
-                'No instruments matched.',
+                copy.noInstrumentsMatched,
                 style: TextStyle(color: c.inkMuted, fontSize: 13),
               ),
             )
@@ -573,15 +585,19 @@ class _AssetPickerSheetState extends State<_AssetPickerSheet> {
             for (final r in _results)
               _row(
                 c,
-                title: r.symbol,
-                subtitle: '${r.name} · ${r.exchange} · ${r.currencyCode}',
+                title: copy.symbolValue(r.symbol),
+                subtitle: copy.assetSearchCaption(
+                  r.name,
+                  r.exchange,
+                  r.currencyCode,
+                ),
                 onTap: () => Navigator.of(context).pop(r),
               ),
         ] else if (held.isEmpty)
           Padding(
             padding: const EdgeInsets.symmetric(vertical: 10),
             child: Text(
-              'This account has no open holdings to sell.',
+              copy.noOpenHoldingsToSell,
               style: TextStyle(color: c.inkMuted, fontSize: 13),
             ),
           ),

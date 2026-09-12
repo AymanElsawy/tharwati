@@ -65,6 +65,20 @@ class AccountsCopy {
   String bankSubtype(String? subtype) => subtype == 'credit'
       ? (_ar ? 'ائتمان بنكي' : 'Bank Credit')
       : (_ar ? 'خصم بنكي' : 'Bank Debit');
+  String accountTypeCurrencyCaption(
+    AccountType type,
+    String currency, {
+    String? bankSubtype,
+  }) {
+    final label = type == AccountType.bank
+        ? this.bankSubtype(bankSubtype)
+        : accountType(type);
+    return _ar ? '$label · ${ltr(currency)}' : '$label · $currency';
+  }
+
+  String get cashBankLedgerHelper => _ar
+      ? 'سيظهر سجل الدخل والمصروفات والتحويلات الكامل لهذا الحساب في مسار لاحق. القيمة أعلاه معدلة بحسب السجل.'
+      : 'The full income / expense / transfer ledger for this account arrives in a later flow. The value above is ledger-adjusted.';
   String get gold => _ar ? 'ذهب' : 'Gold';
   String get silver => _ar ? 'فضة' : 'Silver';
   String get stocksEtfs => _ar ? 'أسهم وصناديق مؤشرات' : 'Stocks & ETFs';
@@ -684,5 +698,127 @@ class AccountsCopy {
       incoming
           ? (_ar ? 'تحويل وارد' : 'Transfer in')
           : (_ar ? 'تحويل صادر' : 'Transfer out'),
+  };
+
+  // Brokerage trade and dividend presentation.
+  String get instrument => _ar ? 'الأداة المالية' : 'Instrument';
+  String get searchOrChooseHolding =>
+      _ar ? 'ابحث أو اختر أصلًا مملوكًا' : 'Search or choose a holding';
+  String get chooseHolding => _ar ? 'اختر أصلًا مملوكًا' : 'Choose a holding';
+  String get unitPrice => _ar ? 'سعر الوحدة' : 'Unit price';
+  String get unitSalePrice => _ar ? 'سعر بيع الوحدة' : 'Unit sale price';
+  String get buyTradeSubtitle => _ar
+      ? 'يسجل عملية شراء ويخصم قيمتها من نقد هذا الحساب.'
+      : 'Records a purchase and debits this account’s cash.';
+  String get sellTradeSubtitle => _ar
+      ? 'يسجل عملية بيع ويضيف قيمتها إلى نقد هذا الحساب.'
+      : 'Records a sale and credits this account’s cash.';
+  String get purchaseAmount => _ar ? 'قيمة الشراء' : 'Purchase amount';
+  String get grossProceeds => _ar ? 'إجمالي المتحصلات' : 'Gross proceeds';
+  String get netProceeds => _ar ? 'صافي المتحصلات' : 'Net proceeds';
+  String get cashDebited => _ar ? 'النقد المخصوم' : 'Cash debited';
+  String get cashCredited => _ar ? 'النقد المضاف' : 'Cash credited';
+  String get recordBuy => _ar ? 'تسجيل الشراء' : 'Record buy';
+  String get recordSell => _ar ? 'تسجيل البيع' : 'Record sell';
+  String get chooseInstrument =>
+      _ar ? 'اختر أداة مالية' : 'Choose an instrument';
+  String get buyInstrumentPickerSubtitle => _ar
+      ? 'اختر أصلًا تملكه بالفعل أو ابحث عن أداة جديدة.'
+      : 'Pick something you already hold, or search for a new one.';
+  String get sellInstrumentPickerSubtitle => _ar
+      ? 'يمكنك بيع ما يملكه هذا الحساب فقط.'
+      : 'You can only sell what this account holds.';
+  String get searchByNameOrSymbol =>
+      _ar ? 'ابحث بالاسم أو الرمز' : 'Search by name or symbol';
+  String get filterYourHoldings =>
+      _ar ? 'تصفية أصولك المملوكة' : 'Filter your holdings';
+  String get yourHoldings => _ar ? 'أصولك المملوكة' : 'YOUR HOLDINGS';
+  String get searchResults => _ar ? 'نتائج البحث' : 'SEARCH RESULTS';
+  String get typeTwoCharacters => _ar
+      ? 'اكتب حرفين على الأقل للبحث.'
+      : 'Type at least two characters to search.';
+  String get noInstrumentsMatched =>
+      _ar ? 'لا توجد أدوات مطابقة.' : 'No instruments matched.';
+  String get noOpenHoldingsToSell => _ar
+      ? 'لا يملك هذا الحساب أصولًا مفتوحة للبيع.'
+      : 'This account has no open holdings to sell.';
+  String currencyValue(String value) => _ar ? ltr(value) : value;
+  String symbolValue(String value) => _ar ? ltr(value) : value;
+  String instrumentCaption(String? symbol, String name) =>
+      symbol == null ? name : '${symbolValue(symbol)} · $name';
+  String holdingPickerCaption(String name, String quantity, String unit) =>
+      _ar ? '$name · ${ltr('$quantity $unit')}' : '$name · $quantity $unit';
+  String assetSearchCaption(String name, String exchange, String currency) =>
+      _ar
+      ? '$name · ${ltr(exchange)} · ${ltr(currency)}'
+      : '$name · $exchange · $currency';
+  String tradeExchangeRate(String from, String to) => _ar
+      ? 'سعر الصرف · ${ltr('1 $from')} إلى ${ltr(to)}'
+      : 'Exchange rate · 1 $from to $to';
+  String? tradeValidation(String? message) {
+    if (!_ar || message == null) return message;
+    final held = RegExp(r'^You only hold (.+)\.$').firstMatch(message);
+    if (held != null) return 'لا تملك سوى ${ltr(held.group(1)!)}.';
+    return switch (message) {
+      'Choose an instrument.' => 'اختر أداة مالية.',
+      'Enter a quantity greater than zero.' => 'أدخل كمية أكبر من صفر.',
+      'Enter a price greater than zero.' => 'أدخل سعرًا أكبر من صفر.',
+      'Fees must be zero or more.' => 'يجب أن تكون الرسوم صفرًا أو أكثر.',
+      'Date and time are required.' => 'التاريخ والوقت مطلوبان.',
+      'Enter the exchange rate for this trade.' =>
+        'أدخل سعر الصرف لهذه العملية.',
+      _ => message,
+    };
+  }
+
+  String get reinvestDividend =>
+      _ar ? 'إعادة استثمار التوزيعات' : 'Reinvest dividend';
+  String get partiallyReinvestDividend =>
+      _ar ? 'إعادة استثمار جزئي للتوزيعات' : 'Partially reinvest dividend';
+  String get dividendSubtitle => _ar
+      ? 'تُسجل بعملة الحساب، وتُخصم الضرائب والرسوم من المبلغ الإجمالي.'
+      : 'Recorded in the account currency. Tax and fees come out of the gross amount.';
+  String get settlement => _ar ? 'التسوية' : 'Settlement';
+  String get cash => _ar ? 'نقدًا' : 'Cash';
+  String get reinvestAll => _ar ? 'إعادة استثمار الكل' : 'Reinvest all';
+  String get partial => _ar ? 'جزئي' : 'Partial';
+  String get grossDividend => _ar ? 'إجمالي التوزيعات' : 'Gross dividend';
+  String get withholdingTax => _ar ? 'ضريبة الاستقطاع' : 'Withholding tax';
+  String get amountReinvested =>
+      _ar ? 'المبلغ المعاد استثماره' : 'Amount reinvested';
+  String get restStaysAsCash =>
+      _ar ? 'يبقى الباقي نقدًا' : 'The rest stays as cash';
+  String get reinvestmentPricePerUnit =>
+      _ar ? 'سعر إعادة الاستثمار للوحدة' : 'Reinvestment price per unit';
+  String get gross => _ar ? 'الإجمالي' : 'Gross';
+  String get tax => _ar ? 'الضريبة' : 'Tax';
+  String get netDividend => _ar ? 'صافي التوزيعات' : 'Net dividend';
+  String get cashRemainder => _ar ? 'المتبقي نقدًا' : 'Cash remainder';
+  String get unitsAdded => _ar ? 'الوحدات المضافة' : 'Units added';
+  String get recordDividend => _ar ? 'تسجيل التوزيعات' : 'Record dividend';
+  String? dividendValidation(String? message) => switch (message) {
+    'Choose the instrument that paid the dividend.' =>
+      _ar ? 'اختر الأداة التي دفعت التوزيعات.' : message,
+    'This instrument is priced in a different currency than the account. Dividends must be recorded in the account currency.' =>
+      _ar
+          ? 'تُسعّر هذه الأداة بعملة مختلفة عن الحساب. يجب تسجيل التوزيعات بعملة الحساب.'
+          : message,
+    'Enter the gross dividend.' => _ar ? 'أدخل إجمالي التوزيعات.' : message,
+    'Withholding tax must be zero or more.' =>
+      _ar ? 'يجب أن تكون ضريبة الاستقطاع صفرًا أو أكثر.' : message,
+    'Fees must be zero or more.' =>
+      _ar ? 'يجب أن تكون الرسوم صفرًا أو أكثر.' : message,
+    'Tax and fees leave nothing to record.' =>
+      _ar ? 'لم يتبق مبلغ للتسجيل بعد الضريبة والرسوم.' : message,
+    'Date and time are required.' => _ar ? 'التاريخ والوقت مطلوبان.' : message,
+    'Enter the reinvestment price per unit.' =>
+      _ar ? 'أدخل سعر إعادة الاستثمار للوحدة.' : message,
+    'Enter the amount being reinvested.' =>
+      _ar ? 'أدخل المبلغ المعاد استثماره.' : message,
+    'Must be less than the net dividend. Reinvest all of it with “Reinvest all” instead.' =>
+      _ar
+          ? 'يجب أن يكون أقل من صافي التوزيعات. استخدم «إعادة استثمار الكل» بدلًا من ذلك.'
+          : message,
+    _ => message,
   };
 }

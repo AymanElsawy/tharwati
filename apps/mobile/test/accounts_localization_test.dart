@@ -19,6 +19,26 @@ void main() {
     expect(arabic.accounts, 'الحسابات');
     expect(arabic.accountType(AccountType.brokerage), 'وساطة');
     expect(arabic.bankSubtype('credit'), 'ائتمان بنكي');
+    expect(
+      english.accountTypeCurrencyCaption(
+        AccountType.bank,
+        'EGP',
+        bankSubtype: 'credit',
+      ),
+      'Bank Credit · EGP',
+    );
+    expect(
+      arabic.accountTypeCurrencyCaption(
+        AccountType.bank,
+        'EGP',
+        bankSubtype: 'credit',
+      ),
+      allOf(contains('ائتمان بنكي'), contains('\u2066EGP\u2069')),
+    );
+    expect(
+      arabic.cashBankLedgerHelper,
+      'سيظهر سجل الدخل والمصروفات والتحويلات الكامل لهذا الحساب في مسار لاحق. القيمة أعلاه معدلة بحسب السجل.',
+    );
     expect(arabic.propertyType('apartment'), 'شقة');
     expect(arabic.unavailable, 'غير متاح');
     expect(arabic.accountCount(2), contains('\u20662\u2069'));
@@ -227,6 +247,40 @@ void main() {
     expect(arabic.exchangeRateTo('EGP'), contains('\u2066EGP\u2069'));
     expect(arabic.localizedDate('2026-01-05'), contains('يناير'));
     expect(localizedActivityLabel(item, 'account-1', arabic), 'توزيعات');
+  });
+
+  test('Brokerage trade and dividend copy localizes forms and validation', () {
+    final english = AccountsCopy.of(AppLanguage.en);
+    final arabic = AccountsCopy.of(AppLanguage.ar);
+
+    expect(english.recordBuy, 'Record buy');
+    expect(english.reinvestAll, 'Reinvest all');
+    expect(english.netDividend, 'Net dividend');
+    expect(arabic.recordSell, 'تسجيل البيع');
+    expect(arabic.reinvestDividend, 'إعادة استثمار التوزيعات');
+    expect(arabic.cashRemainder, 'المتبقي نقدًا');
+    expect(
+      arabic.tradeExchangeRate('USD', 'EGP'),
+      allOf(contains('\u20661 USD\u2069'), contains('\u2066EGP\u2069')),
+    );
+    expect(
+      arabic.holdingPickerCaption('صندوق', '12.5', 'units'),
+      contains('\u206612.5 units\u2069'),
+    );
+    expect(
+      arabic.tradeValidation('You only hold 4.25.'),
+      contains('\u20664.25\u2069'),
+    );
+    expect(
+      arabic.dividendValidation('Enter the gross dividend.'),
+      'أدخل إجمالي التوزيعات.',
+    );
+    expect(
+      arabic.dividendValidation(
+        'Must be less than the net dividend. Reinvest all of it with “Reinvest all” instead.',
+      ),
+      contains('إعادة استثمار الكل'),
+    );
   });
 
   testWidgets(

@@ -807,5 +807,7 @@ feed must not hide the portfolio (web keeps separate `holdingsError` /
   disclosure affordances mirror in Arabic. Brokerage read/detail presentation
   (account summary, holdings, activity, and holding detail) also supports
   English/Arabic with LTR-isolated monetary values, quantities, prices,
-  symbols, dates, and currency codes. Trade and dividend sheets, and raw
-  lower-layer errors, remain pending later localization passes.
+  symbols, dates, and currency codes. Buy/Sell and dividend/reinvestment sheets
+  also support English/Arabic, including their forms, pickers, previews, and
+  presentation-layer validation. Raw lower-layer errors remain pending a
+  later error-localization architecture pass.
