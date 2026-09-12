@@ -1,4 +1,5 @@
 import { Bell } from "lucide-react"
+import { Link } from "react-router-dom"
 import { AssetsBreakdownCard } from "@/features/dashboard/components/AssetsBreakdownCard"
 import { DashboardKeyInsights } from "@/features/dashboard/components/DashboardKeyInsights"
 import { DashboardPortfolioAllocationCard } from "@/features/dashboard/components/DashboardPortfolioAllocationCard"
@@ -49,10 +50,16 @@ export function DashboardPage() {
       <div className="grid gap-8 sm:gap-[var(--space-section)]">
         <NetWorthCard {...aggregate} />
         <div className="grid gap-6 xl:grid-cols-2">
-          <AssetsBreakdownCard
-            aggregate={aggregate.result}
-            isLoading={aggregate.isLoading}
-          />
+          <Link
+            to="/analysis"
+            aria-label={t("dashboard.assetsBreakdown.title")}
+            className="block rounded-[var(--radius-card)] focus-visible:ring-2 focus-visible:ring-[var(--color-primary)] focus-visible:outline-none"
+          >
+            <AssetsBreakdownCard
+              aggregate={aggregate.result}
+              isLoading={aggregate.isLoading}
+            />
+          </Link>
           <DashboardKeyInsights
             aggregate={aggregate.result}
             isLoading={aggregate.isLoading}

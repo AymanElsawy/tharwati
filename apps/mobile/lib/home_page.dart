@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'accounts/accounts_page.dart';
+import 'analysis/analysis_placeholder_pages.dart';
 import 'dashboard/dashboard_screen.dart';
 import 'goals/goals_page.dart';
 import 'i18n/app_language.dart';
@@ -8,8 +9,8 @@ import 'i18n/navigation_copy.dart';
 import 'settings/settings_page.dart';
 import 'theme/tokens.dart';
 
-/// Authenticated shell — the five-tab bottom navigation from the design. Only
-/// Dashboard (Flow 2) is built; the other tabs are placeholders for their flows.
+/// Authenticated five-tab shell. Analysis retains its localized placeholder
+/// while the other destinations mount their implemented pages.
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
 
@@ -27,10 +28,16 @@ class _HomePageState extends State<HomePage> {
     final pages = <Widget>[
       DashboardScreen(
         onOpenAccounts: () => setState(() => _index = 1),
+        onOpenAnalysis: () => setState(() => _index = 2),
+        onOpenPortfolioAnalysis: () => Navigator.of(context).push(
+          MaterialPageRoute<void>(
+            builder: (_) => const PortfolioAnalysisPlaceholderPage(),
+          ),
+        ),
         onOpenGoals: () => setState(() => _index = 3),
       ),
       const AccountsPage(),
-      const _ComingSoon(title: 'Investments', flow: 'Flow 4'),
+      const WealthAnalysisPlaceholderPage(),
       const GoalsPage(),
       const SettingsPage(),
     ];
@@ -81,7 +88,7 @@ class _HomePageState extends State<HomePage> {
                 ),
                 NavigationDestination(
                   icon: Icon(Icons.show_chart),
-                  label: copy.invest,
+                  label: copy.analysis,
                 ),
                 NavigationDestination(
                   icon: Icon(Icons.track_changes_outlined),
@@ -94,27 +101,6 @@ class _HomePageState extends State<HomePage> {
               ],
             ),
           ),
-        ),
-      ),
-    );
-  }
-}
-class _ComingSoon extends StatelessWidget {
-  const _ComingSoon({required this.title, required this.flow});
-
-  final String title;
-  final String flow;
-
-  @override
-  Widget build(BuildContext context) {
-    final c = context.colors;
-    return Scaffold(
-      backgroundColor: c.canvas,
-      appBar: AppBar(title: Text(title)),
-      body: Center(
-        child: Text(
-          '$title — coming with $flow',
-          style: TextStyle(color: c.inkMuted, fontSize: 14),
         ),
       ),
     );

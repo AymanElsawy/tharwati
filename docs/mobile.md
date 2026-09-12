@@ -5,8 +5,9 @@
 `apps/mobile` is the iOS/Android Flutter client (`tharwati_mobile`, version
 `1.0.0+1`). It is not limited to the older `apps/mobile/README.md` description:
 Auth, onboarding, the production dashboard, and manual Goals are implemented.
-The Accounts list, investments, and full settings are not complete. This
-document describes the code currently under `apps/mobile/lib/`.
+Accounts and the implemented Settings profile/preferences surface are complete.
+Analysis is the only top-level placeholder. This document describes the code
+currently under `apps/mobile/lib/`.
 
 ## Architecture and startup
 
@@ -30,6 +31,7 @@ Top-level structure:
 | `auth/` | Supabase auth wrapper, session/onboarding gate, auth screens and password policy. |
 | `onboarding/` | Five-step profile setup and static country/currency data. |
 | `dashboard/` | Edge-snapshot repository, decimal aggregate/allocation logic, controllers, cards. |
+| `analysis/` | Read-only Wealth Analysis and Portfolio Analysis navigation placeholders; aggregation and specialized analysis data UI are deferred. |
 | `goals/` | Goal domain, Supabase repository/RPCs, controllers, pages, sheets and widgets. |
 | `core/` | Decimal arithmetic, money formatting, app-wide data-change notifier. |
 | `theme/`, `widgets/`, `i18n/` | Material theme/tokens, reusable presentation components, and device-local language state/copy. |
@@ -98,7 +100,7 @@ are unchanged:
 | --- | --- | --- |
 | Dashboard | Implemented | `DashboardScreen` loads valuations and a separate read-only goals card. “Add account” switches to Accounts; “View all” switches to Goals. |
 | Accounts | Full presentation localization implemented | The list, create/edit form, generic detail and lifecycle dialogs, Real Estate/Business valued detail, Cash/Bank records read/write surfaces, Gold/Silver detail and purchases, plus brokerage detail, trades, and dividends support English/Arabic. Raw lower-layer errors remain language-agnostic. |
-| Invest | Placeholder | `_ComingSoon` only; no investment flow. |
+| Analysis | Placeholder shell | The third tab is `Analysis` / `التحليل` and opens the read-only `Wealth Analysis` / `تحليل الثروة` placeholder. Dashboard Assets Breakdown switches to this tab; Dashboard Portfolio Allocation opens the separate Brokerage-only `Portfolio Analysis` placeholder. Aggregation and specialized analysis data UI are deferred. |
 | Goals | Implemented | `GoalsPage`, detail page, form/entry/actions bottom sheets. |
 | Settings | Implemented profile/session surface | `settings/settings_page.dart` reads and edits canonical `profiles.full_name` through `SettingsProfileRepository`, displays the Auth-session email read-only, changes the shared device-local English/Arabic and Light/Dark appearance preferences, and signs out. Whitespace-only names save as null; privacy and support settings are absent. |
 
@@ -113,13 +115,17 @@ onboarding directly.
 
 When ready, the dashboard renders `DashboardMasthead`, `NetWorthHero`,
 `AssetsBreakdownCard`, deterministic `KeyInsightsCard`,
-`PortfolioAllocationCard`, and `GoalsCard`. `DashboardMasthead` is a
+`PortfolioAllocationCard`, and `GoalsCard`. Assets Breakdown switches to the
+Wealth Analysis tab. Portfolio Allocation is a Brokerage-only preview that
+opens the separate Portfolio Analysis placeholder; it does not switch to a
+top-level Portfolio tab.
+`DashboardMasthead` is a
 Dashboard-only 286px mountain image with theme-aware readability overlay. The
 source mountain bitmap contains cropped lettering at its far-left edge, so the
 masthead crops that source edge from the rendered composition. The masthead uses
 top safe-area positioning for the theme-aware `TharwatiBrand` and decorative
-bell/avatar controls, then current English greeting/date and `Your wealth at a
-glance` header copy. Its light-theme overlay is deliberately subdued to retain mountain detail; its
+bell/avatar controls, then localized English/Arabic greeting, date, and wealth
+summary copy. Its light-theme overlay is deliberately subdued to retain mountain detail; its
 lower gradient is slightly denser behind the semantic-ink slogan, while its
 dark-theme overlay remains independently stronger for readability.
 `NetWorthHero` overlaps it by 32px, below that header content, and shows Total
@@ -190,8 +196,9 @@ validation/replay/history (`apps/mobile/test/`).
 
 ## UI, theme, localization, and responsiveness
 
-`AppTheme` uses Material 3, system light/dark mode, and the `AppColors` theme
-extension. Inter is the body and financial-value face; Playfair Display is used
+`AppTheme` uses Material 3 Light/Dark themes and the `AppColors` theme
+extension. The app restores the user's persisted Light/Dark preference rather
+than following system theme mode. Inter is the body and financial-value face; Playfair Display is used
 for brand, page, section, and display headings; Noto Sans Arabic is the fallback
 when Arabic copy is introduced. Shared tokens define the palette, radii,
 spacing, 44px minimum touch targets, and 52px fields/buttons. Auth/onboarding
@@ -236,9 +243,12 @@ design.
 
 ## Gaps, coupling, and risks
 
-- Accounts, Invest, full Settings, notification behavior, currency switching,
-  app-wide translated copy/RTL layout review, legal links, export/delete-account,
-  OAuth/MFA/phone auth, and offline/realtime support are not implemented.
+- Analysis is the only top-level placeholder. Wealth Analysis and Portfolio
+  Analysis currently provide navigation shells only; their aggregation and
+  specialized analysis data UI are not implemented. Settings currently includes Profile,
+  Language, Appearance, and Sign out; notification behavior, currency switching,
+  legal links, export/delete-account, OAuth/MFA/phone auth, and offline/realtime
+  support are not implemented.
 - Dashboard calls the shared Edge Function but reproduces web aggregate and Goal
   rules in Dart. Comments identify these as ports; changes to web/database
   contracts can drift unless tests/contracts are maintained in both clients.

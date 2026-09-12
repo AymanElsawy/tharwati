@@ -40,6 +40,14 @@ describe("DashboardPage composition", () => {
     )
   })
 
+  it("links Assets Breakdown to the Wealth Analysis shell", () => {
+    expect(componentSource).toContain('from "react-router-dom"')
+    expect(componentSource).toContain('to="/analysis"')
+    expect(componentSource).toContain(
+      'aria-label={t("dashboard.assetsBreakdown.title")}'
+    )
+  })
+
   it("keeps localized personalized greeting inside mountain masthead", () => {
     expect(componentSource).toContain("tharwati-dashboard-masthead")
     expect(componentSource).toContain('t("dashboard.hero.personalGreeting"')

@@ -1,10 +1,15 @@
-import 'package:flutter/widgets.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:tharwati_mobile/dashboard/data/dashboard_snapshot.dart';
+import 'package:tharwati_mobile/dashboard/logic/dashboard_aggregate.dart';
 import 'package:tharwati_mobile/dashboard/logic/key_insights.dart';
+import 'package:tharwati_mobile/dashboard/widgets/assets_breakdown_card.dart';
+import 'package:tharwati_mobile/dashboard/widgets/portfolio_allocation_card.dart';
 import 'package:tharwati_mobile/i18n/app_language.dart';
 import 'package:tharwati_mobile/i18n/dashboard_copy.dart';
 import 'package:tharwati_mobile/i18n/navigation_copy.dart';
 import 'package:tharwati_mobile/i18n/settings_copy.dart';
+import 'package:tharwati_mobile/theme/app_theme.dart';
 
 void main() {
   test(
@@ -15,6 +20,21 @@ void main() {
 
       expect(NavigationCopy.of(AppLanguage.en).dashboard, 'Dashboard');
       expect(NavigationCopy.of(AppLanguage.ar).dashboard, 'لوحة المعلومات');
+      expect(NavigationCopy.of(AppLanguage.en).analysis, 'Analysis');
+      expect(NavigationCopy.of(AppLanguage.ar).analysis, 'التحليل');
+      expect(
+        NavigationCopy.of(AppLanguage.en).wealthAnalysis,
+        'Wealth Analysis',
+      );
+      expect(NavigationCopy.of(AppLanguage.ar).wealthAnalysis, 'تحليل الثروة');
+      expect(
+        NavigationCopy.of(AppLanguage.en).portfolioAnalysis,
+        'Portfolio Analysis',
+      );
+      expect(
+        NavigationCopy.of(AppLanguage.ar).portfolioAnalysis,
+        'تحليل المحفظة',
+      );
       expect(SettingsCopy.of(AppLanguage.ar).signOut, 'تسجيل الخروج');
       expect(english.keyInsights, 'Key insights');
       expect(arabic.keyInsights, 'أهم الرؤى');
@@ -32,4 +52,62 @@ void main() {
       expect(AppLanguage.ar.direction, TextDirection.rtl);
     },
   );
+
+  testWidgets(
+    'Dashboard analysis previews expose distinct navigation actions',
+    (tester) async {
+      var openedAnalysis = false;
+      var openedPortfolio = false;
+      final language = AppLanguageController(store: _MemoryLanguageStore());
+
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: AppTheme.light(),
+          home: AppLanguageScope(
+            controller: language,
+            child: Scaffold(
+              body: Column(
+                children: [
+                  AssetsBreakdownCard(
+                    aggregate: const DashboardAggregate(
+                      baseCurrencyCode: 'EGP',
+                      status: AggregateStatus.complete,
+                      totalAssets: '0',
+                      totalLiabilities: '0',
+                      netWorth: '0',
+                      assetBreakdown: {},
+                      accountCount: 0,
+                      unavailablePairs: [],
+                      unavailableSources: [],
+                    ),
+                    onTap: () => openedAnalysis = true,
+                  ),
+                  PortfolioAllocationCard(
+                    items: const [],
+                    status: PortfolioAllocationStatus.complete,
+                    currency: 'EGP',
+                    onTap: () => openedPortfolio = true,
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      );
+
+      await tester.tap(find.text('No breakdown yet'));
+      await tester.tap(find.text('Portfolio allocation'));
+
+      expect(openedAnalysis, isTrue);
+      expect(openedPortfolio, isTrue);
+    },
+  );
+}
+
+class _MemoryLanguageStore implements LanguageStore {
+  @override
+  Future<String?> readLanguage() async => null;
+
+  @override
+  Future<void> writeLanguage(String code) async {}
 }

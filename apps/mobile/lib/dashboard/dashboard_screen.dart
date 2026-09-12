@@ -22,9 +22,17 @@ import 'widgets/portfolio_allocation_card.dart';
 /// for valuation; `DashboardController` runs the ported decimal aggregate over
 /// its snapshot. Pull down or fire a [DataChange] to refresh.
 class DashboardScreen extends StatefulWidget {
-  const DashboardScreen({super.key, this.onOpenAccounts, this.onOpenGoals});
+  const DashboardScreen({
+    super.key,
+    this.onOpenAccounts,
+    this.onOpenAnalysis,
+    this.onOpenPortfolioAnalysis,
+    this.onOpenGoals,
+  });
 
   final VoidCallback? onOpenAccounts;
+  final VoidCallback? onOpenAnalysis;
+  final VoidCallback? onOpenPortfolioAnalysis;
   final VoidCallback? onOpenGoals;
 
   @override
@@ -153,7 +161,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
             onAddAccount: widget.onOpenAccounts,
           ),
           const SizedBox(height: 14),
-          AssetsBreakdownCard(aggregate: agg),
+          AssetsBreakdownCard(aggregate: agg, onTap: widget.onOpenAnalysis),
           const SizedBox(height: 14),
           if (_dashboard.insight != null) ...[
             KeyInsightsCard(insight: _dashboard.insight!),
@@ -163,6 +171,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
             items: _dashboard.allocation,
             status: _dashboard.allocationStatus,
             currency: agg.baseCurrencyCode,
+            onTap: widget.onOpenPortfolioAnalysis,
           ),
           const SizedBox(height: 14),
           _goalsCard(),

@@ -11,11 +11,21 @@ describe("DashboardPortfolioAllocationCard", () => {
 
   it("uses an unavailable state for incomplete holdings", () => {
     expect(componentSource).toContain('allocation.status === "incomplete"')
-    expect(componentSource).toContain('t("dashboard.portfolioAllocation.unavailable")')
+    expect(componentSource).toContain(
+      't("dashboard.portfolioAllocation.unavailable")'
+    )
+  })
+
+  it("links the Brokerage-only allocation preview to Portfolio", () => {
+    expect(componentSource).toContain('from "react-router-dom"')
+    expect(componentSource).toContain('to="/portfolio"')
+    expect(componentSource).toContain("<PortfolioLink>")
   })
 
   it("keeps the responsive amount-and-percentage list aligned", () => {
-    expect(componentSource).toContain('grid-cols-[auto_minmax(0,1fr)_auto_auto]')
+    expect(componentSource).toContain(
+      "grid-cols-[auto_minmax(0,1fr)_auto_auto]"
+    )
     expect(componentSource).toContain("md:grid-cols-[12rem_minmax(0,1fr)]")
   })
 
@@ -26,7 +36,9 @@ describe("DashboardPortfolioAllocationCard", () => {
     expect(componentSource).toContain("chartValue: Number(item.percentage)")
     expect(componentSource).toContain('dataKey="chartValue"')
     expect(componentSource).toContain("min-h-52")
-    expect(componentSource).toContain('t("dashboard.portfolioAllocation.totalInvestments")')
-    expect(componentSource).not.toContain('flex h-4 overflow-hidden')
+    expect(componentSource).toContain(
+      't("dashboard.portfolioAllocation.totalInvestments")'
+    )
+    expect(componentSource).not.toContain("flex h-4 overflow-hidden")
   })
 })

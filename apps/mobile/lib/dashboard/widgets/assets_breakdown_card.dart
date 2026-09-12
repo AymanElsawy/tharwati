@@ -11,61 +11,76 @@ import '../logic/dashboard_aggregate.dart';
 import 'dashboard_card.dart';
 
 class AssetsBreakdownCard extends StatelessWidget {
-  const AssetsBreakdownCard({super.key, required this.aggregate});
+  const AssetsBreakdownCard({super.key, required this.aggregate, this.onTap});
 
   final DashboardAggregate aggregate;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
 
     if (aggregate.isEmpty) {
-      return DashboardCard(
-        dashed: true,
-        child: Column(
-          children: [
-            Container(
-              width: 46,
-              height: 46,
-              alignment: Alignment.center,
-              decoration: BoxDecoration(
-                color: c.canvas,
-                borderRadius: BorderRadius.circular(14),
+      return _linked(
+        DashboardCard(
+          dashed: true,
+          child: Column(
+            children: [
+              Container(
+                width: 46,
+                height: 46,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: c.canvas,
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: Icon(
+                  Icons.insights_outlined,
+                  size: 22,
+                  color: c.inkMuted,
+                ),
               ),
-              child: Icon(Icons.insights_outlined, size: 22, color: c.inkMuted),
-            ),
-            const SizedBox(height: 10),
-            Text(
-              DashboardCopy.of(AppLanguageScope.of(context).language).noBreakdown,
-              style: TextStyle(
-                color: c.ink,
-                fontSize: 15,
-                fontWeight: FontWeight.w700,
+              const SizedBox(height: 10),
+              Text(
+                DashboardCopy.of(
+                  AppLanguageScope.of(context).language,
+                ).noBreakdown,
+                style: TextStyle(
+                  color: c.ink,
+                  fontSize: 15,
+                  fontWeight: FontWeight.w700,
+                ),
               ),
-            ),
-            const SizedBox(height: 6),
-            Text(
-              DashboardCopy.of(AppLanguageScope.of(context).language).breakdownEmpty,
-              textAlign: TextAlign.center,
-              style: TextStyle(color: c.inkMuted, fontSize: 13, height: 1.5),
-            ),
-          ],
+              const SizedBox(height: 6),
+              Text(
+                DashboardCopy.of(
+                  AppLanguageScope.of(context).language,
+                ).breakdownEmpty,
+                textAlign: TextAlign.center,
+                style: TextStyle(color: c.inkMuted, fontSize: 13, height: 1.5),
+              ),
+            ],
+          ),
         ),
       );
     }
 
     if (aggregate.status == AggregateStatus.incomplete) {
-      return DashboardCard(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _Header(),
-            const SizedBox(height: 12),
-            Text(
-              DashboardCopy.of(AppLanguageScope.of(context).language).breakdownUnavailable,
-              style: TextStyle(color: c.inkMuted, fontSize: 13, height: 1.5),
-            ),
-          ],
+      return _linked(
+        DashboardCard(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _Header(),
+              const SizedBox(height: 12),
+              Text(
+                DashboardCopy.of(
+                  AppLanguageScope.of(context).language,
+                ).breakdownUnavailable,
+                style: TextStyle(color: c.inkMuted, fontSize: 13, height: 1.5),
+              ),
+            ],
+          ),
         ),
       );
     }
@@ -80,7 +95,9 @@ class AssetsBreakdownCard extends StatelessWidget {
       final pct = D.multiply(D.divide(value, total, scale: 6), '100') ?? '0';
       slices.add(
         _Slice(
-          label: DashboardCopy.of(AppLanguageScope.of(context).language).assetGroup(group.name),
+          label: DashboardCopy.of(
+            AppLanguageScope.of(context).language,
+          ).assetGroup(group.name),
           percent: pct,
           color: palette[colorIndex % palette.length],
         ),
@@ -88,63 +105,79 @@ class AssetsBreakdownCard extends StatelessWidget {
       colorIndex++;
     }
 
-    return DashboardCard(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _Header(),
-          const SizedBox(height: 14),
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              SizedBox(
-                width: 96,
-                height: 96,
-                child: CustomPaint(
-                  painter: _DonutPainter(slices: slices, track: c.canvas),
-                  child: Center(
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(
-                          DashboardCopy.of(AppLanguageScope.of(context).language).total,
-                          style: TextStyle(
-                            color: c.inkMuted,
-                            fontSize: 9,
-                            fontWeight: FontWeight.w600,
+    return _linked(
+      DashboardCard(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _Header(),
+            const SizedBox(height: 14),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                SizedBox(
+                  width: 96,
+                  height: 96,
+                  child: CustomPaint(
+                    painter: _DonutPainter(slices: slices, track: c.canvas),
+                    child: Center(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            DashboardCopy.of(
+                              AppLanguageScope.of(context).language,
+                            ).total,
+                            style: TextStyle(
+                              color: c.inkMuted,
+                              fontSize: 9,
+                              fontWeight: FontWeight.w600,
+                            ),
                           ),
-                        ),
-                        Text(
-                          MoneyFormat.compact(total),
-                          textDirection: TextDirection.ltr,
-                          style: TextStyle(
-                            color: c.ink,
-                            fontSize: 12,
-                            fontWeight: FontWeight.w800,
+                          Text(
+                            MoneyFormat.compact(total),
+                            textDirection: TextDirection.ltr,
+                            style: TextStyle(
+                              color: c.ink,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w800,
+                            ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
                   ),
                 ),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Column(
-                  children: [
-                    for (final slice in slices) ...[
-                      _LegendRow(
-                        slice: slice,
-                        currency: aggregate.baseCurrencyCode,
-                      ),
-                      if (slice != slices.last) const SizedBox(height: 9),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    children: [
+                      for (final slice in slices) ...[
+                        _LegendRow(
+                          slice: slice,
+                          currency: aggregate.baseCurrencyCode,
+                        ),
+                        if (slice != slices.last) const SizedBox(height: 9),
+                      ],
                     ],
-                  ],
+                  ),
                 ),
-              ),
-            ],
-          ),
-        ],
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _linked(Widget card) {
+    if (onTap == null) return card;
+    return Semantics(
+      button: true,
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: onTap,
+        child: card,
       ),
     );
   }
@@ -158,7 +191,9 @@ class _Header extends StatelessWidget {
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
         Text(
-          DashboardCopy.of(AppLanguageScope.of(context).language).assetsBreakdown,
+          DashboardCopy.of(
+            AppLanguageScope.of(context).language,
+          ).assetsBreakdown,
           style: Theme.of(context).textTheme.titleSmall?.copyWith(
             color: c.ink,
             fontWeight: FontWeight.w700,

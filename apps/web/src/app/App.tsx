@@ -30,6 +30,8 @@ import { ProtectedRoute } from "../components/ProtectedRoute"
 import { DashboardLayout } from "../layouts/DashboardLayout"
 import { GoalsPage } from "../features/goals/pages/GoalsPage"
 import { DashboardPage } from "../pages/DashboardPage"
+import { AnalysisPage } from "../pages/AnalysisPage"
+import { PortfolioPage } from "../pages/PortfolioPage"
 import { DesignLabPage } from "../pages/DesignLabPage"
 import { NotFoundPage } from "../pages/NotFoundPage"
 import { useTranslation } from "../i18n/useTranslation"
@@ -256,6 +258,8 @@ export default function App() {
           }
         >
           <Route path="/dashboard" element={<DashboardPage />} />
+          <Route path="/analysis" element={<AnalysisPage />} />
+          <Route path="/portfolio" element={<PortfolioPage />} />
           <Route path="/accounts" element={<AccountsPage />} />
           <Route path="/goals" element={<GoalsPage />} />
           <Route path="/settings" element={<SettingsPage />} />

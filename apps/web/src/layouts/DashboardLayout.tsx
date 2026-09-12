@@ -8,6 +8,7 @@ import {
   Target,
   Menu,
   Settings,
+  ChartNoAxesCombined,
   type LucideIcon,
 } from "lucide-react"
 import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom"
@@ -43,6 +44,11 @@ const navigationItems: NavigationItem[] = [
     labelKey: "navigation.dashboard",
     path: "/dashboard",
     icon: LayoutDashboard,
+  },
+  {
+    labelKey: "navigation.analysis",
+    path: "/analysis",
+    icon: ChartNoAxesCombined,
   },
   {
     labelKey: "navigation.accounts",

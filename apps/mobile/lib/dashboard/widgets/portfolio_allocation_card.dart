@@ -23,11 +23,13 @@ class PortfolioAllocationCard extends StatelessWidget {
     required this.items,
     required this.status,
     required this.currency,
+    this.onTap,
   });
 
   final List<AllocationItem> items;
   final PortfolioAllocationStatus? status;
   final String currency;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
@@ -38,22 +40,24 @@ class PortfolioAllocationCard extends StatelessWidget {
       final message = status == PortfolioAllocationStatus.incomplete
           ? copy.allocationUnavailable
           : copy.noBrokerage;
-      return DashboardCard(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _title(context),
-            const SizedBox(height: 4),
-            Text(
-              copy.brokerageSubtitle,
-              style: TextStyle(color: c.inkMuted, fontSize: 12),
-            ),
-            const SizedBox(height: 14),
-            Text(
-              message,
-              style: TextStyle(color: c.inkMuted, fontSize: 13, height: 1.5),
-            ),
-          ],
+      return _linked(
+        DashboardCard(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _title(context),
+              const SizedBox(height: 4),
+              Text(
+                copy.brokerageSubtitle,
+                style: TextStyle(color: c.inkMuted, fontSize: 12),
+              ),
+              const SizedBox(height: 14),
+              Text(
+                message,
+                style: TextStyle(color: c.inkMuted, fontSize: 13, height: 1.5),
+              ),
+            ],
+          ),
         ),
       );
     }
@@ -68,61 +72,75 @@ class PortfolioAllocationCard extends StatelessWidget {
         ),
     ];
 
-    return DashboardCard(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _title(context),
-          const SizedBox(height: 4),
-          Text(
-            copy.brokerageSubtitle,
-            style: TextStyle(color: c.inkMuted, fontSize: 12),
-          ),
-          const SizedBox(height: 16),
-          Center(
-            child: SizedBox(
-              width: 132,
-              height: 132,
-              child: CustomPaint(
-                painter: _DonutPainter(slices: slices, track: c.canvas),
-                child: Center(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        copy.invested,
-                        style: TextStyle(
-                          color: c.inkMuted,
-                          fontSize: 9,
-                          letterSpacing: 0.8,
-                          fontWeight: FontWeight.w600,
+    return _linked(
+      DashboardCard(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _title(context),
+            const SizedBox(height: 4),
+            Text(
+              copy.brokerageSubtitle,
+              style: TextStyle(color: c.inkMuted, fontSize: 12),
+            ),
+            const SizedBox(height: 16),
+            Center(
+              child: SizedBox(
+                width: 132,
+                height: 132,
+                child: CustomPaint(
+                  painter: _DonutPainter(slices: slices, track: c.canvas),
+                  child: Center(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          copy.invested,
+                          style: TextStyle(
+                            color: c.inkMuted,
+                            fontSize: 9,
+                            letterSpacing: 0.8,
+                            fontWeight: FontWeight.w600,
+                          ),
                         ),
-                      ),
-                      const SizedBox(height: 1),
-                      Text(
-                        MoneyFormat.compact(total),
-                        textDirection: TextDirection.ltr,
-                        style: TextStyle(
-                          color: c.ink,
-                          fontSize: 14,
-                          fontWeight: FontWeight.w800,
+                        const SizedBox(height: 1),
+                        Text(
+                          MoneyFormat.compact(total),
+                          textDirection: TextDirection.ltr,
+                          style: TextStyle(
+                            color: c.ink,
+                            fontSize: 14,
+                            fontWeight: FontWeight.w800,
+                          ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
                 ),
               ),
             ),
-          ),
-          const SizedBox(height: 16),
-          for (var i = 0; i < items.length; i++)
-            _LegendRow(
-              item: items[i],
-              color: palette[i % palette.length],
-              currency: currency,
-              last: i == items.length - 1,
-            ),
-        ],
+            const SizedBox(height: 16),
+            for (var i = 0; i < items.length; i++)
+              _LegendRow(
+                item: items[i],
+                color: palette[i % palette.length],
+                currency: currency,
+                last: i == items.length - 1,
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _linked(Widget card) {
+    if (onTap == null) return card;
+    return Semantics(
+      button: true,
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: onTap,
+        child: card,
       ),
     );
   }
@@ -166,7 +184,9 @@ class _LegendRow extends StatelessWidget {
           const SizedBox(width: 10),
           Expanded(
             child: Text(
-              DashboardCopy.of(AppLanguageScope.of(context).language).assetGroup(item.group.name),
+              DashboardCopy.of(
+                AppLanguageScope.of(context).language,
+              ).assetGroup(item.group.name),
               style: TextStyle(
                 color: c.ink,
                 fontSize: 12,

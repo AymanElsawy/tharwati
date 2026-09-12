@@ -23,6 +23,7 @@ export const en = {
   "unsaved.keepEditing": "Keep editing",
   "unsaved.discard": "Discard changes",
   "navigation.dashboard": "Dashboard",
+  "navigation.analysis": "Analysis",
   "navigation.portfolio": "Portfolio",
   "navigation.accounts": "Accounts",
   "navigation.cash": "Cash",
@@ -97,6 +98,10 @@ export const en = {
   "pages.dashboard.eyebrow": "Financial overview",
   "pages.dashboard.title": "Your wealth at a glance",
   "pages.dashboard.description": "See your accounts and balances at a glance.",
+  "pages.analysis.eyebrow": "Read-only insights",
+  "pages.analysis.title": "Wealth Analysis",
+  "pages.analysis.description":
+    "Your cross-asset wealth analysis will appear here.",
   "dashboard.hero.greeting": "Welcome back",
   "dashboard.hero.personalGreeting": "Good afternoon, {{name}} 👋",
   "dashboard.hero.guest": "there",
