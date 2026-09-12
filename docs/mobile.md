@@ -96,7 +96,7 @@ are unchanged:
 | Destination / reachable screen | State | Current behavior and principal files |
 | --- | --- | --- |
 | Dashboard | Implemented | `DashboardScreen` loads valuations and a separate read-only goals card. “Add account” switches to Accounts; “View all” switches to Goals. |
-| Accounts | List, form, detail, valued-detail, and records-read localization implemented | The list, create/edit form, generic detail labels/lifecycle dialogs, Real Estate/Business valued detail, and Cash/Bank records read surface support English/Arabic. Record forms, metal, and brokerage flows remain English-only. |
+| Accounts | List, form, detail, valued-detail, and Cash/Bank records localization implemented | The list, create/edit form, generic detail labels/lifecycle dialogs, Real Estate/Business valued detail, and Cash/Bank records read/write surfaces support English/Arabic. Metal and brokerage flows remain English-only. |
 | Invest | Placeholder | `_ComingSoon` only; no investment flow. |
 | Goals | Implemented | `GoalsPage`, detail page, form/entry/actions bottom sheets. |
 | Settings | Implemented profile/session surface | `settings/settings_page.dart` reads and edits canonical `profiles.full_name` through `SettingsProfileRepository`, displays the Auth-session email read-only, changes the shared device-local English/Arabic preference, and signs out. Whitespace-only names save as null; privacy and support settings are absent. |
@@ -220,7 +220,7 @@ web-parity `tharwati-language` key. `MaterialApp.locale` and an app-wide
 delegates, update before or after authentication; Login, bottom navigation,
 Dashboard, Settings, Goals presentation across lists, details, forms, actions,
 confirmations, and history, plus the Accounts list, create/edit form, generic
-detail, Real Estate/Business valued detail, and Cash/Bank records read
+detail, Real Estate/Business valued detail, and Cash/Bank records read/write
 presentation, are translated.
 Arabic font fallback exists. Numeric, money, email, and date values remain LTR;
 within Arabic captions, only dynamic values use bidi isolation while surrounding

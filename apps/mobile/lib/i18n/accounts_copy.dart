@@ -375,4 +375,58 @@ class AccountsCopy {
   String get clearAll => _ar ? 'مسح الكل' : 'Clear all';
   String get apply => _ar ? 'تطبيق' : 'Apply';
   String get any => _ar ? 'أي' : 'Any';
+
+  // Cash/Bank record write and category-management presentation.
+  String get editRecord => _ar ? 'تعديل السجل' : 'Edit record';
+  String get deleteRecord => _ar ? 'حذف السجل' : 'Delete record';
+  String get deleteRecordTitle => _ar ? 'حذف السجل؟' : 'Delete record?';
+  String get deleteRecordBody => _ar
+      ? 'سيُزال السجل من سجلك وسيُحدَّث رصيد حسابك.'
+      : 'This will remove the record from your history. Your account balances will be updated.';
+  String get account => _ar ? 'الحساب' : 'Account';
+  String get fromAccount => _ar ? 'من الحساب' : 'From account';
+  String get toAccount => _ar ? 'إلى الحساب' : 'To account';
+  String get amount => _ar ? 'المبلغ' : 'Amount';
+  String get amountSent => _ar ? 'المبلغ المُرسل' : 'Amount sent';
+  String get amountReceived => _ar
+      ? 'المبلغ المتوقع / المستلم فعليًا'
+      : 'Expected / actual amount received';
+  String get dateTime => _ar ? 'التاريخ والوقت' : 'Date & time';
+  String get notes => _ar ? 'ملاحظات' : 'Notes';
+  String get saveRecord => _ar ? 'حفظ السجل' : 'Save record';
+  String get chooseCategory => _ar ? 'اختر فئة' : 'Choose a category';
+  String get category => _ar ? 'الفئة' : 'Category';
+  String get manageCategories => _ar ? 'إدارة الفئات' : 'Manage categories';
+  String get searchCategories => _ar ? 'ابحث في الفئات' : 'Search categories';
+  String get noMatchingCategories =>
+      _ar ? 'لا توجد فئات مطابقة.' : 'No matching categories.';
+  String get manageCategoriesTitle =>
+      _ar ? 'إدارة الفئات' : 'Manage categories';
+  String get categoryName => _ar ? 'اسم الفئة' : 'Category name';
+  String get addUnder => _ar ? 'إضافة ضمن' : 'Add under';
+  String get addMainCategory => _ar ? 'إضافة فئة رئيسية' : 'Add main category';
+  String addSubcategory(String name) =>
+      _ar ? 'إضافة فئة فرعية: $name' : 'Add subcategory: $name';
+  String get categoriesLoadError =>
+      _ar ? 'تعذر تحميل الفئات.' : 'We couldn’t load categories.';
+  String get close => _ar ? 'إغلاق' : 'Close';
+  String get rename => _ar ? 'إعادة تسمية' : 'Rename';
+  String get hide => _ar ? 'إخفاء' : 'Hide';
+  String get restoreDefault => _ar ? 'استعادة الافتراضي' : 'Restore default';
+  String get archive => _ar ? 'أرشفة' : 'Archive';
+  String get hidden => _ar ? 'مخفي' : 'Hidden';
+  String recordAccountPicker(String name, AccountType type, String currency) =>
+      _ar
+      ? '$name — ${accountType(type)} — ${ltr(currency)}'
+      : '$name — ${accountType(type)} — $currency';
+  String? recordValidation(String? message) => switch (message) {
+    'Select an account.' => _ar ? 'اختر حسابًا.' : message,
+    'Enter a positive amount with up to 2 decimal places.' =>
+      _ar ? 'أدخل مبلغًا موجبًا حتى منزلتين عشريتين.' : message,
+    'Date and time are required.' => _ar ? 'التاريخ والوقت مطلوبان.' : message,
+    'Category is required.' => _ar ? 'الفئة مطلوبة.' : message,
+    'From and to accounts must be different.' =>
+      _ar ? 'يجب أن يختلف الحساب المصدر عن الحساب الوجهة.' : message,
+    _ => message,
+  };
 }

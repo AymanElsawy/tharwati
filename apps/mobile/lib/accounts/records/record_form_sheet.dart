@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../../core/local_datetime.dart';
+import '../../i18n/accounts_copy.dart';
+import '../../i18n/app_language.dart';
 import '../../theme/tokens.dart';
 import '../../widgets/app_sheet.dart';
 import '../../widgets/primary_button.dart';
@@ -10,7 +12,6 @@ import 'record_category_picker.dart';
 import 'record_schema.dart';
 import 'records_controller.dart';
 import 'records_models.dart';
-import 'records_service.dart';
 
 /// Add / edit an account record — port of the web `AccountRecordFormDialog`.
 /// Income / expense take a category; transfer takes a destination account and,
@@ -105,21 +106,19 @@ class _RecordFormSheetState extends State<RecordFormSheet> {
   }
 
   Future<void> _confirmDelete() async {
+    final copy = AccountsCopy.of(AppLanguageScope.of(context).language);
     final ok = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Delete record?'),
-        content: const Text(
-          'This will remove the record from your history. Your account '
-          'balances will be updated.',
-        ),
+        title: Text(copy.deleteRecordTitle),
+        content: Text(copy.deleteRecordBody),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Cancel'),
+            child: Text(copy.cancel),
           ),
           CompactButton(
-            label: 'Delete record',
+            label: copy.deleteRecord,
             tone: CompactButtonTone.danger,
             onPressed: () => Navigator.of(context).pop(true),
           ),
@@ -131,7 +130,9 @@ class _RecordFormSheetState extends State<RecordFormSheet> {
     if (done && mounted) Navigator.of(context).pop(true);
   }
 
-  String? _err(String f) => _submitted ? _errors[f] : null;
+  String? _err(BuildContext context, String field) => AccountsCopy.of(
+    AppLanguageScope.of(context).language,
+  ).recordValidation(_submitted ? _errors[field] : null);
 
   @override
   Widget build(BuildContext context) {
@@ -139,11 +140,12 @@ class _RecordFormSheetState extends State<RecordFormSheet> {
       listenable: widget.controller,
       builder: (context, _) {
         final c = context.colors;
+        final copy = AccountsCopy.of(AppLanguageScope.of(context).language);
         final isTransfer = _v.type == AccountRecordType.transfer;
         final from = _acc(_v.accountId);
 
         return AppSheet(
-          title: _isEditing ? 'Edit record' : 'Add record',
+          title: _isEditing ? copy.editRecord : copy.addRecord,
           children: [
             _TypeToggle(
               value: _v.type,
@@ -158,17 +160,17 @@ class _RecordFormSheetState extends State<RecordFormSheet> {
             const SizedBox(height: 14),
 
             _accountField(
-              label: isTransfer ? 'From account' : 'Account',
+              label: isTransfer ? copy.fromAccount : copy.account,
               value: _v.accountId,
-              error: _err('accountId'),
+              error: _err(context, 'accountId'),
               onChanged: (v) => setState(() => _v.accountId = v),
             ),
 
             if (isTransfer)
               _accountField(
-                label: 'To account',
+                label: copy.toAccount,
                 value: _v.toAccountId,
-                error: _err('toAccountId'),
+                error: _err(context, 'toAccountId'),
                 onChanged: (v) => setState(() => _v.toAccountId = v),
               )
             else
@@ -176,7 +178,7 @@ class _RecordFormSheetState extends State<RecordFormSheet> {
                 categories: widget.controller.categories,
                 mainCategoryId: _v.mainCategoryId,
                 subcategoryId: _v.subcategoryId,
-                error: _err('subcategoryId'),
+                error: _err(context, 'subcategoryId'),
                 onChanged: (mainId, subId) => setState(() {
                   _v.mainCategoryId = mainId;
                   _v.subcategoryId = subId;
@@ -191,15 +193,15 @@ class _RecordFormSheetState extends State<RecordFormSheet> {
               ),
 
             SheetField(
-              label: isTransfer ? 'Amount sent' : 'Amount',
-              error: _err('amount'),
+              label: isTransfer ? copy.amountSent : copy.amount,
+              error: _err(context, 'amount'),
               child: _amountField(_amount, from?.currencyCode),
             ),
 
             if (isTransfer && _crossCurrency)
               SheetField(
-                label: 'Expected / actual amount received',
-                error: _err('receivedAmount'),
+                label: copy.amountReceived,
+                error: _err(context, 'receivedAmount'),
                 child: _amountField(
                   _received,
                   _acc(_v.toAccountId)?.currencyCode,
@@ -207,8 +209,8 @@ class _RecordFormSheetState extends State<RecordFormSheet> {
               ),
 
             SheetField(
-              label: 'Date & time',
-              error: _err('occurredAt'),
+              label: copy.dateTime,
+              error: _err(context, 'occurredAt'),
               child: InkWell(
                 onTap: _pickDateTime,
                 borderRadius: BorderRadius.circular(AppRadius.field),
@@ -229,7 +231,7 @@ class _RecordFormSheetState extends State<RecordFormSheet> {
             ),
 
             SheetField(
-              label: 'Notes',
+              label: copy.notes,
               optional: true,
               child: SheetBox(
                 child: TextField(
@@ -266,14 +268,14 @@ class _RecordFormSheetState extends State<RecordFormSheet> {
                           color: c.negative.withValues(alpha: 0.4),
                         ),
                       ),
-                      child: const Text('Delete'),
+                      child: Text(copy.delete),
                     ),
                   ),
                   const SizedBox(width: 10),
                 ] else
                   Expanded(
                     child: NeutralButton(
-                      label: 'Cancel',
+                      label: copy.cancel,
                       onPressed: widget.controller.busy
                           ? null
                           : () => Navigator.of(context).pop(),
@@ -283,7 +285,7 @@ class _RecordFormSheetState extends State<RecordFormSheet> {
                 Expanded(
                   flex: 2,
                   child: PrimaryButton(
-                    label: 'Save record',
+                    label: copy.saveRecord,
                     busy: widget.controller.busy,
                     onPressed: _submit,
                   ),
@@ -303,6 +305,7 @@ class _RecordFormSheetState extends State<RecordFormSheet> {
     required ValueChanged<String> onChanged,
   }) {
     final c = context.colors;
+    final copy = AccountsCopy.of(AppLanguageScope.of(context).language);
     return SheetField(
       label: label,
       error: error,
@@ -319,7 +322,7 @@ class _RecordFormSheetState extends State<RecordFormSheet> {
                 DropdownMenuItem(
                   value: a.id,
                   child: Text(
-                    accountPickerLabel(a),
+                    copy.recordAccountPicker(a.name, a.type, a.currencyCode),
                     overflow: TextOverflow.ellipsis,
                   ),
                 ),
@@ -364,7 +367,11 @@ class _RecordFormSheetState extends State<RecordFormSheet> {
             ),
           ),
           if (currency != null)
-            Text(currency, style: TextStyle(color: c.inkMuted, fontSize: 12)),
+            Text(
+              currency,
+              textDirection: TextDirection.ltr,
+              style: TextStyle(color: c.inkMuted, fontSize: 12),
+            ),
         ],
       ),
     );
@@ -403,10 +410,23 @@ class _TypeToggle extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
-    const items = [
-      (AccountRecordType.income, 'Income', Color(0xFF059669)),
-      (AccountRecordType.expense, 'Expense', Color(0xFFDC2626)),
-      (AccountRecordType.transfer, 'Transfer', Color(0xFF475569)),
+    final copy = AccountsCopy.of(AppLanguageScope.of(context).language);
+    final items = [
+      (
+        AccountRecordType.income,
+        copy.recordTypeValue('income'),
+        const Color(0xFF059669),
+      ),
+      (
+        AccountRecordType.expense,
+        copy.recordTypeValue('expense'),
+        const Color(0xFFDC2626),
+      ),
+      (
+        AccountRecordType.transfer,
+        copy.recordTypeValue('transfer'),
+        const Color(0xFF475569),
+      ),
     ];
     return Row(
       children: [

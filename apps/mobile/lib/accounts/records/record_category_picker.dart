@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../i18n/accounts_copy.dart';
+import '../../i18n/app_language.dart';
 import '../../theme/tokens.dart';
 import '../../widgets/app_sheet.dart';
 import '../../widgets/primary_button.dart';
@@ -32,6 +34,7 @@ class RecordCategoryField extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
+    final copy = AccountsCopy.of(AppLanguageScope.of(context).language);
     VisibleRecordMainCategory? main;
     for (final m in categories) {
       if (m.id == mainCategoryId) main = m;
@@ -42,7 +45,7 @@ class RecordCategoryField extends StatelessWidget {
     }
     final label = (main != null && sub != null)
         ? '${main.name} → ${sub.name}'
-        : 'Choose a category';
+        : copy.chooseCategory;
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 14),
@@ -53,7 +56,7 @@ class RecordCategoryField extends StatelessWidget {
             children: [
               Expanded(
                 child: Text(
-                  'Category',
+                  copy.category,
                   style: TextStyle(
                     color: c.ink.withValues(alpha: 0.85),
                     fontSize: 13,
@@ -69,7 +72,7 @@ class RecordCategoryField extends StatelessWidget {
                   color: c.inkMuted,
                 ),
                 label: Text(
-                  'Manage categories',
+                  copy.manageCategories,
                   style: TextStyle(color: c.inkMuted, fontSize: 12),
                 ),
                 style: TextButton.styleFrom(
@@ -158,6 +161,7 @@ class _CategoryPickerSheetState extends State<_CategoryPickerSheet> {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
+    final copy = AccountsCopy.of(AppLanguageScope.of(context).language);
     final q = _query.text.trim();
     return Padding(
       padding: EdgeInsets.only(
@@ -193,10 +197,10 @@ class _CategoryPickerSheetState extends State<_CategoryPickerSheet> {
                           controller: _query,
                           autofocus: true,
                           onChanged: (_) => setState(() {}),
-                          decoration: const InputDecoration(
+                          decoration: InputDecoration(
                             border: InputBorder.none,
                             isCollapsed: true,
-                            hintText: 'Search categories',
+                            hintText: copy.searchCategories,
                           ),
                           style: TextStyle(color: c.ink, fontSize: 15),
                         ),
@@ -221,7 +225,9 @@ class _CategoryPickerSheetState extends State<_CategoryPickerSheet> {
         return Padding(
           padding: const EdgeInsets.all(20),
           child: Text(
-            'No matching categories.',
+            AccountsCopy.of(
+              AppLanguageScope.of(context).language,
+            ).noMatchingCategories,
             style: TextStyle(color: c.inkMuted, fontSize: 14),
           ),
         );
@@ -312,6 +318,8 @@ class _MainRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
+    final isRtl =
+        AppLanguageScope.of(context).language.direction == TextDirection.rtl;
     return ListTile(
       dense: true,
       onTap: onTap,
@@ -324,7 +332,9 @@ class _MainRow extends StatelessWidget {
         ),
       ),
       trailing: Icon(
-        expanded ? Icons.expand_more : Icons.chevron_right,
+        expanded
+            ? Icons.expand_more
+            : (isRtl ? Icons.chevron_left : Icons.chevron_right),
         size: 18,
         color: c.inkMuted,
       ),
@@ -414,28 +424,29 @@ class _RecordCategoryManagerSheetState
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
+    final copy = AccountsCopy.of(AppLanguageScope.of(context).language);
     final mains = _categories.where((cat) => cat.isMain).toList()
       ..sort((a, b) => a.sortOrder.compareTo(b.sortOrder));
 
     return AppSheet(
-      title: 'Manage categories',
+      title: copy.manageCategoriesTitle,
       children: [
         SheetField(
-          label: 'Category name',
+          label: copy.categoryName,
           child: SheetBox(
             child: TextField(
               controller: _name,
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
                 border: InputBorder.none,
                 isCollapsed: true,
-                hintText: 'Category name',
+                hintText: copy.categoryName,
               ),
               style: TextStyle(color: c.ink, fontSize: 15),
             ),
           ),
         ),
         SheetField(
-          label: 'Add under',
+          label: copy.addUnder,
           child: SheetBox(
             child: DropdownButtonHideUnderline(
               child: DropdownButton<String>(
@@ -444,15 +455,15 @@ class _RecordCategoryManagerSheetState
                 isExpanded: true,
                 onChanged: (v) => setState(() => _parentId = v ?? ''),
                 items: [
-                  const DropdownMenuItem(
+                  DropdownMenuItem(
                     value: '',
-                    child: Text('Add main category'),
+                    child: Text(copy.addMainCategory),
                   ),
                   for (final m in mains)
                     DropdownMenuItem(
                       value: m.id,
                       child: Text(
-                        'Add subcategory: ${_displayName(m)}',
+                        copy.addSubcategory(_displayName(m)),
                         overflow: TextOverflow.ellipsis,
                       ),
                     ),
@@ -467,7 +478,7 @@ class _RecordCategoryManagerSheetState
           ),
         ),
         PrimaryButton(
-          label: 'Save',
+          label: copy.saveChanges,
           onPressed: () {
             final name = _name.text.trim();
             if (name.isEmpty) return;
@@ -486,7 +497,7 @@ class _RecordCategoryManagerSheetState
         const SizedBox(height: 14),
         if (_error)
           Text(
-            'We couldn’t load categories.',
+            copy.categoriesLoadError,
             style: TextStyle(color: c.negative, fontSize: 13),
           ),
         if (_loading)
@@ -529,7 +540,7 @@ class _RecordCategoryManagerSheetState
             ),
         const SizedBox(height: 8),
         NeutralButton(
-          label: 'Close',
+          label: copy.close,
           onPressed: () => Navigator.of(context).pop(_changed),
         ),
       ],
@@ -578,6 +589,7 @@ class _ManagerRowState extends State<_ManagerRow> {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
+    final copy = AccountsCopy.of(AppLanguageScope.of(context).language);
     return Container(
       padding: EdgeInsets.fromLTRB(widget.isMain ? 12 : 26, 8, 6, 8),
       decoration: BoxDecoration(
@@ -607,7 +619,7 @@ class _ManagerRowState extends State<_ManagerRow> {
                       children: [
                         if (widget.isHidden)
                           TextSpan(
-                            text: '  (Hidden)',
+                            text: '  (${copy.hidden})',
                             style: TextStyle(
                               color: c.disabledFg,
                               fontWeight: FontWeight.w400,
@@ -625,7 +637,7 @@ class _ManagerRowState extends State<_ManagerRow> {
                 widget.onRename(v);
                 setState(() => _editing = false);
               },
-              child: const Text('Save'),
+              child: Text(copy.saveChanges),
             )
           else
             PopupMenuButton<String>(
@@ -644,16 +656,16 @@ class _ManagerRowState extends State<_ManagerRow> {
                 }
               },
               itemBuilder: (_) => [
-                const PopupMenuItem(value: 'rename', child: Text('Rename')),
+                PopupMenuItem(value: 'rename', child: Text(copy.rename)),
                 if (widget.isDefault && !widget.isHidden)
-                  const PopupMenuItem(value: 'hide', child: Text('Hide')),
+                  PopupMenuItem(value: 'hide', child: Text(copy.hide)),
                 if (widget.isDefault && widget.hasOverride)
-                  const PopupMenuItem(
+                  PopupMenuItem(
                     value: 'restore',
-                    child: Text('Restore default'),
+                    child: Text(copy.restoreDefault),
                   ),
                 if (!widget.isDefault)
-                  const PopupMenuItem(value: 'archive', child: Text('Archive')),
+                  PopupMenuItem(value: 'archive', child: Text(copy.archive)),
               ],
             ),
         ],

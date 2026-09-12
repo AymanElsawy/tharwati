@@ -798,6 +798,7 @@ feed must not hide the portfolio (web keeps separate `holdingsError` /
   history, update-value and disposal sheets, and UI-side validation) are also
   translated. The Cash/Bank records read surface (ledger header, summaries,
   search, filters, list states, day groups, rows, and pagination) is also
-  translated; record create/edit/delete and category-management forms remain
-  English-only. Metal and brokerage flows remain English-only pending later
-  passes; lower-layer repository/RPC errors are not language-aware.
+  translated. Cash/Bank record create/edit/delete sheets and the category
+  picker/manager also support English/Arabic, including UI-side validation;
+  lower-layer repository/RPC errors remain language-agnostic. Metal and
+  brokerage flows remain English-only pending later passes.

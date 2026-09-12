@@ -103,6 +103,27 @@ void main() {
     },
   );
 
+  test('Record write and category-management copy localizes controls', () {
+    final english = AccountsCopy.of(AppLanguage.en);
+    final arabic = AccountsCopy.of(AppLanguage.ar);
+
+    expect(english.editRecord, 'Edit record');
+    expect(english.deleteRecordTitle, 'Delete record?');
+    expect(
+      english.recordValidation('Category is required.'),
+      'Category is required.',
+    );
+    expect(arabic.editRecord, 'تعديل السجل');
+    expect(arabic.deleteRecord, 'حذف السجل');
+    expect(arabic.manageCategories, 'إدارة الفئات');
+    expect(arabic.recordTypeValue('transfer'), 'تحويل');
+    expect(arabic.recordValidation('Category is required.'), 'الفئة مطلوبة.');
+    expect(
+      arabic.recordAccountPicker('Main', AccountType.bank, 'EGP'),
+      contains('\u2066EGP\u2069'),
+    );
+  });
+
   testWidgets(
     'Arabic list cards localize unavailable values and preserve LTR data',
     (tester) async {
