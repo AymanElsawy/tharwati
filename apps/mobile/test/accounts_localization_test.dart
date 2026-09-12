@@ -173,6 +173,30 @@ void main() {
     );
   });
 
+  test('Gold and Silver detail copy localizes captions and dates', () {
+    final english = AccountsCopy.of(AppLanguage.en);
+    final arabic = AccountsCopy.of(AppLanguage.ar);
+
+    expect(english.metalName('gold'), 'Gold');
+    expect(english.byPurity, 'By purity');
+    expect(english.metalPurchaseDate(5, 1, 2026), '5 Jan 2026');
+    expect(arabic.metalName('silver'), 'فضة');
+    expect(arabic.byPurity, 'حسب العيار');
+    expect(arabic.purchaseCount(2), contains('\u20662\u2069'));
+    expect(
+      arabic.metalTypeCurrencyCaption('gold', 'EGP'),
+      contains('\u2066EGP\u2069'),
+    );
+    expect(
+      arabic.metalPurchaseDate(5, 1, 2026),
+      allOf(
+        contains('يناير'),
+        contains('\u20665\u2069'),
+        contains('\u20662026\u2069'),
+      ),
+    );
+  });
+
   testWidgets(
     'Arabic list cards localize unavailable values and preserve LTR data',
     (tester) async {

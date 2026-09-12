@@ -200,9 +200,9 @@ class _AccountDetailPageState extends State<AccountDetailPage> {
             },
             itemBuilder: (context) => [
               if (a.type == AccountType.gold && a.isActive)
-                const PopupMenuItem(
+                PopupMenuItem(
                   value: 'add_purchase',
-                  child: Text('Add purchase'),
+                  child: Text(copy.addMetalPurchase),
                 ),
               PopupMenuItem(value: 'edit', child: Text(copy.edit)),
               if (a.isActive && !a.isSold)
@@ -212,10 +212,7 @@ class _AccountDetailPageState extends State<AccountDetailPage> {
                   child: Text(copy.closeAccount),
                 )
               else if (a.isClosed)
-                PopupMenuItem(
-                  value: 'reopen',
-                  child: Text(copy.reopenAccount),
-                ),
+                PopupMenuItem(value: 'reopen', child: Text(copy.reopenAccount)),
               PopupMenuItem(
                 value: 'delete',
                 enabled: lifecycle?.canDelete ?? false,
@@ -250,7 +247,7 @@ class _AccountDetailPageState extends State<AccountDetailPage> {
                 if (a.type == AccountType.gold && a.isActive) ...[
                   Expanded(
                     child: PrimaryButton(
-                      label: 'Add purchase',
+                      label: copy.addMetalPurchase,
                       fontSize: 14,
                       onPressed: widget.controller.busy
                           ? null
@@ -431,6 +428,7 @@ class _GoldHero extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
+    final copy = AccountsCopy.of(AppLanguageScope.of(context).language);
     final a = item.account;
     final purchases = detail?.purchases ?? const <MetalPurchase>[];
     // Fold in chronological order for the weighted average / weight.
@@ -446,51 +444,52 @@ class _GoldHero extends StatelessWidget {
         : null;
     final gainPositive = gain != null && (D.compare(gain, '0') ?? 0) >= 0;
 
-    Widget cell(String label, String value) => Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
-      decoration: BoxDecoration(
-        color: c.fieldFill,
-        borderRadius: BorderRadius.circular(13),
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        mainAxisAlignment: MainAxisAlignment.center,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            label,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: TextStyle(
-              color: c.inkMuted,
-              fontSize: 10,
-              letterSpacing: 1,
-              fontWeight: FontWeight.w700,
-            ),
+    Widget cell(String label, String value, {TextDirection? textDirection}) =>
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
+          decoration: BoxDecoration(
+            color: c.fieldFill,
+            borderRadius: BorderRadius.circular(13),
           ),
-          const SizedBox(height: 3),
-          Text(
-            value,
-            textDirection: TextDirection.ltr,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: TextStyle(
-              color: c.ink,
-              fontSize: 14,
-              fontWeight: FontWeight.w700,
-              fontFeatures: const [FontFeature.tabularFigures()],
-            ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            mainAxisAlignment: MainAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  color: c.inkMuted,
+                  fontSize: 10,
+                  letterSpacing: 1,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              const SizedBox(height: 3),
+              Text(
+                value,
+                textDirection: textDirection,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  color: c.ink,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w700,
+                  fontFeatures: const [FontFeature.tabularFigures()],
+                ),
+              ),
+            ],
           ),
-        ],
-      ),
-    );
+        );
 
     return _HeroShell(
       account: a,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _label(c, 'CURRENT VALUE'),
+          _label(c, copy.currentMetalValue),
           const SizedBox(height: 4),
           Text(
             MoneyFormat.money(currentValue, a.currencyCode),
@@ -507,8 +506,8 @@ class _GoldHero extends StatelessWidget {
             padding: const EdgeInsets.only(top: 4),
             child: Text(
               currentValue == null
-                  ? 'Live metal price unavailable right now'
-                  : 'Weight × the live ${a.metalType ?? "metal"} price',
+                  ? copy.liveMetalPriceUnavailable
+                  : copy.liveMetalPriceCaption(a.metalType),
               style: TextStyle(color: c.inkMuted, fontSize: 12),
             ),
           ),
@@ -521,10 +520,22 @@ class _GoldHero extends StatelessWidget {
             crossAxisSpacing: 8,
             childAspectRatio: 2.5,
             children: [
-              cell('METAL', a.typeLabel),
-              cell('PURITY', (a.purity ?? '—').toUpperCase()),
-              cell('WEIGHT', '${_grams(wa.balanceGrams)} g'),
-              cell('TOTAL COST', MoneyFormat.money(totalCost, a.currencyCode)),
+              cell(copy.metal, copy.metalName(a.metalType)),
+              cell(
+                copy.purityLabel,
+                copy.purity(a.purity ?? 'other'),
+                textDirection: TextDirection.ltr,
+              ),
+              cell(
+                copy.weight,
+                '${_grams(wa.balanceGrams)} g',
+                textDirection: TextDirection.ltr,
+              ),
+              cell(
+                copy.totalCostLabel,
+                MoneyFormat.money(totalCost, a.currencyCode),
+                textDirection: TextDirection.ltr,
+              ),
             ],
           ),
           if (gain != null) ...[
@@ -538,7 +549,7 @@ class _GoldHero extends StatelessWidget {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Text(
-                    gainPositive ? 'Unrealized gain' : 'Unrealized loss',
+                    gainPositive ? copy.unrealizedGain : copy.unrealizedLoss,
                     style: TextStyle(
                       color: c.inkMuted,
                       fontSize: 13,
@@ -579,6 +590,7 @@ class _HeroShell extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
+    final copy = AccountsCopy.of(AppLanguageScope.of(context).language);
     return Container(
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
@@ -607,7 +619,12 @@ class _HeroShell extends StatelessWidget {
                     ),
                     const SizedBox(height: 2),
                     Text(
-                      '${account.typeLabel} · ${account.currencyCode}',
+                      account.type == AccountType.gold
+                          ? copy.metalTypeCurrencyCaption(
+                              account.metalType,
+                              account.currencyCode,
+                            )
+                          : '${account.typeLabel} · ${account.currencyCode}',
                       style: TextStyle(color: c.inkMuted, fontSize: 12),
                     ),
                   ],
@@ -634,6 +651,7 @@ class _PurityBreakdown extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
+    final copy = AccountsCopy.of(AppLanguageScope.of(context).language);
     final rows = detail?.purities ?? const <MetalPurityAggregate>[];
     if (detail == null || rows.isEmpty) return const SizedBox.shrink();
     final currency = detail!.account.currencyCode;
@@ -649,7 +667,7 @@ class _PurityBreakdown extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'By purity',
+            copy.byPurity,
             style: TextStyle(
               color: c.ink,
               fontSize: 15,
@@ -658,7 +676,7 @@ class _PurityBreakdown extends StatelessWidget {
           ),
           const SizedBox(height: 4),
           Text(
-            'Each purity is valued at the spot price scaled by its fineness.',
+            copy.purityBreakdownDescription,
             style: TextStyle(color: c.inkMuted, fontSize: 12, height: 1.4),
           ),
           const SizedBox(height: 10),
@@ -680,9 +698,8 @@ class _PurityBreakdown extends StatelessWidget {
                         borderRadius: BorderRadius.circular(AppRadius.chip),
                       ),
                       child: Text(
-                        row.purity == 'other'
-                            ? 'Other'
-                            : row.purity.toUpperCase(),
+                        copy.purity(row.purity),
+                        textDirection: TextDirection.ltr,
                         style: TextStyle(
                           color: c.metal,
                           fontSize: 11,
@@ -706,8 +723,7 @@ class _PurityBreakdown extends StatelessWidget {
                             ),
                           ),
                           Text(
-                            '${row.transactionCount} '
-                            '${row.transactionCount == 1 ? "purchase" : "purchases"}',
+                            copy.purchaseCount(row.transactionCount),
                             style: TextStyle(color: c.inkMuted, fontSize: 12),
                           ),
                         ],
@@ -722,7 +738,13 @@ class _PurityBreakdown extends StatelessWidget {
                         fontWeight: FontWeight.w700,
                       ),
                     ),
-                    Icon(Icons.chevron_right, size: 18, color: c.inkMuted),
+                    Icon(
+                      Directionality.of(context) == TextDirection.rtl
+                          ? Icons.chevron_left
+                          : Icons.chevron_right,
+                      size: 18,
+                      color: c.inkMuted,
+                    ),
                   ],
                 ),
               ),
@@ -740,6 +762,7 @@ class _PurchaseHistory extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
+    final copy = AccountsCopy.of(AppLanguageScope.of(context).language);
     final purchases = detail?.purchases;
     return Container(
       padding: const EdgeInsets.all(16),
@@ -754,7 +777,7 @@ class _PurchaseHistory extends StatelessWidget {
           Row(
             children: [
               Text(
-                'Purchase history',
+                copy.purchaseHistory,
                 style: TextStyle(
                   color: c.ink,
                   fontSize: 15,
@@ -770,7 +793,7 @@ class _PurchaseHistory extends StatelessWidget {
                   borderRadius: BorderRadius.circular(AppRadius.chip),
                 ),
                 child: Text(
-                  'APPEND-ONLY',
+                  copy.appendOnly,
                   style: TextStyle(
                     color: c.inkMuted,
                     fontSize: 9,
@@ -795,7 +818,7 @@ class _PurchaseHistory extends StatelessWidget {
             )
           else if (purchases.isEmpty)
             Text(
-              'No purchases yet. Add one to start the weighted-average cost.',
+              copy.noMetalPurchases,
               style: TextStyle(color: c.inkMuted, fontSize: 13),
             )
           else
@@ -808,8 +831,7 @@ class _PurchaseHistory extends StatelessWidget {
             ],
           const SizedBox(height: 10),
           Text(
-            'Purchases can be added but never edited or deleted — correct one '
-            'by appending an adjusting entry.',
+            copy.purchaseCorrectionHelp,
             style: TextStyle(color: c.disabledFg, fontSize: 11, height: 1.5),
           ),
         ],
@@ -823,28 +845,14 @@ class _PurchaseRow extends StatelessWidget {
   final MetalPurchase purchase;
   final String currencyCode;
 
-  static const _months = [
-    'Jan',
-    'Feb',
-    'Mar',
-    'Apr',
-    'May',
-    'Jun',
-    'Jul',
-    'Aug',
-    'Sep',
-    'Oct',
-    'Nov',
-    'Dec',
-  ];
-
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
+    final copy = AccountsCopy.of(AppLanguageScope.of(context).language);
     final at = DateTime.tryParse(purchase.purchasedAt)?.toLocal();
     final date = at == null
         ? purchase.purchasedAt
-        : '${at.day} ${_months[at.month - 1]} ${at.year}';
+        : copy.metalPurchaseDate(at.day, at.month, at.year);
     final sub = D.multiply(purchase.quantityGrams, purchase.costPerUnit);
     final total = D.add(sub ?? '0', purchase.fees) ?? sub ?? '0';
 

@@ -503,4 +503,73 @@ class AccountsCopy {
       _ar ? 'اختر الحساب الذي دُفع منه.' : message,
     _ => message,
   };
+
+  // Gold/Silver account-detail presentation.
+  String metalName(String? value) => switch (value) {
+    'silver' => _ar ? 'فضة' : 'Silver',
+    'gold' => _ar ? 'ذهب' : 'Gold',
+    _ => _ar ? 'معدن' : 'Metal',
+  };
+  String metalTypeCurrencyCaption(String? metalType, String currency) => _ar
+      ? '${metalName(metalType)} · ${ltr(currency)}'
+      : '${metalName(metalType)} · $currency';
+  String get liveMetalPriceUnavailable => _ar
+      ? 'سعر المعدن المباشر غير متاح الآن'
+      : 'Live metal price unavailable right now';
+  String liveMetalPriceCaption(String? metalType) => _ar
+      ? 'الوزن × سعر ${metalName(metalType)} المباشر'
+      : 'Weight × the live ${metalName(metalType).toLowerCase()} price';
+  String get metal => _ar ? 'المعدن' : 'METAL';
+  String get totalCostLabel => _ar ? 'إجمالي التكلفة' : 'TOTAL COST';
+  String get unrealizedGain => _ar ? 'ربح غير محقق' : 'Unrealized gain';
+  String get unrealizedLoss => _ar ? 'خسارة غير محققة' : 'Unrealized loss';
+  String get byPurity => _ar ? 'حسب العيار' : 'By purity';
+  String get purityBreakdownDescription => _ar
+      ? 'تُقيّم كل درجة نقاء بسعر السوق مضروبًا في معامل النقاوة.'
+      : 'Each purity is valued at the spot price scaled by its fineness.';
+  String purchaseCount(int count) => _ar
+      ? '${ltr('$count')} ${count == 1 ? 'عملية شراء' : 'عمليات شراء'}'
+      : '$count ${count == 1 ? 'purchase' : 'purchases'}';
+  String get purchaseHistory => _ar ? 'سجل المشتريات' : 'Purchase history';
+  String get appendOnly => _ar ? 'إضافي فقط' : 'APPEND-ONLY';
+  String get noMetalPurchases => _ar
+      ? 'لا توجد مشتريات بعد. أضف عملية لبدء احتساب متوسط التكلفة المرجّح.'
+      : 'No purchases yet. Add one to start the weighted-average cost.';
+  String get purchaseCorrectionHelp => _ar
+      ? 'يمكن إضافة المشتريات فقط؛ صحح واحدة بإضافة قيد تعديل.'
+      : 'Purchases can be added but never edited or deleted — correct one by appending an adjusting entry.';
+  String metalPurchaseDate(int day, int month, int year) {
+    const englishMonths = [
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec',
+    ];
+    const arabicMonths = [
+      'يناير',
+      'فبراير',
+      'مارس',
+      'أبريل',
+      'مايو',
+      'يونيو',
+      'يوليو',
+      'أغسطس',
+      'سبتمبر',
+      'أكتوبر',
+      'نوفمبر',
+      'ديسمبر',
+    ];
+    final monthName = (_ar ? arabicMonths : englishMonths)[month - 1];
+    return _ar
+        ? '${ltr('$day')} $monthName ${ltr('$year')}'
+        : '$day $monthName $year';
+  }
 }
