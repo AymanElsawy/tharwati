@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:tharwati_mobile/accounts/account_models.dart';
 import 'package:tharwati_mobile/accounts/account_valuation.dart';
+import 'package:tharwati_mobile/accounts/brokerage/brokerage_activity.dart';
 import 'package:tharwati_mobile/accounts/accounts_service.dart';
 import 'package:tharwati_mobile/accounts/widgets/account_row_card.dart';
 import 'package:tharwati_mobile/i18n/accounts_copy.dart';
@@ -195,6 +196,37 @@ void main() {
         contains('\u20662026\u2069'),
       ),
     );
+  });
+
+  test('Brokerage read/detail copy localizes labels and isolates values', () {
+    final english = AccountsCopy.of(AppLanguage.en);
+    final arabic = AccountsCopy.of(AppLanguage.ar);
+    final item = ActivityItem(
+      id: 'activity-1',
+      occurredAt: '2026-09-12T10:00:00Z',
+      transactionTypeCode: 'dividend',
+      transactionCurrencyCode: 'EGP',
+      notes: null,
+      reversesTransactionId: null,
+      correctsTransactionId: null,
+      entries: const [],
+    );
+
+    expect(english.holdingsCount(2), 'HOLDINGS · 2');
+    expect(
+      english.brokerageActivityLabel(
+        'buy',
+        incoming: false,
+        reinvested: false,
+        partiallyReinvested: false,
+      ),
+      'Buy',
+    );
+    expect(arabic.brokerage, 'الوساطة');
+    expect(arabic.holdingsCount(2), contains('\u20662\u2069'));
+    expect(arabic.exchangeRateTo('EGP'), contains('\u2066EGP\u2069'));
+    expect(arabic.localizedDate('2026-01-05'), contains('يناير'));
+    expect(localizedActivityLabel(item, 'account-1', arabic), 'توزيعات');
   });
 
   testWidgets(

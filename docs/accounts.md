@@ -804,5 +804,8 @@ feed must not hide the portfolio (web keeps separate `holdingsError` /
   purity-detail presentation, add/edit purchase sheet, and Gold/Silver account
   detail presentation also support English/Arabic. Their weights, prices,
   money, purity values, dates, and currency values remain LTR, and purity-list
-  disclosure affordances mirror in Arabic. Other metal presentation and
-  brokerage flows remain English-only pending later passes.
+  disclosure affordances mirror in Arabic. Brokerage read/detail presentation
+  (account summary, holdings, activity, and holding detail) also supports
+  English/Arabic with LTR-isolated monetary values, quantities, prices,
+  symbols, dates, and currency codes. Trade and dividend sheets, and raw
+  lower-layer errors, remain pending later localization passes.

@@ -572,4 +572,117 @@ class AccountsCopy {
         ? '${ltr('$day')} $monthName ${ltr('$year')}'
         : '$day $monthName $year';
   }
+
+  // Brokerage read/detail presentation.
+  String get brokerage => _ar ? 'الوساطة' : 'Brokerage';
+  String get brokerageLoadError =>
+      _ar ? 'تعذر تحميل هذا الحساب' : 'We couldn’t load this account';
+  String get brokerageSafeError => _ar
+      ? 'ممتلكاتك آمنة. اسحب للتحديث أو حاول مجددًا.'
+      : 'Your holdings are safe. Pull to refresh or try again.';
+  String get buy => _ar ? 'شراء' : 'Buy';
+  String get buyMore => _ar ? 'شراء المزيد' : 'Buy more';
+  String get sell => _ar ? 'بيع' : 'Sell';
+  String get dividend => _ar ? 'توزيعات' : 'Dividend';
+  String holdingsCount(int count) =>
+      _ar ? 'الممتلكات · ${ltr('$count')}' : 'HOLDINGS · $count';
+  String get noInvestments =>
+      _ar ? 'لا توجد استثمارات بعد' : 'No investments yet';
+  String get noInvestmentsDescription => _ar
+      ? 'سجل عملية شراء لبدء تتبع ممتلكات هذا الحساب وقيمتها السوقية.'
+      : 'Record a buy to start tracking this account’s holdings and their market value.';
+  String get activity => _ar ? 'النشاط' : 'ACTIVITY';
+  String get activityLoadError => _ar
+      ? 'تعذر تحميل نشاط هذا الحساب. لا تتأثر ممتلكاتك المعروضة أعلاه.'
+      : 'We couldn’t load this account’s activity. Your holdings above are unaffected.';
+  String get noActivity => _ar ? 'لا يوجد نشاط بعد.' : 'No activity yet.';
+  String get updated => _ar ? 'محدّث' : 'UPDATED';
+  String get removed => _ar ? 'مزال' : 'REMOVED';
+  String activityUnits(String value) =>
+      _ar ? '${ltr(value)} وحدات' : '$value units';
+  String signedMoneyWithPercent(String money, String percent) =>
+      _ar ? '${ltr(money)} · ${ltr(percent)}' : '$money · $percent';
+  String localizedDate(String isoDate) {
+    final parts = isoDate.split('-');
+    if (parts.length != 3) return isoDate;
+    final year = int.tryParse(parts[0]);
+    final month = int.tryParse(parts[1]);
+    final day = int.tryParse(parts[2]);
+    if (year == null ||
+        month == null ||
+        day == null ||
+        month < 1 ||
+        month > 12) {
+      return isoDate;
+    }
+    return metalPurchaseDate(day, month, year);
+  }
+
+  String get availableCash => _ar ? 'النقد المتاح' : 'Available cash';
+  String get holdingsMarketValue =>
+      _ar ? 'القيمة السوقية للممتلكات' : 'Holdings market value';
+  String get holdingsCost => _ar ? 'تكلفة الممتلكات' : 'Holdings cost';
+  String incompleteHoldings(int count) => _ar
+      ? '${ltr('$count')} ${count == 1 ? 'ممتلكة لا تملك' : 'ممتلكات لا تملك'} سعرًا حاليًا، لذا لا يمكن إكمال الإجماليات أعلاه. تبقى أرقام التكلفة دقيقة.'
+      : '$count ${count == 1 ? 'holding has' : 'holdings have'} no current price, so the totals above can’t be completed. Cost figures are still exact.';
+  String get quantity => _ar ? 'الكمية' : 'Quantity';
+  String get price => _ar ? 'السعر' : 'Price';
+  String get marketValue => _ar ? 'القيمة السوقية' : 'Market value';
+  String get averageCost => _ar ? 'متوسط التكلفة' : 'Average cost';
+  String get currentPrice => _ar ? 'السعر الحالي' : 'Current price';
+  String get noCurrentPrice =>
+      _ar ? 'لا يتوفر سعر حالي' : 'No current price available';
+  String get holding => _ar ? 'ممتلكة' : 'Holding';
+  String get positionNoLongerOpen =>
+      _ar ? 'لم تعد هذه الممتلكة مفتوحة.' : 'This position is no longer open.';
+  String get history => _ar ? 'السجل' : 'HISTORY';
+  String get holdingHistoryLoadError => _ar
+      ? 'تعذر تحميل سجل هذه الممتلكة.'
+      : 'We couldn’t load this position’s history.';
+  String get noHoldingHistory => _ar ? 'لا يوجد سجل بعد.' : 'No history yet.';
+  String get existingHolding => _ar ? 'ممتلكة قائمة' : 'Existing holding';
+  String get stalePrice => _ar
+      ? 'هذا السعر قديم؛ لم يقم المزوّد بتحديثه مؤخرًا.'
+      : 'This price is stale — the provider hasn’t refreshed it recently.';
+  String get remove => _ar ? 'إزالة' : 'Remove';
+  String get removeExistingHoldingTitle =>
+      _ar ? 'إزالة هذه الممتلكة القائمة؟' : 'Remove this existing holding?';
+  String get removeExistingHoldingBody => _ar
+      ? 'يبقى القيد في السجل مع تمييزه كقيد معكوس، وتُعاد الكمية وأساس التكلفة إلى وضعهما السابق.'
+      : 'The entry stays in the ledger marked reversed, and the position’s quantity and cost basis are adjusted back.';
+  String get editExistingHolding =>
+      _ar ? 'تعديل الممتلكة القائمة' : 'Edit existing holding';
+  String get editExistingHoldingSubtitle => _ar
+      ? 'يحفظ نسخة مصححة. يبقى الأصل في السجل بوصفه مستبدلًا.'
+      : 'Saves a corrected version. The original stays in the ledger, superseded.';
+  String exchangeRateTo(String currency) =>
+      _ar ? 'سعر الصرف إلى ${ltr(currency)}' : 'Exchange rate to $currency';
+  String get optional => _ar ? 'اختياري' : 'Optional';
+  String? existingHoldingValidation(String? message) => switch (message) {
+    'Enter a quantity greater than zero.' =>
+      _ar ? 'أدخل كمية أكبر من صفر.' : message,
+    'Enter an average cost greater than zero.' =>
+      _ar ? 'أدخل متوسط تكلفة أكبر من صفر.' : message,
+    'Enter the exchange rate.' => _ar ? 'أدخل سعر الصرف.' : message,
+    _ => message,
+  };
+  String brokerageActivityLabel(
+    String code, {
+    required bool incoming,
+    required bool reinvested,
+    required bool partiallyReinvested,
+  }) => switch (code) {
+    'buy' => buy,
+    'sell' => sell,
+    'opening_position' => existingHolding,
+    'dividend' when partiallyReinvested =>
+      _ar ? 'توزيعات معاد استثمارها جزئيًا' : 'Dividend partially reinvested',
+    'dividend' when reinvested =>
+      _ar ? 'توزيعات معاد استثمارها' : 'Dividend reinvested',
+    'dividend' => dividend,
+    _ =>
+      incoming
+          ? (_ar ? 'تحويل وارد' : 'Transfer in')
+          : (_ar ? 'تحويل صادر' : 'Transfer out'),
+  };
 }

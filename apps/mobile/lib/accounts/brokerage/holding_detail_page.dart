@@ -4,6 +4,8 @@ import 'package:flutter/services.dart';
 import '../../core/decimals.dart';
 import '../../core/local_datetime.dart';
 import '../../core/money_format.dart';
+import '../../i18n/accounts_copy.dart';
+import '../../i18n/app_language.dart';
 import '../../theme/tokens.dart';
 import '../../widgets/app_sheet.dart';
 import '../../widgets/callout.dart';
@@ -110,21 +112,19 @@ class _HoldingDetailPageState extends State<HoldingDetailPage> {
   }
 
   Future<void> _reverse(ActivityItem item) async {
+    final copy = AccountsCopy.of(AppLanguageScope.of(context).language);
     final ok = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Remove this existing holding?'),
-        content: const Text(
-          'The entry stays in the ledger marked reversed, and the position’s '
-          'quantity and cost basis are adjusted back.',
-        ),
+        title: Text(copy.removeExistingHoldingTitle),
+        content: Text(copy.removeExistingHoldingBody),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Cancel'),
+            child: Text(copy.cancel),
           ),
           CompactButton(
-            label: 'Remove',
+            label: copy.remove,
             tone: CompactButtonTone.danger,
             onPressed: () => Navigator.of(context).pop(true),
           ),
@@ -139,6 +139,7 @@ class _HoldingDetailPageState extends State<HoldingDetailPage> {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
+    final copy = AccountsCopy.of(AppLanguageScope.of(context).language);
     return ListenableBuilder(
       listenable: widget.controller,
       builder: (context, _) {
@@ -147,7 +148,10 @@ class _HoldingDetailPageState extends State<HoldingDetailPage> {
         return Scaffold(
           backgroundColor: c.canvas,
           appBar: AppBar(
-            title: Text(asset?.symbol ?? asset?.name ?? 'Holding'),
+            title: Text(
+              asset?.symbol ?? asset?.name ?? copy.holding,
+              textDirection: asset?.symbol == null ? null : TextDirection.ltr,
+            ),
           ),
           body: RefreshIndicator(
             onRefresh: _load,
@@ -157,19 +161,19 @@ class _HoldingDetailPageState extends State<HoldingDetailPage> {
                     padding: const EdgeInsets.all(20),
                     children: [
                       Text(
-                        'This position is no longer open.',
+                        copy.positionNoLongerOpen,
                         style: TextStyle(color: c.inkMuted, fontSize: 13),
                       ),
                     ],
                   )
-                : _body(c, entry),
+                : _body(c, entry, copy),
           ),
         );
       },
     );
   }
 
-  Widget _body(AppColors c, HoldingValuation entry) {
+  Widget _body(AppColors c, HoldingValuation entry, AccountsCopy copy) {
     final h = entry.holding;
     final assetCurrency = h.asset.currencyCode;
     final gain = entry.unrealizedGainLoss;
@@ -210,11 +214,12 @@ class _HoldingDetailPageState extends State<HoldingDetailPage> {
                   if (h.asset.exchange != null) h.asset.exchange!,
                   assetCurrency,
                 ].join(' · '),
+                textDirection: TextDirection.ltr,
                 style: TextStyle(color: c.inkMuted, fontSize: 12),
               ),
               const SizedBox(height: 14),
               Text(
-                'Market value',
+                copy.marketValue,
                 style: TextStyle(color: c.inkMuted, fontSize: 12),
               ),
               const SizedBox(height: 2),
@@ -242,28 +247,27 @@ class _HoldingDetailPageState extends State<HoldingDetailPage> {
                 ),
               ],
               const SizedBox(height: 14),
-              _row(c, 'Quantity', h.quantity),
+              _row(c, copy.quantity, h.quantity),
               _row(
                 c,
-                'Average cost',
+                copy.averageCost,
                 MoneyFormat.money(h.averageCost, h.costCurrencyCode),
               ),
               _row(
                 c,
-                'Total cost',
+                copy.totalCost,
                 MoneyFormat.money(h.totalCostBasis, h.costCurrencyCode),
               ),
               _row(
                 c,
-                'Current price',
+                copy.currentPrice,
                 MoneyFormat.money(entry.marketPrice?.price, assetCurrency),
               ),
               if (entry.marketPrice?.stale == true)
                 Padding(
                   padding: const EdgeInsets.only(top: 8),
                   child: Text(
-                    'This price is stale — the provider hasn’t refreshed it '
-                    'recently.',
+                    copy.stalePrice,
                     style: TextStyle(color: c.warningFg, fontSize: 12),
                   ),
                 ),
@@ -275,7 +279,7 @@ class _HoldingDetailPageState extends State<HoldingDetailPage> {
           children: [
             Expanded(
               child: PrimaryButton(
-                label: 'Buy more',
+                label: copy.buyMore,
                 fontSize: 14,
                 onPressed: active ? _buy : null,
               ),
@@ -283,7 +287,7 @@ class _HoldingDetailPageState extends State<HoldingDetailPage> {
             const SizedBox(width: 10),
             Expanded(
               child: SecondaryButton(
-                label: 'Sell',
+                label: copy.sell,
                 fontSize: 14,
                 onPressed: active ? _sell : null,
               ),
@@ -292,7 +296,7 @@ class _HoldingDetailPageState extends State<HoldingDetailPage> {
         ),
         const SizedBox(height: 18),
         Text(
-          'HISTORY',
+          copy.history,
           style: TextStyle(
             color: c.inkMuted,
             fontSize: 11,
@@ -308,12 +312,12 @@ class _HoldingDetailPageState extends State<HoldingDetailPage> {
           )
         else if (_historyFailed)
           Text(
-            'We couldn’t load this position’s history.',
+            copy.holdingHistoryLoadError,
             style: TextStyle(color: c.inkMuted, fontSize: 13),
           )
         else if (_history.isEmpty)
           Text(
-            'No history yet.',
+            copy.noHoldingHistory,
             style: TextStyle(color: c.inkMuted, fontSize: 13),
           )
         else
@@ -377,14 +381,15 @@ class _HistoryRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
+    final copy = AccountsCopy.of(AppLanguageScope.of(context).language);
     final when = formatLocalDateTime(item.occurredAt);
     final entry = activityAssetEntry(item);
-    final label = switch (item.transactionTypeCode) {
-      'buy' => 'Buy',
-      'sell' => 'Sell',
-      'dividend' => 'Dividend',
-      _ => 'Existing holding',
-    };
+    final label = copy.brokerageActivityLabel(
+      item.transactionTypeCode,
+      incoming: false,
+      reinvested: item.isReinvestedDividend,
+      partiallyReinvested: item.isPartiallyReinvestedDividend,
+    );
 
     return Opacity(
       opacity: item.isDeleted ? 0.6 : 1,
@@ -416,13 +421,14 @@ class _HistoryRow extends StatelessWidget {
                         ),
                       ),
                       if (item.presentation == ActivityPresentation.updated)
-                        _tag(c, 'UPDATED'),
-                      if (item.isDeleted) _tag(c, 'REMOVED'),
+                        _tag(c, copy.updated),
+                      if (item.isDeleted) _tag(c, copy.removed),
                     ],
                   ),
                   const SizedBox(height: 2),
                   Text(
                     '${when.date} · ${when.time}',
+                    textDirection: TextDirection.ltr,
                     style: TextStyle(color: c.inkMuted, fontSize: 12),
                   ),
                   if (entry != null) ...[
@@ -430,11 +436,14 @@ class _HistoryRow extends StatelessWidget {
                     Text(
                       [
                         if (entry.quantityDelta != null)
-                          '${absoluteDecimal(entry.quantityDelta!)} units',
+                          copy.activityUnits(
+                            absoluteDecimal(entry.quantityDelta!),
+                          ),
                         if (entry.unitPrice != null)
-                          '@ ${MoneyFormat.money(entry.unitPrice, assetCurrency)}',
+                          copy.ltr(
+                            '@ ${MoneyFormat.money(entry.unitPrice, assetCurrency)}',
+                          ),
                       ].join(' '),
-                      textDirection: TextDirection.ltr,
                       style: TextStyle(color: c.inkMuted, fontSize: 12),
                     ),
                   ],
@@ -453,10 +462,13 @@ class _HistoryRow extends StatelessWidget {
                 icon: Icon(Icons.more_horiz, size: 20, color: c.inkMuted),
                 onSelected: (v) => v == 'edit' ? onCorrect() : onReverse(),
                 itemBuilder: (_) => [
-                  const PopupMenuItem(value: 'edit', child: Text('Edit')),
+                  PopupMenuItem(value: 'edit', child: Text(copy.edit)),
                   PopupMenuItem(
                     value: 'remove',
-                    child: Text('Remove', style: TextStyle(color: c.negative)),
+                    child: Text(
+                      copy.remove,
+                      style: TextStyle(color: c.negative),
+                    ),
                   ),
                 ],
               ),
@@ -572,7 +584,8 @@ class _CorrectExistingHoldingSheetState
     if (ok && mounted) Navigator.of(context).pop(true);
   }
 
-  String? _err(String field) => _submitted ? _errors[field] : null;
+  String? _err(String field, AccountsCopy copy) =>
+      _submitted ? copy.existingHoldingValidation(_errors[field]) : null;
 
   @override
   Widget build(BuildContext context) {
@@ -580,30 +593,29 @@ class _CorrectExistingHoldingSheetState
       listenable: widget.controller,
       builder: (context, _) {
         final c = context.colors;
+        final copy = AccountsCopy.of(AppLanguageScope.of(context).language);
         return AppSheet(
-          title: 'Edit existing holding',
-          subtitle:
-              'Saves a corrected version. The original stays in the ledger, '
-              'superseded.',
+          title: copy.editExistingHolding,
+          subtitle: copy.editExistingHoldingSubtitle,
           children: [
             SheetField(
-              label: 'Quantity',
-              error: _err('quantity'),
+              label: copy.quantity,
+              error: _err('quantity', copy),
               child: _num(_quantity, '0'),
             ),
             SheetField(
-              label: 'Average cost per unit',
-              error: _err('averageCost'),
+              label: copy.averageCost,
+              error: _err('averageCost', copy),
               child: _num(_averageCost, '0.00'),
             ),
             if (_crossCurrency)
               SheetField(
-                label: 'Exchange rate to ${widget.account.currencyCode}',
-                error: _err('rate'),
+                label: copy.exchangeRateTo(widget.account.currencyCode),
+                error: _err('rate', copy),
                 child: _num(_rate, '0.00'),
               ),
             SheetField(
-              label: 'Date & time',
+              label: copy.dateTime,
               child: InkWell(
                 onTap: () async {
                   final current =
@@ -644,14 +656,14 @@ class _CorrectExistingHoldingSheetState
               ),
             ),
             SheetField(
-              label: 'Notes',
+              label: copy.notes,
               optional: true,
               child: SheetBox(
                 minHeight: 78,
                 child: TextField(
                   controller: _notes,
                   maxLines: 3,
-                  decoration: const InputDecoration(hintText: 'Optional'),
+                  decoration: InputDecoration(hintText: copy.optional),
                   style: TextStyle(color: c.ink, fontSize: 15),
                 ),
               ),
@@ -667,7 +679,7 @@ class _CorrectExistingHoldingSheetState
               children: [
                 Expanded(
                   child: NeutralButton(
-                    label: 'Cancel',
+                    label: copy.cancel,
                     onPressed: widget.controller.busy
                         ? null
                         : () => Navigator.of(context).pop(),
@@ -677,7 +689,7 @@ class _CorrectExistingHoldingSheetState
                 Expanded(
                   flex: 2,
                   child: PrimaryButton(
-                    label: 'Save changes',
+                    label: copy.saveChanges,
                     busy: widget.controller.busy,
                     onPressed: _submit,
                   ),

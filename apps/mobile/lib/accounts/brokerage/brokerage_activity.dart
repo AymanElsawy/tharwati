@@ -8,6 +8,7 @@
 // still represent the truth.
 
 import '../../core/decimals.dart';
+import '../../i18n/accounts_copy.dart';
 
 /// How a transaction should read once corrections and reversals are applied.
 enum ActivityPresentation {
@@ -232,6 +233,22 @@ String activityLabel(ActivityItem item, String accountId) {
           .firstOrNull;
       return entry?.entrySide == 'debit' ? 'Transfer in' : 'Transfer out';
   }
+}
+
+String localizedActivityLabel(
+  ActivityItem item,
+  String accountId,
+  AccountsCopy copy,
+) {
+  final entry = item.entries
+      .where((entry) => entry.accountId == accountId)
+      .firstOrNull;
+  return copy.brokerageActivityLabel(
+    item.transactionTypeCode,
+    incoming: entry?.entrySide == 'debit',
+    reinvested: item.isReinvestedDividend,
+    partiallyReinvested: item.isPartiallyReinvestedDividend,
+  );
 }
 
 /// The entry that carries the asset movement — web `activityAssetEntry`.

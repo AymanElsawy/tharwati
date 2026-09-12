@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import '../../core/decimals.dart';
 import '../../core/local_datetime.dart';
 import '../../core/money_format.dart';
+import '../../i18n/accounts_copy.dart';
+import '../../i18n/app_language.dart';
 import '../../theme/tokens.dart';
 import '../../widgets/app_sheet.dart';
 import '../../widgets/callout.dart';
@@ -99,6 +101,7 @@ class _BrokerageAccountDetailPageState
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
+    final copy = AccountsCopy.of(AppLanguageScope.of(context).language);
     return Scaffold(
       backgroundColor: c.canvas,
       appBar: AppBar(
@@ -107,7 +110,7 @@ class _BrokerageAccountDetailPageState
           IconButton(
             onPressed: widget.onEditAccount,
             icon: const Icon(Icons.edit_outlined),
-            tooltip: 'Edit account',
+            tooltip: copy.editAccount,
           ),
         ],
       ),
@@ -116,13 +119,13 @@ class _BrokerageAccountDetailPageState
         builder: (context, _) => RefreshIndicator(
           onRefresh: _controller.load,
           color: c.accent,
-          child: _body(c),
+          child: _body(c, copy),
         ),
       ),
     );
   }
 
-  Widget _body(AppColors c) {
+  Widget _body(AppColors c, AccountsCopy copy) {
     switch (_controller.status) {
       case BrokerageStatus.loading:
         return ListView(
@@ -137,10 +140,10 @@ class _BrokerageAccountDetailPageState
           children: [
             Callout(
               tone: CalloutTone.danger,
-              title: 'We couldn’t load this account',
-              message: 'Your holdings are safe. Pull to refresh or try again.',
+              title: copy.brokerageLoadError,
+              message: copy.brokerageSafeError,
               action: CompactButton(
-                label: 'Try again',
+                label: copy.tryAgain,
                 tone: CompactButtonTone.neutral,
                 onPressed: _controller.load,
               ),
@@ -167,7 +170,7 @@ class _BrokerageAccountDetailPageState
               children: [
                 Expanded(
                   child: PrimaryButton(
-                    label: 'Buy',
+                    label: copy.buy,
                     fontSize: 14,
                     onPressed: active && !_controller.busy
                         ? () => _trade(TradeSide.buy)
@@ -177,7 +180,7 @@ class _BrokerageAccountDetailPageState
                 const SizedBox(width: 10),
                 Expanded(
                   child: SecondaryButton(
-                    label: 'Sell',
+                    label: copy.sell,
                     fontSize: 14,
                     onPressed: active && !_controller.busy && !v.isEmpty
                         ? () => _trade(TradeSide.sell)
@@ -187,7 +190,7 @@ class _BrokerageAccountDetailPageState
                 const SizedBox(width: 10),
                 Expanded(
                   child: SecondaryButton(
-                    label: 'Dividend',
+                    label: copy.dividend,
                     fontSize: 14,
                     onPressed: active && !_controller.busy && !v.isEmpty
                         ? () => _dividend()
@@ -198,7 +201,7 @@ class _BrokerageAccountDetailPageState
             ),
             const SizedBox(height: 18),
             Text(
-              'HOLDINGS · ${v.holdings.length}',
+              copy.holdingsCount(v.holdings.length),
               style: TextStyle(
                 color: c.inkMuted,
                 fontSize: 11,
@@ -218,7 +221,7 @@ class _BrokerageAccountDetailPageState
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Text(
-                      'No investments yet',
+                      copy.noInvestments,
                       style: TextStyle(
                         color: c.ink,
                         fontSize: 15,
@@ -227,8 +230,7 @@ class _BrokerageAccountDetailPageState
                     ),
                     const SizedBox(height: 6),
                     Text(
-                      'Record a buy to start tracking this account’s holdings '
-                      'and their market value.',
+                      copy.noInvestmentsDescription,
                       textAlign: TextAlign.center,
                       style: TextStyle(
                         color: c.inkMuted,
@@ -265,7 +267,7 @@ class _BrokerageAccountDetailPageState
               ],
             const SizedBox(height: 20),
             Text(
-              'ACTIVITY',
+              copy.activity,
               style: TextStyle(
                 color: c.inkMuted,
                 fontSize: 11,
@@ -276,13 +278,12 @@ class _BrokerageAccountDetailPageState
             const SizedBox(height: 8),
             if (_controller.activityFailed)
               Text(
-                'We couldn’t load this account’s activity. Your holdings above '
-                'are unaffected.',
+                copy.activityLoadError,
                 style: TextStyle(color: c.inkMuted, fontSize: 13, height: 1.4),
               )
             else if (_controller.activity.isEmpty)
               Text(
-                'No activity yet.',
+                copy.noActivity,
                 style: TextStyle(color: c.inkMuted, fontSize: 13),
               )
             else
@@ -290,7 +291,8 @@ class _BrokerageAccountDetailPageState
                 Padding(
                   padding: const EdgeInsets.only(top: 10, bottom: 6),
                   child: Text(
-                    formatLocalCalendarDate(group.date),
+                    copy.localizedDate(group.date),
+                    textDirection: TextDirection.ltr,
                     style: TextStyle(
                       color: c.inkMuted,
                       fontSize: 12,
@@ -332,7 +334,8 @@ class _ActivityRow extends StatelessWidget {
     final when = formatLocalDateTime(item.occurredAt);
     final entry = activityAssetEntry(item);
     final asset = entry?.asset;
-    final label = activityLabel(item, accountId);
+    final copy = AccountsCopy.of(AppLanguageScope.of(context).language);
+    final label = localizedActivityLabel(item, accountId, copy);
 
     return Opacity(
       opacity: item.isDeleted ? 0.6 : 1,
@@ -368,17 +371,19 @@ class _ActivityRow extends StatelessWidget {
                         ),
                       ),
                       if (item.presentation == ActivityPresentation.updated)
-                        _tag(c, 'UPDATED'),
-                      if (item.isDeleted) _tag(c, 'REMOVED'),
+                        _tag(c, copy.updated),
+                      if (item.isDeleted) _tag(c, copy.removed),
                     ],
                   ),
                   const SizedBox(height: 2),
                   Text(
                     [
-                      when.time,
-                      if (asset != null) asset.symbol ?? asset.name,
+                      copy.ltr(when.time),
+                      if (asset != null) copy.ltr(asset.symbol ?? asset.name),
                       if (entry?.quantityDelta != null)
-                        '${absoluteDecimal(entry!.quantityDelta!)} units',
+                        copy.activityUnits(
+                          absoluteDecimal(entry!.quantityDelta!),
+                        ),
                     ].join(' · '),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
@@ -444,6 +449,7 @@ class _Header extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
+    final copy = AccountsCopy.of(AppLanguageScope.of(context).language);
     final gain = valuation.totalUnrealizedGainLoss;
     final negative = gain != null && (D.compare(gain, '0') ?? 0) < 0;
     return Container(
@@ -457,7 +463,7 @@ class _Header extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Current value',
+            copy.currentValue,
             style: TextStyle(color: c.inkMuted, fontSize: 12),
           ),
           const SizedBox(height: 4),
@@ -474,9 +480,10 @@ class _Header extends StatelessWidget {
           if (gain != null) ...[
             const SizedBox(height: 4),
             Text(
-              '${MoneyFormat.signedMoney(gain, currency)} · '
-              '${MoneyFormat.percent(valuation.totalUnrealizedReturnPercent)}',
-              textDirection: TextDirection.ltr,
+              copy.signedMoneyWithPercent(
+                MoneyFormat.signedMoney(gain, currency),
+                MoneyFormat.percent(valuation.totalUnrealizedReturnPercent),
+              ),
               style: TextStyle(
                 color: negative ? c.negative : c.accent,
                 fontSize: 13,
@@ -487,28 +494,24 @@ class _Header extends StatelessWidget {
           const SizedBox(height: 14),
           _row(
             c,
-            'Available cash',
+            copy.availableCash,
             MoneyFormat.money(valuation.cashBalance, currency),
           ),
           _row(
             c,
-            'Holdings market value',
+            copy.holdingsMarketValue,
             MoneyFormat.money(valuation.totalMarketValue, currency),
           ),
           _row(
             c,
-            'Holdings cost',
+            copy.holdingsCost,
             MoneyFormat.money(valuation.totalCostBasis, currency),
           ),
           if (!valuation.isComplete) ...[
             const SizedBox(height: 12),
             Callout(
               tone: CalloutTone.warning,
-              message:
-                  '${valuation.unpricedCount} '
-                  '${valuation.unpricedCount == 1 ? "holding has" : "holdings have"} '
-                  'no current price, so the totals above can’t be completed. '
-                  'Cost figures are still exact.',
+              message: copy.incompleteHoldings(valuation.unpricedCount),
             ),
           ],
         ],
@@ -556,6 +559,7 @@ class _HoldingRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
+    final copy = AccountsCopy.of(AppLanguageScope.of(context).language);
     final h = entry.holding;
     final assetCurrency = h.asset.currencyCode;
     final gain = entry.unrealizedGainLoss;
@@ -583,6 +587,7 @@ class _HoldingRow extends StatelessWidget {
                     children: [
                       Text(
                         h.displayName,
+                        textDirection: TextDirection.ltr,
                         style: TextStyle(
                           color: c.ink,
                           fontSize: 15,
@@ -607,10 +612,13 @@ class _HoldingRow extends StatelessWidget {
                     'sell' => onSell?.call(),
                     _ => onDividend?.call(),
                   },
-                  itemBuilder: (_) => const [
-                    PopupMenuItem(value: 'buy', child: Text('Buy more')),
-                    PopupMenuItem(value: 'sell', child: Text('Sell')),
-                    PopupMenuItem(value: 'dividend', child: Text('Dividend')),
+                  itemBuilder: (_) => [
+                    PopupMenuItem(value: 'buy', child: Text(copy.buyMore)),
+                    PopupMenuItem(value: 'sell', child: Text(copy.sell)),
+                    PopupMenuItem(
+                      value: 'dividend',
+                      child: Text(copy.dividend),
+                    ),
                   ],
                 ),
               ],
@@ -620,20 +628,20 @@ class _HoldingRow extends StatelessWidget {
               spacing: 18,
               runSpacing: 8,
               children: [
-                _stat(c, 'Quantity', h.quantity),
+                _stat(c, copy.quantity, h.quantity),
                 _stat(
                   c,
-                  'Price',
+                  copy.price,
                   MoneyFormat.money(entry.marketPrice?.price, assetCurrency),
                 ),
                 _stat(
                   c,
-                  'Market value',
+                  copy.marketValue,
                   MoneyFormat.money(entry.marketValue, assetCurrency),
                 ),
                 _stat(
                   c,
-                  'Cost',
+                  copy.cost,
                   MoneyFormat.money(h.totalCostBasis, h.costCurrencyCode),
                 ),
               ],
@@ -641,9 +649,10 @@ class _HoldingRow extends StatelessWidget {
             if (gain != null) ...[
               const SizedBox(height: 8),
               Text(
-                '${MoneyFormat.signedMoney(gain, h.costCurrencyCode)} · '
-                '${MoneyFormat.percent(entry.unrealizedReturnPercent)}',
-                textDirection: TextDirection.ltr,
+                copy.signedMoneyWithPercent(
+                  MoneyFormat.signedMoney(gain, h.costCurrencyCode),
+                  MoneyFormat.percent(entry.unrealizedReturnPercent),
+                ),
                 style: TextStyle(
                   color: negative ? c.negative : c.accent,
                   fontSize: 13,
@@ -653,7 +662,7 @@ class _HoldingRow extends StatelessWidget {
             ] else ...[
               const SizedBox(height: 8),
               Text(
-                'No current price available',
+                copy.noCurrentPrice,
                 style: TextStyle(color: c.inkMuted, fontSize: 12),
               ),
             ],
