@@ -460,4 +460,47 @@ class AccountsCopy {
   String reversePurchaseBody(String weight, String amount) => _ar
       ? 'سيؤدي هذا إلى عكس ${ltr(weight)} و${ltr(amount)} من التكلفة. ستبقى عملية الشراء في السجل مع تمييزها كعملية معكوسة، وسيُعاد المبلغ إلى حساب التمويل إن وُجد.'
       : 'This backs out $weight and $amount of cost. The purchase stays in the ledger, marked reversed, and any funding account is credited back.';
+
+  // Metal purchase add/edit presentation.
+  String get addMetalPurchase => _ar ? 'إضافة عملية شراء' : 'Add purchase';
+  String get editMetalPurchase => _ar ? 'تعديل عملية الشراء' : 'Edit purchase';
+  String get purityLabel => _ar ? 'العيار' : 'Purity';
+  String get addMetalPurchaseSubtitle => _ar
+      ? 'يسجل عملية شراء غير قابلة للتعديل ويحدّث متوسط التكلفة المرجّح.'
+      : 'Records an immutable purchase and updates the weighted-average cost.';
+  String get editMetalPurchaseSubtitle => _ar
+      ? 'يحفظ نسخة مصححة من عملية الشراء هذه. يبقى الأصل في السجل بوصفه مستبدلًا.'
+      : 'Saves a corrected version of this purchase. The original stays in the ledger, superseded.';
+  String get select => _ar ? 'اختر' : 'Select';
+  String get purchaseDateTime =>
+      _ar ? 'تاريخ ووقت الشراء' : 'Purchase date & time';
+  String get grams => _ar ? 'الغرامات' : 'Grams';
+  String get costPerGram => _ar ? 'التكلفة / غرام' : 'Cost / gram';
+  String get fees => _ar ? 'الرسوم' : 'Fees';
+  String get purchaseSubtotal =>
+      _ar ? 'إجمالي الشراء الفرعي' : 'Purchase subtotal';
+  String get totalCost => _ar ? 'إجمالي التكلفة' : 'Total cost';
+  String get paidFrom => _ar ? 'دُفع من' : 'Paid from';
+  String get paidFromCashBank =>
+      _ar ? 'دُفع من حساب نقدي / بنكي' : 'Paid from a Cash / Bank account';
+  String get noSameCurrencyFundingAccount => _ar
+      ? 'لا يوجد حساب نقدي أو بنكي بالعملة نفسها'
+      : 'No same-currency Cash/Bank account';
+  String fundingAccountOption(String name, AccountType type) =>
+      _ar ? '$name · ${accountType(type)}' : '$name · ${accountType(type)}';
+  String? metalPurchaseValidation(String? message) => switch (message) {
+    'Choose a purity for this metal.' =>
+      _ar ? 'اختر عيارًا لهذا المعدن.' : message,
+    'Enter the purchase date and time.' =>
+      _ar ? 'أدخل تاريخ ووقت الشراء.' : message,
+    'Grams must be a positive number (up to 3 decimals).' =>
+      _ar ? 'يجب أن تكون الغرامات رقمًا موجبًا حتى 3 منازل عشرية.' : message,
+    'Cost per gram must be greater than zero.' =>
+      _ar ? 'يجب أن تكون التكلفة لكل غرام أكبر من صفر.' : message,
+    'Fees must be zero or more.' =>
+      _ar ? 'يجب أن تكون الرسوم صفرًا أو أكثر.' : message,
+    'Choose the account you paid from.' =>
+      _ar ? 'اختر الحساب الذي دُفع منه.' : message,
+    _ => message,
+  };
 }

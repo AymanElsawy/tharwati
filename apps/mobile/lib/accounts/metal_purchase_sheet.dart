@@ -3,6 +3,8 @@ import 'package:flutter/services.dart';
 
 import '../core/local_datetime.dart';
 import '../core/money_format.dart';
+import '../i18n/accounts_copy.dart';
+import '../i18n/app_language.dart';
 import '../theme/tokens.dart';
 import '../widgets/app_sheet.dart';
 import '../widgets/primary_button.dart';
@@ -113,7 +115,8 @@ class _MetalPurchaseSheetState extends State<MetalPurchaseSheet> {
     if (ok && mounted) Navigator.of(context).pop(true);
   }
 
-  String? _err(String f) => _submitted ? _errors[f] : null;
+  String? _err(String field, AccountsCopy copy) =>
+      _submitted ? copy.metalPurchaseValidation(_errors[field]) : null;
 
   @override
   Widget build(BuildContext context) {
@@ -121,21 +124,20 @@ class _MetalPurchaseSheetState extends State<MetalPurchaseSheet> {
       listenable: widget.controller,
       builder: (context, _) {
         final c = context.colors;
+        final copy = AccountsCopy.of(AppLanguageScope.of(context).language);
         _sync();
         final subtotal = _v.subtotal;
         final total = _v.totalCost;
         final currency = widget.account.currencyCode;
         return AppSheet(
-          title: _isEditing ? 'Edit purchase' : 'Add purchase',
+          title: _isEditing ? copy.editMetalPurchase : copy.addMetalPurchase,
           subtitle: _isEditing
-              ? 'Saves a corrected version of this purchase. The original stays '
-                    'in the ledger, superseded.'
-              : 'Records an immutable purchase and updates the '
-                    'weighted-average cost.',
+              ? copy.editMetalPurchaseSubtitle
+              : copy.addMetalPurchaseSubtitle,
           children: [
             SheetField(
-              label: 'Purity',
-              error: _err('purity'),
+              label: copy.purityLabel,
+              error: _err('purity', copy),
               child: SheetBox(
                 child: DropdownButtonHideUnderline(
                   child: DropdownButton<String>(
@@ -143,16 +145,13 @@ class _MetalPurchaseSheetState extends State<MetalPurchaseSheet> {
                     isDense: true,
                     isExpanded: true,
                     hint: Text(
-                      'Select',
+                      copy.select,
                       style: TextStyle(color: c.disabledFg, fontSize: 15),
                     ),
                     onChanged: (v) => setState(() => _v.purity = v ?? ''),
                     items: [
                       for (final p in purityOptionsFor(_metalType))
-                        DropdownMenuItem(
-                          value: p,
-                          child: Text(p == 'other' ? 'Other' : p.toUpperCase()),
-                        ),
+                        DropdownMenuItem(value: p, child: Text(copy.purity(p))),
                     ],
                     style: TextStyle(
                       color: c.ink,
@@ -164,8 +163,8 @@ class _MetalPurchaseSheetState extends State<MetalPurchaseSheet> {
               ),
             ),
             SheetField(
-              label: 'Purchase date & time',
-              error: _err('purchaseDate'),
+              label: copy.purchaseDateTime,
+              error: _err('purchaseDate', copy),
               child: InkWell(
                 onTap: _pickDate,
                 borderRadius: BorderRadius.circular(AppRadius.field),
@@ -192,25 +191,25 @@ class _MetalPurchaseSheetState extends State<MetalPurchaseSheet> {
               children: [
                 Expanded(
                   child: SheetField(
-                    label: 'Grams',
-                    error: _err('unitsGrams'),
+                    label: copy.grams,
+                    error: _err('unitsGrams', copy),
                     child: _num(_grams, '0.000'),
                   ),
                 ),
                 const SizedBox(width: 10),
                 Expanded(
                   child: SheetField(
-                    label: 'Cost / gram',
-                    error: _err('costPerUnit'),
+                    label: copy.costPerGram,
+                    error: _err('costPerUnit', copy),
                     child: _num(_cost, '0.00'),
                   ),
                 ),
               ],
             ),
             SheetField(
-              label: 'Fees',
+              label: copy.fees,
               optional: true,
-              error: _err('fees'),
+              error: _err('fees', copy),
               child: _num(_fees, '0.00'),
             ),
             Container(
@@ -224,13 +223,13 @@ class _MetalPurchaseSheetState extends State<MetalPurchaseSheet> {
                 children: [
                   _summaryRow(
                     c,
-                    'Purchase subtotal',
+                    copy.purchaseSubtotal,
                     MoneyFormat.money(subtotal, currency),
                   ),
                   const SizedBox(height: 6),
                   _summaryRow(
                     c,
-                    'Total cost',
+                    copy.totalCost,
                     MoneyFormat.money(total, currency),
                     strong: true,
                   ),
@@ -245,8 +244,8 @@ class _MetalPurchaseSheetState extends State<MetalPurchaseSheet> {
             if (_v.paidFromAccount) ...[
               const SizedBox(height: 10),
               SheetField(
-                label: 'Paid from',
-                error: _err('fundingAccountId'),
+                label: copy.paidFrom,
+                error: _err('fundingAccountId', copy),
                 child: SheetBox(
                   child: DropdownButtonHideUnderline(
                     child: DropdownButton<String>(
@@ -257,8 +256,8 @@ class _MetalPurchaseSheetState extends State<MetalPurchaseSheet> {
                       isExpanded: true,
                       hint: Text(
                         _fundingAccounts.isEmpty
-                            ? 'No same-currency Cash/Bank account'
-                            : 'Select',
+                            ? copy.noSameCurrencyFundingAccount
+                            : copy.select,
                         style: TextStyle(color: c.disabledFg, fontSize: 14),
                       ),
                       onChanged: (v) =>
@@ -267,7 +266,9 @@ class _MetalPurchaseSheetState extends State<MetalPurchaseSheet> {
                         for (final a in _fundingAccounts)
                           DropdownMenuItem(
                             value: a.id,
-                            child: Text('${a.name} · ${a.typeLabel}'),
+                            child: Text(
+                              copy.fundingAccountOption(a.name, a.type),
+                            ),
                           ),
                       ],
                       style: TextStyle(
@@ -281,7 +282,7 @@ class _MetalPurchaseSheetState extends State<MetalPurchaseSheet> {
               ),
             ],
             SheetField(
-              label: 'Notes',
+              label: copy.notes,
               optional: true,
               child: SheetBox(
                 child: TextField(
@@ -308,7 +309,7 @@ class _MetalPurchaseSheetState extends State<MetalPurchaseSheet> {
               children: [
                 Expanded(
                   child: NeutralButton(
-                    label: 'Cancel',
+                    label: copy.cancel,
                     onPressed: widget.controller.busy
                         ? null
                         : () => Navigator.of(context).pop(),
@@ -318,7 +319,9 @@ class _MetalPurchaseSheetState extends State<MetalPurchaseSheet> {
                 Expanded(
                   flex: 2,
                   child: PrimaryButton(
-                    label: _isEditing ? 'Save changes' : 'Add purchase',
+                    label: _isEditing
+                        ? copy.saveChanges
+                        : copy.addMetalPurchase,
                     busy: widget.controller.busy,
                     onPressed: _submit,
                   ),
@@ -420,7 +423,9 @@ class _PaidFromToggle extends StatelessWidget {
       children: [
         Expanded(
           child: Text(
-            'Paid from a Cash / Bank account',
+            AccountsCopy.of(
+              AppLanguageScope.of(context).language,
+            ).paidFromCashBank,
             style: TextStyle(
               color: c.ink,
               fontSize: 13,

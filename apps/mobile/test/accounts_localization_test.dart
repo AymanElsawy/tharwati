@@ -148,6 +148,31 @@ void main() {
     );
   });
 
+  test('Metal purchase copy localizes form and UI validation', () {
+    final english = AccountsCopy.of(AppLanguage.en);
+    final arabic = AccountsCopy.of(AppLanguage.ar);
+
+    expect(english.addMetalPurchase, 'Add purchase');
+    expect(english.editMetalPurchase, 'Edit purchase');
+    expect(
+      english.metalPurchaseValidation('Fees must be zero or more.'),
+      'Fees must be zero or more.',
+    );
+    expect(arabic.addMetalPurchase, 'إضافة عملية شراء');
+    expect(arabic.purchaseDateTime, 'تاريخ ووقت الشراء');
+    expect(arabic.paidFromCashBank, 'دُفع من حساب نقدي / بنكي');
+    expect(
+      arabic.metalPurchaseValidation('Choose a purity for this metal.'),
+      'اختر عيارًا لهذا المعدن.',
+    );
+    expect(
+      arabic.metalPurchaseValidation(
+        'Grams must be a positive number (up to 3 decimals).',
+      ),
+      'يجب أن تكون الغرامات رقمًا موجبًا حتى 3 منازل عشرية.',
+    );
+  });
+
   testWidgets(
     'Arabic list cards localize unavailable values and preserve LTR data',
     (tester) async {
