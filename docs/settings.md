@@ -24,6 +24,10 @@ Sign out action is kept in a separate Session section at the bottom of the page.
 Flutter Settings also exposes the shared device-local Language preference;
 switching English/Arabic immediately updates the same app-level locale and
 direction used by Login and persists through `shared_preferences`.
+It also exposes a device-local Appearance preference with Light and Dark only.
+The shared `AppThemeController` persists it as `tharwati-theme`, updates the
+app-level `MaterialApp` immediately, and loads it before the unauthenticated
+Login flow. Colorful mode is not implemented on mobile.
 
 ## Privacy & Data
 

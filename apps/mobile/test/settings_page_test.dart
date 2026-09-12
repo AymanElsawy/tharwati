@@ -5,6 +5,7 @@ import 'package:tharwati_mobile/i18n/app_language.dart';
 import 'package:tharwati_mobile/settings/settings_page.dart';
 import 'package:tharwati_mobile/settings/settings_profile_repository.dart';
 import 'package:tharwati_mobile/theme/app_theme.dart';
+import 'package:tharwati_mobile/theme/app_theme_controller.dart';
 
 void main() {
   testWidgets('loads, saves the canonical name, and shows session email', (
@@ -14,11 +15,13 @@ void main() {
     final languageController = AppLanguageController(
       store: _MemoryLanguageStore(),
     );
+    final themeController = AppThemeController(store: _MemoryThemeStore());
     var signedOut = false;
 
     await tester.pumpWidget(
       _SettingsTestHost(
         languageController: languageController,
+        themeController: themeController,
         child: SettingsPage(
           email: 'investor@example.com',
           profileStore: store,
@@ -33,9 +36,18 @@ void main() {
     expect(find.text('Sign out'), findsOneWidget);
     expect(find.text('Language'), findsOneWidget);
     expect(find.text('English'), findsWidgets);
+    expect(find.text('Appearance'), findsOneWidget);
+    expect(find.text('Light'), findsWidgets);
+
+    await tester.enterText(find.byType(TextField), '  Grace Hopper  ');
+    await tester.tap(find.text('Save changes'));
+    await tester.pump();
+
+    expect(store.savedName, '  Grace Hopper  ');
+    expect(find.text('Profile updated.'), findsOneWidget);
 
     await tester.tap(find.text('العربية'));
-    await tester.pump();
+    await tester.pumpAndSettle();
     expect(languageController.language, AppLanguage.ar);
     expect(
       tester
@@ -44,35 +56,64 @@ void main() {
       TextDirection.rtl,
     );
 
-    await tester.enterText(find.byType(TextField), '  Grace Hopper  ');
-    await tester.tap(find.text('حفظ التغييرات'));
-    await tester.pump();
-
-    expect(store.savedName, '  Grace Hopper  ');
-    expect(find.text('تم تحديث الملف الشخصي.'), findsOneWidget);
-
     final signOut = find.text('تسجيل الخروج');
     await tester.ensureVisible(signOut);
     await tester.tap(signOut);
     await tester.pump();
     expect(signedOut, isTrue);
   });
+
+  testWidgets('switches the shared appearance preference immediately', (
+    tester,
+  ) async {
+    final languageController = AppLanguageController(
+      store: _MemoryLanguageStore(),
+    );
+    final themeController = AppThemeController(store: _MemoryThemeStore());
+
+    await tester.pumpWidget(
+      _SettingsTestHost(
+        languageController: languageController,
+        themeController: themeController,
+        child: SettingsPage(
+          email: 'investor@example.com',
+          profileStore: _FakeProfileStore('Ada Lovelace'),
+        ),
+      ),
+    );
+    await tester.pump();
+
+    final dark = find.text('Dark').last;
+    await tester.ensureVisible(dark);
+    await tester.tap(dark);
+    await tester.pumpAndSettle();
+
+    expect(themeController.themeMode, ThemeMode.dark);
+    expect(
+      tester.widget<MaterialApp>(find.byType(MaterialApp)).themeMode,
+      ThemeMode.dark,
+    );
+  });
 }
 
 class _SettingsTestHost extends StatelessWidget {
   const _SettingsTestHost({
     required this.languageController,
+    required this.themeController,
     required this.child,
   });
 
   final AppLanguageController languageController;
+  final AppThemeController themeController;
   final Widget child;
 
   @override
   Widget build(BuildContext context) => ListenableBuilder(
-    listenable: languageController,
+    listenable: Listenable.merge([languageController, themeController]),
     builder: (context, _) => MaterialApp(
       theme: AppTheme.light(),
+      darkTheme: AppTheme.dark(),
+      themeMode: themeController.themeMode,
       locale: languageController.language.locale,
       supportedLocales: AppLanguage.values.map((language) => language.locale),
       localizationsDelegates: const [
@@ -80,12 +121,15 @@ class _SettingsTestHost extends StatelessWidget {
         GlobalWidgetsLocalizations.delegate,
         GlobalCupertinoLocalizations.delegate,
       ],
-      home: AppLanguageScope(
-        controller: languageController,
-        child: Directionality(
-          key: const Key('app-direction'),
-          textDirection: languageController.language.direction,
-          child: child,
+      home: AppThemeScope(
+        controller: themeController,
+        child: AppLanguageScope(
+          controller: languageController,
+          child: Directionality(
+            key: const Key('app-direction'),
+            textDirection: languageController.language.direction,
+            child: child,
+          ),
         ),
       ),
     ),
@@ -115,4 +159,12 @@ class _MemoryLanguageStore implements LanguageStore {
 
   @override
   Future<void> writeLanguage(String code) async {}
+}
+
+class _MemoryThemeStore implements ThemeStore {
+  @override
+  Future<String?> readTheme() async => null;
+
+  @override
+  Future<void> writeTheme(String code) async {}
 }

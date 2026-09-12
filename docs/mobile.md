@@ -11,8 +11,9 @@ document describes the code currently under `apps/mobile/lib/`.
 ## Architecture and startup
 
 `lib/main.dart` initializes `Supabase` with `Env.supabaseUrl` / `Env.supabaseAnonKey`,
-constructs the global `AuthService`, and runs `TharwatiApp`. `MaterialApp` uses
-`AppTheme.light()`/`dark()` with `ThemeMode.system`, no named route table, and
+constructs the global `AuthService`, restores the device-local Light/Dark
+appearance preference, and runs `TharwatiApp`. `MaterialApp` uses
+`AppTheme.light()`/`dark()` with the persisted `ThemeMode`, no named route table, and
 starts with the presentation-only `SplashScreen`. Its 1000ms logo fade/scale/
 settle
 then mounts the unchanged `AuthGate` as the normal home flow. While a signed-in
@@ -99,7 +100,7 @@ are unchanged:
 | Accounts | Full presentation localization implemented | The list, create/edit form, generic detail and lifecycle dialogs, Real Estate/Business valued detail, Cash/Bank records read/write surfaces, Gold/Silver detail and purchases, plus brokerage detail, trades, and dividends support English/Arabic. Raw lower-layer errors remain language-agnostic. |
 | Invest | Placeholder | `_ComingSoon` only; no investment flow. |
 | Goals | Implemented | `GoalsPage`, detail page, form/entry/actions bottom sheets. |
-| Settings | Implemented profile/session surface | `settings/settings_page.dart` reads and edits canonical `profiles.full_name` through `SettingsProfileRepository`, displays the Auth-session email read-only, changes the shared device-local English/Arabic preference, and signs out. Whitespace-only names save as null; privacy and support settings are absent. |
+| Settings | Implemented profile/session surface | `settings/settings_page.dart` reads and edits canonical `profiles.full_name` through `SettingsProfileRepository`, displays the Auth-session email read-only, changes the shared device-local English/Arabic and Light/Dark appearance preferences, and signs out. Whitespace-only names save as null; privacy and support settings are absent. |
 
 Dashboard (`dashboard/dashboard_screen.dart`) is the implemented production
 summary, not the richer web-only dashboard. `DashboardController` loads profile
@@ -223,6 +224,9 @@ confirmations, and history, plus all currently implemented Accounts presentation
 list, create/edit, generic and valued details, Cash/Bank records, Gold/Silver
 detail and purchases, and brokerage detail, trade, and dividend flows, are
 translated. Raw lower-layer Accounts errors remain language-agnostic.
+`AppThemeController` persists the Light/Dark choice under `tharwati-theme` and
+drives `MaterialApp.themeMode` before Login; Colorful and system-following modes
+are not offered on mobile. Native launch branding remains fixed deep green.
 Arabic font fallback exists. Numeric, money, email, and date values remain LTR;
 within Arabic captions, only dynamic values use bidi isolation while surrounding
 labels retain RTL direction. Layout is phone-oriented

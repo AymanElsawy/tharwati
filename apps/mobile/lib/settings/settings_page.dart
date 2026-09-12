@@ -4,6 +4,7 @@ import '../main.dart';
 import '../i18n/app_language.dart';
 import '../i18n/settings_copy.dart';
 import '../theme/tokens.dart';
+import '../theme/app_theme_controller.dart';
 import '../widgets/primary_button.dart';
 import 'settings_profile_repository.dart';
 
@@ -59,7 +60,9 @@ class _SettingsPageState extends State<SettingsPage> {
       if (!mounted) return;
       setState(() {
         _loading = false;
-        _loadError = SettingsCopy.of(AppLanguageScope.of(context).language).loadError;
+        _loadError = SettingsCopy.of(
+          AppLanguageScope.of(context).language,
+        ).loadError;
       });
     }
   }
@@ -82,7 +85,9 @@ class _SettingsPageState extends State<SettingsPage> {
       if (!mounted) return;
       setState(() {
         _saving = false;
-        _saveError = SettingsCopy.of(AppLanguageScope.of(context).language).saveError;
+        _saveError = SettingsCopy.of(
+          AppLanguageScope.of(context).language,
+        ).saveError;
       });
     }
   }
@@ -109,10 +114,8 @@ class _SettingsPageState extends State<SettingsPage> {
                   children: [
                     Text(
                       copy.title,
-                      style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                        color: c.ink,
-                        fontSize: 31,
-                      ),
+                      style: Theme.of(context).textTheme.headlineMedium
+                          ?.copyWith(color: c.ink, fontSize: 31),
                     ),
                     const SizedBox(height: AppSpacing.section),
                     _SectionLabel(copy.profile),
@@ -133,6 +136,10 @@ class _SettingsPageState extends State<SettingsPage> {
                     _SectionLabel(copy.preferences),
                     const SizedBox(height: AppSpacing.rowGap),
                     _LanguagePreferenceCard(copy: copy),
+                    const SizedBox(height: AppSpacing.section),
+                    _SectionLabel(copy.appearance),
+                    const SizedBox(height: AppSpacing.rowGap),
+                    _AppearancePreferenceCard(copy: copy),
                     const Spacer(),
                     const SizedBox(height: AppSpacing.section),
                     _SectionLabel(copy.session),
@@ -257,6 +264,100 @@ class _LanguageOption extends StatelessWidget {
   }
 }
 
+class _AppearancePreferenceCard extends StatelessWidget {
+  const _AppearancePreferenceCard({required this.copy});
+
+  final SettingsCopy copy;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    final controller = AppThemeScope.of(context);
+    final themeMode = controller.themeMode;
+    return Container(
+      padding: const EdgeInsets.all(AppSpacing.card),
+      decoration: BoxDecoration(
+        color: c.surface,
+        border: Border.all(color: c.line),
+        borderRadius: BorderRadius.circular(AppRadius.card),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.brightness_6_rounded, color: c.inkMuted, size: 20),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  copy.appearanceLabel,
+                  style: TextStyle(
+                    color: c.ink,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+              Text(
+                themeMode == ThemeMode.dark ? copy.dark : copy.light,
+                style: TextStyle(color: c.inkMuted, fontSize: 13),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          Row(
+            children: [
+              Expanded(
+                child: _AppearanceOption(
+                  label: copy.light,
+                  selected: themeMode == ThemeMode.light,
+                  onPressed: () => controller.setThemeMode(ThemeMode.light),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: _AppearanceOption(
+                  label: copy.dark,
+                  selected: themeMode == ThemeMode.dark,
+                  onPressed: () => controller.setThemeMode(ThemeMode.dark),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _AppearanceOption extends StatelessWidget {
+  const _AppearanceOption({
+    required this.label,
+    required this.selected,
+    required this.onPressed,
+  });
+
+  final String label;
+  final bool selected;
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    return OutlinedButton(
+      onPressed: onPressed,
+      style: OutlinedButton.styleFrom(
+        minimumSize: const Size.fromHeight(AppSizes.touchTarget),
+        foregroundColor: selected ? c.accent : c.inkMuted,
+        backgroundColor: selected ? c.accentSoft : c.surface,
+        side: BorderSide(color: selected ? c.accent : c.line),
+        textStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
+      ),
+      child: Text(label),
+    );
+  }
+}
+
 class _SectionLabel extends StatelessWidget {
   const _SectionLabel(this.label);
   final String label;
@@ -309,7 +410,10 @@ class _ProfileCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(AppRadius.card),
       ),
       child: loading
-          ? const SizedBox(height: 112, child: Center(child: CircularProgressIndicator()))
+          ? const SizedBox(
+              height: 112,
+              child: Center(child: CircularProgressIndicator()),
+            )
           : loadError != null
           ? Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -321,7 +425,10 @@ class _ProfileCard extends StatelessWidget {
           : Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Text(copy.fullName, style: TextStyle(color: c.ink, fontSize: 13)),
+                Text(
+                  copy.fullName,
+                  style: TextStyle(color: c.ink, fontSize: 13),
+                ),
                 const SizedBox(height: 6),
                 TextField(
                   controller: fullName,
