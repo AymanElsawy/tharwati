@@ -429,4 +429,35 @@ class AccountsCopy {
       _ar ? 'يجب أن يختلف الحساب المصدر عن الحساب الوجهة.' : message,
     _ => message,
   };
+  // Metal purity-detail presentation.
+  String purity(String value) => value == 'other'
+      ? (_ar ? 'أخرى' : 'Other')
+      : (_ar ? ltr(value.toUpperCase()) : value.toUpperCase());
+  String get currentMetalValue => _ar ? 'القيمة الحالية' : 'Current value';
+  String get weight => _ar ? 'الوزن' : 'Weight';
+  String get cost => _ar ? 'التكلفة' : 'Cost';
+  String get pricePerGram => _ar ? 'السعر / غرام' : 'Price / gram';
+  String get purchases => _ar ? 'المشتريات' : 'Purchases';
+  String purchasesCount(int count) =>
+      _ar ? '$purchases · ${ltr('$count')}' : 'PURCHASES · $count';
+  String get purityLoadError =>
+      _ar ? 'تعذر تحميل هذا العيار' : 'We couldn’t load this purity';
+  String get puritySafeError => _ar
+      ? 'تعذر تحميل هذا العيار. سجلاتك آمنة.'
+      : 'We couldn’t load this purity. Your records are safe.';
+  String get noPurityPurchases => _ar
+      ? 'لا توجد مشتريات متبقية بهذا العيار.'
+      : 'No purchases remain at this purity.';
+  String gainVsCost(String value) =>
+      _ar ? '${ltr(value)} مقارنة بالتكلفة' : '$value vs cost';
+  String purchasePaid(String total, String perGram) => _ar
+      ? 'دُفع ${ltr(total)} · ${ltr('$perGram/g')}'
+      : 'Paid $total · $perGram/g';
+  String nowValue(String value) => _ar ? 'الآن ${ltr(value)}' : 'Now $value';
+  String get reversePurchase => _ar ? 'عكس' : 'Reverse';
+  String get reversePurchaseTitle =>
+      _ar ? 'عكس عملية الشراء هذه؟' : 'Reverse this purchase?';
+  String reversePurchaseBody(String weight, String amount) => _ar
+      ? 'سيؤدي هذا إلى عكس ${ltr(weight)} و${ltr(amount)} من التكلفة. ستبقى عملية الشراء في السجل مع تمييزها كعملية معكوسة، وسيُعاد المبلغ إلى حساب التمويل إن وُجد.'
+      : 'This backs out $weight and $amount of cost. The purchase stays in the ledger, marked reversed, and any funding account is credited back.';
 }

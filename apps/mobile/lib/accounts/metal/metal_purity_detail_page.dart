@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import '../../core/decimals.dart';
 import '../../core/local_datetime.dart';
 import '../../core/money_format.dart';
+import '../../i18n/accounts_copy.dart';
+import '../../i18n/app_language.dart';
 import '../../theme/tokens.dart';
 import '../../widgets/app_sheet.dart';
 import '../../widgets/callout.dart';
@@ -59,8 +61,9 @@ class _MetalPurityDetailPageState extends State<MetalPurityDetailPage> {
       });
     } catch (_) {
       if (!mounted) return;
+      final copy = AccountsCopy.of(AppLanguageScope.of(context).language);
       setState(() {
-        _error = 'We couldn’t load this purity. Your records are safe.';
+        _error = copy.puritySafeError;
         _loading = false;
       });
     }
@@ -82,24 +85,21 @@ class _MetalPurityDetailPageState extends State<MetalPurityDetailPage> {
 
   Future<void> _reverse(MetalPurchase purchase) async {
     final currency = _detail?.account.currencyCode ?? '';
+    final copy = AccountsCopy.of(AppLanguageScope.of(context).language);
+    final weight = '${_grams(purchase.quantityGrams)}g';
+    final amount = MoneyFormat.money(metalPurchaseCost(purchase), currency);
     final ok = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Reverse this purchase?'),
-        content: Text(
-          'This backs out '
-          '${MoneyFormat.money(purchase.quantityGrams, 'g').replaceAll(' g', '')}g '
-          'and ${MoneyFormat.money(metalPurchaseCost(purchase), currency)} of '
-          'cost. The purchase stays in the ledger, marked reversed, and any '
-          'funding account is credited back.',
-        ),
+        title: Text(copy.reversePurchaseTitle),
+        content: Text(copy.reversePurchaseBody(weight, amount)),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Cancel'),
+            child: Text(copy.cancel),
           ),
           CompactButton(
-            label: 'Reverse',
+            label: copy.reversePurchase,
             tone: CompactButtonTone.danger,
             onPressed: () => Navigator.of(context).pop(true),
           ),
@@ -116,21 +116,22 @@ class _MetalPurityDetailPageState extends State<MetalPurityDetailPage> {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
+    final copy = AccountsCopy.of(AppLanguageScope.of(context).language);
     return Scaffold(
       backgroundColor: c.canvas,
-      appBar: AppBar(title: Text(_purityLabel(widget.purity))),
+      appBar: AppBar(title: Text(copy.purity(widget.purity))),
       body: ListenableBuilder(
         listenable: widget.controller,
         builder: (context, _) => RefreshIndicator(
           onRefresh: _load,
           color: c.accent,
-          child: _body(c),
+          child: _body(c, copy),
         ),
       ),
     );
   }
 
-  Widget _body(AppColors c) {
+  Widget _body(AppColors c, AccountsCopy copy) {
     if (_loading) {
       return ListView(
         children: const [
@@ -145,10 +146,10 @@ class _MetalPurityDetailPageState extends State<MetalPurityDetailPage> {
         children: [
           Callout(
             tone: CalloutTone.danger,
-            title: 'We couldn’t load this purity',
+            title: copy.purityLoadError,
             message: _error!,
             action: CompactButton(
-              label: 'Try again',
+              label: copy.tryAgain,
               tone: CompactButtonTone.neutral,
               onPressed: _load,
             ),
@@ -169,7 +170,7 @@ class _MetalPurityDetailPageState extends State<MetalPurityDetailPage> {
         padding: const EdgeInsets.all(20),
         children: [
           Text(
-            'No purchases remain at this purity.',
+            copy.noPurityPurchases,
             style: TextStyle(color: c.inkMuted, fontSize: 13),
           ),
         ],
@@ -189,7 +190,7 @@ class _MetalPurityDetailPageState extends State<MetalPurityDetailPage> {
         _Summary(aggregate: aggregate, currency: account.currencyCode),
         const SizedBox(height: 16),
         Text(
-          'PURCHASES · ${purchases.length}',
+          copy.purchasesCount(purchases.length),
           style: TextStyle(
             color: c.inkMuted,
             fontSize: 11,
@@ -214,9 +215,6 @@ class _MetalPurityDetailPageState extends State<MetalPurityDetailPage> {
   }
 }
 
-String _purityLabel(String purity) =>
-    purity == 'other' ? 'Other' : purity.toUpperCase();
-
 class _Summary extends StatelessWidget {
   const _Summary({required this.aggregate, required this.currency});
 
@@ -226,6 +224,7 @@ class _Summary extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
+    final copy = AccountsCopy.of(AppLanguageScope.of(context).language);
     final gain = aggregate.unrealizedGain;
     final gainNegative = gain != null && (D.compare(gain, '0') ?? 0) < 0;
     return Container(
@@ -239,7 +238,7 @@ class _Summary extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Current value',
+            copy.currentMetalValue,
             style: TextStyle(color: c.inkMuted, fontSize: 12),
           ),
           const SizedBox(height: 4),
@@ -256,8 +255,7 @@ class _Summary extends StatelessWidget {
           if (gain != null) ...[
             const SizedBox(height: 4),
             Text(
-              '${MoneyFormat.signedMoney(gain, currency)} vs cost',
-              textDirection: TextDirection.ltr,
+              copy.gainVsCost(MoneyFormat.signedMoney(gain, currency)),
               style: TextStyle(
                 color: gainNegative ? c.negative : c.accent,
                 fontSize: 13,
@@ -266,14 +264,18 @@ class _Summary extends StatelessWidget {
             ),
           ],
           const SizedBox(height: 14),
-          _row(c, 'Weight', '${_grams(aggregate.totalUnitsGrams)} g'),
-          _row(c, 'Cost', MoneyFormat.money(aggregate.totalAmount, currency)),
+          _row(c, copy.weight, '${_grams(aggregate.totalUnitsGrams)} g'),
           _row(
             c,
-            'Price / gram',
+            copy.cost,
+            MoneyFormat.money(aggregate.totalAmount, currency),
+          ),
+          _row(
+            c,
+            copy.pricePerGram,
             MoneyFormat.money(aggregate.currentPricePerGram, currency),
           ),
-          _row(c, 'Purchases', '${aggregate.transactionCount}'),
+          _row(c, copy.purchases, '${aggregate.transactionCount}'),
         ],
       ),
     );
@@ -322,6 +324,7 @@ class _PurchaseRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
+    final copy = AccountsCopy.of(AppLanguageScope.of(context).language);
     final when = formatLocalDateTime(purchase.purchasedAt);
     final value = metalCurrentValue(purchase.quantityGrams, pricePerGram);
     return Container(
@@ -350,20 +353,21 @@ class _PurchaseRow extends StatelessWidget {
                 const SizedBox(height: 2),
                 Text(
                   '${when.date} · ${when.time}',
+                  textDirection: TextDirection.ltr,
                   style: TextStyle(color: c.inkMuted, fontSize: 12),
                 ),
                 const SizedBox(height: 6),
                 Text(
-                  'Paid ${MoneyFormat.money(metalPurchaseCost(purchase), currency)}'
-                  ' · ${MoneyFormat.money(purchase.costPerUnit, currency)}/g',
-                  textDirection: TextDirection.ltr,
+                  copy.purchasePaid(
+                    MoneyFormat.money(metalPurchaseCost(purchase), currency),
+                    MoneyFormat.money(purchase.costPerUnit, currency),
+                  ),
                   style: TextStyle(color: c.inkMuted, fontSize: 12),
                 ),
                 if (value != null) ...[
                   const SizedBox(height: 2),
                   Text(
-                    'Now ${MoneyFormat.money(value, currency)}',
-                    textDirection: TextDirection.ltr,
+                    copy.nowValue(MoneyFormat.money(value, currency)),
                     style: TextStyle(
                       color: c.ink,
                       fontSize: 12,
@@ -386,10 +390,13 @@ class _PurchaseRow extends StatelessWidget {
             icon: Icon(Icons.more_horiz, size: 20, color: c.inkMuted),
             onSelected: (v) => v == 'edit' ? onEdit() : onReverse(),
             itemBuilder: (_) => [
-              const PopupMenuItem(value: 'edit', child: Text('Edit')),
+              PopupMenuItem(value: 'edit', child: Text(copy.edit)),
               PopupMenuItem(
                 value: 'reverse',
-                child: Text('Reverse', style: TextStyle(color: c.negative)),
+                child: Text(
+                  copy.reversePurchase,
+                  style: TextStyle(color: c.negative),
+                ),
               ),
             ],
           ),

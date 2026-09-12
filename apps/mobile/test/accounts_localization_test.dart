@@ -124,6 +124,30 @@ void main() {
     );
   });
 
+  test('Metal purity detail copy localizes and isolates financial values', () {
+    final english = AccountsCopy.of(AppLanguage.en);
+    final arabic = AccountsCopy.of(AppLanguage.ar);
+
+    expect(english.purity('24k'), '24K');
+    expect(english.currentMetalValue, 'Current value');
+    expect(english.reversePurchase, 'Reverse');
+    expect(english.reversePurchaseTitle, 'Reverse this purchase?');
+    expect(arabic.purity('other'), 'أخرى');
+    expect(arabic.currentMetalValue, 'القيمة الحالية');
+    expect(arabic.purchasesCount(3), contains('\u20663\u2069'));
+    expect(
+      arabic.purchasePaid('1,250.00 EGP', '500.00 EGP'),
+      allOf(
+        contains('\u20661,250.00 EGP\u2069'),
+        contains('\u2066500.00 EGP/g\u2069'),
+      ),
+    );
+    expect(
+      arabic.reversePurchaseBody('2.5g', '1,250.00 EGP'),
+      allOf(contains('\u20662.5g\u2069'), contains('\u20661,250.00 EGP\u2069')),
+    );
+  });
+
   testWidgets(
     'Arabic list cards localize unavailable values and preserve LTR data',
     (tester) async {

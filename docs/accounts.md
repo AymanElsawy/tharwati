@@ -800,5 +800,7 @@ feed must not hide the portfolio (web keeps separate `holdingsError` /
   search, filters, list states, day groups, rows, and pagination) is also
   translated. Cash/Bank record create/edit/delete sheets and the category
   picker/manager also support English/Arabic, including UI-side validation;
-  lower-layer repository/RPC errors remain language-agnostic. Metal and
-  brokerage flows remain English-only pending later passes.
+  lower-layer repository/RPC errors remain language-agnostic. The metal
+  purity-detail presentation also supports English/Arabic, with its weights,
+  prices, money, dates, and currency values kept LTR. Other metal presentation
+  and brokerage flows remain English-only pending later passes.
