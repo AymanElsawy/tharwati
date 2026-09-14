@@ -33,7 +33,6 @@ void main() {
 
     expect(find.text('Ada Lovelace'), findsOneWidget);
     expect(find.text('investor@example.com'), findsOneWidget);
-    expect(find.text('Sign out'), findsOneWidget);
     expect(find.text('Language'), findsOneWidget);
     expect(find.text('English'), findsWidgets);
     expect(find.text('Appearance'), findsOneWidget);
@@ -56,8 +55,10 @@ void main() {
       TextDirection.rtl,
     );
 
+    await tester.drag(find.byType(CustomScrollView), const Offset(0, -800));
+    await tester.pumpAndSettle();
     final signOut = find.text('تسجيل الخروج');
-    await tester.ensureVisible(signOut);
+    expect(signOut, findsOneWidget);
     await tester.tap(signOut);
     await tester.pump();
     expect(signedOut, isTrue);
@@ -83,8 +84,9 @@ void main() {
     );
     await tester.pump();
 
+    await tester.drag(find.byType(CustomScrollView), const Offset(0, -500));
+    await tester.pumpAndSettle();
     final dark = find.text('Dark').last;
-    await tester.ensureVisible(dark);
     await tester.tap(dark);
     await tester.pumpAndSettle();
 
@@ -93,6 +95,40 @@ void main() {
       tester.widget<MaterialApp>(find.byType(MaterialApp)).themeMode,
       ThemeMode.dark,
     );
+  });
+
+  testWidgets('Arabic Settings remains scroll-safe on a compact viewport', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(412, 680);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final languageController = AppLanguageController(
+      store: _MemoryLanguageStore(),
+    );
+    await languageController.setLanguage(AppLanguage.ar);
+    final themeController = AppThemeController(store: _MemoryThemeStore());
+
+    await tester.pumpWidget(
+      _SettingsTestHost(
+        languageController: languageController,
+        themeController: themeController,
+        child: SettingsPage(
+          email: 'investor@example.com',
+          profileStore: _FakeProfileStore('مستخدم تجريبي'),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.byType(CustomScrollView), findsOneWidget);
+    expect(tester.takeException(), isNull);
+    await tester.drag(find.byType(CustomScrollView), const Offset(0, -1000));
+    await tester.pumpAndSettle();
+    expect(find.text('تسجيل الخروج'), findsOneWidget);
+    expect(tester.takeException(), isNull);
   });
 }
 

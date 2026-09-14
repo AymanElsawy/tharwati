@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import 'accounts/accounts_page.dart';
 import 'analysis/analysis_placeholder_pages.dart';
+import 'analysis/wealth_analysis_page.dart';
 import 'dashboard/dashboard_screen.dart';
 import 'goals/goals_page.dart';
 import 'i18n/app_language.dart';
@@ -9,8 +10,7 @@ import 'i18n/navigation_copy.dart';
 import 'settings/settings_page.dart';
 import 'theme/tokens.dart';
 
-/// Authenticated five-tab shell. Analysis retains its localized placeholder
-/// while the other destinations mount their implemented pages.
+/// Authenticated five-tab shell.
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
 
@@ -37,7 +37,7 @@ class _HomePageState extends State<HomePage> {
         onOpenGoals: () => setState(() => _index = 3),
       ),
       const AccountsPage(),
-      const WealthAnalysisPlaceholderPage(),
+      WealthAnalysisPage(isActive: _index == 2),
       const GoalsPage(),
       const SettingsPage(),
     ];

@@ -101,47 +101,63 @@ class _SettingsPageState extends State<SettingsPage> {
       backgroundColor: c.canvas,
       body: SafeArea(
         bottom: false,
-        child: LayoutBuilder(
-          builder: (context, viewport) => SingleChildScrollView(
-            padding: const EdgeInsets.all(AppSpacing.gutter),
-            child: ConstrainedBox(
-              constraints: BoxConstraints(
-                minHeight: viewport.maxHeight - (AppSpacing.gutter * 2),
+        child: CustomScrollView(
+          slivers: [
+            SliverPadding(
+              padding: const EdgeInsets.fromLTRB(
+                AppSpacing.gutter,
+                AppSpacing.gutter,
+                AppSpacing.gutter,
+                0,
               ),
-              child: IntrinsicHeight(
+              sliver: SliverList.list(
+                children: [
+                  Text(
+                    copy.title,
+                    style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                      color: c.ink,
+                      fontSize: 31,
+                    ),
+                  ),
+                  const SizedBox(height: AppSpacing.section),
+                  _SectionLabel(copy.profile),
+                  const SizedBox(height: AppSpacing.rowGap),
+                  _ProfileCard(
+                    fullName: _fullName,
+                    email: email,
+                    loading: _loading,
+                    saving: _saving,
+                    loadError: _loadError,
+                    saveError: _saveError,
+                    saved: _saved,
+                    onRetry: _loadProfile,
+                    onSave: _saveProfile,
+                    copy: copy,
+                  ),
+                  const SizedBox(height: AppSpacing.section),
+                  _SectionLabel(copy.preferences),
+                  const SizedBox(height: AppSpacing.rowGap),
+                  _LanguagePreferenceCard(copy: copy),
+                  const SizedBox(height: AppSpacing.section),
+                  _SectionLabel(copy.appearance),
+                  const SizedBox(height: AppSpacing.rowGap),
+                  _AppearancePreferenceCard(copy: copy),
+                ],
+              ),
+            ),
+            SliverFillRemaining(
+              hasScrollBody: false,
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(
+                  AppSpacing.gutter,
+                  AppSpacing.section,
+                  AppSpacing.gutter,
+                  AppSpacing.gutter,
+                ),
                 child: Column(
+                  mainAxisAlignment: MainAxisAlignment.end,
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    Text(
-                      copy.title,
-                      style: Theme.of(context).textTheme.headlineMedium
-                          ?.copyWith(color: c.ink, fontSize: 31),
-                    ),
-                    const SizedBox(height: AppSpacing.section),
-                    _SectionLabel(copy.profile),
-                    const SizedBox(height: AppSpacing.rowGap),
-                    _ProfileCard(
-                      fullName: _fullName,
-                      email: email,
-                      loading: _loading,
-                      saving: _saving,
-                      loadError: _loadError,
-                      saveError: _saveError,
-                      saved: _saved,
-                      onRetry: _loadProfile,
-                      onSave: _saveProfile,
-                      copy: copy,
-                    ),
-                    const SizedBox(height: AppSpacing.section),
-                    _SectionLabel(copy.preferences),
-                    const SizedBox(height: AppSpacing.rowGap),
-                    _LanguagePreferenceCard(copy: copy),
-                    const SizedBox(height: AppSpacing.section),
-                    _SectionLabel(copy.appearance),
-                    const SizedBox(height: AppSpacing.rowGap),
-                    _AppearancePreferenceCard(copy: copy),
-                    const Spacer(),
-                    const SizedBox(height: AppSpacing.section),
                     _SectionLabel(copy.session),
                     const SizedBox(height: AppSpacing.rowGap),
                     SizedBox(
@@ -161,7 +177,7 @@ class _SettingsPageState extends State<SettingsPage> {
                 ),
               ),
             ),
-          ),
+          ],
         ),
       ),
     );

@@ -3,7 +3,11 @@ import type { DashboardAggregate, DashboardAssetGroup } from "@/features/dashboa
 import { addDecimals, compareDecimals, divideDecimals, multiplyDecimals, subtractDecimals } from "@/lib/financial-calculations/decimal"
 import type { Decimal } from "@/lib/supabase/types"
 
-const groups: Array<{ group: DashboardAssetGroup; labelKey: TranslationKey; color: string }> = [
+export const dashboardAssetGroupDefinitions: ReadonlyArray<{
+  group: DashboardAssetGroup
+  labelKey: TranslationKey
+  color: string
+}> = [
   { group: "cashAndBank", labelKey: "dashboard.assetsBreakdown.cashAndBank", color: "#0ea5e9" },
   { group: "brokerage", labelKey: "dashboard.assetsBreakdown.brokerage", color: "#8b5cf6" },
   { group: "goldAndSilver", labelKey: "dashboard.assetsBreakdown.goldAndSilver", color: "#d97706" },
@@ -23,7 +27,7 @@ export type DashboardBreakdownItem = {
 export function getDashboardBreakdownItems(aggregate: DashboardAggregate): DashboardBreakdownItem[] {
   const totalAssets = aggregate.totalAssets
   if (aggregate.status !== "complete" || totalAssets === null || compareDecimals(totalAssets, "0") !== 1) return []
-  const positive = groups.flatMap((item) => {
+  const positive = dashboardAssetGroupDefinitions.flatMap((item) => {
     const value = aggregate.assetBreakdown[item.group]
     return value !== null && compareDecimals(value, "0") === 1 ? [{ ...item, value }] : []
   })

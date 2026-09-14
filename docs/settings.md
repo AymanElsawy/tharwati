@@ -28,6 +28,9 @@ It also exposes a device-local Appearance preference with Light and Dark only.
 The shared `AppThemeController` persists it as `tharwati-theme`, updates the
 app-level `MaterialApp` immediately, and loads it before the unauthenticated
 Login flow. Colorful mode is not implemented on mobile.
+The Flutter page uses a scrollable sliver that fills short viewports without
+forcing a fixed intrinsic height, so longer Arabic copy can scroll while the
+separate Session section remains at the bottom and above the app navigation.
 
 ## Privacy & Data
 

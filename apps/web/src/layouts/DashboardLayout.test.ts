@@ -33,4 +33,17 @@ describe("DashboardLayout preferences", () => {
     expect(en["navigation.analysis"]).toBe("Analysis")
     expect(ar["navigation.analysis"]).toBe("التحليل")
   })
+
+  it("orders the sidebar as Dashboard, Accounts, Analysis, Goals, and Settings", () => {
+    const dashboard = componentSource.indexOf('labelKey: "navigation.dashboard"')
+    const accounts = componentSource.indexOf('labelKey: "navigation.accounts"')
+    const analysis = componentSource.indexOf('labelKey: "navigation.analysis"')
+    const goals = componentSource.indexOf('labelKey: "navigation.goals"')
+    const settings = componentSource.indexOf('labelKey: "navigation.settings"')
+
+    expect(dashboard).toBeLessThan(accounts)
+    expect(accounts).toBeLessThan(analysis)
+    expect(analysis).toBeLessThan(goals)
+    expect(goals).toBeLessThan(settings)
+  })
 })

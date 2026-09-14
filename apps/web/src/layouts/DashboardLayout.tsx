@@ -46,14 +46,14 @@ const navigationItems: NavigationItem[] = [
     icon: LayoutDashboard,
   },
   {
-    labelKey: "navigation.analysis",
-    path: "/analysis",
-    icon: ChartNoAxesCombined,
-  },
-  {
     labelKey: "navigation.accounts",
     path: "/accounts",
     icon: WalletCards,
+  },
+  {
+    labelKey: "navigation.analysis",
+    path: "/analysis",
+    icon: ChartNoAxesCombined,
   },
   {
     labelKey: "navigation.goals",

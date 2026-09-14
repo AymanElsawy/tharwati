@@ -17,7 +17,8 @@ the primary analysis destination. It is implemented in
 Flutter Portfolio aggregation and data UI are not implemented yet. The mobile
 top-level destination is Analysis / التحليل; Dashboard Portfolio Allocation
 opens a separate localized Portfolio Analysis placeholder, and Wealth Analysis
-will open the same child page when its data UI is built.
+will open the same child page when its data UI is built. Web Wealth Analysis P0
+already links its Brokerage asset-class card to this `/portfolio` child route.
 
 The Mobile Portfolio MVP is read-only. Trading and dividend mutations remain in
 the existing Brokerage account and holding detail flows under Accounts.

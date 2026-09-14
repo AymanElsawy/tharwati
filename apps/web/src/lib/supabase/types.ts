@@ -89,6 +89,29 @@ export type GoalProgressEntryRow = {
   replacement_for_entry_id: string | null
 }
 
+export type WealthAllocationTargetAssetClass =
+  | "cash_and_bank"
+  | "brokerage"
+  | "gold_and_silver"
+  | "real_estate"
+  | "business"
+  | "other"
+
+export type WealthAllocationTargetRow = {
+  user_id: string
+  asset_class: WealthAllocationTargetAssetClass
+  target_percentage: Decimal
+  created_at: string
+  updated_at: string
+}
+
+export type WealthAllocationTargetPreferenceRow = {
+  user_id: string
+  tolerance_percentage: Decimal
+  created_at: string
+  updated_at: string
+}
+
 type FinancialSettingsRow = {
   id: string
   user_id: string
@@ -413,6 +436,25 @@ export type Database = {
           reverses_entry_id?: string | null
           created_at?: string
           replacement_for_entry_id?: string | null
+        }
+      >
+      wealth_allocation_targets: TableDefinition<
+        WealthAllocationTargetRow,
+        {
+          user_id: string
+          asset_class: WealthAllocationTargetAssetClass
+          target_percentage: Decimal
+          created_at?: string
+          updated_at?: string
+        }
+      >
+      wealth_allocation_target_preferences: TableDefinition<
+        WealthAllocationTargetPreferenceRow,
+        {
+          user_id: string
+          tolerance_percentage: Decimal
+          created_at?: string
+          updated_at?: string
         }
       >
       financial_settings: TableDefinition<
@@ -832,6 +874,17 @@ export type Database = {
       }
       set_goal_archived: {
         Args: { p_goal_id: string; p_archived: boolean }
+        Returns: undefined
+      }
+      replace_wealth_allocation_targets: {
+        Args: { p_targets: Json }
+        Returns: undefined
+      }
+      replace_wealth_allocation_plan: {
+        Args: {
+          p_targets: Json
+          p_tolerance_percentage: Decimal
+        }
         Returns: undefined
       }
       get_account_balances: {

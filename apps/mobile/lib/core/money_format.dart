@@ -35,6 +35,21 @@ class MoneyFormat {
     return '$sign${money(normalized, currencyCode)}';
   }
 
+  /// Whole-unit money for analytical gap display. Calculation precision is
+  /// preserved; rounding happens only at this presentation boundary.
+  static String roundedMoney(String? amount, String currencyCode) {
+    final normalized = D.normalize(amount);
+    if (normalized == null) return 'Unavailable';
+    return '${_group(Decimal.parse(normalized), 0)} $currencyCode';
+  }
+
+  static String signedRoundedMoney(String? amount, String currencyCode) {
+    final normalized = D.normalize(amount);
+    if (normalized == null) return 'Unavailable';
+    final sign = Decimal.parse(normalized) > Decimal.zero ? '+' : '';
+    return '$sign${roundedMoney(normalized, currencyCode)}';
+  }
+
   /// `"68%"` / `"0.09%"` — up to 2 fraction digits, trailing zeros trimmed.
   static String percent(String? value) {
     final normalized = D.normalize(value);

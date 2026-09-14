@@ -6,8 +6,9 @@
 `1.0.0+1`). It is not limited to the older `apps/mobile/README.md` description:
 Auth, onboarding, the production dashboard, and manual Goals are implemented.
 Accounts and the implemented Settings profile/preferences surface are complete.
-Analysis is the only top-level placeholder. This document describes the code
-currently under `apps/mobile/lib/`.
+Wealth Analysis now implements its approved foundation; Portfolio Analysis is
+the only remaining top-level-adjacent placeholder. This document describes the
+code currently under `apps/mobile/lib/`.
 
 ## Architecture and startup
 
@@ -31,7 +32,7 @@ Top-level structure:
 | `auth/` | Supabase auth wrapper, session/onboarding gate, auth screens and password policy. |
 | `onboarding/` | Five-step profile setup and static country/currency data. |
 | `dashboard/` | Edge-snapshot repository, decimal aggregate/allocation logic, controllers, cards. |
-| `analysis/` | Read-only Wealth Analysis and Portfolio Analysis navigation placeholders; aggregation and specialized analysis data UI are deferred. |
+| `analysis/` | Wealth Analysis domain/service/repositories, controller, target editor, allocation and drift presentation; Portfolio Analysis remains a placeholder. |
 | `goals/` | Goal domain, Supabase repository/RPCs, controllers, pages, sheets and widgets. |
 | `core/` | Decimal arithmetic, money formatting, app-wide data-change notifier. |
 | `theme/`, `widgets/`, `i18n/` | Material theme/tokens, reusable presentation components, and device-local language state/copy. |
@@ -100,7 +101,7 @@ are unchanged:
 | --- | --- | --- |
 | Dashboard | Implemented | `DashboardScreen` loads valuations and a separate read-only goals card. “Add account” switches to Accounts; “View all” switches to Goals. |
 | Accounts | Full presentation localization implemented | The list, create/edit form, generic detail and lifecycle dialogs, Real Estate/Business valued detail, Cash/Bank records read/write surfaces, Gold/Silver detail and purchases, plus brokerage detail, trades, and dividends support English/Arabic. Raw lower-layer errors remain language-agnostic. |
-| Analysis | Placeholder shell | The third tab is `Analysis` / `التحليل` and opens the read-only `Wealth Analysis` / `تحليل الثروة` placeholder. Dashboard Assets Breakdown switches to this tab; Dashboard Portfolio Allocation opens the separate Brokerage-only `Portfolio Analysis` placeholder. Aggregation and specialized analysis data UI are deferred. |
+| Analysis | V1 implemented | The third tab is `Analysis` / `التحليل` and opens the launch hierarchy: Wealth Health, Attention Summary, six-class Wealth Allocation, then Target Allocation & Drift with the full-screen Edit Target flow. Dashboard Assets Breakdown switches to this tab; Dashboard Portfolio Allocation opens the separate Brokerage-only `Portfolio Analysis` placeholder. Standalone Key Insights, Structure/Exposure, diversification, liquidity, currency, detailed valuation-quality, and asset-explorer sections remain deferred. |
 | Goals | Implemented | `GoalsPage`, detail page, form/entry/actions bottom sheets. |
 | Settings | Implemented profile/session surface | `settings/settings_page.dart` reads and edits canonical `profiles.full_name` through `SettingsProfileRepository`, displays the Auth-session email read-only, changes the shared device-local English/Arabic and Light/Dark appearance preferences, and signs out. Whitespace-only names save as null; privacy and support settings are absent. |
 
@@ -171,8 +172,10 @@ at 100% (with a surplus/hatch treatment).
 ## Data, backend, validation, and refresh
 
 Supabase is the only mobile backend integration. Direct caller-scoped/RLS reads
-are `profiles`, `financial_accounts`, `goals`, and `goal_progress_entries`.
-Writes use `complete_onboarding` plus narrow Goals RPCs: `create_goal`,
+are `profiles`, `financial_accounts`, `goals`, `goal_progress_entries`,
+`wealth_allocation_targets`, and `wealth_allocation_target_preferences`.
+Writes use `complete_onboarding`, the atomic
+`replace_wealth_allocation_plan` target-preference RPC, plus narrow Goals RPCs: `create_goal`,
 `update_goal`, `add_goal_progress_entry`, `correct_goal_progress_entry`,
 `set_goal_status`, and `set_goal_archived`. Dashboard valuation calls the
 authenticated `dashboard-valuation` Edge Function; its payload is strictly
@@ -188,8 +191,16 @@ reloads its card through its normal loading state. There is no
 realtime subscription, persistence, retry/backoff policy, or cross-device
 invalidation.
 
-`MoneyFormat` formats money with two decimals and ISO code, percentages up to
-two decimals, and LTR numeric text. `D` normalizes exact decimal strings and
+The Analysis tab also refreshes when it becomes active. Its controller uses a
+request generation guard so an older async failure cannot replace newer loaded
+data, and it ignores completions after disposal. Background refresh failures
+keep the last successful analysis visible with an explicit warning; genuine
+initial failures retain the full error state.
+
+`MoneyFormat` formats general money with two decimals and ISO code, rounds
+Target Drift monetary gaps to whole display units without changing their stored
+precision, formats percentages up to two decimals, and keeps numeric text LTR.
+`D` normalizes exact decimal strings and
 returns null on malformed values. Tests cover password policy, dashboard
 aggregate edge cases (including all-or-nothing and credit liability), and Goals
 validation/replay/history (`apps/mobile/test/`).
@@ -239,13 +250,19 @@ within Arabic captions, only dynamic values use bidi isolation while surrounding
 labels retain RTL direction. Layout is phone-oriented
 with `SafeArea`, scrolling, keyboard-inset sheets, flexible/expanded lists, and
 some responsive wrapping; it has not been established as a tablet-specific
-design.
+design. Inline Analysis header actions use the existing compact finite-width
+control so they remain valid Row children on narrow screens.
 
 ## Gaps, coupling, and risks
 
-- Analysis is the only top-level placeholder. Wealth Analysis and Portfolio
-  Analysis currently provide navigation shells only; their aggregation and
-  specialized analysis data UI are not implemented. Settings currently includes Profile,
+- Wealth Analysis implements the approved mobile foundation by reusing the
+  Dashboard valuation aggregate and the shared Web/Mobile target-plan contract.
+  Its compact allocation donut and target cards use the same section order,
+  six-class product order, tolerance semantics, and status language as web;
+  Net Worth remains secondary in Wealth Health, and the target editor starts an
+  unsaved plan at zero for all fields. Portfolio Analysis and the later
+  specialized/cross-asset analysis sections remain placeholders or deferred.
+  Settings currently includes Profile,
   Language, Appearance, and Sign out; notification behavior, currency switching,
   legal links, export/delete-account, OAuth/MFA/phone auth, and offline/realtime
   support are not implemented.

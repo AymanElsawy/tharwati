@@ -101,7 +101,176 @@ export const en = {
   "pages.analysis.eyebrow": "Read-only insights",
   "pages.analysis.title": "Wealth Analysis",
   "pages.analysis.description":
-    "Your cross-asset wealth analysis will appear here.",
+    "Understand your total wealth, valuation coverage, and allocation across asset classes.",
+  "analysis.loading": "Loading Wealth Analysis",
+  "analysis.error.title": "Wealth Analysis is unavailable",
+  "analysis.error.description":
+    "We couldn't load the latest wealth valuation. Your saved account data has not changed.",
+  "analysis.error.retry": "Try again",
+  "analysis.empty.title": "Build your wealth picture",
+  "analysis.empty.description":
+    "Add an account to see your overall wealth value and cross-asset allocation.",
+  "analysis.empty.action": "View accounts",
+  "analysis.value.unavailable": "Unavailable",
+  "analysis.coverage.complete": "Valuation complete",
+  "analysis.coverage.incomplete": "Valuation incomplete",
+  "analysis.classes.openPortfolio": "Open Portfolio Analysis",
+  "analysis.classes.specializedDeferred": "Specialized analysis coming later",
+  "analysis.health.eyebrow": "Wealth Health",
+  "analysis.health.title": "Your current wealth position",
+  "analysis.health.description":
+    "A qualitative view of concentration, Cash & Bank exposure, liabilities, and valuation quality.",
+  "analysis.health.synthesis.current":
+    "Your current asset values and liabilities support the net wealth context shown here.",
+  "analysis.health.synthesis.stale":
+    "The available asset and liability evidence provides a directional view, but the valuation snapshot may be out of date.",
+  "analysis.health.synthesis.incomplete":
+    "Some required values are unresolved, so this remains a limited view rather than a partial estimate.",
+  "analysis.health.netWealth": "Supporting net wealth value",
+  "analysis.health.valuation": "Valuation quality",
+  "analysis.health.largestExposure": "Largest exposure",
+  "analysis.health.cashExposure": "Cash & Bank exposure",
+  "analysis.health.liabilities": "Liabilities",
+  "analysis.attention.eyebrow": "Attention",
+  "analysis.attention.title": "Attention Summary",
+  "analysis.attention.description":
+    "Factual signals from the current wealth valuation, without recommendations or scoring.",
+  "analysis.attention.incompleteTitle": "Some valuation inputs are unresolved",
+  "analysis.attention.unresolvedPrefix": "There are",
+  "analysis.attention.unresolvedSuffix":
+    "unresolved required value or conversion sources. Totals remain unavailable rather than partial.",
+  "analysis.attention.staleTitle": "The valuation snapshot is stale",
+  "analysis.attention.staleDescription":
+    "Review freshness before relying on the current valuation for time-sensitive decisions.",
+  "analysis.attention.noneTitle": "No material observations",
+  "analysis.attention.noneDescription":
+    "Current valuation evidence shows no condition requiring attention.",
+  "analysis.insights.eyebrow": "Cross-asset evidence",
+  "analysis.insights.title": "Key Insights",
+  "analysis.insights.description":
+    "Concise facts drawn from your current wealth valuation.",
+  "analysis.insights.category.confidence": "Data confidence",
+  "analysis.insights.category.structure": "Wealth structure",
+  "analysis.insights.category.liabilities": "Liabilities",
+  "analysis.insights.category.liquidity": "Liquidity",
+  "analysis.insights.confidence.title": "Valuation confidence",
+  "analysis.insights.confidence.unresolved": "Unresolved valuation sources:",
+  "analysis.insights.confidence.stale": "The valuation snapshot is stale.",
+  "analysis.insights.confidence.unavailable":
+    "Valuation freshness is unavailable.",
+  "analysis.insights.confidence.completeCurrent":
+    "The valuation is complete and current.",
+  "analysis.insights.concentration.title": "Concentration",
+  "analysis.insights.concentration.represents": "represents",
+  "analysis.insights.concentration.ofWealth": "of your valued wealth.",
+  "analysis.insights.liabilities.title": "Liabilities to assets",
+  "analysis.insights.liabilities.prefix": "Liabilities represent",
+  "analysis.insights.liabilities.suffix": "of gross reliably valued assets.",
+  "analysis.insights.liabilities.unavailable":
+    "Liabilities are present, but their share of gross valued assets is unavailable.",
+  "analysis.insights.liquidity.title": "Cash & Bank share",
+  "analysis.insights.liquidity.prefix": "Cash & Bank represents",
+  "analysis.insights.liquidity.suffix": "of reliably valued wealth.",
+  "analysis.insights.breadth.title": "Asset-class breadth",
+  "analysis.insights.breadth.prefix":
+    "Reliable positive value currently comes from",
+  "analysis.insights.breadth.suffix": "asset classes.",
+  "analysis.allocation.eyebrow": "Cross-asset structure",
+  "analysis.allocation.title": "Wealth Allocation",
+  "analysis.allocation.description":
+    "A ranked view of positive asset classes, their current values, and their share of supported assets.",
+  "analysis.allocation.chartLabel": "Wealth allocation donut chart",
+  "analysis.allocation.legendLabel": "Wealth allocation details",
+  "analysis.allocation.valuedTotal": "Current valued total",
+  "analysis.allocation.completeCoverage": "100% of included allocation",
+  "analysis.allocation.unavailableTitle": "Allocation is unavailable",
+  "analysis.allocation.unavailableDescription":
+    "The complete allocation will appear after every required value and conversion resolves.",
+  "analysis.allocation.empty":
+    "No positive asset values are available to allocate.",
+  "analysis.allocation.contextTitle": "Largest exposure",
+  "analysis.allocation.contextPrefix": "The current largest asset class is",
+  "analysis.allocation.contextAt": "at",
+  "analysis.targets.eyebrow": "Selected structure",
+  "analysis.targets.title": "Target Allocation & Drift",
+  "analysis.targets.description":
+    "Compare reliably valued participating classes with your saved targets and tolerance. Classes set to 0% are excluded from this comparison.",
+  "analysis.targets.edit": "Edit target",
+  "analysis.targets.loading": "Loading target allocation",
+  "analysis.targets.loadError": "Target allocation is unavailable",
+  "analysis.targets.loadErrorDescription":
+    "Your saved target could not be loaded.",
+  "analysis.targets.retry": "Try again",
+  "analysis.targets.empty":
+    "Set a target allocation to compare your current valued wealth with your selected structure.",
+  "analysis.targets.unavailable": "Target comparison is unavailable",
+  "analysis.targets.unavailableDescription":
+    "A participating asset class cannot be valued reliably in the current snapshot.",
+  "analysis.targets.current": "Current",
+  "analysis.targets.target": "Target",
+  "analysis.targets.gap": "Gap",
+  "analysis.targets.statusLabel": "Status",
+  "analysis.targets.status.within": "Within target range",
+  "analysis.targets.status.above": "Above target range",
+  "analysis.targets.status.below": "Below target range",
+  "analysis.targets.largestPrefix": "has the largest target deviation:",
+  "analysis.targets.largestAboveTarget": "above your selected target",
+  "analysis.targets.largestBelowTarget": "below your selected target",
+  "analysis.targets.largestEquivalent": "equivalent to approximately",
+  "analysis.targets.allWithin":
+    "All participating asset classes are within your selected target ranges.",
+  "analysis.targets.excludedValueSingle":
+    "{{classes}} currently holds reliable value but is excluded from your selected target allocation.",
+  "analysis.targets.excludedValueMultiple":
+    "{{classes}} currently hold reliable value but are excluded from your selected target allocation.",
+  "analysis.targets.editorTitle": "Edit target allocation",
+  "analysis.targets.editorDescription":
+    "Enter a percentage for every supported wealth asset class.",
+  "analysis.targets.zeroExclusion":
+    "A 0% target excludes that class and its current value from Target Comparison.",
+  "analysis.targets.tolerance": "Tolerance",
+  "analysis.targets.toleranceHelperPrefix": "An allocation within",
+  "analysis.targets.toleranceHelperSuffix":
+    "of your target will be treated as within range.",
+  "analysis.targets.toleranceZeroHelper":
+    "0% means only an exact match to your target is within range.",
+  "analysis.targets.toleranceError":
+    "Tolerance must be a percentage from 0% to 100% with up to 6 decimal places.",
+  "analysis.targets.total": "Total",
+  "analysis.targets.totalError": "Target percentages must total exactly 100%.",
+  "analysis.targets.save": "Save target",
+  "analysis.targets.saving": "Saving…",
+  "analysis.targets.saveError":
+    "Your target allocation could not be saved. Try again.",
+  "analysis.dimensions.eyebrow": "Analysis dimensions",
+  "analysis.dimensions.title": "Structure and exposure",
+  "analysis.dimensions.description": "How your wealth is spread today.",
+  "analysis.dimensions.unavailable":
+    "This evidence is unavailable while valuation coverage is incomplete.",
+  "analysis.diversification.title": "Diversification & Concentration",
+  "analysis.diversification.spread": "Asset-class spread",
+  "analysis.diversification.largest": "Largest exposure",
+  "analysis.liquidity.title": "Liquidity",
+  "analysis.liquidity.cashShare": "Cash & Bank share of assets",
+  "analysis.liquidity.cashValue": "Cash & Bank value",
+  "analysis.currency.title": "Currency Exposure",
+  "analysis.currency.unavailable": "Currency breakdown unavailable",
+  "analysis.currency.unavailableDescription":
+    "Source-currency detail is not available in the current valuation.",
+  "analysis.quality.eyebrow": "Data confidence",
+  "analysis.quality.title": "Valuation Quality / Freshness",
+  "analysis.quality.description":
+    "See whether the wealth evidence is complete, current, and free of unresolved valuation sources.",
+  "analysis.quality.coverage": "Coverage",
+  "analysis.quality.freshness": "Freshness",
+  "analysis.quality.current": "Current snapshot",
+  "analysis.quality.stale": "Stale snapshot",
+  "analysis.quality.unresolved": "Unresolved sources",
+  "analysis.explorer.eyebrow": "Go deeper",
+  "analysis.explorer.title": "Explore your wealth",
+  "analysis.explorer.description":
+    "Brokerage analysis is available now; other specialized views are planned.",
+  "analysis.explorer.noCurrentValue": "No current value",
   "dashboard.hero.greeting": "Welcome back",
   "dashboard.hero.personalGreeting": "Good afternoon, {{name}} 👋",
   "dashboard.hero.guest": "there",

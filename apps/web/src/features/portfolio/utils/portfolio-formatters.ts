@@ -61,6 +61,15 @@ export function formatPortfolioAmount(
   return `${currencyCode} ${formatPortfolioDecimal(value, locale, 2)}`
 }
 
+/** Formats an amount rounded to whole primary-currency units for gap display. */
+export function formatPortfolioRoundedAmount(
+  value: Decimal | null,
+  currencyCode: string,
+  locale: string,
+): string {
+  return `${currencyCode} ${formatPortfolioDecimal(value, locale, 0)}`
+}
+
 export function formatPortfolioPercent(
   value: Decimal | null,
   locale: string,
