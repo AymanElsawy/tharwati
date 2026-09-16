@@ -78,7 +78,7 @@ Triggers (immutability guards once financial history exists):
 
 - Changing `currency_code` on an account with existing `transaction_entries` raises Postgres error `23514` ("This account already contains financial history. Its currency cannot be changed.").
 - Changing `opening_balance` similarly raises `23514` for opening balance.
-- `get_account_lifecycle_eligibility()` returns server-authoritative history, Close, and Delete eligibility for owned accounts. It covers ledger entries, holdings, metal purchases and funding links, valuations, and disposals.
+- `get_account_lifecycle_eligibility()` returns server-authoritative history, Close, and Delete eligibility for owned accounts. It covers ledger entries, holdings, metal purchases and funding links, valuations, and disposals. For Cash, Bank, and Brokerage Close checks, the text-based balance read model is accepted only when it is a valid finite decimal and is then explicitly converted to `numeric`; missing or malformed values fail closed as `current_value_unavailable` and are never treated as zero.
 - Authenticated table updates cannot directly change `is_active`, `closed_reason`, or `closed_on`; Close/Reopen RPCs own ordinary lifecycle transitions, while disposal projection alone owns Sold status and date.
 
 `account_types` reference table (seed data only, not queried dynamically by the client — types are hardcoded client-side):
