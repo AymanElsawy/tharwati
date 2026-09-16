@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../main.dart';
 import '../i18n/app_language.dart';
 import '../i18n/dashboard_copy.dart';
+import '../settings/settings_profile_repository.dart';
 import '../theme/tokens.dart';
 import '../widgets/callout.dart';
 import '../widgets/primary_button.dart';
@@ -42,6 +43,27 @@ class DashboardScreen extends StatefulWidget {
 class _DashboardScreenState extends State<DashboardScreen> {
   final _dashboard = DashboardController();
   final _goals = DashboardGoalsController();
+  final _profile = SettingsProfileRepository();
+
+  /// Signup metadata is the immediate fallback; `profiles.full_name` is the
+  /// canonical name Settings edits, so it replaces it once loaded.
+  String? _fullName = authService.currentFullName;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadFullName();
+  }
+
+  Future<void> _loadFullName() async {
+    try {
+      final name = await _profile.loadFullName();
+      if (!mounted || name == null) return;
+      setState(() => _fullName = name);
+    } catch (_) {
+      // Keep the metadata name; the greeting degrades to the lead phrase.
+    }
+  }
 
   @override
   void dispose() {
@@ -68,7 +90,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
               physics: const AlwaysScrollableScrollPhysics(),
               children: [
                 DashboardMasthead(
-                  name: authService.currentFullName,
+                  name: _fullName,
+                  fallbackInitial: authService.currentUser?.email,
                   welcome:
                       status == DashboardStatus.ready &&
                       (aggregate?.isEmpty ?? false),

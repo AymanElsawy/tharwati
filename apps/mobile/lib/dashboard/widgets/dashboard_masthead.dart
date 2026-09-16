@@ -12,11 +12,17 @@ class DashboardMasthead extends StatelessWidget {
   const DashboardMasthead({
     super.key,
     required this.name,
+    this.fallbackInitial,
     this.hasNotificationDot = true,
     this.welcome = false,
   });
 
   final String? name;
+
+  /// Shown in the avatar when there is no name yet (the account email's first
+  /// letter), instead of the neutral placeholder.
+  final String? fallbackInitial;
+
   final bool hasNotificationDot;
 
   static const height = 286.0;
@@ -92,16 +98,25 @@ class DashboardMasthead extends StatelessWidget {
                     children: [
                       const TharwatiBrand(),
                       const Spacer(),
-                      _BellButton(
-                        dot: hasNotificationDot,
-                        onMasthead: c.ink,
-                        canvas: c.canvas,
+                      // Notifications are not implemented yet — restore the
+                      // bell (and the `_BellButton` widget below) once they
+                      // are.
+                      // _BellButton(
+                      //   dot: hasNotificationDot,
+                      //   onMasthead: c.ink,
+                      //   canvas: c.canvas,
+                      // ),
+                      // const SizedBox(width: 8),
+                      _Avatar(
+                        initial: firstName ?? fallbackInitial,
+                        color: c.ink,
                       ),
-                      const SizedBox(width: 8),
-                      _Avatar(initial: firstName, color: c.ink),
                     ],
                   ),
-                  const SizedBox(height: 62),
+                  // Flexible rather than a fixed gap: the text block stays
+                  // bottom-anchored and absorbs taller status-bar insets and
+                  // text scales instead of overflowing the fixed masthead.
+                  const Spacer(),
                   Text(
                     greeting,
                     maxLines: 1,
@@ -162,52 +177,52 @@ class _Avatar extends StatelessWidget {
   );
 }
 
-class _BellButton extends StatelessWidget {
-  const _BellButton({
-    required this.dot,
-    required this.onMasthead,
-    required this.canvas,
-  });
-
-  final bool dot;
-  final Color onMasthead;
-  final Color canvas;
-
-  @override
-  Widget build(BuildContext context) {
-    return Semantics(
-      label: 'Notifications',
-      button: true,
-      child: Container(
-        width: AppSizes.touchTarget,
-        height: AppSizes.touchTarget,
-        alignment: Alignment.center,
-        decoration: BoxDecoration(
-          color: onMasthead.withValues(alpha: 0.10),
-          border: Border.all(color: onMasthead.withValues(alpha: 0.18)),
-          borderRadius: BorderRadius.circular(AppRadius.field),
-        ),
-        child: Stack(
-          clipBehavior: Clip.none,
-          children: [
-            Icon(Icons.notifications_none_rounded, size: 22, color: onMasthead),
-            if (dot)
-              Positioned(
-                right: -1,
-                top: -1,
-                child: Container(
-                  width: 9,
-                  height: 9,
-                  decoration: BoxDecoration(
-                    color: context.colors.artworkGold,
-                    shape: BoxShape.circle,
-                    border: Border.all(color: canvas, width: 1.5),
-                  ),
-                ),
-              ),
-          ],
-        ),
-      ),
-    );
-  }
-}
+// class _BellButton extends StatelessWidget {
+//   const _BellButton({
+//     required this.dot,
+//     required this.onMasthead,
+//     required this.canvas,
+//   });
+//
+//   final bool dot;
+//   final Color onMasthead;
+//   final Color canvas;
+//
+//   @override
+//   Widget build(BuildContext context) {
+//     return Semantics(
+//       label: 'Notifications',
+//       button: true,
+//       child: Container(
+//         width: AppSizes.touchTarget,
+//         height: AppSizes.touchTarget,
+//         alignment: Alignment.center,
+//         decoration: BoxDecoration(
+//           color: onMasthead.withValues(alpha: 0.10),
+//           border: Border.all(color: onMasthead.withValues(alpha: 0.18)),
+//           borderRadius: BorderRadius.circular(AppRadius.field),
+//         ),
+//         child: Stack(
+//           clipBehavior: Clip.none,
+//           children: [
+//             Icon(Icons.notifications_none_rounded, size: 22, color: onMasthead),
+//             if (dot)
+//               Positioned(
+//                 right: -1,
+//                 top: -1,
+//                 child: Container(
+//                   width: 9,
+//                   height: 9,
+//                   decoration: BoxDecoration(
+//                     color: context.colors.artworkGold,
+//                     shape: BoxShape.circle,
+//                     border: Border.all(color: canvas, width: 1.5),
+//                   ),
+//                 ),
+//               ),
+//           ],
+//         ),
+//       ),
+//     );
+//   }
+// }
