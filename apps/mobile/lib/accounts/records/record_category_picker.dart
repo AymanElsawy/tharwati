@@ -84,6 +84,7 @@ class RecordCategoryField extends StatelessWidget {
           ),
           const SizedBox(height: 6),
           InkWell(
+            key: const ValueKey('record-category-field-trigger'),
             onTap: () async {
               final picked =
                   await showModalBottomSheet<RecordCategorySearchResult>(
@@ -252,8 +253,11 @@ class _CategoryPickerSheetState extends State<_CategoryPickerSheet> {
       children: [
         for (final main in widget.categories) ...[
           _MainRow(
+            key: ValueKey('record-category-main-${main.id}'),
+            id: main.id,
             name: main.name,
             expanded: _expanded.contains(main.id),
+            isExpandable: main.subcategories.isNotEmpty,
             onTap: () => setState(() {
               _expanded.contains(main.id)
                   ? _expanded.remove(main.id)
@@ -261,23 +265,25 @@ class _CategoryPickerSheetState extends State<_CategoryPickerSheet> {
             }),
           ),
           if (_expanded.contains(main.id))
-            for (final sub in main.subcategories)
-              Padding(
-                padding: const EdgeInsets.only(left: 16),
-                child: _row(
-                  context,
-                  sub.name,
-                  sub.id == widget.selectedSubcategoryId,
-                  () => Navigator.of(context).pop(
-                    RecordCategorySearchResult(
-                      mainCategoryId: main.id,
-                      mainCategoryName: main.name,
-                      subcategoryId: sub.id,
-                      subcategoryName: sub.name,
+            _SubcategoryGroup(
+              key: ValueKey('record-category-children-${main.id}'),
+              children: [
+                for (final sub in main.subcategories)
+                  _row(
+                    context,
+                    sub.name,
+                    sub.id == widget.selectedSubcategoryId,
+                    () => Navigator.of(context).pop(
+                      RecordCategorySearchResult(
+                        mainCategoryId: main.id,
+                        mainCategoryName: main.name,
+                        subcategoryId: sub.id,
+                        subcategoryName: sub.name,
+                      ),
                     ),
                   ),
-                ),
-              ),
+              ],
+            ),
         ],
       ],
     );
@@ -292,11 +298,14 @@ class _CategoryPickerSheetState extends State<_CategoryPickerSheet> {
     final c = context.colors;
     return ListTile(
       dense: true,
+      minTileHeight: AppSizes.touchTarget,
+      contentPadding: const EdgeInsetsDirectional.only(start: 12, end: 10),
       title: Text(
         label,
         style: TextStyle(
           color: selected ? c.accent : c.ink,
-          fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+          fontSize: 13,
+          fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
         ),
       ),
       trailing: selected ? Icon(Icons.check, size: 18, color: c.accent) : null,
@@ -307,36 +316,113 @@ class _CategoryPickerSheetState extends State<_CategoryPickerSheet> {
 
 class _MainRow extends StatelessWidget {
   const _MainRow({
+    super.key,
+    required this.id,
     required this.name,
     required this.expanded,
+    required this.isExpandable,
     required this.onTap,
   });
+  final String id;
   final String name;
   final bool expanded;
+  final bool isExpandable;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
-    final isRtl =
-        AppLanguageScope.of(context).language.direction == TextDirection.rtl;
-    return ListTile(
-      dense: true,
-      onTap: onTap,
-      title: Text(
-        name,
-        style: TextStyle(
-          color: c.ink,
-          fontSize: 14,
-          fontWeight: FontWeight.w700,
+    return Container(
+      margin: const EdgeInsets.only(bottom: 6),
+      decoration: BoxDecoration(
+        border: Border.all(color: c.line),
+        borderRadius: BorderRadius.circular(AppRadius.control),
+        boxShadow: [
+          BoxShadow(
+            color: c.ink.withValues(alpha: c.isDark ? 0.10 : 0.035),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Material(
+        color: c.surface,
+        borderRadius: BorderRadius.circular(AppRadius.control),
+        clipBehavior: Clip.antiAlias,
+        child: ListTile(
+          dense: true,
+          minTileHeight: AppSizes.field,
+          contentPadding: const EdgeInsetsDirectional.only(start: 16, end: 12),
+          onTap: isExpandable ? onTap : null,
+          title: Text(
+            name,
+            style: TextStyle(
+              color: c.ink,
+              fontSize: 15,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          trailing: isExpandable
+              ? KeyedSubtree(
+                  key: ValueKey('record-category-chevron-$id'),
+                  child: Icon(
+                    expanded ? Icons.expand_more : Icons.chevron_right,
+                    size: 20,
+                    color: c.inkMuted,
+                  ),
+                )
+              : null,
         ),
       ),
-      trailing: Icon(
-        expanded
-            ? Icons.expand_more
-            : (isRtl ? Icons.chevron_left : Icons.chevron_right),
-        size: 18,
-        color: c.inkMuted,
+    );
+  }
+}
+
+/// Distinct secondary surface that makes the subcategory level explicit while
+/// using directional border/padding so the hierarchy mirrors in Arabic.
+class _SubcategoryGroup extends StatelessWidget {
+  const _SubcategoryGroup({super.key, required this.children});
+
+  final List<Widget> children;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    return Padding(
+      padding: const EdgeInsetsDirectional.only(start: 16, bottom: 10),
+      child: Container(
+        padding: const EdgeInsetsDirectional.only(
+          start: 8,
+          top: 4,
+          end: 4,
+          bottom: 4,
+        ),
+        decoration: BoxDecoration(
+          color: c.fieldFill,
+          border: BorderDirectional(
+            start: BorderSide(
+              color: c.accent.withValues(alpha: 0.45),
+              width: 2,
+            ),
+          ),
+          borderRadius: BorderRadiusDirectional.only(
+            topStart: Radius.circular(AppRadius.field),
+            bottomStart: Radius.circular(AppRadius.field),
+            topEnd: Radius.circular(10),
+            bottomEnd: Radius.circular(10),
+          ),
+        ),
+        child: Material(
+          color: Colors.transparent,
+          borderRadius: BorderRadiusDirectional.only(
+            topStart: Radius.circular(AppRadius.field),
+            bottomStart: Radius.circular(AppRadius.field),
+            topEnd: Radius.circular(10),
+            bottomEnd: Radius.circular(10),
+          ),
+          clipBehavior: Clip.antiAlias,
+          child: Column(mainAxisSize: MainAxisSize.min, children: children),
+        ),
       ),
     );
   }

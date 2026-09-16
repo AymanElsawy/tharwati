@@ -105,6 +105,14 @@ are unchanged:
 | Goals | Implemented | `GoalsPage`, detail page, form/entry/actions bottom sheets. |
 | Settings | Implemented profile/session surface | `settings/settings_page.dart` reads and edits canonical `profiles.full_name` through `SettingsProfileRepository`, displays the Auth-session email read-only, changes the shared device-local English/Arabic and Light/Dark appearance preferences, and signs out. Whitespace-only names save as null; privacy and support settings are absent. |
 
+Within Cash/Bank record forms, the searchable category sheet preserves the
+shared Web category tree and selection contract. Main categories are 52px,
+bordered primary rows; only parents with children expose an expansion chevron.
+Expanded children live in a smaller-type, secondary field-fill container with a
+directional start-side nesting rule, so the indentation and accent border mirror
+in Arabic. The same semantic surface, field-fill, line, ink, and accent tokens
+maintain that distinction in Light and Dark modes without category imagery.
+
 Dashboard (`dashboard/dashboard_screen.dart`) is the implemented production
 summary, not the richer web-only dashboard. `DashboardController` loads profile
 base currency, active `financial_accounts`, and the server `dashboard-valuation`
