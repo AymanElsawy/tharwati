@@ -1,5 +1,6 @@
 import { createClient } from "npm:@supabase/supabase-js@2"
 import { getFrankfurterRate } from "../_shared/frankfurter.ts"
+import { identityRate, positiveRate, providerCacheState } from "../_shared/fx-rate.ts"
 
 const freshnessMs = 6 * 60 * 60 * 1000
 
@@ -37,7 +38,10 @@ Deno.serve(async (request) => {
     const mode = body.mode === "historical" ? "historical" : "current"
     const requestedDate = typeof body.requestedDate === "string" ? body.requestedDate : undefined
     if (!from || !to || (mode === "historical" && !/^\d{4}-\d{2}-\d{2}$/.test(requestedDate ?? ""))) return json({ error: "invalid_currency_or_date" }, 400)
-    if (from === to) return json({ available: true, rate: 1, provider: "identity", effectiveAt: requestedDate ?? new Date().toISOString().slice(0, 10), fetchedAt: new Date().toISOString(), stale: false, unavailable: false })
+    if (from === to) {
+      const fetchedAt = new Date().toISOString()
+      return json(identityRate(requestedDate ?? fetchedAt.slice(0, 10), fetchedAt))
+    }
 
     let cached: { rate: string | number; effective_at: string; fetched_at: string } | null = null
     try {
@@ -47,9 +51,8 @@ Deno.serve(async (request) => {
     } catch (error) {
       console.error("fx-rates cache lookup failed", errorDetails(error))
     }
-    const cachedRate = cached && Number.isFinite(Number(cached.rate)) && Number(cached.rate) > 0 ? cached : null
-    const cacheFresh = mode === "historical" || (cachedRate?.fetched_at && Date.now() - Date.parse(cachedRate.fetched_at) < freshnessMs)
-    if (cachedRate && cacheFresh) return json({ available: true, rate: Number(cachedRate.rate), provider: "frankfurter", effectiveAt: cachedRate.effective_at, fetchedAt: cachedRate.fetched_at, stale: false, unavailable: false })
+    const cachedRate = providerCacheState(cached, { historical: mode === "historical", now: Date.now(), freshnessMs })
+    if (cachedRate?.fresh) return json({ available: true, rate: cachedRate.rate, provider: "frankfurter", effectiveAt: cachedRate.effectiveAt, fetchedAt: cachedRate.fetchedAt, stale: false, unavailable: false })
     try {
       const rate = await getFrankfurterRate(from, to, mode === "historical" ? requestedDate : undefined)
       const fetchedAt = new Date().toISOString()
@@ -62,7 +65,22 @@ Deno.serve(async (request) => {
       return json({ available: true, rate: rate.rate, provider: "frankfurter", effectiveAt: `${rate.date}T00:00:00Z`, fetchedAt, stale: false, unavailable: false })
     } catch (error) {
       console.error("fx-rates provider request failed", errorDetails(error))
-      if (cachedRate) return json({ available: true, rate: Number(cachedRate.rate), provider: "frankfurter", effectiveAt: cachedRate.effective_at, fetchedAt: cachedRate.fetched_at, stale: true, unavailable: false })
+      if (cachedRate) return json({ available: true, rate: cachedRate.rate, provider: "frankfurter", effectiveAt: cachedRate.effectiveAt, fetchedAt: cachedRate.fetchedAt, stale: true, unavailable: false })
+      const fallbackAt = mode === "historical" ? `${requestedDate}T23:59:59Z` : new Date().toISOString()
+      const { data: fallbackRows, error: fallbackError } = await userClient.rpc("resolve_historical_exchange_rate", {
+        p_source_currency_code: from,
+        p_destination_currency_code: to,
+        p_requested_at: fallbackAt,
+      })
+      if (fallbackError) {
+        console.error("fx-rates manual fallback failed", errorDetails(fallbackError))
+      } else {
+        const fallback = fallbackRows?.[0]
+        const fallbackRate = positiveRate(fallback?.rate)
+        if (fallback && fallbackRate !== null) {
+          return json({ available: true, rate: fallbackRate, provider: fallback.source ?? "manual", effectiveAt: fallback.effective_at, fetchedAt: null, stale: true, unavailable: false, direction: fallback.direction })
+        }
+      }
       return json({ available: false, provider: "frankfurter", stale: false, unavailable: true }, 422)
     }
   } catch (error) { console.error("fx-rates request failed", errorDetails(error)); return json({ error: "fx_request_failed" }, 500) }

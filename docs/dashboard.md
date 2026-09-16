@@ -239,7 +239,11 @@ The missing-data card section should render nothing at all if there are zero mis
 
 ### 2.7 Exchange rate resolution
 
-Live rate is fetched first from an external FX provider (6h in-memory cache, request de-duplication per currency pair; identity rate `1` if source = destination). If the live fetch fails, falls back to the most recent **manually-entered** rate stored in the app's own exchange-rates table (checking both the direct and inverted direction). If neither is available, the conversion fails with a "rate unavailable" error, which calling code (net worth / portfolio valuation) catches and folds into `missingCurrencyPairs`/`missingExchangeRatePairs` rather than failing the whole dashboard load.
+The authenticated `fx-rates` Edge Function resolves current and historical rates through Frankfurter. Same-currency requests return the identity rate `1`. Otherwise it first serves a valid provider-cache row when it is fresh (current-rate freshness is six hours; historical rows are date-bounded), then requests and validates a positive finite provider rate. A successful provider response is stored as a shared, service-role-owned cache row with provider, effective, and fetched timestamps.
+
+If the provider request fails, resolution uses the most recent positive stale provider row, then the authenticated user's most recent manual direct or inverse row. Direct/inverse historical resolution is decimal-safe in PostgreSQL and provider rows retain precedence over manual rows. If no valid row exists, the Edge Function returns explicit unavailability; missing, malformed, zero, negative, or non-finite values are never converted to zero. `investment-fx` uses the same stored resolver for provider-outage fallback.
+
+`exchange_rates` separates shared Frankfurter cache rows (`user_id = null`, service-role writes only) from user-owned manual rows (`user_id = auth.uid()`, `provider = null`, `source = manual`). Authenticated users can read shared provider rows and only their own manual rows, and can insert/update/delete only their own manual rows. Anonymous access has no table privileges. The read-only `currencies` catalogue contains the same five currencies supported elsewhere (`USD`, `SAR`, `EGP`, `EUR`, `GBP`); exchange-rate codes reference it, base and quote must differ, and rates use `numeric(30,12)` with positive/finite constraints.
 
 ### 2.8 Production net worth calculation
 
@@ -305,7 +309,7 @@ Raw Brokerage holding quantities and effective metal-purchase gram quantities ar
 
 - **`get_account_balances(p_account_ids?)`** — ledger-adjusted balance read model: `current_balance = opening_balance + Σ(posted debit − posted credit account-side entries)`, excluding asset-side entries and draft/void transactions. Used by the rich net-worth path (not by the production `useNetWorth`, which reads raw `opening_balance` directly).
 - **`resolve_historical_exchange_rate(source, destination, requested_at)`** — for historical-rate lookups (not used by current-value dashboard calculations, which resolve _current_ rates via a live external FX call with a stored-table fallback).
-- Plain table reads: `financial_accounts` (accounts), `holdings` (open positions, `quantity > 0` only, with joined asset + account details), `financial_transactions` + `transaction_entries` (recent activity), `exchange_rates` (manual-rate fallback), `profiles.base_currency_code` (throws a "not found"/onboarding-incomplete error if unset).
+- Plain table reads: `financial_accounts` (accounts), `holdings` (open positions, `quantity > 0` only, with joined asset + account details), `financial_transactions` + `transaction_entries` (recent activity), `exchange_rates` (shared Frankfurter cache plus caller-isolated manual fallback), `profiles.base_currency_code` (throws a "not found"/onboarding-incomplete error if unset).
 - External integrations (not Supabase): a live FX rate API (6h cache) and a live metals-price API (6h cache) — see §2.6/§2.7.
 
 **Implication for mobile**: achieving parity means either (a) porting the client-side `NetWorthService` / `PortfolioValuationService` / decimal-arithmetic logic to the mobile app as well, or (b) — the better long-term option — requesting a proper server-side aggregation endpoint/RPC so both platforms share one source of truth. Flag this as a decision point rather than silently choosing one.

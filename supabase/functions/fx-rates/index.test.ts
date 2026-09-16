@@ -13,6 +13,7 @@ describe("fx-rates Frankfurter provider", () => {
   })
 
   it.each([
+    ["USD", "SAR", 3.75],
     ["EGP", "SAR", 0.07454],
     ["EUR", "SAR", 4.3738],
     ["GBP", "SAR", 5.1012],

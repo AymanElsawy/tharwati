@@ -92,9 +92,21 @@ Deno.serve(async (request) => {
     try {
       fx = await providerRate(from, to, requestedDate)
     } catch (error) {
-      if (!cachedRate || !Number.isFinite(Number(cachedRate.rate)) || Number(cachedRate.rate) <= 0) throw error
-      fx = { rate: Number(cachedRate.rate), date: cachedRate.effective_at.slice(0, 10), identity: false }
-      stale = true
+      if (cachedRate && Number.isFinite(Number(cachedRate.rate)) && Number(cachedRate.rate) > 0) {
+        fx = { rate: Number(cachedRate.rate), date: cachedRate.effective_at.slice(0, 10), identity: false }
+        stale = true
+      } else {
+        const { data: fallbackRows, error: fallbackError } = await userClient.rpc("resolve_historical_exchange_rate", {
+          p_source_currency_code: from,
+          p_destination_currency_code: to,
+          p_requested_at: `${requestedDate}T23:59:59Z`,
+        })
+        const fallback = fallbackRows?.[0]
+        const fallbackRate = Number(fallback?.rate)
+        if (fallbackError || !Number.isFinite(fallbackRate) || fallbackRate <= 0) throw error
+        fx = { rate: fallbackRate, date: String(fallback.effective_at).slice(0, 10), identity: false }
+        stale = true
+      }
     }
     if (!fx.identity) {
       // Best-effort shared FX cache write. Never fatal to the investment: the
