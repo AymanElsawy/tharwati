@@ -1,15 +1,12 @@
 import { createClient } from "npm:@supabase/supabase-js@2"
 import { getFrankfurterRate } from "../_shared/frankfurter.ts"
 import { identityRate, positiveRate, providerCacheState } from "../_shared/fx-rate.ts"
+import { json, preflightResponse } from "./http.ts"
 
 const freshnessMs = 6 * 60 * 60 * 1000
 
 function errorDetails(error: unknown) {
   return { message: error instanceof Error ? error.message : String(error) }
-}
-
-function json(body: unknown, status = 200) {
-  return new Response(JSON.stringify(body), { status, headers: { "Content-Type": "application/json" } })
 }
 
 function code(value: unknown) {
@@ -18,6 +15,7 @@ function code(value: unknown) {
 }
 
 Deno.serve(async (request) => {
+  if (request.method === "OPTIONS") return preflightResponse()
   if (request.method !== "POST") return json({ error: "method_not_allowed" }, 405)
   const authorization = request.headers.get("Authorization")
   if (!authorization) return json({ error: "authentication_required" }, 401)

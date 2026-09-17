@@ -224,10 +224,10 @@ Up to 8 most recent **posted** transactions, each mapped to an activity with a t
 
 `isEmpty = (cash accounts = 0) AND (holdings = 0) AND (transactions = 0)` — should drive a dedicated empty-state screen (see §5.2) instead of the normal dashboard.
 
-Missing exchange-rate pairs are split into:
+Missing exchange-rate pairs are classified without a browser-maintained provider allowlist:
 
-- **Auto-retryable** — pairs supported by the live FX provider (Frankfurter) → shown with a "temporarily unavailable" message + a Retry action that re-triggers the dashboard load.
-- **Unsupported** — pairs the provider can't supply at all → informational only, no retry (implies the user needs to enter a manual rate elsewhere in the app).
+- **Auto-retryable** — every valid, distinct three-letter currency pair, including pairs with `SAR`, is sent through the shared `fx-rates` contract and shown with a "temporarily unavailable" message + a Retry action that re-triggers the dashboard load.
+- **Unsupported** — only malformed or non-pair input is informational with no retry. Provider support and provider/manual fallback availability are decided by `fx-rates`, not duplicated in Web capability data.
 
 The missing-data card section should render nothing at all if there are zero missing price holdings AND zero missing FX pairs.
 
@@ -244,6 +244,8 @@ The authenticated `fx-rates` Edge Function resolves current and historical rates
 If the provider request fails, resolution uses the most recent positive stale provider row, then the authenticated user's most recent manual direct or inverse row. Direct/inverse historical resolution is decimal-safe in PostgreSQL and provider rows retain precedence over manual rows. If no valid row exists, the Edge Function returns explicit unavailability; missing, malformed, zero, negative, or non-finite values are never converted to zero. `investment-fx` uses the same stored resolver for provider-outage fallback.
 
 `exchange_rates` separates shared Frankfurter cache rows (`user_id = null`, service-role writes only) from user-owned manual rows (`user_id = auth.uid()`, `provider = null`, `source = manual`). Authenticated users can read shared provider rows and only their own manual rows, and can insert/update/delete only their own manual rows. Anonymous access has no table privileges. The read-only `currencies` catalogue contains the same five currencies supported elsewhere (`USD`, `SAR`, `EGP`, `EUR`, `GBP`); exchange-rate codes reference it, base and quote must differ, and rates use `numeric(30,12)` with positive/finite constraints.
+
+All Web current-rate lookups invoke the authenticated `fx-rates` contract. The browser keeps only in-flight request de-duplication: it does not call Frankfurter directly, maintain a provider-support list, or repeat manual direct/inverse fallback queries. It preserves the Edge response's decimal-string rate, direction, provider, timestamps, stale state, and explicit unavailable result. Historical investment FX remains on `investment-fx`, and transaction-specific user-entered Brokerage FX retains its existing semantics.
 
 ### 2.8 Production net worth calculation
 
@@ -308,9 +310,9 @@ When the Edge Function cannot build or persist a snapshot, its 500 response cont
 Raw Brokerage holding quantities and effective metal-purchase gram quantities are normalized to decimal strings at the Edge boundary before valuation, so PostgreSQL numeric JSON representation does not affect decimal-safe valuation.
 
 - **`get_account_balances(p_account_ids?)`** — ledger-adjusted balance read model: `current_balance = opening_balance + Σ(posted debit − posted credit account-side entries)`, excluding asset-side entries and draft/void transactions. Used by the rich net-worth path (not by the production `useNetWorth`, which reads raw `opening_balance` directly).
-- **`resolve_historical_exchange_rate(source, destination, requested_at)`** — for historical-rate lookups (not used by current-value dashboard calculations, which resolve _current_ rates via a live external FX call with a stored-table fallback).
+- **`resolve_historical_exchange_rate(source, destination, requested_at)`** — for historical-rate lookups (not used by current-value dashboard calculations, which resolve _current_ rates through the authenticated `fx-rates` Edge contract).
 - Plain table reads: `financial_accounts` (accounts), `holdings` (open positions, `quantity > 0` only, with joined asset + account details), `financial_transactions` + `transaction_entries` (recent activity), `exchange_rates` (shared Frankfurter cache plus caller-isolated manual fallback), `profiles.base_currency_code` (throws a "not found"/onboarding-incomplete error if unset).
-- External integrations (not Supabase): a live FX rate API (6h cache) and a live metals-price API (6h cache) — see §2.6/§2.7.
+- External integrations (not Supabase): the Edge backend calls the live FX rate API (6h provider cache), while the browser calls only the authenticated Edge contract; the live metals-price API retains its existing 6h client cache — see §2.6/§2.7.
 
 **Implication for mobile**: achieving parity means either (a) porting the client-side `NetWorthService` / `PortfolioValuationService` / decimal-arithmetic logic to the mobile app as well, or (b) — the better long-term option — requesting a proper server-side aggregation endpoint/RPC so both platforms share one source of truth. Flag this as a decision point rather than silently choosing one.
 

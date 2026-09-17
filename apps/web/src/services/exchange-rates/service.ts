@@ -153,26 +153,14 @@ export class ExchangeRateService {
     if (resolved) {
       return {
         ...normalized,
-        rate: String(resolved.rate),
-        direction: "direct",
+        rate: resolved.rate,
+        direction: resolved.direction,
         effectiveAt: resolved.effectiveAt,
         source: resolved.provider,
         usage: "current",
         resolvedAt,
         fetchedAt: resolved.fetchedAt,
         stale: resolved.stale,
-      }
-    }
-    const fallback =
-      await this.getLatestDirectRate(normalized, resolvedAt) ??
-      await this.getLatestInverseRate(normalized, resolvedAt)
-    if (fallback) {
-      return {
-        ...fallback,
-        usage: "current",
-        resolvedAt,
-        fetchedAt: undefined,
-        stale: false,
       }
     }
     throw new ExchangeRateError({

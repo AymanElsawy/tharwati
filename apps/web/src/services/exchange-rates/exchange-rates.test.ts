@@ -68,7 +68,7 @@ const storedRate = {
 
 describe("ExchangeRateService", () => {
   it("resolves a direct current rate before considering inverse", async () => {
-    mockCurrentRate.mockResolvedValue({ available: true, rate: 3.75, provider: "frankfurter", effectiveAt: storedRate.effective_at, fetchedAt: storedRate.created_at, stale: false, unavailable: false })
+    mockCurrentRate.mockResolvedValue({ available: true, rate: "3.75", provider: "frankfurter", effectiveAt: storedRate.effective_at, fetchedAt: storedRate.created_at, stale: false, unavailable: false, direction: "direct" })
     const service = new ExchangeRateService(clientReturning([storedRate]))
     await expect(
       service.resolveCurrentRate({
@@ -109,7 +109,7 @@ describe("ExchangeRateService", () => {
   })
 
   it("uses the controlled current FX resolver for every pair", async () => {
-    mockCurrentRate.mockResolvedValue({ available: true, rate: 0.266666666667, provider: "frankfurter", effectiveAt: storedRate.effective_at, fetchedAt: storedRate.created_at, stale: false, unavailable: false })
+    mockCurrentRate.mockResolvedValue({ available: true, rate: "0.266666666667", provider: "frankfurter", effectiveAt: storedRate.effective_at, fetchedAt: storedRate.created_at, stale: false, unavailable: false, direction: "direct" })
     const service = new ExchangeRateService(clientReturning([]))
     await expect(
       service.resolveCurrentRate({
@@ -123,18 +123,20 @@ describe("ExchangeRateService", () => {
     })
   })
 
-  it("uses a user-owned manual rate only when the automatic provider is unavailable", async () => {
-    mockCurrentRate.mockResolvedValue(null)
-    const service = new ExchangeRateService(clientReturning([storedRate]))
+  it("preserves the shared contract's manual inverse fallback metadata", async () => {
+    mockCurrentRate.mockResolvedValue({ available: true, rate: "0.266666666667", provider: "manual", effectiveAt: storedRate.effective_at, fetchedAt: undefined, stale: true, unavailable: false, direction: "inverse" })
+    const service = new ExchangeRateService(clientReturning([]))
 
     await expect(
       service.resolveCurrentRate({
-        sourceCurrencyCode: "USD",
-        destinationCurrencyCode: "SAR",
+        sourceCurrencyCode: "SAR",
+        destinationCurrencyCode: "USD",
       }),
     ).resolves.toMatchObject({
-      rate: "3.75",
+      rate: "0.266666666667",
       source: "manual",
+      direction: "inverse",
+      stale: true,
       usage: "current",
     })
   })

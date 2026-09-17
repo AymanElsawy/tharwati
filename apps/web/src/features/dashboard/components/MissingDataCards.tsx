@@ -3,7 +3,7 @@ import { Link } from "react-router-dom"
 
 import type { DashboardViewModel } from "@/features/dashboard/types/dashboard"
 import { useTranslation } from "@/i18n/useTranslation"
-import { isFrankfurterSupportedPair } from "@/services/exchange-rates/frankfurter-supported"
+import { isRetryableCurrentFxPair } from "@/services/exchange-rates/current-fx-retry"
 
 export function MissingDataCards({
   missing,
@@ -14,10 +14,10 @@ export function MissingDataCards({
 }) {
   const { t } = useTranslation()
   const automaticPairs = missing.exchangeRatePairs.filter((pair) =>
-    isFrankfurterSupportedPair(pair.sourceCurrencyCode, pair.destinationCurrencyCode),
+    isRetryableCurrentFxPair(pair.sourceCurrencyCode, pair.destinationCurrencyCode),
   )
   const unsupportedPairs = missing.exchangeRatePairs.filter((pair) =>
-    !isFrankfurterSupportedPair(pair.sourceCurrencyCode, pair.destinationCurrencyCode),
+    !isRetryableCurrentFxPair(pair.sourceCurrencyCode, pair.destinationCurrencyCode),
   )
   if (
     missing.priceHoldings.length === 0 &&

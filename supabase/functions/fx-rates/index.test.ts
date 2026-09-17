@@ -1,5 +1,71 @@
+import { readFileSync } from "node:fs"
 import { describe, expect, it, vi } from "vitest"
 import { getFrankfurterRate } from "../_shared/frankfurter.ts"
+import { corsHeaders, json, preflightResponse } from "./http.ts"
+
+const functionSource = readFileSync(new URL("./index.ts", import.meta.url), "utf8")
+
+describe("fx-rates browser HTTP contract", () => {
+  it("answers browser preflight with 204 and the required CORS headers", () => {
+    const response = preflightResponse()
+
+    expect(response.status).toBe(204)
+    expect(response.headers.get("Access-Control-Allow-Origin")).toBe("*")
+    expect(response.headers.get("Access-Control-Allow-Methods")).toBe(
+      "POST, OPTIONS",
+    )
+    expect(response.headers.get("Access-Control-Allow-Headers")).toBe(
+      "authorization, x-client-info, apikey, content-type",
+    )
+    expect(corsHeaders).toMatchObject({
+      "Access-Control-Allow-Origin": "*",
+      "Access-Control-Allow-Methods": "POST, OPTIONS",
+    })
+  })
+
+  it("routes OPTIONS before POST validation", () => {
+    const optionsBranch = functionSource.indexOf(
+      'if (request.method === "OPTIONS") return preflightResponse()',
+    )
+    const postBranch = functionSource.indexOf(
+      'if (request.method !== "POST") return json',
+    )
+
+    expect(optionsBranch).toBeGreaterThan(-1)
+    expect(postBranch).toBeGreaterThan(optionsBranch)
+  })
+
+  it.each([
+    ["success", 200],
+    ["validation error", 400],
+    ["authentication error", 401],
+    ["unavailable", 422],
+    ["server error", 500],
+  ])("adds CORS headers to every %s JSON response", async (_, status) => {
+    const response = json({ status }, status)
+
+    expect(response.status).toBe(status)
+    expect(response.headers.get("Content-Type")).toBe("application/json")
+    expect(response.headers.get("Access-Control-Allow-Origin")).toBe("*")
+    expect(response.headers.get("Access-Control-Allow-Methods")).toBe(
+      "POST, OPTIONS",
+    )
+    expect(response.headers.get("Access-Control-Allow-Headers")).toBe(
+      "authorization, x-client-info, apikey, content-type",
+    )
+    await expect(response.json()).resolves.toEqual({ status })
+  })
+
+  it("keeps every fx-rates JSON path on the CORS-aware response helper", () => {
+    expect(functionSource).not.toContain("new Response(")
+    expect(functionSource).toContain('return json(identityRate(')
+    expect(functionSource).toContain("return json({ available: true")
+    expect(functionSource).toContain("return json({ available: false")
+    expect(functionSource).toContain('return json({ error: "authentication_required" }, 401)')
+    expect(functionSource).toContain('return json({ error: "invalid_currency_or_date" }, 400)')
+    expect(functionSource).toContain('return json({ error: "fx_request_failed" }, 500)')
+  })
+})
 
 describe("fx-rates Frankfurter provider", () => {
   it("returns a usable current USD/EGP rate", async () => {
