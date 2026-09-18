@@ -71,7 +71,7 @@ enum AccountType {
       this == AccountType.realEstate || this == AccountType.business;
 }
 
-const kAccountCurrencies = ['USD', 'SAR', 'EGP', 'EUR', 'GBP'];
+const kAccountCurrencies = ['USD', 'SAR', 'EGP', 'EUR', 'GBP', 'AED'];
 
 /// The full `financial_accounts` row the Accounts tab needs.
 class Account {

@@ -1,4 +1,4 @@
-const supportedCurrencyCodes = ["USD", "SAR", "EGP", "EUR", "GBP"] as const
+const supportedCurrencyCodes = ["USD", "SAR", "EGP", "EUR", "GBP", "AED"] as const
 
 export type SupportedCurrencyCode = (typeof supportedCurrencyCodes)[number]
 

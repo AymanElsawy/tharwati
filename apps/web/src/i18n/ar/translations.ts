@@ -1077,6 +1077,7 @@ export const ar: Record<TranslationKey, string> = {
   "currency.EGP": "EGP — الجنيه المصري",
   "currency.EUR": "EUR — اليورو",
   "currency.GBP": "GBP — الجنيه الإسترليني",
+  "currency.AED": "AED — الدرهم الإماراتي",
   "assets.page.eyebrow": "الأصول الاستثمارية",
   "assets.page.title": "الأصول",
   "assets.page.description": "تصفّح الأصول العامة وأدِر أصولك المخصصة.",

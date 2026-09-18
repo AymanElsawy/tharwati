@@ -39,7 +39,7 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
   void _pickCountry(Country country) {
     setState(() {
       _country = country;
-      // Preselect the default currency, clamped to the supported five.
+      // Preselect the default currency, clamped to the supported currencies.
       _currency =
           findSupportedCurrency(defaultCurrencyCode(country.code)) ?? _currency;
     });

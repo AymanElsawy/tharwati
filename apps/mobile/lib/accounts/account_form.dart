@@ -105,6 +105,7 @@ const currencyLabels = {
   'EGP': 'EGP — Egyptian Pound',
   'EUR': 'EUR — Euro',
   'GBP': 'GBP — British Pound',
+  'AED': 'AED — UAE Dirham',
 };
 
 /// Balance-field label by type (web `getBalanceLabelKey`).

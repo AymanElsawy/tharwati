@@ -18,7 +18,7 @@ Defines account-form option lists, form values, defaults, display helpers, and c
 
 - `name`: account name.
 - `accountTypeCode`: selected account type.
-- `currencyCode`: currency (`USD`, `SAR`, `EGP`, `EUR`, or `GBP`).
+- `currencyCode`: currency (`USD`, `SAR`, `EGP`, `EUR`, `GBP`, or `AED`).
 - `openingBalance`: starting balance; for gold accounts it is derived from metal quantity and cost per unit.
 - `bankSubtype`: `debit` or `credit` for bank accounts.
 - `investmentType`: `stock_etf`, `crypto`, or `other` for brokerage accounts.

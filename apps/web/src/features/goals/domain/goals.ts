@@ -65,7 +65,7 @@ export function validateGoalInput(
   if (input.goalType === "other" && !input.customTypeName?.trim())
     return "custom_type_required"
   if (compareDecimals(input.targetAmount, "0") !== 1) return "target_positive"
-  if (!/^(USD|SAR|EGP|EUR|GBP)$/.test(input.currencyCode))
+  if (!/^(USD|SAR|EGP|EUR|GBP|AED)$/.test(input.currencyCode))
     return "currency_invalid"
   if (input.savedSoFar && compareDecimals(input.savedSoFar, "0") !== 1)
     return "saved_positive"

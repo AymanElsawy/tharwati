@@ -111,7 +111,7 @@ Implemented auth screens:
 `OnboardingFlow` is complete for its implemented profile-preference scope:
 Welcome, searchable country, base currency, multi-select goals, Ready. Country
 selection preselects an available default currency; supported base currencies
-are EGP, EUR, GBP, SAR, USD. It requires country, currency, and at least one
+are AED, EGP, EUR, GBP, SAR, USD. UAE preselects AED. It requires country, currency, and at least one
 goal, then calls `complete_onboarding(p_country_code, p_base_currency_code,
 p_selected_goals)` and refreshes the gate. Selected onboarding goals are
 preferences only: they create neither Goals nor balances.
@@ -200,7 +200,7 @@ or affect net worth. Progress is an independent append-only ledger: `progress`
 adds, `withdrawal` subtracts, and `reversal` applies the opposite effect of its
 linked original. Corrections record a reversal and optional replacement; funded
 amount must not become negative. Amounts/targets are positive, dates may not be
-future, currency is one of USD/SAR/EGP/EUR/GBP and locks after any history,
+future, currency is one of USD/SAR/EGP/EUR/GBP/AED and locks after any history,
 completion is explicit, and percentages remain uncapped while only the bar caps
 at 100% (with a surplus/hatch treatment).
 

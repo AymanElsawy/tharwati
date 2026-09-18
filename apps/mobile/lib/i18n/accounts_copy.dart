@@ -155,6 +155,7 @@ class AccountsCopy {
       'EGP' => _ar ? 'الجنيه المصري' : 'Egyptian Pound',
       'EUR' => _ar ? 'اليورو' : 'Euro',
       'GBP' => _ar ? 'الجنيه الإسترليني' : 'British Pound',
+      'AED' => _ar ? 'الدرهم الإماراتي' : 'UAE Dirham',
       _ => code,
     };
     return _ar ? '${ltr(code)} — $name' : '$code — $name';

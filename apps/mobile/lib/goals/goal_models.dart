@@ -12,7 +12,7 @@ const goalTypes = <String>[
 ];
 
 /// Supported currencies for a goal (DB check + web `currencyInvalid` regex).
-const goalCurrencies = <String>['USD', 'SAR', 'EGP', 'EUR', 'GBP'];
+const goalCurrencies = <String>['USD', 'SAR', 'EGP', 'EUR', 'GBP', 'AED'];
 
 const goalStatuses = <String>['active', 'completed', 'cancelled'];
 

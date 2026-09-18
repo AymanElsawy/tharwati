@@ -79,6 +79,7 @@ describe("fx-rates Frankfurter provider", () => {
   })
 
   it.each([
+    ["AED", "USD", 0.272294],
     ["USD", "SAR", 3.75],
     ["EGP", "SAR", 0.07454],
     ["EUR", "SAR", 4.3738],
@@ -88,6 +89,20 @@ describe("fx-rates Frankfurter provider", () => {
       { base: from, quote: to, date: "2026-08-27", rate: value },
     )))
     await expect(getFrankfurterRate(from, to)).resolves.toMatchObject({ rate: value })
+    fetchMock.mockRestore()
+  })
+
+  it("finds the latest sparse AED observation on or before the requested date", async () => {
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response(JSON.stringify([
+      { base: "AED", quote: "USD", date: "2026-08-31", rate: 0.272294 },
+      { base: "AED", quote: "USD", date: "2026-09-30", rate: 0.272294 },
+    ])))
+    await expect(getFrankfurterRate("AED", "USD", "2026-09-19")).resolves.toEqual(
+      { base: "AED", quote: "USD", date: "2026-08-31", rate: 0.272294 },
+    )
+    const requestedUrl = new URL(String(fetchMock.mock.calls[0]?.[0]))
+    expect(requestedUrl.searchParams.get("from")).toBe("2026-08-10")
+    expect(requestedUrl.searchParams.get("to")).toBe("2026-09-19")
     fetchMock.mockRestore()
   })
 

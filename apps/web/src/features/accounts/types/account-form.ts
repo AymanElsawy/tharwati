@@ -51,6 +51,7 @@ export const currencyOptions = [
   { value: "EGP", labelKey: "currency.EGP" },
   { value: "EUR", labelKey: "currency.EUR" },
   { value: "GBP", labelKey: "currency.GBP" },
+  { value: "AED", labelKey: "currency.AED" },
 ] as const
 
 export const bankSubtypeOptions = [

@@ -232,7 +232,8 @@ screens are new.
   `data/countries.dart` (the web's ISO list, ported); picking a country
   preselects the base currency via `data/country_currency.dart` (ported verbatim
   from `src/features/onboarding/data/country-currency.ts`), clamped to the five
-  supported codes in `data/currencies.dart` (USD, SAR, EGP, EUR, GBP). Goal ids
+  supported codes in `data/currencies.dart` (USD, SAR, EGP, EUR, GBP, AED). UAE
+  preselects AED through the shared country-to-currency mapping. Goal ids
   (`buy_home`, `buy_car`, `travel`, `education`, `other`) match `GoalsPage` so
   `selected_goals` reads identically on both platforms. Ready calls
   `AuthService.completeOnboarding(countryCode, baseCurrencyCode, selectedGoals)`,

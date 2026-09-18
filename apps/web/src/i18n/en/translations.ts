@@ -1113,6 +1113,7 @@ export const en = {
   "currency.EGP": "EGP — Egyptian Pound",
   "currency.EUR": "EUR — Euro",
   "currency.GBP": "GBP — British Pound",
+  "currency.AED": "AED — UAE Dirham",
   "assets.page.eyebrow": "Investment assets",
   "assets.page.title": "Assets",
   "assets.page.description":

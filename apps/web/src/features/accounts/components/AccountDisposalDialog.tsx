@@ -19,7 +19,7 @@ import { useTranslation } from "@/i18n/useTranslation"
 import { getAccountPickerOptions } from "@/features/accounts/utils/account-display-label"
 import type { AccountSummary, Decimal } from "@/lib/supabase/types"
 
-const currencies = ["USD", "SAR", "EGP", "EUR", "GBP"] as const
+const currencies = ["USD", "SAR", "EGP", "EUR", "GBP", "AED"] as const
 
 type AccountDisposalDialogProps = {
   account: AccountSummary | null

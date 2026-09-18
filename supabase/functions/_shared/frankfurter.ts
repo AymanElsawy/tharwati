@@ -19,7 +19,10 @@ export async function getFrankfurterRate(from: string, to: string, requestedDate
   const url = new URL(requestedDate ? `${api}/rates` : `${api}/rate/${from}/${to}`)
   if (requestedDate) {
     const start = new Date(`${requestedDate}T00:00:00Z`)
-    start.setUTCDate(start.getUTCDate() - 10)
+    // Some supported currencies, including AED, have sparse monthly observations.
+    // Forty days finds the latest observation on/before any requested date while
+    // validRate still prevents a future rate from being selected.
+    start.setUTCDate(start.getUTCDate() - 40)
     url.searchParams.set("base", from)
     url.searchParams.set("quotes", to)
     url.searchParams.set("from", start.toISOString().slice(0, 10))

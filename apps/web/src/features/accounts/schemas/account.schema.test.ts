@@ -7,6 +7,11 @@ import type { Translate } from "@/i18n/context"
 const translate = ((key: string) => key) as Translate
 
 describe("Business account classification validation", () => {
+  it("accepts AED and retains every existing account currency", () => {
+    for (const currencyCode of ["USD", "SAR", "EGP", "EUR", "GBP", "AED"] as const) {
+      expect(createAccountSchema(translate).safeParse({ ...emptyAccountFormValues, name: "Wallet", currencyCode }).success).toBe(true)
+    }
+  })
   it("accepts selected Business Type and Industry codes for create", () => {
     const result = createAccountSchema(translate).safeParse({
       ...emptyAccountFormValues,

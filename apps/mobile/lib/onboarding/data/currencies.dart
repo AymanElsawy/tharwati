@@ -1,4 +1,4 @@
-/// The five currencies the rest of the app (accounts, reports) supports today.
+/// Currencies the rest of the app (accounts, reports) supports today.
 /// Mirrors `supportedCurrencies` in the web app
 /// (`src/features/onboarding/data/currencies.ts`). `base_currency_code` on
 /// `profiles` has a CHECK constraint limiting it to exactly these codes.
@@ -11,6 +11,7 @@ class Currency {
 }
 
 const List<Currency> kSupportedCurrencies = <Currency>[
+  Currency('AED', 'United Arab Emirates Dirham', 'د.إ'),
   Currency('EGP', 'Egyptian Pound', 'E£'),
   Currency('EUR', 'Euro', '€'),
   Currency('GBP', 'British Pound', '£'),

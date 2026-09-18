@@ -23,7 +23,7 @@ create table public.financial_accounts (
   user_id uuid not null references auth.users (id) on delete cascade,
   account_type_code text not null references public.account_types (code),
   name text not null,
-  currency_code text not null,               -- check: one of USD, SAR, EGP, EUR, GBP
+  currency_code text not null,               -- check: one of USD, SAR, EGP, EUR, GBP, AED
   opening_balance numeric(20, 2) not null default 0,
   is_active boolean not null default true,
   notes text,
@@ -51,7 +51,7 @@ create table public.financial_accounts (
 Key constraints:
 
 - `name` cannot be blank.
-- `currency_code` restricted to `USD | SAR | EGP | EUR | GBP` (fixed 5-item enum, not user-extensible).
+- `currency_code` restricted to `USD | SAR | EGP | EUR | GBP | AED` (fixed supported set, not user-extensible).
 - Type-specific columns are nullable at the column level and constrained via CHECK to match their `account_type_code`. In particular, every Bank account must have `bank_subtype = 'debit' | 'credit'`, while every non-bank account must have `bank_subtype = null`.
 - `credit_card_limit`, when present, must be positive, and `opening_balance` (available credit) must be between zero and that limit. `due_day_of_month`, when present, must be between 1 and 31. Both credit-only columns must remain null unless the account is a bank account with `bank_subtype = 'credit'`.
 - `metal_type` is **required** when `account_type_code = 'gold'`, and must be `null` otherwise.
@@ -195,7 +195,7 @@ type AccountSummary = {
   user_id: string
   account_type_code: AccountTypeCode
   name: string
-  currency_code: "USD" | "SAR" | "EGP" | "EUR" | "GBP"
+  currency_code: "USD" | "SAR" | "EGP" | "EUR" | "GBP" | "AED"
   opening_balance: Decimal
   notes: string | null
   is_active: boolean
@@ -240,7 +240,7 @@ All numeric columns are fetched with `::text` casts to preserve exact decimal pr
 type AccountFormValues = {
   name: string
   accountTypeCode: AccountTypeCode
-  currencyCode: "USD" | "SAR" | "EGP" | "EUR" | "GBP"
+  currencyCode: "USD" | "SAR" | "EGP" | "EUR" | "GBP" | "AED"
   openingBalance: string
   bankSubtype: "debit" | "credit" | ""
   creditCardLimit: string
@@ -519,7 +519,7 @@ Authenticated mobile shell uses a three-part header at narrow widths: logical-st
 6. A `"deposit"` account type appears in one funding-account filter but is **not a real type** — dead code; only `cash`/`bank` are valid metal-purchase funding sources.
 7. **Metal purchase fees are hardcoded to `"0"`** from the client — no fee input UI exists yet, despite full schema/RPC support. Adding it on mobile is net-new, not parity.
 8. Gold/silver historical totals are calculated from immutable purchase records with decimal-safe helpers. Current values combine those immutable quantities with the shared XAU/XAG live price-per-gram path and never fall back to historical cost. The RPC's account-shaped response is not a purchase-history payload and must not be used to render the history.
-9. Currency set is a fixed 5-item enum (`USD, SAR, EGP, EUR, GBP`), enforced at both DB and schema level — not user-extensible from this feature today.
+9. Currency set is fixed (`USD, SAR, EGP, EUR, GBP, AED`), enforced at both DB and schema level — not user-extensible from this feature today.
 
 ## 10. Mobile (Flutter) implementation — built (Flow 3)
 

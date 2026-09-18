@@ -16,7 +16,7 @@ import { useCurrentUser } from "@/features/profile/hooks/useCurrentUser"
 import { getProfileCurrencyDefault } from "@/features/profile/domain/currency-default"
 import { goalErrorMessage } from "./goal-error-message"
 
-const currencies = ["USD", "SAR", "EGP", "EUR", "GBP"]
+const currencies = ["USD", "SAR", "EGP", "EUR", "GBP", "AED"]
 export function GoalFormDialog({
   goal,
   onClose,

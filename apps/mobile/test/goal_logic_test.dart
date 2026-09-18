@@ -46,6 +46,7 @@ void main() {
 
     test('accepts a well-formed goal', () {
       expect(validateGoalInput(input()), isNull);
+      expect(validateGoalInput(input(currency: 'AED')), isNull);
     });
 
     test('rejects a blank name', () {

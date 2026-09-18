@@ -83,6 +83,11 @@ describe("Goals domain", () => {
         targetDate: null,
       })
     ).toBeTruthy())
+  it("accepts AED while retaining existing supported currencies", () => {
+    for (const currencyCode of ["USD", "SAR", "EGP", "EUR", "GBP", "AED"]) {
+      expect(validateGoalInput({ name: "X", goalType: "travel", customTypeName: null, targetAmount: "1", currencyCode, targetDate: null })).toBeNull()
+    }
+  })
   it("rejects future progress dates", () =>
     expect(
       validateEntryInput({
