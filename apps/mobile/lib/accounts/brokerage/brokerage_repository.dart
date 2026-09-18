@@ -192,6 +192,12 @@ class BrokerageRepository {
         'p_account_fx_rate': _rate(v.accountFxRate),
       });
 
+  /// Records a pre-existing position without creating a Brokerage cash entry.
+  Future<void> addExistingHolding(
+    String accountId,
+    ExistingHoldingFormValues v,
+  ) => _rpc(existingHoldingRpcName, existingHoldingRpcParams(accountId, v));
+
   // ---- activity ------------------------------------------------------
 
   static const _activitySelect =
@@ -368,3 +374,23 @@ class BrokerageRepository {
     return 'Couldn’t record the trade. Please try again.';
   }
 }
+
+const existingHoldingRpcName = 'add_existing_holding';
+
+/// Kept pure so the exact destructive financial boundary is directly testable:
+/// this payload has no cash amount and targets only `add_existing_holding`.
+Map<String, dynamic> existingHoldingRpcParams(
+  String accountId,
+  ExistingHoldingFormValues v,
+) => {
+  'p_account_id': accountId,
+  'p_asset_id': v.assetId,
+  'p_quantity': v.quantity.trim(),
+  'p_average_cost': v.averageCost.trim(),
+  'p_occurred_at': DateTime.parse(v.occurredAt).toUtc().toIso8601String(),
+  'p_notes': v.notes.trim().isEmpty ? null : v.notes.trim(),
+  'p_account_fx_rate':
+      v.accountFxRate == null || v.accountFxRate!.trim().isEmpty
+      ? null
+      : v.accountFxRate!.trim(),
+};

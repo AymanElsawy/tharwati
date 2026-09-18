@@ -107,7 +107,7 @@ class _TradeSheetState extends State<TradeSheet> {
     final holdings = widget.controller.sellableHoldings;
     final picked = await showAppSheet<Object>(
       context,
-      builder: (_) => _AssetPickerSheet(
+      builder: (_) => BrokerageAssetPickerSheet(
         controller: widget.controller,
         holdings: holdings,
         allowSearch: _isBuy,
@@ -434,8 +434,9 @@ class _TradeSheetState extends State<TradeSheet> {
 
 /// Picks an instrument: the account's own holdings, plus external search when
 /// buying.
-class _AssetPickerSheet extends StatefulWidget {
-  const _AssetPickerSheet({
+class BrokerageAssetPickerSheet extends StatefulWidget {
+  const BrokerageAssetPickerSheet({
+    super.key,
     required this.controller,
     required this.holdings,
     required this.allowSearch,
@@ -446,10 +447,11 @@ class _AssetPickerSheet extends StatefulWidget {
   final bool allowSearch;
 
   @override
-  State<_AssetPickerSheet> createState() => _AssetPickerSheetState();
+  State<BrokerageAssetPickerSheet> createState() =>
+      _BrokerageAssetPickerSheetState();
 }
 
-class _AssetPickerSheetState extends State<_AssetPickerSheet> {
+class _BrokerageAssetPickerSheetState extends State<BrokerageAssetPickerSheet> {
   final _query = TextEditingController();
   Timer? _debounce;
   List<AssetSearchResult> _results = const [];

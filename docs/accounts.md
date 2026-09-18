@@ -704,6 +704,16 @@ live via `add_brokerage_buy` / `add_brokerage_sell`, with instrument selection
 from existing holdings or external search (`asset-search` →
 `resolve_external_brokerage_asset`).
 
+Active Brokerage accounts also expose a secondary **Add Existing Holding**
+action below Buy / Sell / Dividend. It reuses the same instrument search and
+resolution path, accepts canonical quantity, historical average cost, local
+date/time, optional notes, and a positive historical account-currency-per-
+asset-currency FX rate only for cross-currency positions. Submission calls
+`add_existing_holding`; it is an opening position, not a Buy, so it never
+reduces Available Cash. The controller rejects duplicate in-flight submission,
+then refreshes holdings, prices, Available Cash, and activity before emitting
+the shared `DataChange` signal.
+
 **Deviation — unavailable instead of thrown.** The web
 `lib/financial-calculations/valuation.ts` raises `FinancialCalculationError` on
 a missing price, a cost/price currency mismatch, or a zero cost basis. On a
@@ -778,10 +788,6 @@ feed must not hide the portfolio (web keeps separate `holdingsError` /
 
 ### Deferred to later flows
 
-- **Brokerage** — holdings aggregation, activity, Buy / Sell / Dividend / DRIP,
-  existing-holding detail, asset search. Needs a market-data / quote service and
-  holdings read models the mobile app does not have; brokerage detail still shows
-  the cash balance only (§2.1a, §9.5).
 - **Metal purity breakdown** — the web groups gold/silver purchases by purity
   with a per-purity current value and a `/purities/:purity` sub-page + purchase
   corrections (`correct_metal_purchase` / `reverse_metal_purchase`). Mobile keeps

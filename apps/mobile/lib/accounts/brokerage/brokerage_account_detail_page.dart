@@ -17,6 +17,7 @@ import 'brokerage_controller.dart';
 import 'brokerage_models.dart';
 import 'brokerage_valuation.dart';
 import 'dividend_sheet.dart';
+import 'existing_holding_sheet.dart';
 import 'holding_detail_page.dart';
 import 'trade_sheet.dart';
 
@@ -83,6 +84,17 @@ class _BrokerageAccountDetailPageState
         controller: _controller,
         account: widget.account,
         presetAssetId: assetId,
+      ),
+    );
+  }
+
+  Future<void> _addExistingHolding() async {
+    _controller.clearActionError();
+    await showAppSheet<bool>(
+      context,
+      builder: (_) => ExistingHoldingSheet(
+        controller: _controller,
+        account: widget.account,
       ),
     );
   }
@@ -199,6 +211,13 @@ class _BrokerageAccountDetailPageState
                   ),
                 ),
               ],
+            ),
+            const SizedBox(height: 10),
+            SecondaryButton(
+              label: copy.addExistingHolding,
+              onPressed: active && !_controller.busy
+                  ? _addExistingHolding
+                  : null,
             ),
             const SizedBox(height: 18),
             Text(

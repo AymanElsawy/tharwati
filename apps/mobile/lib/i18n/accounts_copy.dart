@@ -655,6 +655,18 @@ class AccountsCopy {
       : 'We couldn’t load this position’s history.';
   String get noHoldingHistory => _ar ? 'لا يوجد سجل بعد.' : 'No history yet.';
   String get existingHolding => _ar ? 'ممتلكة قائمة' : 'Existing holding';
+  String get addExistingHolding =>
+      _ar ? 'إضافة ممتلكة قائمة' : 'Add Existing Holding';
+  String get addExistingHoldingSubtitle => _ar
+      ? 'يسجل مركزًا تاريخيًا دون خصم أي مبلغ من النقد المتاح.'
+      : 'Records a historical position without reducing Available Cash.';
+  String get historicalAverageCost =>
+      _ar ? 'متوسط التكلفة التاريخي' : 'Historical average cost';
+  String historicalExchangeRate(String from, String to) => _ar
+      ? 'سعر الصرف التاريخي · ${ltr('1 $from')} إلى ${ltr(to)}'
+      : 'Historical FX · 1 $from to $to';
+  String get recordExistingHolding =>
+      _ar ? 'تسجيل الممتلكة القائمة' : 'Record existing holding';
   String get stalePrice => _ar
       ? 'هذا السعر قديم؛ لم يقم المزوّد بتحديثه مؤخرًا.'
       : 'This price is stale — the provider hasn’t refreshed it recently.';

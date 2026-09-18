@@ -102,6 +102,9 @@ class BrokerageController extends ChangeNotifier {
         : _repo.addSell(accountId, values),
   );
 
+  Future<bool> addExistingHolding(ExistingHoldingFormValues values) =>
+      _run(() => _repo.addExistingHolding(accountId, values));
+
   Future<bool> submitDividend({
     required String assetId,
     required DividendMode mode,
@@ -205,6 +208,34 @@ class BrokerageController extends ChangeNotifier {
     }
     return null;
   }
+}
+
+Map<String, String> validateExistingHolding(
+  ExistingHoldingFormValues v, {
+  required bool crossCurrency,
+}) {
+  final errors = <String, String>{};
+  final decimal = RegExp(r'^\d{1,18}(?:\.\d{1,10})?$');
+  bool positive(String value) =>
+      decimal.hasMatch(value.trim()) &&
+      (double.tryParse(value.trim()) ?? 0) > 0;
+
+  if (v.assetId.trim().isEmpty) {
+    errors['assetId'] = 'Choose an instrument.';
+  }
+  if (!positive(v.quantity)) {
+    errors['quantity'] = 'Enter a quantity greater than zero.';
+  }
+  if (!positive(v.averageCost)) {
+    errors['averageCost'] = 'Enter an average cost greater than zero.';
+  }
+  if (DateTime.tryParse(v.occurredAt) == null) {
+    errors['occurredAt'] = 'Date and time are required.';
+  }
+  if (crossCurrency && !positive(v.accountFxRate ?? '')) {
+    errors['accountFxRate'] = 'Enter the exchange rate.';
+  }
+  return errors;
 }
 
 /// Validation for the buy / sell form — mirrors the web dialogs' `valid` gate.

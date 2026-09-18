@@ -237,3 +237,23 @@ class TradeFormValues {
   /// Only sent when the asset's currency differs from the account's.
   String? accountFxRate;
 }
+
+/// A historical opening position. Unlike a buy, this never moves Brokerage
+/// Available Cash.
+class ExistingHoldingFormValues {
+  ExistingHoldingFormValues({
+    this.assetId = '',
+    this.quantity = '',
+    this.averageCost = '',
+    String? occurredAt,
+    this.notes = '',
+    this.accountFxRate,
+  }) : occurredAt = occurredAt ?? DateTime.now().toIso8601String();
+
+  String assetId;
+  String quantity;
+  String averageCost;
+  String occurredAt;
+  String notes;
+  String? accountFxRate;
+}
