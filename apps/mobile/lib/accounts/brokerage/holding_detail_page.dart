@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import '../../core/decimals.dart';
 import '../../core/local_datetime.dart';
 import '../../core/money_format.dart';
+import '../../core/quantity_format.dart';
 import '../../i18n/accounts_copy.dart';
 import '../../i18n/app_language.dart';
 import '../../theme/tokens.dart';
@@ -247,7 +248,14 @@ class _HoldingDetailPageState extends State<HoldingDetailPage> {
                 ),
               ],
               const SizedBox(height: 14),
-              _row(c, copy.quantity, h.quantity),
+              _row(
+                c,
+                copy.quantity,
+                formatQuantity(
+                  h.quantity,
+                  fractionDigits: h.asset.quantityPrecision,
+                ),
+              ),
               _row(
                 c,
                 copy.averageCost,

@@ -6,8 +6,8 @@
 `1.0.0+1`). It is not limited to the older `apps/mobile/README.md` description:
 Auth, onboarding, the production dashboard, and manual Goals are implemented.
 Accounts and the implemented Settings profile/preferences surface are complete.
-Wealth Analysis now implements its approved foundation; Portfolio Analysis is
-the only remaining top-level-adjacent placeholder. This document describes the
+Wealth Analysis and its Brokerage-only Portfolio Analysis child are implemented.
+This document describes the
 code currently under `apps/mobile/lib/`.
 
 ## Architecture and startup
@@ -35,7 +35,8 @@ Top-level structure:
 | `auth/` | Supabase auth wrapper, session/onboarding gate, auth screens and password policy. |
 | `onboarding/` | Five-step profile setup and static country/currency data. |
 | `dashboard/` | Edge-snapshot repository, decimal aggregate/allocation logic, controllers, cards. |
-| `analysis/` | Wealth Analysis domain/service/repositories, controller, target editor, allocation and drift presentation; Portfolio Analysis remains a placeholder. |
+| `analysis/` | Wealth Analysis domain/service/repositories, controller, target editor, allocation and drift presentation. |
+| `portfolio/` | Brokerage-only read models, Supabase repository, decimal-safe valuation/allocation, coverage and freshness evidence, race-safe controller, and read-only Portfolio Analysis page. |
 | `goals/` | Goal domain, Supabase repository/RPCs, controllers, pages, sheets and widgets. |
 | `core/` | Decimal arithmetic, money formatting, app-wide data-change notifier. |
 | `theme/`, `widgets/`, `i18n/` | Material theme/tokens, reusable presentation components, and device-local language state/copy. |
@@ -127,7 +128,7 @@ are unchanged:
 | --- | --- | --- |
 | Dashboard | Implemented | `DashboardScreen` loads valuations and a separate read-only goals card. “Add account” switches to Accounts; “View all” switches to Goals. |
 | Accounts | Full presentation localization implemented | The list, create/edit form, generic detail and lifecycle dialogs, Real Estate/Business valued detail, Cash/Bank records read/write surfaces, Gold/Silver detail and purchases, plus brokerage detail, trades, and dividends support English/Arabic. Raw lower-layer errors remain language-agnostic. |
-| Analysis | V1 implemented | The third tab is `Analysis` / `التحليل` and opens the launch hierarchy: Wealth Health, Attention Summary, six-class Wealth Allocation, then Target Allocation & Drift with the full-screen Edit Target flow. Dashboard Assets Breakdown switches to this tab; Dashboard Portfolio Allocation opens the separate Brokerage-only `Portfolio Analysis` placeholder. Standalone Key Insights, Structure/Exposure, diversification, liquidity, currency, detailed valuation-quality, and asset-explorer sections remain deferred. |
+| Analysis | V1 implemented; Portfolio Analysis implemented | The third tab is `Analysis` / `التحليل` and opens the launch hierarchy: Wealth Health, Attention Summary, six-class Wealth Allocation, then Target Allocation & Drift with the full-screen Edit Target flow. Dashboard Portfolio Allocation and the Wealth Analysis Brokerage row open the same Brokerage-only Portfolio Analysis child page with account scope, summary and coverage, Available Cash and Current Value, securities allocation, and holdings grouped by account. Standalone Key Insights, Structure/Exposure, diversification, liquidity, currency, detailed valuation-quality, and asset-explorer sections remain deferred. |
 | Goals | Implemented | `GoalsPage`, detail page, form/entry/actions bottom sheets. |
 | Settings | Implemented profile/session/deletion surface | `settings/settings_page.dart` reads and edits canonical `profiles.full_name` through `SettingsProfileRepository`, displays the Auth-session email read-only, changes the shared device-local English/Arabic and Light/Dark appearance preferences, signs out, and provides a localized Danger Zone for permanent account deletion. Deletion reauthenticates by password, requires the exact email, and reuses the authenticated `delete-account` Edge Function. Whitespace-only names save as null; export and support settings are absent. |
 
@@ -152,7 +153,7 @@ When ready, the dashboard renders `DashboardMasthead`, `NetWorthHero`,
 `AssetsBreakdownCard`, deterministic `KeyInsightsCard`,
 `PortfolioAllocationCard`, and `GoalsCard`. Assets Breakdown switches to the
 Wealth Analysis tab. Portfolio Allocation is a Brokerage-only preview that
-opens the separate Portfolio Analysis placeholder; it does not switch to a
+opens the separate Portfolio Analysis child page; it does not switch to a
 top-level Portfolio tab.
 `DashboardMasthead` is a
 Dashboard-only 286px mountain image with theme-aware readability overlay. The

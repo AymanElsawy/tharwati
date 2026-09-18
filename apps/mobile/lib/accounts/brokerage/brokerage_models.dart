@@ -2,6 +2,8 @@
 // types and `services/market-data` price shape. Decimal-safe throughout: every
 // numeric column arrives as a `::text` cast so precision survives the wire.
 
+import '../../core/decimals.dart';
+
 /// The asset a holding is in (`assets` row, trimmed to what the UI needs).
 class Asset {
   const Asset({
@@ -129,7 +131,7 @@ class MarketPrice {
       return null;
     }
     final price = '$rawPrice';
-    if (!RegExp(r'^\d+(\.\d+)?$').hasMatch(price) || double.parse(price) <= 0) {
+    if (D.normalize(price) == null || !D.isPositive(price)) {
       return null;
     }
     final currency = '${row['currencyCode'] ?? ''}'.trim().toUpperCase();

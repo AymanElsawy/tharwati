@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 
 import 'accounts/accounts_page.dart';
-import 'analysis/analysis_placeholder_pages.dart';
 import 'analysis/wealth_analysis_page.dart';
 import 'dashboard/dashboard_screen.dart';
 import 'goals/goals_page.dart';
 import 'i18n/app_language.dart';
 import 'i18n/navigation_copy.dart';
+import 'portfolio/portfolio_page.dart';
 import 'settings/settings_page.dart';
 import 'theme/tokens.dart';
 
@@ -29,15 +29,14 @@ class _HomePageState extends State<HomePage> {
       DashboardScreen(
         onOpenAccounts: () => setState(() => _index = 1),
         onOpenAnalysis: () => setState(() => _index = 2),
-        onOpenPortfolioAnalysis: () => Navigator.of(context).push(
-          MaterialPageRoute<void>(
-            builder: (_) => const PortfolioAnalysisPlaceholderPage(),
-          ),
-        ),
+        onOpenPortfolioAnalysis: _openPortfolio,
         onOpenGoals: () => setState(() => _index = 3),
       ),
       const AccountsPage(),
-      WealthAnalysisPage(isActive: _index == 2),
+      WealthAnalysisPage(
+        isActive: _index == 2,
+        onOpenPortfolioAnalysis: _openPortfolio,
+      ),
       const GoalsPage(),
       const SettingsPage(),
     ];
@@ -101,6 +100,19 @@ class _HomePageState extends State<HomePage> {
               ],
             ),
           ),
+        ),
+      ),
+    );
+  }
+
+  void _openPortfolio() {
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => PortfolioPage(
+          onOpenAccounts: () {
+            Navigator.of(context).pop();
+            setState(() => _index = 1);
+          },
         ),
       ),
     );

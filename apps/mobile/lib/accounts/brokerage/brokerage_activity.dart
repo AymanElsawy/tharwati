@@ -8,6 +8,7 @@
 // still represent the truth.
 
 import '../../core/decimals.dart';
+import '../../core/quantity_format.dart';
 import '../../i18n/accounts_copy.dart';
 
 /// How a transaction should read once corrections and reversals are applied.
@@ -299,6 +300,12 @@ String? sumEntries(
 /// with words and colour instead.
 String absoluteDecimal(String value) =>
     value.startsWith('-') ? value.substring(1) : value;
+
+/// Activity captions do not load an asset unit/precision, so they use the
+/// shared generic eight-decimal display limit while preserving the existing
+/// absolute-value activity semantics.
+String formatActivityQuantity(String value) =>
+    formatQuantity(absoluteDecimal(value), fractionDigits: 8);
 
 /// Activity grouped under its local calendar date, newest first.
 class ActivityDateGroup {

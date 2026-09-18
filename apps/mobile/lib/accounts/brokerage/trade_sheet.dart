@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 
 import '../../core/local_datetime.dart';
 import '../../core/money_format.dart';
+import '../../core/quantity_format.dart';
 import '../../i18n/accounts_copy.dart';
 import '../../i18n/app_language.dart';
 import '../../theme/tokens.dart';
@@ -537,7 +538,10 @@ class _AssetPickerSheetState extends State<_AssetPickerSheet> {
                   : copy.symbolValue(h.asset.symbol!),
               subtitle: copy.holdingPickerCaption(
                 h.asset.name,
-                h.quantity,
+                formatQuantity(
+                  h.quantity,
+                  fractionDigits: h.asset.quantityPrecision,
+                ),
                 h.asset.quantityUnit,
               ),
               onTap: () => Navigator.of(context).pop(h),

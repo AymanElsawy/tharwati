@@ -188,6 +188,17 @@ void main() {
     });
   });
 
+  group('activity quantity presentation', () {
+    test(
+      'uses the shared formatter and preserves activity absolute semantics',
+      () {
+        expect(formatActivityQuantity('2.0000000000'), '2');
+        expect(formatActivityQuantity('-1.2500000000'), '1.25');
+        expect(formatActivityQuantity('1.234567891'), '1.23456789');
+      },
+    );
+  });
+
   test('sumEntries totals only matching memos, null when none match', () {
     final entries = [
       entry(memo: 'tax', amount: '5'),

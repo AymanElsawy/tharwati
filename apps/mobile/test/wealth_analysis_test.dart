@@ -7,6 +7,7 @@ import 'package:tharwati_mobile/analysis/data/wealth_analysis_service.dart';
 import 'package:tharwati_mobile/analysis/domain/wealth_analysis.dart';
 import 'package:tharwati_mobile/analysis/domain/wealth_target_allocation.dart';
 import 'package:tharwati_mobile/analysis/wealth_target_editor_page.dart';
+import 'package:tharwati_mobile/analysis/wealth_analysis_page.dart';
 import 'package:tharwati_mobile/analysis/state/wealth_analysis_controller.dart';
 import 'package:tharwati_mobile/core/money_format.dart';
 import 'package:tharwati_mobile/dashboard/logic/dashboard_aggregate.dart';
@@ -459,6 +460,36 @@ void main() {
       expect(tester.takeException(), isNull);
     },
   );
+
+  testWidgets('Brokerage allocation row opens Portfolio Analysis', (
+    tester,
+  ) async {
+    final source = _QueuedWealthAnalysisSource();
+    final controller = WealthAnalysisController(service: source);
+    controller.data = _analysisData(brokerage: '100');
+    controller.status = WealthAnalysisStatus.ready;
+    var opened = false;
+    final language = AppLanguageController(store: _MemoryLanguageStore());
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.light(),
+        home: AppLanguageScope(
+          controller: language,
+          child: WealthAnalysisPage(
+            controller: controller,
+            onOpenPortfolioAnalysis: () => opened = true,
+          ),
+        ),
+      ),
+    );
+    await tester.ensureVisible(
+      find.byKey(const Key('wealth-brokerage-portfolio-link')),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('wealth-brokerage-portfolio-link')));
+    expect(opened, isTrue);
+    controller.dispose();
+  });
 }
 
 class _MemoryLanguageStore implements LanguageStore {
@@ -469,12 +500,15 @@ class _MemoryLanguageStore implements LanguageStore {
   Future<void> writeLanguage(String code) async {}
 }
 
-WealthAnalysisData _analysisData({String total = '100'}) {
+WealthAnalysisData _analysisData({
+  String total = '100',
+  String brokerage = '0',
+}) {
   final value = aggregate(
     totalAssets: total,
     breakdown: {
-      AssetGroup.cashAndBank: total,
-      AssetGroup.brokerage: '0',
+      AssetGroup.cashAndBank: brokerage == '0' ? total : '0',
+      AssetGroup.brokerage: brokerage,
       AssetGroup.goldAndSilver: '0',
       AssetGroup.realEstate: '0',
       AssetGroup.business: '0',

@@ -18,10 +18,16 @@ import 'state/wealth_analysis_controller.dart';
 import 'wealth_target_editor_page.dart';
 
 class WealthAnalysisPage extends StatefulWidget {
-  const WealthAnalysisPage({super.key, this.controller, this.isActive = true});
+  const WealthAnalysisPage({
+    super.key,
+    this.controller,
+    this.isActive = true,
+    this.onOpenPortfolioAnalysis,
+  });
 
   final WealthAnalysisController? controller;
   final bool isActive;
+  final VoidCallback? onOpenPortfolioAnalysis;
 
   @override
   State<WealthAnalysisPage> createState() => _WealthAnalysisPageState();
@@ -75,6 +81,7 @@ class _WealthAnalysisPageState extends State<WealthAnalysisPage> {
               data: _controller.data!,
               controller: _controller,
               copy: copy,
+              onOpenPortfolioAnalysis: widget.onOpenPortfolioAnalysis,
             );
           },
         ),
@@ -125,11 +132,13 @@ class _ReadyBody extends StatelessWidget {
     required this.data,
     required this.controller,
     required this.copy,
+    required this.onOpenPortfolioAnalysis,
   });
 
   final WealthAnalysisData data;
   final WealthAnalysisController controller;
   final WealthAnalysisCopy copy;
+  final VoidCallback? onOpenPortfolioAnalysis;
 
   @override
   Widget build(BuildContext context) {
@@ -204,7 +213,11 @@ class _ReadyBody extends StatelessWidget {
           const SizedBox(height: 20),
           _AttentionSummary(aggregate: data.aggregate, copy: copy),
           const SizedBox(height: 20),
-          _WealthAllocation(data: data, copy: copy),
+          _WealthAllocation(
+            data: data,
+            copy: copy,
+            onOpenPortfolioAnalysis: onOpenPortfolioAnalysis,
+          ),
           const SizedBox(height: 20),
           _TargetAllocation(data: data, controller: controller, copy: copy),
         ],
@@ -427,9 +440,14 @@ class _AttentionSummary extends StatelessWidget {
 }
 
 class _WealthAllocation extends StatelessWidget {
-  const _WealthAllocation({required this.data, required this.copy});
+  const _WealthAllocation({
+    required this.data,
+    required this.copy,
+    required this.onOpenPortfolioAnalysis,
+  });
   final WealthAnalysisData data;
   final WealthAnalysisCopy copy;
+  final VoidCallback? onOpenPortfolioAnalysis;
 
   @override
   Widget build(BuildContext context) {
@@ -525,6 +543,9 @@ class _WealthAllocation extends StatelessWidget {
                     copy: copy,
                     currency: aggregate.baseCurrencyCode,
                     color: _assetColors(context)[asset.group]!,
+                    onTap: asset.group == AssetGroup.brokerage
+                        ? onOpenPortfolioAnalysis
+                        : null,
                   ),
                   if (asset != valued.last) const SizedBox(height: 9),
                 ],
@@ -584,54 +605,68 @@ class _AllocationLegendRow extends StatelessWidget {
     required this.copy,
     required this.currency,
     required this.color,
+    this.onTap,
   });
   final WealthAssetClass asset;
   final WealthAnalysisCopy copy;
   final String currency;
   final Color color;
+  final VoidCallback? onTap;
 
   @override
-  Widget build(BuildContext context) => Row(
-    children: [
-      Container(
-        width: 9,
-        height: 9,
-        decoration: BoxDecoration(color: color, shape: BoxShape.circle),
-      ),
-      const SizedBox(width: 9),
-      Expanded(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              copy.assetGroup(asset.group),
-              style: TextStyle(
-                color: context.colors.ink,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-            Text(
-              MoneyFormat.money(
-                asset.value,
-                currency,
-                unavailableLabel: copy.unavailable,
-              ),
-              textDirection: TextDirection.ltr,
-              style: TextStyle(color: context.colors.inkMuted, fontSize: 12),
-            ),
-          ],
+  Widget build(BuildContext context) {
+    final row = Row(
+      children: [
+        Container(
+          width: 9,
+          height: 9,
+          decoration: BoxDecoration(color: color, shape: BoxShape.circle),
         ),
-      ),
-      Text(
-        MoneyFormat.percent(asset.percentage),
-        textDirection: TextDirection.ltr,
-        style: TextStyle(
-          color: context.colors.ink,
-          fontWeight: FontWeight.w800,
+        const SizedBox(width: 9),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                copy.assetGroup(asset.group),
+                style: TextStyle(
+                  color: context.colors.ink,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              Text(
+                MoneyFormat.money(
+                  asset.value,
+                  currency,
+                  unavailableLabel: copy.unavailable,
+                ),
+                textDirection: TextDirection.ltr,
+                style: TextStyle(color: context.colors.inkMuted, fontSize: 12),
+              ),
+            ],
+          ),
         ),
+        Text(
+          MoneyFormat.percent(asset.percentage),
+          textDirection: TextDirection.ltr,
+          style: TextStyle(
+            color: context.colors.ink,
+            fontWeight: FontWeight.w800,
+          ),
+        ),
+      ],
+    );
+    if (onTap == null) return row;
+    return InkWell(
+      key: const Key('wealth-brokerage-portfolio-link'),
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(10),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 6),
+        child: row,
       ),
-    ],
-  );
+    );
+  }
 }
 
 class _TargetAllocation extends StatelessWidget {

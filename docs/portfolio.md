@@ -14,14 +14,23 @@ The existing web Portfolio page is available at the protected `/portfolio`
 route. Under the Wealth Analysis architecture it is a child analysis page, not
 the primary analysis destination. It is implemented in
 `apps/web/src/pages/PortfolioPage.tsx` and `apps/web/src/features/portfolio/`.
-Flutter Portfolio aggregation and data UI are not implemented yet. The mobile
+Flutter provides the Portfolio domain, repository, decimal-safe valuation,
+race-safe controller, and mobile-first UI under
+`apps/mobile/lib/portfolio/`. The mobile
 top-level destination is Analysis / التحليل; Dashboard Portfolio Allocation
-opens a separate localized Portfolio Analysis placeholder, and Wealth Analysis
-will open the same child page when its data UI is built. Web Wealth Analysis P0
+opens the Portfolio Analysis child page, and the Wealth Analysis Brokerage row
+opens the same page. Web Wealth Analysis P0
 already links its Brokerage asset-class card to this `/portfolio` child route.
 
 The Mobile Portfolio MVP is read-only. Trading and dividend mutations remain in
 the existing Brokerage account and holding detail flows under Accounts.
+
+The data foundation loads every active Brokerage account (including cash-only accounts),
+positive holdings and assets, ledger-projected Available Cash, current market
+prices, and current FX evidence. It exposes nullable aggregate values, coverage,
+staleness, unavailable price/FX metadata, securities allocation, and holdings
+grouped by account. The page presents those domain outputs without recalculating
+financial values in widgets.
 
 ## Product boundary
 
@@ -154,6 +163,11 @@ detail. Each holding row shows, when available:
 - current market value in the profile base currency;
 - unrealized gain/loss and return;
 - stale or unavailable valuation state.
+
+Portfolio holdings use the asset's existing display precision, while the
+generic Brokerage Activity caption uses the shared eight-decimal display limit.
+Both remove non-meaningful trailing zeros at the presentation boundary. Stored
+decimal strings and valuation inputs remain unchanged.
 
 A holding row navigates to the existing Flutter Brokerage holding detail. Portfolio
 does not duplicate holding-detail presentation or mutation sheets.
@@ -378,26 +392,14 @@ and holding details.
   match the shared mobile architecture.
 - No new backend contract is required unless separately approved.
 
-## Open architecture decisions
+## Implemented architecture decisions
 
-Before implementation, confirm:
-
-1. **Valuation source:** extend/reuse the server `dashboard-valuation` response
-   for portfolio evidence, or load holdings/prices/FX directly on mobile. The
-   current snapshot alone is insufficient for the full MVP.
-2. **Partial-total presentation:** show an explicitly labelled valued subtotal
-   plus coverage, as web does, or keep aggregate market value/performance null
-   whenever any holding is unavailable, matching current Flutter Brokerage
-   account totals.
-3. **Shared valuation extraction:** move the existing Brokerage models and pure
-   valuation functions to a neutral shared mobile module, or retain their
-   current path while making Portfolio depend on the read-only subset.
-4. **Brokerage scopes with cash but no holdings:** the web derives scope options
-   from holdings; mobile may instead show every active Brokerage account. The
-   MVP product boundary above recommends every eligible account so users can see
-   and navigate cash-only Brokerage accounts, but this is a deliberate parity
-   decision.
-5. **Refresh ownership:** decide whether Portfolio calls the Dashboard snapshot
-   independently or shares a process-level cached snapshot/controller. Either
-   option must preserve freshness metadata and avoid duplicate conflicting
-   valuation rules.
+- Mobile loads holdings, projected balances, prices, and current FX through the
+  existing authenticated contracts.
+- Aggregate valuation and allocation remain unavailable when required holding
+  evidence is unavailable; valid holding rows retain their evidence.
+- Shared Brokerage models and securities-allocation primitives prevent duplicate
+  asset grouping and decimal rules.
+- Every active Brokerage account remains selectable, including cash-only accounts.
+- Portfolio owns refresh, preserves its last good result after refresh failure,
+  and ignores superseded scope requests.

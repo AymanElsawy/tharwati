@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../core/decimals.dart';
 import '../../core/local_datetime.dart';
 import '../../core/money_format.dart';
+import '../../core/quantity_format.dart';
 import '../../i18n/accounts_copy.dart';
 import '../../i18n/app_language.dart';
 import '../../theme/tokens.dart';
@@ -382,7 +383,7 @@ class _ActivityRow extends StatelessWidget {
                       if (asset != null) copy.ltr(asset.symbol ?? asset.name),
                       if (entry?.quantityDelta != null)
                         copy.activityUnits(
-                          absoluteDecimal(entry!.quantityDelta!),
+                          formatActivityQuantity(entry!.quantityDelta!),
                         ),
                     ].join(' · '),
                     maxLines: 1,
@@ -628,7 +629,14 @@ class _HoldingRow extends StatelessWidget {
               spacing: 18,
               runSpacing: 8,
               children: [
-                _stat(c, copy.quantity, h.quantity),
+                _stat(
+                  c,
+                  copy.quantity,
+                  formatQuantity(
+                    h.quantity,
+                    fractionDigits: h.asset.quantityPrecision,
+                  ),
+                ),
                 _stat(
                   c,
                   copy.price,
