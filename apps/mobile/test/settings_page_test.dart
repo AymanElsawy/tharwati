@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:tharwati_mobile/i18n/app_language.dart';
+import 'package:tharwati_mobile/settings/account_deletion_controller.dart';
 import 'package:tharwati_mobile/settings/settings_page.dart';
 import 'package:tharwati_mobile/settings/settings_profile_repository.dart';
 import 'package:tharwati_mobile/theme/app_theme.dart';
@@ -130,6 +131,104 @@ void main() {
     expect(find.text('تسجيل الخروج'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
+
+  testWidgets(
+    'delete flow requires exact email and cancel clears credentials',
+    (tester) async {
+      final gateway = _DeletionGateway();
+      final exit = _DeletionExit();
+      await tester.pumpWidget(
+        _SettingsTestHost(
+          languageController: AppLanguageController(
+            store: _MemoryLanguageStore(),
+          ),
+          themeController: AppThemeController(store: _MemoryThemeStore()),
+          child: SettingsPage(
+            email: 'investor@example.com',
+            profileStore: _FakeProfileStore('Ada'),
+            deletionGateway: gateway,
+            deletionExit: exit,
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      await tester.drag(find.byType(CustomScrollView), const Offset(0, -900));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('open-delete-account')));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Permanently delete account?'), findsOneWidget);
+      await tester.enterText(
+        find.byKey(const Key('delete-password')),
+        'correct-password',
+      );
+      await tester.tap(find.text('Continue'));
+      await tester.pumpAndSettle();
+      expect(gateway.reauthCalls, 1);
+
+      await tester.enterText(
+        find.byKey(const Key('delete-email-confirmation')),
+        'INVESTOR@example.com',
+      );
+      final deleteButton = tester.widget<FilledButton>(
+        find.widgetWithText(FilledButton, 'Delete account'),
+      );
+      expect(deleteButton.onPressed, isNull);
+
+      await tester.tap(find.text('Cancel'));
+      await tester.pumpAndSettle();
+      expect(find.byType(AlertDialog), findsNothing);
+
+      await tester.tap(find.byKey(const Key('open-delete-account')));
+      await tester.pumpAndSettle();
+      expect(
+        tester
+            .widget<TextField>(find.byKey(const Key('delete-password')))
+            .controller!
+            .text,
+        isEmpty,
+      );
+    },
+  );
+
+  testWidgets('Arabic destructive flow is RTL and compact-layout safe', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(360, 640);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    final language = AppLanguageController(store: _MemoryLanguageStore());
+    await language.setLanguage(AppLanguage.ar);
+
+    await tester.pumpWidget(
+      _SettingsTestHost(
+        languageController: language,
+        themeController: AppThemeController(store: _MemoryThemeStore()),
+        child: SettingsPage(
+          email: 'investor@example.com',
+          profileStore: _FakeProfileStore('مستخدم تجريبي'),
+          deletionGateway: _DeletionGateway(),
+          deletionExit: _DeletionExit(),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.drag(find.byType(CustomScrollView), const Offset(0, -1200));
+    await tester.pumpAndSettle();
+    expect(find.text('منطقة الخطر'), findsOneWidget);
+    await tester.tap(find.byKey(const Key('open-delete-account')));
+    await tester.pumpAndSettle();
+
+    expect(find.text('حذف الحساب نهائيًا؟'), findsOneWidget);
+    expect(
+      tester
+          .widget<Directionality>(find.byKey(const Key('app-direction')))
+          .textDirection,
+      TextDirection.rtl,
+    );
+    expect(tester.takeException(), isNull);
+  });
 }
 
 class _SettingsTestHost extends StatelessWidget {
@@ -203,4 +302,22 @@ class _MemoryThemeStore implements ThemeStore {
 
   @override
   Future<void> writeTheme(String code) async {}
+}
+
+class _DeletionExit implements AccountDeletionExit {
+  @override
+  void forceSignedOut() {}
+}
+
+class _DeletionGateway implements AccountDeletionGateway {
+  int reauthCalls = 0;
+
+  @override
+  Future<void> reauthenticate(String password) async => reauthCalls++;
+
+  @override
+  Future<void> deleteCurrentAccount(String password) async {}
+
+  @override
+  Future<void> clearLocalSession() async {}
 }

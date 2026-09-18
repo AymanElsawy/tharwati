@@ -60,6 +60,12 @@ while it reads their own `profiles.onboarding_completed`, then see
 resolved gate state. The gate has an account-load spinner, retry callout, and
 sign-out fallback.
 
+Confirmed account deletion also activates `AccountExitCoordinator`, an explicit
+app-level forced-signed-out state observed by `AuthGate`. This renders Login
+before best-effort local session cleanup completes, so a cached session cannot
+briefly restore authenticated content. Only a later fresh `SIGNED_IN` event
+releases that state.
+
 `AuthRecoveryCoordinator` accepts only the exact `tharwati://auth-callback`
 scheme/host. PKCE query callbacks must contain exactly one URL-safe authorization
 code; the legacy token/error payload handling remains for signup confirmation.
@@ -123,7 +129,7 @@ are unchanged:
 | Accounts | Full presentation localization implemented | The list, create/edit form, generic detail and lifecycle dialogs, Real Estate/Business valued detail, Cash/Bank records read/write surfaces, Gold/Silver detail and purchases, plus brokerage detail, trades, and dividends support English/Arabic. Raw lower-layer errors remain language-agnostic. |
 | Analysis | V1 implemented | The third tab is `Analysis` / `التحليل` and opens the launch hierarchy: Wealth Health, Attention Summary, six-class Wealth Allocation, then Target Allocation & Drift with the full-screen Edit Target flow. Dashboard Assets Breakdown switches to this tab; Dashboard Portfolio Allocation opens the separate Brokerage-only `Portfolio Analysis` placeholder. Standalone Key Insights, Structure/Exposure, diversification, liquidity, currency, detailed valuation-quality, and asset-explorer sections remain deferred. |
 | Goals | Implemented | `GoalsPage`, detail page, form/entry/actions bottom sheets. |
-| Settings | Implemented profile/session surface | `settings/settings_page.dart` reads and edits canonical `profiles.full_name` through `SettingsProfileRepository`, displays the Auth-session email read-only, changes the shared device-local English/Arabic and Light/Dark appearance preferences, and signs out. Whitespace-only names save as null; privacy and support settings are absent. |
+| Settings | Implemented profile/session/deletion surface | `settings/settings_page.dart` reads and edits canonical `profiles.full_name` through `SettingsProfileRepository`, displays the Auth-session email read-only, changes the shared device-local English/Arabic and Light/Dark appearance preferences, signs out, and provides a localized Danger Zone for permanent account deletion. Deletion reauthenticates by password, requires the exact email, and reuses the authenticated `delete-account` Edge Function. Whitespace-only names save as null; export and support settings are absent. |
 
 Within Cash/Bank record forms, the searchable category sheet preserves the
 shared Web category tree and selection contract. Main categories are 52px,
@@ -290,10 +296,11 @@ control so they remain valid Row children on narrow screens.
   Net Worth remains secondary in Wealth Health, and the target editor starts an
   unsaved plan at zero for all fields. Portfolio Analysis and the later
   specialized/cross-asset analysis sections remain placeholders or deferred.
-  Settings currently includes Profile,
-  Language, Appearance, and Sign out; notification behavior, currency switching,
-  legal links, export/delete-account, OAuth/MFA/phone auth, and offline/realtime
-  support are not implemented.
+  Settings currently includes Profile, Language, Appearance, Sign out, and
+  in-app permanent account deletion; notification behavior, currency switching,
+  legal links, data export, OAuth/MFA/phone auth, and offline/realtime support are
+  not implemented. The Google Play external deletion-request URL remains deferred
+  until the final production domain is available.
 - Dashboard calls the shared Edge Function but reproduces web aggregate and Goal
   rules in Dart. Comments identify these as ports; changes to web/database
   contracts can drift unless tests/contracts are maintained in both clients.

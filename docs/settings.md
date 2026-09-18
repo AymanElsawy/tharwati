@@ -32,6 +32,13 @@ The Flutter page uses a scrollable sliver that fills short viewports without
 forcing a fixed intrinsic height, so longer Arabic copy can scroll while the
 separate Session section remains at the bottom and above the app navigation.
 
+Flutter Settings includes a separate Danger Zone with an in-app account-deletion
+flow. It reauthenticates the current signed-in user with their password, then
+requires the exact Auth email before enabling the permanent action. The flow is
+localized in English and Arabic, remains scroll-safe on compact screens, clears
+password/email confirmation state on cancellation or failure, and serializes the
+destructive request with a controller-owned in-flight guard.
+
 ## Privacy & Data
 
 Download my data calls the shared `UserDataExportService`, which requests the
@@ -66,6 +73,14 @@ even if local sign-out fails. If the delete response is lost, only a server-back
 `user_not_found` result is treated as confirmed success; otherwise the dialog
 clears credentials and requires reauthentication before retrying. There are no
 additional app-owned user caches to clear after the authenticated tree unmounts.
+
+Flutter reuses the same Edge Function contract and sends only `{password}`. A
+transport failure is treated as success only when a follow-up server-backed
+`getUser()` returns `user_not_found`; otherwise it remains an uncertain failure.
+Confirmed deletion immediately activates an app-level forced-signed-out state so
+the persisted Supabase session cannot keep authenticated content visible. Local
+session cleanup is best-effort and cannot reverse confirmed server success. A
+later fresh `SIGNED_IN` event releases the forced-signed-out state.
 
 `delete-account` is deployed, ACTIVE, and configured with `verify_jwt = true`.
 An authenticated destructive smoke test passed on a disposable confirmed user:

@@ -7,6 +7,7 @@ import '../onboarding/onboarding_flow.dart';
 import '../theme/tokens.dart';
 import '../widgets/callout.dart';
 import '../widgets/primary_button.dart';
+import 'account_exit_coordinator.dart';
 import 'login_page.dart';
 
 /// Bumped by [OnboardingFlow] after `completeOnboarding` succeeds so the gate
@@ -56,42 +57,53 @@ class _AuthGateState extends State<AuthGate> {
 
   @override
   Widget build(BuildContext context) {
-    return StreamBuilder<AuthState>(
-      stream: authService.onAuthStateChange,
-      builder: (context, snapshot) {
-        final session = snapshot.data?.session ?? authService.currentSession;
-
-        if (session == null) {
-          _resolvedFor = null;
-          _onboarding = null;
-          return const LoginPage();
-        }
-
-        // Ignore pure token refreshes for the same user — keep the tree.
-        _resolve(session.user.id);
-
-        return FutureBuilder<bool>(
-          future: _onboarding,
-          builder: (context, snap) {
-            if (snap.connectionState != ConnectionState.done) {
-              return const _Loading();
-            }
-            if (snap.hasError) {
-              return _AccountLoadError(
-                onRetry: () {
-                  setState(() {
-                    _resolvedFor = null;
-                    _resolve(session.user.id);
-                  });
-                },
+    return ListenableBuilder(
+      listenable: accountExitCoordinator,
+      builder: (context, _) => StreamBuilder<AuthState>(
+        stream: authService.onAuthStateChange,
+        builder: (context, snapshot) {
+          if (accountExitCoordinator.forceSignedOutActive) {
+            if (snapshot.data?.event == AuthChangeEvent.signedIn) {
+              WidgetsBinding.instance.addPostFrameCallback(
+                (_) => accountExitCoordinator.acceptFreshSignIn(),
               );
             }
-            return snap.data == true
-                ? const HomePage()
-                : const OnboardingFlow();
-          },
-        );
-      },
+            return const LoginPage();
+          }
+          final session = snapshot.data?.session ?? authService.currentSession;
+
+          if (session == null) {
+            _resolvedFor = null;
+            _onboarding = null;
+            return const LoginPage();
+          }
+
+          // Ignore pure token refreshes for the same user — keep the tree.
+          _resolve(session.user.id);
+
+          return FutureBuilder<bool>(
+            future: _onboarding,
+            builder: (context, snap) {
+              if (snap.connectionState != ConnectionState.done) {
+                return const _Loading();
+              }
+              if (snap.hasError) {
+                return _AccountLoadError(
+                  onRetry: () {
+                    setState(() {
+                      _resolvedFor = null;
+                      _resolve(session.user.id);
+                    });
+                  },
+                );
+              }
+              return snap.data == true
+                  ? const HomePage()
+                  : const OnboardingFlow();
+            },
+          );
+        },
+      ),
     );
   }
 }

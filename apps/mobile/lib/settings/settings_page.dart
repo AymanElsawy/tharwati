@@ -1,11 +1,15 @@
 import 'package:flutter/material.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../auth/account_exit_coordinator.dart';
 import '../main.dart';
 import '../i18n/app_language.dart';
 import '../i18n/settings_copy.dart';
 import '../theme/tokens.dart';
 import '../theme/app_theme_controller.dart';
 import '../widgets/primary_button.dart';
+import 'account_deletion_controller.dart';
+import 'delete_account_dialog.dart';
 import 'settings_profile_repository.dart';
 
 class SettingsPage extends StatefulWidget {
@@ -14,11 +18,15 @@ class SettingsPage extends StatefulWidget {
     this.email,
     this.onSignOut,
     this.profileStore,
+    this.deletionGateway,
+    this.deletionExit,
   });
 
   final String? email;
   final Future<void> Function()? onSignOut;
   final SettingsProfileStore? profileStore;
+  final AccountDeletionGateway? deletionGateway;
+  final AccountDeletionExit? deletionExit;
 
   @override
   State<SettingsPage> createState() => _SettingsPageState();
@@ -142,6 +150,15 @@ class _SettingsPageState extends State<SettingsPage> {
                   _SectionLabel(copy.appearance),
                   const SizedBox(height: AppSpacing.rowGap),
                   _AppearancePreferenceCard(copy: copy),
+                  const SizedBox(height: AppSpacing.section),
+                  _SectionLabel(copy.dangerZone),
+                  const SizedBox(height: AppSpacing.rowGap),
+                  _DangerZoneCard(
+                    copy: copy,
+                    onDeleteAccount: email.isEmpty
+                        ? null
+                        : () => _openDeleteAccount(email, copy),
+                  ),
                 ],
               ),
             ),
@@ -184,6 +201,71 @@ class _SettingsPageState extends State<SettingsPage> {
   }
 
   Future<void> _signOut() => widget.onSignOut?.call() ?? authService.signOut();
+
+  Future<void> _openDeleteAccount(String email, SettingsCopy copy) async {
+    final controller = AccountDeletionController(
+      gateway:
+          widget.deletionGateway ??
+          SupabaseAccountDeletionGateway(Supabase.instance.client),
+      exit: widget.deletionExit ?? accountExitCoordinator,
+      email: email,
+    )..open();
+    try {
+      await showDialog<void>(
+        context: context,
+        barrierDismissible: false,
+        builder: (_) => DeleteAccountDialog(controller: controller, copy: copy),
+      );
+    } finally {
+      controller.dispose();
+    }
+  }
+}
+
+class _DangerZoneCard extends StatelessWidget {
+  const _DangerZoneCard({required this.copy, required this.onDeleteAccount});
+
+  final SettingsCopy copy;
+  final VoidCallback? onDeleteAccount;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    return Container(
+      padding: const EdgeInsets.all(AppSpacing.card),
+      decoration: BoxDecoration(
+        color: c.surface,
+        border: Border.all(color: c.negative.withValues(alpha: 0.45)),
+        borderRadius: BorderRadius.circular(AppRadius.card),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text(
+            copy.deleteAccount,
+            style: TextStyle(
+              color: c.negative,
+              fontSize: 16,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(copy.deleteAccountSummary, style: TextStyle(color: c.inkMuted)),
+          const SizedBox(height: 16),
+          OutlinedButton(
+            key: const Key('open-delete-account'),
+            onPressed: onDeleteAccount,
+            style: OutlinedButton.styleFrom(
+              minimumSize: const Size.fromHeight(AppSizes.touchTarget),
+              foregroundColor: c.negative,
+              side: BorderSide(color: c.negative),
+            ),
+            child: Text(copy.deleteAccount),
+          ),
+        ],
+      ),
+    );
+  }
 }
 
 class _LanguagePreferenceCard extends StatelessWidget {
