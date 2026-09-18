@@ -204,13 +204,28 @@ screens are new.
   copy, success/expired `Callout`s, and a live "Password rules" card.
 - **Email deep link** — `signUp` passes `emailRedirectTo: Env.authDeepLink`
   (`tharwati://auth-callback`, the same scheme the recovery email uses), so the
-  signup-confirmation link opens the app rather than the web Site URL.
-  `supabase_flutter` parses the tokens on the incoming link and emits a
-  `signedIn` event; `AuthGate` then routes to onboarding. The URL must be
-  allow-listed in **Auth → URL Configuration → Redirect URLs**. No-op when
-  "Confirm email" is off (signup returns a session directly). `SignUpPage`'s
+  signup-confirmation link opens the app rather than the web Site URL. Mobile
+  disables `supabase_flutter`'s automatic URI detection and instead
+  captures the cold-start URI before Supabase initialization. After initialization,
+  `AuthRecoveryCoordinator` subscribes to Auth events before exchanging that URI,
+  then owns the same exchange path for warm links. A `signedIn` event leaves
+  recovery idle and `AuthGate` routes normally; only a successfully exchanged
+  `passwordRecovery` event activates `ResetPasswordPage` above the normal gate.
+  Expired, malformed, reused, bare, and non-auth callback links never activate
+  the reset UI. The custom-scheme URL must be allow-listed in **Auth → URL
+  Configuration → Redirect URLs**. Signup is a no-op when "Confirm email" is off
+  because it returns a session directly. `SignUpPage`'s
   non-`weak_password` errors are now mapped per `AuthException.code` (e.g.
   `user_already_exists`), with the raw backend message surfaced in debug builds.
+- **Mobile recovery completion** — the recovery state is one-shot and is cleared
+  only by explicit completion or cancellation. Password update and sign-out are
+  separate outcomes: after a successful password update, best-effort sign-out
+  failure cannot turn the result into a false password-update failure. The Dart
+  client clears its local session before attempting remote revocation, and the
+  success screen remains the explicit final state until the user returns to sign
+  in. A missing/expired session offers an explicit return path instead of leaving
+  recovery active indefinitely. Recovery-email copy reflects the hosted 60-minute
+  expiry in both English and Arabic.
 - **Onboarding** — `lib/onboarding/`: `OnboardingFlow` runs the same 5 steps as
   the web (`Welcome → Country → Currency → Goals → Ready`). The name is captured
   at signup, not here. `steps/country_step.dart` is a searchable list over

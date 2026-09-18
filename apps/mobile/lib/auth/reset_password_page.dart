@@ -11,7 +11,18 @@ import 'password_policy.dart';
 
 /// Shown over the whole app after a PASSWORD_RECOVERY event (docs/auth.md).
 class ResetPasswordPage extends StatefulWidget {
-  const ResetPasswordPage({super.key});
+  const ResetPasswordPage({
+    super.key,
+    required this.onRecoveryFinished,
+    required this.onRecoveryCancelled,
+    this.updatePassword,
+    this.signOut,
+  });
+
+  final VoidCallback onRecoveryFinished;
+  final VoidCallback onRecoveryCancelled;
+  final Future<void> Function(String password)? updatePassword;
+  final Future<void> Function()? signOut;
 
   @override
   State<ResetPasswordPage> createState() => _ResetPasswordPageState();
@@ -25,6 +36,12 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
   String? _error;
   bool _expired = false;
   bool _done = false;
+
+  Future<void> _updatePassword(String password) =>
+      widget.updatePassword?.call(password) ??
+      authService.updatePassword(password);
+
+  Future<void> _signOut() => widget.signOut?.call() ?? authService.signOut();
 
   @override
   void dispose() {
@@ -41,9 +58,15 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
       _expired = false;
     });
     try {
-      await authService.updatePassword(_password.text);
-      await authService.signOut(); // Drop the recovery session (best effort).
-      setState(() => _done = true);
+      await _updatePassword(_password.text);
+      try {
+        // Supabase clears the local session before attempting server revocation.
+        // A revocation/network failure must not misreport the password update.
+        await _signOut();
+      } catch (_) {}
+      if (mounted) {
+        setState(() => _done = true);
+      }
     } on AuthException catch (e) {
       setState(() {
         if (e is AuthSessionMissingException) {
@@ -61,9 +84,17 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
     }
   }
 
-  void _close() {
-    // Back to the gate, which shows login now that the session is gone.
-    Navigator.of(context).popUntil((r) => r.isFirst);
+  Future<void> _cancel() async {
+    setState(() => _busy = true);
+    try {
+      await _signOut();
+    } catch (_) {
+      // Supabase has already cleared its local session before remote sign-out.
+    } finally {
+      if (mounted) {
+        widget.onRecoveryCancelled();
+      }
+    }
   }
 
   @override
@@ -78,7 +109,10 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
             message: 'Sign in with your new password.',
           ),
           const SizedBox(height: 16),
-          PrimaryButton(label: 'Go to sign in', onPressed: _close),
+          PrimaryButton(
+            label: 'Go to sign in',
+            onPressed: widget.onRecoveryFinished,
+          ),
         ],
       );
     }
@@ -126,11 +160,25 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
           ),
           const SizedBox(height: 16),
         ],
-        PrimaryButton(
-          label: 'Save new password',
-          busy: _busy,
-          onPressed: _submit,
-        ),
+        if (_expired)
+          PrimaryButton(
+            label: 'Back to sign in',
+            busy: _busy,
+            onPressed: _cancel,
+          )
+        else ...[
+          PrimaryButton(
+            label: 'Save new password',
+            busy: _busy,
+            onPressed: _submit,
+          ),
+          const SizedBox(height: 8),
+          SecondaryButton(
+            label: 'Cancel recovery',
+            busy: _busy,
+            onPressed: _cancel,
+          ),
+        ],
       ],
     );
   }

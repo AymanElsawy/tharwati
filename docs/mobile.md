@@ -21,9 +21,12 @@ settle
 then mounts the unchanged `AuthGate` as the normal home flow. While a signed-in
 user's onboarding completion is resolving, its presentation-only loading state
 continues the same deep-green surface with a centered approved mark and a
-subordinate gold spinner. A
-`GlobalKey<NavigatorState>` listens for Supabase's `AuthChangeEvent.passwordRecovery`
-and pushes `ResetPasswordPage` over the current tree.
+subordinate gold spinner. `main()` captures the cold-start URI before initializing
+Supabase, disables the SDK's automatic URI detection, then starts
+`AuthRecoveryCoordinator`. The coordinator subscribes to Auth events before it
+exchanges that initial URI and owns subsequent warm-link exchange. Its one-shot
+recovery state renders `ResetPasswordPage` above the normal gate, so a cold-start
+recovery session cannot enter `AuthGate` as an ordinary authenticated session.
 
 Top-level structure:
 
@@ -57,11 +60,24 @@ while it reads their own `profiles.onboarding_completed`, then see
 resolved gate state. The gate has an account-load spinner, retry callout, and
 sign-out fallback.
 
+`AuthRecoveryCoordinator` accepts only the exact `tharwati://auth-callback`
+scheme/host. PKCE query callbacks must contain exactly one URL-safe authorization
+code; the legacy token/error payload handling remains for signup confirmation.
+It activates only after
+Supabase successfully emits `passwordRecovery`; ordinary `initialSession`,
+`signedIn`, refresh, and user-update events leave normal routing untouched.
+Expired, malformed, reused, and non-auth links stay outside reset UI. URI handling
+is serialized and process-local duplicate callbacks are ignored. Completion and
+cancellation explicitly clear recovery; cancellation first performs best-effort
+local sign-out.
+
 The configured custom link is `tharwati://auth-callback` (`lib/env.dart`),
 registered in `android/app/src/main/AndroidManifest.xml` and
-`ios/Runner/Info.plist`. Both sign-up confirmation (`emailRedirectTo`) and
-password-reset email (`redirectTo`) use it; the Supabase dashboard must allow it.
-Android has Internet permission; the iOS deployment target is 13.0. The public
+`ios/Runner/Info.plist`. Both signup confirmation (`emailRedirectTo`) and
+password recovery (`redirectTo`) currently use it; the Supabase dashboard must
+allow it. Host/domain-dependent HTTPS handoff and verified App/Universal Links
+remain deferred. Android has Internet permission; the iOS deployment target is
+13.0. The public
 anon credential is embedded by default and can be overridden with
 `--dart-define=SUPABASE_URL` and `SUPABASE_ANON_KEY`.
 
@@ -75,11 +91,15 @@ Implemented auth screens:
   errors; if confirmation is enabled and no session returns, it shows the
   check-email state. Terms/Privacy labels have no links.
 - `ForgotPasswordPage`: required nonblank email and neutral success copy to
-  avoid account enumeration; transport failure is generic.
+  avoid account enumeration; transport failure is generic. Its English and Arabic
+  request copy states the hosted 60-minute recovery-link expiry.
 - `ResetPasswordPage`: reached on `PASSWORD_RECOVERY`; validates the same
   password rule and confirmation, maps missing recovery session to expired-link
-  copy, then updates the password and signs out. It does not independently
-  verify that a reset route/link is a valid recovery session before rendering.
+  copy, then updates the password and performs best-effort sign-out. A successful
+  password update remains a success even if remote sign-out reports a failure;
+  Supabase clears the local session before remote revocation. The screen has
+  explicit completion and cancellation paths, and it renders only from the
+  coordinator's validated recovery state.
 
 `OnboardingFlow` is complete for its implemented profile-preference scope:
 Welcome, searchable country, base currency, multi-select goals, Ready. Country

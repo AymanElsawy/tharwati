@@ -36,6 +36,7 @@ dependencies:
   # The following adds the Cupertino Icons font to your application.
   # Use with the CupertinoIcons class for iOS style icons.
   cupertino_icons: ^1.0.8
+  app_links: ^7.0.0
   supabase_flutter: ^2.17.2
   # Inter, Playfair Display, and Noto Sans Arabic are fetched and cached by
   # google_fonts; see lib/theme/app_theme.dart.

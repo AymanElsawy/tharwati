@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 
 import '../main.dart';
+import '../i18n/app_language.dart';
+import '../i18n/recovery_copy.dart';
 import '../widgets/callout.dart';
 import '../widgets/primary_button.dart';
 import '../widgets/tharwati_text_field.dart';
@@ -44,10 +46,11 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
 
   @override
   Widget build(BuildContext context) {
+    final copy = RecoveryCopy.of(AppLanguageScope.of(context).language);
     return AuthScaffold(
       showBack: true,
       title: 'Reset your password',
-      subtitle: 'We’ll email a one-time link. It expires in 30 minutes.',
+      subtitle: copy.resetEmailSubtitle,
       error: _sent ? null : _error,
       children: [
         Form(

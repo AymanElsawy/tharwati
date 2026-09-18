@@ -1,10 +1,11 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../env.dart';
+import 'auth_recovery_coordinator.dart';
 
 /// Thin wrapper over `supabase.auth`, mirroring the web app's auth.service.ts
 /// (docs/auth.md). Email + password only — no OAuth, MFA, or phone.
-class AuthService {
+class AuthService implements RecoveryAuthClient {
   AuthService(this._client);
 
   final SupabaseClient _client;
@@ -15,6 +16,17 @@ class AuthService {
   User? get currentUser => _auth.currentUser;
 
   Stream<AuthState> get onAuthStateChange => _auth.onAuthStateChange;
+
+  @override
+  Stream<AuthChangeEvent> get authEvents =>
+      _auth.onAuthStateChange.map((state) => state.event);
+
+  @override
+  Future<bool> exchangeAuthCallback(Uri uri) async {
+    final response = await _auth.getSessionFromUrl(uri);
+    return response.redirectType == 'recovery' ||
+        response.redirectType == AuthChangeEvent.passwordRecovery.name;
+  }
 
   /// [fullName] is stashed in user metadata as `full_name`; the
   /// `handle_new_user` trigger copies it onto the fresh `profiles` row. Mobile
