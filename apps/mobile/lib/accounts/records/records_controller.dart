@@ -32,11 +32,22 @@ class RecordsController extends ChangeNotifier {
   String? pageError;
   bool busy = false;
   String? actionError;
+  String? accountBalance;
+  bool hasAuthoritativeBalance = false;
 
   int _requestVersion = 0;
 
   List<AccountRecordDateGroup> get groups =>
       groupAccountRecordsByLocalDate(records);
+
+  Future<Map<String, String>> _loadAccountBalance() async {
+    try {
+      return await _repo.getAccountBalances([accountId]);
+    } catch (_) {
+      // The header renders unavailable rather than keeping a stale balance.
+      return const <String, String>{};
+    }
+  }
 
   Future<void> load() async {
     final version = ++_requestVersion;
@@ -44,17 +55,20 @@ class RecordsController extends ChangeNotifier {
     pageError = null;
     notifyListeners();
     try {
-      final page = await _repo.getHistoryPage(
-        accountId,
-        null,
-        _pageSize,
-        filters,
-      );
+      final results = await Future.wait<dynamic>([
+        _repo.getHistoryPage(accountId, null, _pageSize, filters),
+        _loadAccountBalance(),
+      ]);
+      final page = results[0] as AccountRecordHistoryPage;
+      final balances = results[1] as Map<String, String>;
       if (version != _requestVersion) return;
       records = page.records;
       _cursor = page.nextCursor;
       hasMore = page.hasMore;
+      accountBalance = balances[accountId];
+      hasAuthoritativeBalance = true;
       status = RecordsStatus.ready;
+      notifyListeners();
       try {
         final cats = await _repo.getCategories();
         final overrides = await _repo.getOverrides();
@@ -134,6 +148,10 @@ class RecordsController extends ChangeNotifier {
 
   Future<bool> reverse(String recordId) =>
       _run(() => _repo.reverseRecord(recordId));
+
+  Future<bool> cancelRefund(String recordId) => _run(() => _repo.cancelRefund(recordId));
+  Future<ExpenseRefundSummary?> refundSummary(String expenseId) async { try { return await _repo.refundSummary(expenseId); } catch (e) { actionError = e is AccountsException ? e.message : 'Refund summary is unavailable.'; notifyListeners(); return null; } }
+  Future<bool> addRefund({required String expenseId, required String amount, required String accountId, required String occurredAt, required String notes, required String idempotencyKey}) => _run(() => _repo.addRefund(expenseId: expenseId, amount: amount, accountId: accountId, occurredAt: occurredAt, notes: notes, idempotencyKey: idempotencyKey));
 
   Future<bool> _run(Future<void> Function() action) async {
     busy = true;

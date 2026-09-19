@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../../core/local_datetime.dart';
+import '../../core/decimals.dart';
 import '../../i18n/accounts_copy.dart';
 import '../../i18n/app_language.dart';
 import '../../theme/tokens.dart';
@@ -12,6 +13,7 @@ import 'record_category_picker.dart';
 import 'record_schema.dart';
 import 'records_controller.dart';
 import 'records_models.dart';
+import 'refund_sheet.dart';
 
 /// Add / edit an account record — port of the web `AccountRecordFormDialog`.
 /// Income / expense take a category; transfer takes a destination account and,
@@ -34,6 +36,44 @@ class RecordFormSheet extends StatefulWidget {
   State<RecordFormSheet> createState() => _RecordFormSheetState();
 }
 
+/// Compares form state without treating equivalent persisted display values as
+/// edits. Amounts stay decimal strings; date-times are compared in the local
+/// minute precision used by this form.
+bool isAccountRecordFormDirty({
+  required AccountRecordFormValues initial,
+  required AccountRecordFormValues current,
+  required String displayedAmount,
+  required String displayedReceivedAmount,
+  required String displayedNotes,
+}) {
+  bool sameDecimal(String left, String right) {
+    final normalizedLeft = D.normalize(left);
+    final normalizedRight = D.normalize(right);
+    return normalizedLeft != null && normalizedRight != null
+        ? normalizedLeft == normalizedRight
+        : left.trim() == right.trim();
+  }
+
+  String localMinute(String value) {
+    final parsed = DateTime.tryParse(value);
+    return parsed == null ? value.trim() : formatLocalDateTimeInput(parsed);
+  }
+
+  return current.type != initial.type ||
+      current.accountId != initial.accountId ||
+      current.toAccountId != initial.toAccountId ||
+      !sameDecimal(displayedAmount, initial.amount) ||
+      !sameDecimal(displayedReceivedAmount, initial.receivedAmount) ||
+      current.mainCategoryId != initial.mainCategoryId ||
+      current.subcategoryId != initial.subcategoryId ||
+      localMinute(current.occurredAt) != localMinute(initial.occurredAt) ||
+      displayedNotes != initial.notes;
+}
+
+/// Only a completed Refund creation closes the parent Edit Expense sheet.
+bool shouldCloseEditExpenseAfterRefund(bool? refundCreated) =>
+    refundCreated == true;
+
 class _RecordFormSheetState extends State<RecordFormSheet> {
   late AccountRecordFormValues _v;
   final _amount = TextEditingController();
@@ -43,6 +83,17 @@ class _RecordFormSheetState extends State<RecordFormSheet> {
   Map<String, String> _errors = const {};
 
   bool get _isEditing => widget.editing != null;
+  bool get _isDirty {
+    final initial = widget.editing?.values;
+    return initial != null &&
+        isAccountRecordFormDirty(
+          initial: initial,
+          current: _v,
+          displayedAmount: _amount.text,
+          displayedReceivedAmount: _received.text,
+          displayedNotes: _notes.text,
+        );
+  }
 
   @override
   void initState() {
@@ -53,7 +104,7 @@ class _RecordFormSheetState extends State<RecordFormSheet> {
           accountId: widget.initialAccount?.id ?? '',
           occurredAt: formatLocalDateTimeInput(),
         );
-    _amount.text = _v.amount;
+    _amount.text = D.normalize(_v.amount) ?? _v.amount;
     _received.text = _v.receivedAmount;
     _notes.text = _v.notes;
   }
@@ -128,6 +179,31 @@ class _RecordFormSheetState extends State<RecordFormSheet> {
     if (ok != true) return;
     final done = await widget.controller.reverse(widget.editing!.id);
     if (done && mounted) Navigator.of(context).pop(true);
+  }
+
+  Future<void> _refund() async {
+    if (widget.editing == null || _v.type != AccountRecordType.expense || _isDirty) return;
+    final summary = await widget.controller.refundSummary(widget.editing!.id);
+    if (summary == null || !D.isPositive(summary.remainingAmount) || !mounted) return;
+    final from = _acc(_v.accountId); if (from == null) return;
+    final eligible = widget.recordAccounts.where((a) => a.currencyCode == summary.currencyCode).toList();
+    final main = widget.controller.categories.where((item) => item.id == _v.mainCategoryId).firstOrNull;
+    final sub = main?.subcategories.where((item) => item.id == _v.subcategoryId).firstOrNull;
+    final category = sub == null ? (main?.name ?? '') : '${main!.name} → ${sub.name}';
+    final refundCreated = await showAppSheet<bool>(
+      context,
+      builder: (_) => RefundSheet(
+        controller: widget.controller,
+        expenseId: widget.editing!.id,
+        originalAccountId: from.id,
+        category: category,
+        summary: summary,
+        accounts: eligible,
+      ),
+    );
+    if (shouldCloseEditExpenseAfterRefund(refundCreated) && mounted) {
+      Navigator.of(context).pop(true);
+    }
   }
 
   String? _err(BuildContext context, String field) => AccountsCopy.of(
@@ -256,6 +332,10 @@ class _RecordFormSheetState extends State<RecordFormSheet> {
               const SizedBox(height: 10),
             ],
 
+            if (_isEditing && _v.type == AccountRecordType.expense) ...[
+              SizedBox(width: double.infinity, child: OutlinedButton(onPressed: widget.controller.busy || _isDirty ? null : _refund, child: Text(copy.recordRefund))),
+              const SizedBox(height: 10),
+            ],
             Row(
               children: [
                 if (_isEditing) ...[
@@ -281,7 +361,7 @@ class _RecordFormSheetState extends State<RecordFormSheet> {
                           : () => Navigator.of(context).pop(),
                     ),
                   ),
-                const SizedBox(width: 0),
+                const SizedBox(width: 10),
                 Expanded(
                   flex: 2,
                   child: PrimaryButton(
@@ -292,6 +372,14 @@ class _RecordFormSheetState extends State<RecordFormSheet> {
                 ),
               ],
             ),
+            if (_isEditing && _v.type == AccountRecordType.expense && _isDirty)
+              Padding(
+                padding: const EdgeInsets.only(top: 8),
+                child: Text(
+                  copy.saveBeforeRefund,
+                  style: TextStyle(color: c.inkMuted, fontSize: 12),
+                ),
+              ),
           ],
         );
       },

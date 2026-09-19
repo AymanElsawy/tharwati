@@ -10,6 +10,8 @@ import {
   type AccountRecordFormValues,
   type AccountRecordHistoryFilters,
   type EditableAccountRecord,
+  type ExpenseRefundSummary,
+  type ExpenseRefundValues,
 } from "../types/account-record"
 import type { AccountSummary, Decimal } from "@/lib/supabase/types"
 import { divideDecimals, multiplyDecimals, normalizeDecimal } from "@/lib/financial-calculations/decimal"
@@ -141,6 +143,18 @@ export function getAccountRecordCategoryLabel(
   return record.description.replace(/^(Income|Expense):\s*/i, "") || record.type
 }
 
+export function getAccountRecordCategoryPath(
+  record: AccountRecord,
+  categories: readonly VisibleRecordMainCategory[]
+) {
+  if (record.type === "transfer") return null
+  for (const main of categories) {
+    const subcategory = main.subcategories.find((item) => item.id === record.subcategoryId)
+    if (subcategory) return `${main.name} → ${subcategory.name}`
+  }
+  return getAccountRecordCategoryLabel(record, categories)
+}
+
 export async function getAccountRecordHistoryPage(
   accountId: string,
   cursor: AccountRecordHistoryCursor | null,
@@ -189,6 +203,13 @@ export async function correctAccountRecord(recordId: string, values: AccountReco
 
 export async function reverseAccountRecord(recordId: string) {
   await accountRecordsRepository.reverseAccountRecord(recordId)
+}
+export async function getExpenseRefundSummary(recordId: string): Promise<ExpenseRefundSummary> { return accountRecordsRepository.getExpenseRefundSummary(recordId) }
+export async function addExpenseRefund(values: ExpenseRefundValues) { await accountRecordsRepository.addExpenseRefund(values) }
+export async function cancelExpenseRefund(recordId: string) { await accountRecordsRepository.cancelExpenseRefund(recordId) }
+
+export function eligibleRefundAccounts(accounts: readonly AccountSummary[], currencyCode: string) {
+  return getRecordAccounts(accounts).filter((account) => account.currency_code === currencyCode)
 }
 
 export async function getAccountRecordBalances(accountIds: string[]) {

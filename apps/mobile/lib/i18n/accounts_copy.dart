@@ -376,6 +376,7 @@ class AccountsCopy {
     'income' => _ar ? 'دخل' : 'Income',
     'expense' => _ar ? 'مصروف' : 'Expense',
     'transfer' => _ar ? 'تحويل' : 'Transfer',
+    'refund' => _ar ? 'استرداد' : 'Refund',
     _ => value,
   };
   String get from => _ar ? 'من' : 'From';
@@ -390,6 +391,26 @@ class AccountsCopy {
   String get clearAll => _ar ? 'مسح الكل' : 'Clear all';
   String get apply => _ar ? 'تطبيق' : 'Apply';
   String get any => _ar ? 'أي' : 'Any';
+
+  String get recordRefund => _ar ? 'تسجيل استرداد' : 'Record refund';
+  String get refundAmount => _ar ? 'مبلغ الاسترداد' : 'Refund amount';
+  String get currentRefundAmount => _ar ? 'الاسترداد الحالي' : 'Current refund amount';
+  String get remainingAfterRefund => _ar ? 'المتبقي بعد هذا الاسترداد' : 'Remaining after this refund';
+  String get invalidRefundRequest => _ar
+      ? 'تعذر تسجيل الاسترداد. تحقق من البيانات وحاول مرة أخرى.'
+      : 'Couldn’t record the refund. Check the details and try again.';
+  String get cancelRefund => _ar ? 'إلغاء الاسترداد' : 'Cancel refund';
+  String get cancelRefundTitle =>
+      _ar ? 'إلغاء الاسترداد؟' : 'Cancel refund?';
+  String get keepRefund => _ar ? 'الاحتفاظ بالاسترداد' : 'Keep refund';
+  String cancelRefundBody(String amount, String destinationAccount) => _ar
+      ? 'هل تريد إلغاء استرداد $amount؟\nسيتم خصم $amount من حساب $destinationAccount، وستختفي حركة الاسترداد من سجل المعاملات.'
+      : 'Are you sure you want to cancel this $amount refund?\n$amount will be deducted from $destinationAccount, and the refund will disappear from your transaction history.';
+  String get originalAmount => _ar ? 'المبلغ الأصلي' : 'Original amount';
+  String get refunded => _ar ? 'المسترد' : 'Refunded';
+  String get remainingRefundable => _ar ? 'المتبقي للاسترداد' : 'Remaining refundable';
+  String get destinationAccountLabel => _ar ? 'حساب الوجهة' : 'Destination account';
+  String get saveBeforeRefund => _ar ? 'احفظ التغييرات قبل تسجيل الاسترداد.' : 'Save changes before recording a refund.';
 
   // Cash/Bank record write and category-management presentation.
   String get editRecord => _ar ? 'تعديل السجل' : 'Edit record';

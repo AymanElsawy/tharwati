@@ -9,6 +9,8 @@ import {
   emptyAccountRecordHistoryFilters,
   type AccountRecordFormValues,
   type AccountRecordHistoryFilters,
+  type ExpenseRefundSummary,
+  type ExpenseRefundValues,
 } from "../types/account-record"
 
 export type AccountRecordRow = {
@@ -103,7 +105,7 @@ export class AccountRecordsRepository {
   async addAccountRecord(values: AccountRecordFormValues): Promise<void> {
     const operation = "accountRecords.addAccountRecord"
     const { error } = await this.client.rpc("add_account_record", {
-      p_record_type: values.type,
+      p_record_type: values.type as "income" | "expense" | "transfer",
       p_account_id: values.accountId,
       p_counterparty_account_id: values.type === "transfer" ? values.toAccountId : null,
       p_amount: values.amount,
@@ -134,7 +136,7 @@ export class AccountRecordsRepository {
     const operation = "accountRecords.correctAccountRecord"
     const { error } = await this.client.rpc("correct_account_record", {
       p_transaction_id: recordId,
-      p_record_type: values.type,
+      p_record_type: values.type as "income" | "expense" | "transfer",
       p_account_id: values.accountId,
       p_counterparty_account_id: values.type === "transfer" ? values.toAccountId : null,
       p_amount: values.amount,
@@ -152,6 +154,27 @@ export class AccountRecordsRepository {
     const operation = "accountRecords.reverseAccountRecord"
     const { error } = await this.client.rpc("reverse_account_record", { p_transaction_id: recordId })
     if (error) throw toRepositoryError(error, operation)
+  }
+
+  async getExpenseRefundSummary(expenseTransactionId: string): Promise<ExpenseRefundSummary> {
+    const { data, error } = await this.client.rpc("get_expense_refund_summary", { p_expense_transaction_id: expenseTransactionId })
+    const row = requireQueryData(data, error, "accountRecords.getExpenseRefundSummary")[0]
+    if (!row) throw new Error("Expense refund summary is unavailable")
+    return { originalAmount: row.original_amount, effectiveRefundedAmount: row.effective_refunded_amount, remainingRefundableAmount: row.remaining_refundable_amount, currencyCode: row.currency_code }
+  }
+
+  async addExpenseRefund(values: ExpenseRefundValues): Promise<void> {
+    const { error } = await this.client.rpc("add_expense_refund", {
+      p_expense_transaction_id: values.expenseTransactionId, p_amount: values.amount,
+      p_occurred_at: localDateTimeInputToIso(values.occurredAt), p_idempotency_key: crypto.randomUUID(),
+      p_destination_account_id: values.destinationAccountId, p_notes: values.notes.trim() || null,
+    })
+    if (error) throw toRepositoryError(error, "accountRecords.addExpenseRefund")
+  }
+
+  async cancelExpenseRefund(refundTransactionId: string): Promise<void> {
+    const { error } = await this.client.rpc("cancel_expense_refund", { p_refund_transaction_id: refundTransactionId, p_idempotency_key: crypto.randomUUID() })
+    if (error) throw toRepositoryError(error, "accountRecords.cancelExpenseRefund")
   }
 
   async getAccountBalances(accountIds: string[]): Promise<AccountBalanceRow[]> {

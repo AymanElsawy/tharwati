@@ -75,13 +75,14 @@ class AccountRecordDateGroup {
   final List<AccountRecord> records;
 }
 
-enum AccountRecordType { expense, income, transfer }
+enum AccountRecordType { expense, income, transfer, refund }
 
 extension AccountRecordTypeX on AccountRecordType {
   String get code => name;
   static AccountRecordType fromCode(String code) => switch (code) {
     'income' => AccountRecordType.income,
     'transfer' => AccountRecordType.transfer,
+    'refund' => AccountRecordType.refund,
     _ => AccountRecordType.expense,
   };
 }
@@ -127,6 +128,12 @@ class EditableAccountRecord {
   const EditableAccountRecord({required this.id, required this.values});
   final String id;
   final AccountRecordFormValues values;
+}
+
+class ExpenseRefundSummary {
+  const ExpenseRefundSummary({required this.originalAmount, required this.refundedAmount, required this.remainingAmount, required this.currencyCode});
+  final String originalAmount, refundedAmount, remainingAmount, currencyCode;
+  factory ExpenseRefundSummary.fromRow(Map row) => ExpenseRefundSummary(originalAmount: '${row['original_amount']}', refundedAmount: '${row['effective_refunded_amount']}', remainingAmount: '${row['remaining_refundable_amount']}', currencyCode: '${row['currency_code']}');
 }
 
 /// History query filters (`AccountRecordHistoryFilters`).

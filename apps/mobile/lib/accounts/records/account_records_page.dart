@@ -71,6 +71,12 @@ class _AccountRecordsPageState extends State<AccountRecordsPage> {
         [widget.account],
   );
 
+  String? get _headerBalance => accountRecordsHeaderBalance(
+    fallback: widget.resolvedValue,
+    authoritative: _controller.accountBalance,
+    hasAuthoritativeBalance: _controller.hasAuthoritativeBalance,
+  );
+
   Future<void> _openForm({EditableAccountRecord? editing}) async {
     _controller.clearActionError();
     await showAppSheet<bool>(
@@ -87,6 +93,41 @@ class _AccountRecordsPageState extends State<AccountRecordsPage> {
   }
 
   Future<void> _edit(AccountRecord record) async {
+    if (record.type == 'refund') {
+      final copy = AccountsCopy.of(AppLanguageScope.of(context).language);
+      final colors = context.colors;
+      final amount = copy.ltr(
+        MoneyFormat.money(record.amount, record.currencyCode),
+      );
+      final ok = await showDialog<bool>(
+        context: context,
+        builder: (dialogContext) => AlertDialog(
+          title: Text(copy.cancelRefundTitle),
+          content: Text(copy.cancelRefundBody(amount, widget.account.name)),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(false),
+              child: Text(copy.keepRefund),
+            ),
+            FilledButton(
+              style: FilledButton.styleFrom(
+                backgroundColor: colors.negative,
+                foregroundColor: Colors.white,
+              ),
+              onPressed: () => Navigator.of(dialogContext).pop(true),
+              child: Text(copy.cancelRefund),
+            ),
+          ],
+        ),
+      );
+      if (ok == true) {
+        final cancelled = await _controller.cancelRefund(record.id);
+        if (cancelled && mounted) {
+          unawaited(widget.accountsController.load());
+        }
+      }
+      return;
+    }
     if (!record.isEditable) return;
     final editable = await _controller.openForEdit(record.id);
     if (editable != null) await _openForm(editing: editable);
@@ -128,9 +169,10 @@ class _AccountRecordsPageState extends State<AccountRecordsPage> {
             children: [
               _Header(
                 account: a,
-                resolvedValue: widget.resolvedValue,
+                resolvedValue: _headerBalance,
                 onAdd: a.isActive ? () => _openForm() : null,
               ),
+              if (_controller.busy) const LinearProgressIndicator(),
               _SearchRow(
                 controller: _search,
                 onChanged: (v) {
@@ -232,6 +274,14 @@ class _AccountRecordsPageState extends State<AccountRecordsPage> {
     }
   }
 }
+
+/// Once loaded, the ledger balance is authoritative for this account detail.
+/// A null result intentionally renders as unavailable rather than stale data.
+String? accountRecordsHeaderBalance({
+  required String? fallback,
+  required String? authoritative,
+  required bool hasAuthoritativeBalance,
+}) => hasAuthoritativeBalance ? authoritative : fallback;
 
 class _Header extends StatelessWidget {
   const _Header({
@@ -491,7 +541,7 @@ class _RecordRow extends StatelessWidget {
         : c.ink;
     final time = formatLocalDateTime(record.occurredAt).time;
     return InkWell(
-      onTap: record.isEditable ? onTap : null,
+      onTap: record.isEditable || record.type == 'refund' ? onTap : null,
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
         decoration: BoxDecoration(
@@ -508,14 +558,26 @@ class _RecordRow extends StatelessWidget {
                   textDirection: TextDirection.ltr,
                   style: TextStyle(color: c.inkMuted, fontSize: 12),
                 ),
-                Text(
-                  MoneyFormat.money(record.amount, record.currencyCode),
-                  textDirection: TextDirection.ltr,
-                  style: TextStyle(
-                    color: amountColor,
-                    fontSize: 14,
-                    fontWeight: FontWeight.w700,
-                  ),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Text(
+                      MoneyFormat.money(record.amount, record.currencyCode),
+                      textDirection: TextDirection.ltr,
+                      style: TextStyle(
+                        color: amountColor,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    if (record.type == 'refund')
+                      Text(
+                        AccountsCopy.of(
+                          AppLanguageScope.of(context).language,
+                        ).recordTypeValue('refund'),
+                        style: TextStyle(color: c.inkMuted, fontSize: 11),
+                      ),
+                  ],
                 ),
               ],
             ),

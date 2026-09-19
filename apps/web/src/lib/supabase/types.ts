@@ -350,6 +350,8 @@ type FinancialTransactionRow = {
   updated_at: string
   reverses_transaction_id?: string | null
   corrects_transaction_id?: string | null
+  refunds_transaction_id?: string | null
+  refund_idempotency_key?: string | null
 }
 
 type TransactionEntryRow = {
@@ -744,6 +746,8 @@ export type Database = {
           subcategory_id?: string | null
           reverses_transaction_id?: string | null
           corrects_transaction_id?: string | null
+          refunds_transaction_id?: string | null
+          refund_idempotency_key?: string | null
           posted_at?: string | null
           created_at?: string
           updated_at?: string
@@ -1173,6 +1177,31 @@ export type Database = {
       reverse_account_record: {
         Args: { p_transaction_id: string }
         Returns: Json
+      }
+      add_expense_refund: {
+        Args: {
+          p_expense_transaction_id: string
+          p_amount: Decimal
+          p_occurred_at: string
+          p_idempotency_key: string
+          p_destination_account_id?: string | null
+          p_notes?: string | null
+        }
+        Returns: Json
+      }
+      cancel_expense_refund: {
+        Args: { p_refund_transaction_id: string; p_idempotency_key: string }
+        Returns: Json
+      }
+      get_expense_refund_summary: {
+        Args: { p_expense_transaction_id: string }
+        Returns: Array<{
+          expense_transaction_id: string
+          original_amount: Decimal
+          effective_refunded_amount: Decimal
+          remaining_refundable_amount: Decimal
+          currency_code: string
+        }>
       }
       correct_account_record: {
         Args: {

@@ -20,7 +20,7 @@ export type EditableAccountRecord = {
   values: AccountRecordFormValues
 }
 
-export type AccountRecordType = "expense" | "income" | "transfer"
+export type AccountRecordType = "expense" | "income" | "transfer" | "refund"
 
 export type AccountRecordHistoryFilters = {
   search: string
@@ -55,6 +55,9 @@ export type AccountRecordFormValues = {
   occurredAt: string
   notes: string
 }
+
+export type ExpenseRefundSummary = { originalAmount: Decimal; effectiveRefundedAmount: Decimal; remainingRefundableAmount: Decimal; currencyCode: string }
+export type ExpenseRefundValues = { expenseTransactionId: string; amount: Decimal; destinationAccountId: string; occurredAt: string; notes: string }
 
 export const emptyAccountRecordFormValues: AccountRecordFormValues = {
   type: "expense",

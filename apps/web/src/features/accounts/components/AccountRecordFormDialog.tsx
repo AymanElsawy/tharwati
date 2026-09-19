@@ -10,6 +10,7 @@ import { formatLocalDateTimeInput } from "@/lib/formatting/local-date-time"
 import type { AccountSummary } from "@/lib/supabase/types"
 import { createAccountRecordSchema } from "../schemas/account-record.schema"
 import { estimateTransferReceived } from "../services/account-records.service"
+import { isAccountRecordFormDirty } from "../utils/account-record-form-dirty"
 import {
   emptyAccountRecordFormValues,
   type AccountRecordFormValues,
@@ -54,6 +55,7 @@ export function AccountRecordFormDialog({
   onClose,
   onSubmit,
   onDelete,
+  onRecordRefund,
 }: {
   open: boolean
   initialAccount: AccountSummary | null
@@ -64,6 +66,7 @@ export function AccountRecordFormDialog({
   onClose: () => void
   onSubmit: (values: AccountRecordFormValues) => Promise<void>
   onDelete?: () => void
+  onRecordRefund?: () => void
 }) {
   const { t } = useTranslation()
   const schema = useMemo(() => createAccountRecordSchema(t), [t])
@@ -73,7 +76,7 @@ export function AccountRecordFormDialog({
     reset,
     setValue,
     handleSubmit,
-    formState: { errors, isSubmitting },
+    formState: { errors, isSubmitting, isDirty },
   } = useForm<AccountRecordFormValues>({
     resolver: zodResolver(schema),
     defaultValues: emptyAccountRecordFormValues,
@@ -217,6 +220,9 @@ export function AccountRecordFormDialog({
     }
   }, [open])
   const disabled = isSaving || isSubmitting
+  const hasUnsavedChanges = initialValues
+    ? isAccountRecordFormDirty(values, initialValues)
+    : isDirty
   const categoryPicker = (
     <RecordCategoryPicker
       value={{
@@ -380,6 +386,7 @@ export function AccountRecordFormDialog({
               <span />
             )}
             <div className="flex gap-2">
+              {onRecordRefund && <Button type="button" variant="outline" disabled={disabled || hasUnsavedChanges} title={hasUnsavedChanges ? t("accounts.records.saveBeforeRefund") : undefined} onClick={onRecordRefund}>{t("accounts.records.recordRefund")}</Button>}
               <Button variant="outline" onClick={onClose}>
                 {t("common.cancel")}
               </Button>
