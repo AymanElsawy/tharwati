@@ -1,4 +1,5 @@
 import { createClient } from "npm:@supabase/supabase-js@2"
+import { projectApiKey } from "../_shared/project-api-keys.ts"
 
 const maximumBodyBytes = 4096
 const corsHeaders = {
@@ -34,21 +35,21 @@ Deno.serve(async (request) => {
   const authorization = request.headers.get("Authorization")
   if (!authorization) return jsonError("unauthenticated", 401)
   const url = Deno.env.get("SUPABASE_URL")
-  const anonKey = Deno.env.get("SUPABASE_ANON_KEY")
-  const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")
-  if (!url || !anonKey || !serviceRoleKey) return jsonError("deletion_failed", 500)
+  if (!url) return jsonError("deletion_failed", 500)
+  const publishableKey = projectApiKey("publishable")
+  const secretKey = projectApiKey("secret")
   const password = await readPassword(request)
   if (!password) return jsonError("reauthentication_failed", 401)
 
-  const callerClient = createClient(url, anonKey, { global: { headers: { Authorization: authorization } }, auth: { persistSession: false, autoRefreshToken: false } })
+  const callerClient = createClient(url, publishableKey, { global: { headers: { Authorization: authorization } }, auth: { persistSession: false, autoRefreshToken: false } })
   const { data: { user: caller }, error: callerError } = await callerClient.auth.getUser()
   if (callerError || !caller?.email) return jsonError("unauthenticated", 401)
 
-  const reauthenticationClient = createClient(url, anonKey, { auth: { persistSession: false, autoRefreshToken: false } })
+  const reauthenticationClient = createClient(url, publishableKey, { auth: { persistSession: false, autoRefreshToken: false } })
   const { data: reauthenticated, error: reauthenticationError } = await reauthenticationClient.auth.signInWithPassword({ email: caller.email, password })
   if (reauthenticationError || reauthenticated.user?.id !== caller.id) return jsonError("reauthentication_failed", 401)
 
-  const adminClient = createClient(url, serviceRoleKey, { auth: { persistSession: false, autoRefreshToken: false } })
+  const adminClient = createClient(url, secretKey, { auth: { persistSession: false, autoRefreshToken: false } })
   const { error: deletionError } = await adminClient.auth.admin.deleteUser(caller.id, false)
   if (deletionError) return jsonError("deletion_failed", 500)
   return new Response(null, { status: 204, headers: { "Cache-Control": "no-store", ...corsHeaders } })

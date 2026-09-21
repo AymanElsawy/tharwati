@@ -3,6 +3,9 @@
 Date: 2026-08-31
 Branch `design-lab`. Project ref: `zpghalbnvcpaqjjtmgnq` (EU-West-2, account `aymnmoka94@gmail.com`).
 
+> Historical audit snapshot: key names and deployment details below describe the
+> system as reviewed on 2026-08-31, not the current runtime configuration.
+
 ## Method
 
 Static review of all 42 migrations, 5 Edge Functions, and the React client, **plus live

@@ -1,4 +1,5 @@
 import { createClient } from "npm:@supabase/supabase-js@2"
+import { projectApiKey } from "../_shared/project-api-keys.ts"
 import {
   resolveTwelveDataInstrument,
   type TwelveDataIdentifier,
@@ -117,9 +118,9 @@ Deno.serve(async (request) => {
 
   try {
     const url = Deno.env.get("SUPABASE_URL")!
-    const anon = Deno.env.get("SUPABASE_ANON_KEY")!
-    const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
-    const userClient = createClient(url, anon, { global: { headers: { Authorization: authorization } } })
+    const publishableKey = projectApiKey("publishable")
+    const secretKey = projectApiKey("secret")
+    const userClient = createClient(url, publishableKey, { global: { headers: { Authorization: authorization } } })
     const { data: { user }, error: userError } = await userClient.auth.getUser()
     if (!user) {
       console.error("market-prices authentication failed", errorDetails(userError))
@@ -138,7 +139,7 @@ Deno.serve(async (request) => {
       .eq("is_active", true)
     if (assetsError) throw assetsError
     const assets = (accessibleAssets ?? []) as Asset[]
-    const admin = createClient(url, serviceKey)
+    const admin = createClient(url, secretKey)
     const { data: storedRows, error: cacheError } = await admin
       .from("market_prices")
       .select("asset_id,provider,price,currency_code,as_of,fetched_at,price_type,user_id")

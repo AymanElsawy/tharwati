@@ -4,6 +4,16 @@ import { readFileSync } from "node:fs"
 const source = readFileSync(new URL("./index.ts", import.meta.url), "utf8")
 
 describe("delete-account Edge Function contract", () => {
+  it("uses the caller JWT for authentication, publishable key for reauthentication, and secret key only for admin deletion", () => {
+    expect(source).toContain('const publishableKey = projectApiKey("publishable")')
+    expect(source).toContain('const secretKey = projectApiKey("secret")')
+    expect(source).toContain("createClient(url, publishableKey, { global: { headers: { Authorization: authorization } }")
+    expect(source).toContain("createClient(url, publishableKey, { auth: { persistSession: false")
+    expect(source).toContain("createClient(url, secretKey, { auth: { persistSession: false")
+    expect(source).not.toContain("SUPABASE_ANON_KEY")
+    expect(source).not.toContain("SUPABASE_SERVICE_ROLE_KEY")
+  })
+
   it("is bounded, caller-derived, reauthenticated, and deletes only caller", () => {
     expect(source).toContain('request.method !== "POST"')
     expect(source).toContain("maximumBodyBytes = 4096")

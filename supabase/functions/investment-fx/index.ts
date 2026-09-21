@@ -1,4 +1,5 @@
 import { createClient } from "npm:@supabase/supabase-js@2"
+import { projectApiKey } from "../_shared/project-api-keys.ts"
 import { getFrankfurterRate } from "../_shared/frankfurter.ts"
 
 function response(body: unknown, status = 200) {
@@ -39,10 +40,10 @@ Deno.serve(async (request) => {
   if (request.method !== "POST") return response({ error: "method_not_allowed" }, 405)
   const authorization = request.headers.get("Authorization")
   if (!authorization) return response({ error: "authentication_required" }, 401)
-  const userClient = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_ANON_KEY")!, { global: { headers: { Authorization: authorization } } })
+  const userClient = createClient(Deno.env.get("SUPABASE_URL")!, projectApiKey("publishable"), { global: { headers: { Authorization: authorization } } })
   const { data: { user } } = await userClient.auth.getUser()
   if (!user) return response({ error: "authentication_required" }, 401)
-  const admin = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!)
+  const admin = createClient(Deno.env.get("SUPABASE_URL")!, projectApiKey("secret"))
   try {
     const { operation, args } = await request.json()
     if (operation !== "add" && operation !== "edit") return response({ error: "invalid_operation" }, 400)

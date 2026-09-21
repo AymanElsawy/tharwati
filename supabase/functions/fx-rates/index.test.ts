@@ -6,6 +6,14 @@ import { corsHeaders, json, preflightResponse } from "./http.ts"
 const functionSource = readFileSync(new URL("./index.ts", import.meta.url), "utf8")
 
 describe("fx-rates browser HTTP contract", () => {
+  it("uses caller JWT for RLS and keeps the secret key in the admin client", () => {
+    expect(functionSource).toContain('projectApiKey("publishable")')
+    expect(functionSource).toContain('projectApiKey("secret")')
+    expect(functionSource).toContain("createClient(url, publishableKey, { global: { headers: { Authorization: authorization } } })")
+    expect(functionSource).toContain("createClient(url, secretKey)")
+    expect(functionSource).not.toContain("SUPABASE_ANON_KEY")
+    expect(functionSource).not.toContain("SUPABASE_SERVICE_ROLE_KEY")
+  })
   it("answers browser preflight with 204 and the required CORS headers", () => {
     const response = preflightResponse()
 

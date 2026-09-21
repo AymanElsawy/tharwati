@@ -1,4 +1,5 @@
 import { createClient } from "npm:@supabase/supabase-js@2"
+import { projectApiKey } from "../_shared/project-api-keys.ts"
 
 const provider = "twelve_data"
 const minimumQueryLength = 2
@@ -84,8 +85,7 @@ async function authenticate(request: Request) {
   const authorization = request.headers.get("Authorization")
   if (!authorization) return false
   const url = Deno.env.get("SUPABASE_URL")!
-  const anon = Deno.env.get("SUPABASE_ANON_KEY")!
-  const userClient = createClient(url, anon, {
+  const userClient = createClient(url, projectApiKey("publishable"), {
     global: { headers: { Authorization: authorization } },
   })
   const { data: { user }, error } = await userClient.auth.getUser()

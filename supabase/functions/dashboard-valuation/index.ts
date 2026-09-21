@@ -1,4 +1,5 @@
 import { createClient } from "npm:@supabase/supabase-js@2"
+import { projectApiKey } from "../_shared/project-api-keys.ts"
 import {
   dashboardValuationReason,
   type DashboardValuationStage,
@@ -104,8 +105,8 @@ Deno.serve(async (request) => {
   if (!authorization) return json({ error: "authentication_required" }, 401)
   let stage: DashboardValuationStage = "initialization"
   try {
-    const url = Deno.env.get("SUPABASE_URL")!; const anon = Deno.env.get("SUPABASE_ANON_KEY")!
-    const userClient = createClient(url, anon, { global: { headers: { Authorization: authorization } } })
+    const url = Deno.env.get("SUPABASE_URL")!; const publishableKey = projectApiKey("publishable")
+    const userClient = createClient(url, publishableKey, { global: { headers: { Authorization: authorization } } })
     const { data: { user } } = await timing.measure("auth_get_user", () => userClient.auth.getUser())
     if (!user) return json({ error: "authentication_required" }, 401)
     const { data: profile, error: profileError } = await timing.measure("profile_read", () => userClient.from("profiles").select("base_currency_code").eq("id", user.id).single())
@@ -179,7 +180,7 @@ Deno.serve(async (request) => {
         try {
           const response = await fetch(`${url}/functions/v1/fx-rates`, {
             method: "POST",
-            headers: { Authorization: authorization, apikey: anon, "Content-Type": "application/json" },
+            headers: { Authorization: authorization, apikey: publishableKey, "Content-Type": "application/json" },
             body: JSON.stringify({ fromCurrencyCode: from, toCurrencyCode: to, mode: "current" }),
           })
           const resolved = await response.json() as { available?: unknown; rate?: unknown; stale?: unknown }
@@ -211,7 +212,7 @@ Deno.serve(async (request) => {
     const priceRowsPromise = assetIds.length === 0
       ? Promise.resolve<Price[]>([])
       : timing.measure("market_prices_call", async () => {
-        const response = await fetch(`${url}/functions/v1/market-prices`, { method: "POST", headers: { Authorization: authorization, apikey: anon, "Content-Type": "application/json" }, body: JSON.stringify({ assetIds }) })
+        const response = await fetch(`${url}/functions/v1/market-prices`, { method: "POST", headers: { Authorization: authorization, apikey: publishableKey, "Content-Type": "application/json" }, body: JSON.stringify({ assetIds }) })
         return response.ok ? ((await response.json()) as { prices?: Price[] }).prices ?? [] : []
       })
     const metalPricesPromise = timing.measure("metal_price_calls", () => mapWithConcurrency(

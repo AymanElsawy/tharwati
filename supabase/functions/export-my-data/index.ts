@@ -1,4 +1,5 @@
 import { createClient } from "npm:@supabase/supabase-js@2"
+import { projectApiKey } from "../_shared/project-api-keys.ts"
 import {
   buildUserDataExport,
   ExportTooLargeError,
@@ -26,10 +27,9 @@ Deno.serve(async (request) => {
   if (!authorization) return jsonError("unauthenticated", 401)
 
   const url = Deno.env.get("SUPABASE_URL")
-  const anonKey = Deno.env.get("SUPABASE_ANON_KEY")
-  if (!url || !anonKey) return jsonError("export_unavailable", 503)
+  if (!url) return jsonError("export_unavailable", 503)
 
-  const client = createClient(url, anonKey, {
+  const client = createClient(url, projectApiKey("publishable"), {
     global: { headers: { Authorization: authorization } },
     auth: { persistSession: false, autoRefreshToken: false },
   })

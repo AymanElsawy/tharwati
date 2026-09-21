@@ -1,4 +1,5 @@
 import { createClient } from "npm:@supabase/supabase-js@2"
+import { projectApiKey } from "../_shared/project-api-keys.ts"
 import { getFrankfurterRate } from "../_shared/frankfurter.ts"
 import { identityRate, positiveRate, providerCacheState } from "../_shared/fx-rate.ts"
 import { json, preflightResponse } from "./http.ts"
@@ -21,15 +22,15 @@ Deno.serve(async (request) => {
   if (!authorization) return json({ error: "authentication_required" }, 401)
   try {
     const url = Deno.env.get("SUPABASE_URL")!
-    const anon = Deno.env.get("SUPABASE_ANON_KEY")!
-    const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
-    const userClient = createClient(url, anon, { global: { headers: { Authorization: authorization } } })
+    const publishableKey = projectApiKey("publishable")
+    const secretKey = projectApiKey("secret")
+    const userClient = createClient(url, publishableKey, { global: { headers: { Authorization: authorization } } })
     const { data: { user }, error: userError } = await userClient.auth.getUser()
     if (!user) {
       console.error("fx-rates authentication failed", { message: userError?.message ?? null })
       return json({ error: "authentication_required" }, 401)
     }
-    const admin = createClient(url, serviceKey)
+    const admin = createClient(url, secretKey)
     const body = await request.json()
     const from = code(body.fromCurrencyCode)
     const to = code(body.toCurrencyCode)

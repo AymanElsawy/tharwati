@@ -6,10 +6,14 @@ const source = readFileSync(new URL("./index.ts", import.meta.url), "utf8")
 describe("export-my-data Edge Function contract", () => {
   it("authenticates with the caller token and never uses a service-role key", () => {
     expect(source).toContain('request.headers.get("Authorization")')
+    expect(source).toContain('createClient(url, projectApiKey("publishable"), {')
+    expect(source).toContain("global: { headers: { Authorization: authorization } }")
     expect(source).toContain("client.auth.getUser()")
     expect(source).toContain('jsonError("unauthenticated", 401)')
     expect(source).toContain('client.rpc("export_my_data_v1")')
     expect(source).not.toContain("SUPABASE_SERVICE_ROLE_KEY")
+    expect(source).not.toContain("SUPABASE_ANON_KEY")
+    expect(source).not.toContain('projectApiKey("secret")')
   })
 
   it("delivers a non-cacheable bounded attachment and maps throttling", () => {
