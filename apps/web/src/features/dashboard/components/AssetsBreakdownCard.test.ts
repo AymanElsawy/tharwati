@@ -108,8 +108,8 @@ describe("AssetsBreakdownCard", () => {
 
   it("is usable as its own responsive Dashboard surface", () => {
     expect(componentSource).toContain("return embedded ? (")
-    expect(componentSource).toContain(
-      'aggregate.status === "incomplete")\n    return embedded ? ('
+    expect(componentSource).toMatch(
+      /aggregate\.status === "incomplete"\)\s*return embedded \? \(/
     )
     expect(componentSource).toContain(
       'className="tharwati-card h-full p-5 sm:p-6"'

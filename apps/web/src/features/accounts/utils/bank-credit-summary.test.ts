@@ -22,8 +22,10 @@ describe("getBankCreditSummary", () => {
   })
 
   it("keeps non-credit Bank headers on the existing AccountValue presentation", () => {
-    expect(recordsPage).toContain('const isBankCredit = account.account_type_code === "bank" && account.bank_subtype === "credit"')
-    expect(recordsPage).toContain('isBankCredit ? <BankCreditSummary')
-    expect(recordsPage).toContain(': <AccountValue value={resolvedAccountValue}')
+    expect(recordsPage).toMatch(
+      /const isBankCredit\s*=\s*account\.account_type_code === "bank"\s*&&\s*account\.bank_subtype === "credit"/
+    )
+    expect(recordsPage).toMatch(/isBankCredit \?\s*\(\s*<BankCreditSummary/)
+    expect(recordsPage).toMatch(/:\s*\(\s*<AccountValue\s+value=\{resolvedAccountValue\}/)
   })
 })

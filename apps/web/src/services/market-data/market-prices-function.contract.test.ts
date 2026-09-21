@@ -20,7 +20,13 @@ describe("market-prices generic Twelve Data resolution contract", () => {
 
   it("uses only a server-loaded Twelve Data identifier for accessible pending assets", () => {
     expect(marketPricesFunction).not.toContain("usProofInstruments")
-    expect(marketPricesFunction).toContain("const userClient = createClient(url, anon")
+    expect(marketPricesFunction).toContain(
+      "const userClient = createClient(url, publishableKey"
+    )
+    expect(marketPricesFunction).toContain(
+      'const publishableKey = projectApiKey("publishable")'
+    )
+    expect(marketPricesFunction).not.toContain("SUPABASE_ANON_KEY")
     expect(marketPricesFunction).toContain('.from("assets")')
     expect(marketPricesFunction).toContain('.from("asset_identifiers")')
     expect(marketPricesFunction).toContain('.eq("scheme", "provider")')

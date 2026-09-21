@@ -5,7 +5,7 @@ import { stopCardNavigation } from "./account-inventory-interactions"
 
 describe("AccountInventory mobile cards", () => {
   it("uses a native card button with an account-details label", () => {
-    expect(accountInventory).toContain('<button\n                type="button"')
+    expect(accountInventory).toMatch(/<button\s+type="button"/)
     expect(accountInventory).toContain(
       'aria-label={t("accounts.table.openLabel",'
     )

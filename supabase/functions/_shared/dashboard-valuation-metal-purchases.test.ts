@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest"
 
-import { multiplyDecimals } from "../../../src/lib/financial-calculations/decimal.ts"
+import { multiplyDecimals } from "../../../apps/web/src/lib/financial-calculations/decimal.ts"
 import { normalizeDashboardValuationMetalPurchase } from "./dashboard-valuation-metal-purchases.ts"
 
 describe("Dashboard valuation metal purchase normalization", () => {
