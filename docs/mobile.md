@@ -12,7 +12,7 @@ code currently under `apps/mobile/lib/`.
 
 ## Architecture and startup
 
-`lib/main.dart` initializes `Supabase` with `Env.supabaseUrl` / `Env.supabaseAnonKey`,
+`lib/main.dart` initializes `Supabase` with `Env.supabaseUrl` / `Env.supabasePublishableKey`,
 constructs the global `AuthService`, restores the device-local Light/Dark
 appearance preference, and runs `TharwatiApp`. `MaterialApp` uses
 `AppTheme.light()`/`dark()` with the persisted `ThemeMode`, no named route table, and
@@ -84,9 +84,10 @@ registered in `android/app/src/main/AndroidManifest.xml` and
 password recovery (`redirectTo`) currently use it; the Supabase dashboard must
 allow it. Host/domain-dependent HTTPS handoff and verified App/Universal Links
 remain deferred. Android has Internet permission; the iOS deployment target is
-13.0. The public
-anon credential is embedded by default and can be overridden with
-`--dart-define=SUPABASE_URL` and `SUPABASE_ANON_KEY`.
+13.0. The public publishable credential is supplied with
+`--dart-define=SUPABASE_PUBLISHABLE_KEY`;
+`--dart-define=SUPABASE_URL` optionally selects another project. Missing or
+non-publishable keys fail at startup; no secret key is embedded in the app.
 
 Implemented auth screens:
 

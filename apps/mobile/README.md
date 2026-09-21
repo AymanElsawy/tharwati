@@ -6,8 +6,9 @@ Flutter (iOS + Android) client. **Auth only** for now — email + password via S
 
 - `flutter pub get`
 - `flutter run` (device or simulator)
-- Supabase URL + anon key are baked into `lib/env.dart`; override with
-  `--dart-define=SUPABASE_URL=... --dart-define=SUPABASE_ANON_KEY=...`.
+- The Supabase URL defaults to the linked project. Supply its public publishable
+  key at build or run time with `--dart-define=SUPABASE_PUBLISHABLE_KEY=...`;
+  `--dart-define=SUPABASE_URL=...` can select another project. Never use a secret key.
 
 ## Required Supabase dashboard config
 

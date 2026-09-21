@@ -1,16 +1,13 @@
-/// Supabase connection. The anon key is a public client credential (same one the
-/// web app ships) — safe to embed. Override at build time with:
-///   --dart-define=SUPABASE_URL=... --dart-define=SUPABASE_ANON_KEY=...
+/// Supabase connection. Supply the public publishable key at build time:
+///   --dart-define=SUPABASE_URL=... --dart-define=SUPABASE_PUBLISHABLE_KEY=...
 class Env {
   static const supabaseUrl = String.fromEnvironment(
     'SUPABASE_URL',
     defaultValue: 'https://zpghalbnvcpaqjjtmgnq.supabase.co',
   );
 
-  static const supabaseAnonKey = String.fromEnvironment(
-    'SUPABASE_ANON_KEY',
-    defaultValue:
-        'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpwZ2hhbGJudmNwYXFqanRtZ25xIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODY4NzI5MzIsImV4cCI6MjEwMjQ0ODkzMn0.6CEWIQhuWZX1mQTMRRyeLuG4lDnpbmzFxu7znxAskZY',
+  static const supabasePublishableKey = String.fromEnvironment(
+    'SUPABASE_PUBLISHABLE_KEY',
   );
 
   /// Custom-scheme deep link the Supabase auth emails return to, so the app —

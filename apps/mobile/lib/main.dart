@@ -17,11 +17,14 @@ late final AuthService authService;
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  if (!Env.supabasePublishableKey.startsWith('sb_publishable_')) {
+    throw StateError('SUPABASE_PUBLISHABLE_KEY must be configured');
+  }
   final appLinks = AppLinks();
   final initialUri = await _readInitialUri(appLinks);
   await Supabase.initialize(
     url: Env.supabaseUrl,
-    anonKey: Env.supabaseAnonKey,
+    publishableKey: Env.supabasePublishableKey,
     authOptions: const FlutterAuthClientOptions(detectSessionInUri: false),
     // supabase_flutter persists the session and auto-refreshes tokens by default.
   );
