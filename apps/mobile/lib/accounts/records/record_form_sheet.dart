@@ -74,6 +74,31 @@ bool isAccountRecordFormDirty({
 bool shouldCloseEditExpenseAfterRefund(bool? refundCreated) =>
     refundCreated == true;
 
+/// Record-account eligibility is supplied by the caller. Transfers only add
+/// the reciprocal constraint that one account cannot be both sides.
+List<Account> transferAccountOptions(
+  List<Account> accounts, {
+  required String oppositeAccountId,
+}) => accounts.where((account) => account.id != oppositeAccountId).toList();
+
+AccountRecordFormValues normalizeTransferValues(
+  AccountRecordFormValues values,
+) {
+  final normalized = values.copy();
+  if (normalized.type == AccountRecordType.transfer &&
+      normalized.accountId.isNotEmpty &&
+      normalized.accountId == normalized.toAccountId) {
+    normalized.toAccountId = '';
+  }
+  return normalized;
+}
+
+bool hasValidTransferAccountSelection(AccountRecordFormValues values) =>
+    values.type != AccountRecordType.transfer ||
+    (values.accountId.isNotEmpty &&
+        values.toAccountId.isNotEmpty &&
+        values.accountId != values.toAccountId);
+
 class _RecordFormSheetState extends State<RecordFormSheet> {
   late AccountRecordFormValues _v;
   final _amount = TextEditingController();
@@ -98,12 +123,13 @@ class _RecordFormSheetState extends State<RecordFormSheet> {
   @override
   void initState() {
     super.initState();
-    _v =
-        widget.editing?.values.copy() ??
+    _v = normalizeTransferValues(
+      widget.editing?.values ??
         AccountRecordFormValues(
           accountId: widget.initialAccount?.id ?? '',
           occurredAt: formatLocalDateTimeInput(),
-        );
+        ),
+    );
     _amount.text = D.normalize(_v.amount) ?? _v.amount;
     _received.text = _v.receivedAmount;
     _notes.text = _v.notes;
@@ -226,8 +252,12 @@ class _RecordFormSheetState extends State<RecordFormSheet> {
             _TypeToggle(
               value: _v.type,
               onChanged: (t) => setState(() {
+                final previousType = _v.type;
                 _v.type = t;
                 if (t == AccountRecordType.transfer) {
+                  if (previousType != AccountRecordType.transfer) {
+                    _v.toAccountId = '';
+                  }
                   _v.mainCategoryId = '';
                   _v.subcategoryId = '';
                 }
@@ -238,16 +268,32 @@ class _RecordFormSheetState extends State<RecordFormSheet> {
             _accountField(
               label: isTransfer ? copy.fromAccount : copy.account,
               value: _v.accountId,
+              accounts: isTransfer
+                  ? transferAccountOptions(
+                      widget.recordAccounts,
+                      oppositeAccountId: _v.toAccountId,
+                    )
+                  : widget.recordAccounts,
               error: _err(context, 'accountId'),
-              onChanged: (v) => setState(() => _v.accountId = v),
+              onChanged: (v) => setState(() {
+                _v.accountId = v;
+                if (isTransfer && v == _v.toAccountId) _v.toAccountId = '';
+              }),
             ),
 
             if (isTransfer)
               _accountField(
                 label: copy.toAccount,
                 value: _v.toAccountId,
+                accounts: transferAccountOptions(
+                  widget.recordAccounts,
+                  oppositeAccountId: _v.accountId,
+                ),
                 error: _err(context, 'toAccountId'),
-                onChanged: (v) => setState(() => _v.toAccountId = v),
+                onChanged: (v) => setState(() {
+                  _v.toAccountId = v;
+                  if (v == _v.accountId) _v.accountId = '';
+                }),
               )
             else
               RecordCategoryField(
@@ -367,7 +413,9 @@ class _RecordFormSheetState extends State<RecordFormSheet> {
                   child: PrimaryButton(
                     label: copy.saveRecord,
                     busy: widget.controller.busy,
-                    onPressed: _submit,
+                    onPressed: hasValidTransferAccountSelection(_v)
+                        ? _submit
+                        : null,
                   ),
                 ),
               ],
@@ -389,6 +437,7 @@ class _RecordFormSheetState extends State<RecordFormSheet> {
   Widget _accountField({
     required String label,
     required String value,
+    required List<Account> accounts,
     required String? error,
     required ValueChanged<String> onChanged,
   }) {
@@ -406,7 +455,7 @@ class _RecordFormSheetState extends State<RecordFormSheet> {
             onChanged: (v) => onChanged(v ?? ''),
             items: [
               const DropdownMenuItem(value: '', child: Text('—')),
-              for (final a in widget.recordAccounts)
+              for (final a in accounts)
                 DropdownMenuItem(
                   value: a.id,
                   child: Text(

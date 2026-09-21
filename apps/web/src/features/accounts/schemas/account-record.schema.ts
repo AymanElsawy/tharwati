@@ -23,7 +23,7 @@ export function createAccountRecordSchema(
   }).superRefine((values, context) => {
     if (values.type === "transfer") {
       if (!values.toAccountId) context.addIssue({ code: "custom", path: ["toAccountId"], message: t("accounts.records.validation.account") })
-      if (values.accountId === values.toAccountId) context.addIssue({ code: "custom", path: ["toAccountId"], message: t("accounts.records.validation.differentAccounts") })
+      if (values.accountId && values.toAccountId && values.accountId === values.toAccountId) context.addIssue({ code: "custom", path: ["toAccountId"], message: t("accounts.records.validation.differentAccounts") })
       if (!positiveAmount.test(values.receivedAmount) || Number(values.receivedAmount) <= 0) context.addIssue({ code: "custom", path: ["receivedAmount"], message: t("accounts.records.validation.amount") })
     } else if (!values.mainCategoryId || !values.subcategoryId) {
       context.addIssue({ code: "custom", path: ["subcategoryId"], message: t("accounts.records.validation.category") })

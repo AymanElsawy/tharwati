@@ -11,12 +11,14 @@ import type { AccountSummary } from "@/lib/supabase/types"
 import { createAccountRecordSchema } from "../schemas/account-record.schema"
 import { estimateTransferReceived } from "../services/account-records.service"
 import { isAccountRecordFormDirty } from "../utils/account-record-form-dirty"
+import { normalizeTransferValues } from "../utils/transfer-form-values"
 import {
   emptyAccountRecordFormValues,
   type AccountRecordFormValues,
   type AccountRecordType,
 } from "../types/account-record"
 import { RecordCategoryPicker } from "./RecordCategoryPicker"
+import { TransferAccountSelectors } from "./TransferAccountSelectors"
 
 const field =
   "mt-1.5 w-full rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] px-3.5 py-2.5 text-sm"
@@ -85,45 +87,55 @@ export function AccountRecordFormDialog({
     control,
     defaultValue: emptyAccountRecordFormValues,
   })
-  const [estimateError, setEstimateError] = useState(false)
+  const recordType = values.type ?? "expense"
+  const fromAccountId = values.accountId ?? ""
+  const toAccountId = values.toAccountId ?? ""
+  const [failedEstimateKey, setFailedEstimateKey] = useState<string | null>(
+    null
+  )
   const scrollRegionRef = useRef<HTMLFormElement>(null)
   const [visibleViewport, setVisibleViewport] = useState<{
     height: number
     top: number
   } | null>(null)
-  const from =
-    accounts.find((account) => account.id === values.accountId) ?? null
-  const to =
-    accounts.find((account) => account.id === values.toAccountId) ?? null
+  const from = accounts.find((account) => account.id === fromAccountId) ?? null
+  const to = accounts.find((account) => account.id === toAccountId) ?? null
   const crossCurrency =
-    values.type === "transfer" &&
+    recordType === "transfer" &&
     from &&
     to &&
     from.currency_code !== to.currency_code
+  const estimateKey = crossCurrency
+    ? `${fromAccountId}:${toAccountId}:${values.amount ?? ""}`
+    : null
+  const estimateError =
+    estimateKey !== null && failedEstimateKey === estimateKey
   useEffect(() => {
     if (open)
       reset(
-        initialValues ?? {
-          ...emptyAccountRecordFormValues,
-          accountId: initialAccount?.id ?? "",
-          occurredAt: formatLocalDateTimeInput(),
-        }
+        normalizeTransferValues(
+          initialValues ?? {
+            ...emptyAccountRecordFormValues,
+            accountId: initialAccount?.id ?? "",
+            occurredAt: formatLocalDateTimeInput(),
+          }
+        )
       )
   }, [initialAccount, initialValues, open, reset])
   useEffect(() => {
-    if (values.type === "transfer") {
+    if (recordType === "transfer") {
       setValue("mainCategoryId", "")
       setValue("subcategoryId", "")
     }
-  }, [setValue, values.type])
+  }, [recordType, setValue])
   useEffect(() => {
     let active = true
     const isInitialCrossCurrencyValue =
       initialValues &&
       open &&
-      values.type === initialValues.type &&
-      values.accountId === initialValues.accountId &&
-      values.toAccountId === initialValues.toAccountId &&
+      recordType === initialValues.type &&
+      fromAccountId === initialValues.accountId &&
+      toAccountId === initialValues.toAccountId &&
       values.amount === initialValues.amount &&
       values.receivedAmount === initialValues.receivedAmount
     if (
@@ -133,9 +145,8 @@ export function AccountRecordFormDialog({
       !values.amount ||
       isInitialCrossCurrencyValue
     ) {
-      setEstimateError(false)
       if (
-        values.type === "transfer" &&
+        recordType === "transfer" &&
         from &&
         to &&
         from.currency_code === to.currency_code
@@ -147,33 +158,31 @@ export function AccountRecordFormDialog({
       .then((amount) => {
         if (active) {
           setValue("receivedAmount", amount)
-          setEstimateError(false)
+          setFailedEstimateKey(null)
         }
       })
       .catch(() => {
-        if (active) setEstimateError(true)
+        if (active) setFailedEstimateKey(estimateKey)
       })
     return () => {
       active = false
     }
   }, [
     crossCurrency,
+    estimateKey,
     from,
     initialValues,
     open,
     setValue,
     to,
-    values.accountId,
+    fromAccountId,
     values.amount,
     values.receivedAmount,
-    values.toAccountId,
-    values.type,
+    toAccountId,
+    recordType,
   ])
   useEffect(() => {
-    if (!open) {
-      setVisibleViewport(null)
-      return
-    }
+    if (!open) return
 
     if (!window.matchMedia("(max-width: 767px)").matches) return
 
@@ -220,6 +229,9 @@ export function AccountRecordFormDialog({
     }
   }, [open])
   const disabled = isSaving || isSubmitting
+  const transferSelectionIncomplete =
+    recordType === "transfer" &&
+    (!fromAccountId || !toAccountId || fromAccountId === toAccountId)
   const hasUnsavedChanges = initialValues
     ? isAccountRecordFormDirty(values, initialValues)
     : isDirty
@@ -250,7 +262,10 @@ export function AccountRecordFormDialog({
         <Dialog.Backdrop className="fixed inset-0 z-[90] bg-black/60" />
         <Dialog.Popup
           style={
-            visibleViewport
+            open &&
+            visibleViewport &&
+            typeof window !== "undefined" &&
+            window.matchMedia("(max-width: 767px)").matches
               ? {
                   maxHeight: Math.max(180, visibleViewport.height - 16),
                   top: visibleViewport.top + visibleViewport.height / 2,
@@ -282,13 +297,20 @@ export function AccountRecordFormDialog({
               </legend>
               <div className="mt-1.5 grid grid-cols-3 gap-2">
                 {recordTypeOptions.map((option) => {
-                  const selected = values.type === option.value
+                  const selected = recordType === option.value
                   return (
                     <button
                       key={option.value}
                       type="button"
                       aria-pressed={selected}
-                      onClick={() => setValue("type", option.value)}
+                      onClick={() => {
+                        if (
+                          option.value === "transfer" &&
+                          recordType !== "transfer"
+                        )
+                          setValue("toAccountId", "", { shouldValidate: true })
+                        setValue("type", option.value, { shouldValidate: true })
+                      }}
                       className={`min-w-0 rounded-xl border px-2 py-2.5 text-sm font-semibold transition-colors focus-visible:ring-2 ${selected ? option.activeClassName : "border-[var(--color-border)] bg-[var(--color-surface)] text-muted-foreground hover:bg-[var(--color-surface-muted)]"}`}
                     >
                       {t(option.labelKey)}
@@ -297,22 +319,37 @@ export function AccountRecordFormDialog({
                 })}
               </div>
             </fieldset>
-            {values.type === "transfer" ? (
+            {recordType === "transfer" ? (
               <>
                 <div className="grid gap-4 md:grid-cols-2">
-                  <AccountSelect
-                    label={t("accounts.records.fromAccount")}
-                    name="accountId"
+                  <TransferAccountSelectors
                     accounts={accounts}
-                    register={register}
-                    error={errors.accountId?.message}
-                  />
-                  <AccountSelect
-                    label={t("accounts.records.toAccount")}
-                    name="toAccountId"
-                    accounts={accounts}
-                    register={register}
-                    error={errors.toAccountId?.message}
+                    fromAccountId={fromAccountId}
+                    toAccountId={toAccountId}
+                    fromError={errors.accountId?.message}
+                    toError={errors.toAccountId?.message}
+                    onFromAccountChange={(accountId) => {
+                      setValue("accountId", accountId, {
+                        shouldDirty: true,
+                        shouldValidate: true,
+                      })
+                      if (accountId === toAccountId)
+                        setValue("toAccountId", "", {
+                          shouldDirty: true,
+                          shouldValidate: true,
+                        })
+                    }}
+                    onToAccountChange={(accountId) => {
+                      setValue("toAccountId", accountId, {
+                        shouldDirty: true,
+                        shouldValidate: true,
+                      })
+                      if (accountId === fromAccountId)
+                        setValue("accountId", "", {
+                          shouldDirty: true,
+                          shouldValidate: true,
+                        })
+                    }}
                   />
                   <AmountField
                     label={t("accounts.records.amountSent")}
@@ -386,14 +423,30 @@ export function AccountRecordFormDialog({
               <span />
             )}
             <div className="flex gap-2">
-              {onRecordRefund && <Button type="button" variant="outline" disabled={disabled || hasUnsavedChanges} title={hasUnsavedChanges ? t("accounts.records.saveBeforeRefund") : undefined} onClick={onRecordRefund}>{t("accounts.records.recordRefund")}</Button>}
+              {onRecordRefund && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  disabled={disabled || hasUnsavedChanges}
+                  title={
+                    hasUnsavedChanges
+                      ? t("accounts.records.saveBeforeRefund")
+                      : undefined
+                  }
+                  onClick={onRecordRefund}
+                >
+                  {t("accounts.records.recordRefund")}
+                </Button>
+              )}
               <Button variant="outline" onClick={onClose}>
                 {t("common.cancel")}
               </Button>
               <Button
                 form="account-record-form"
                 type="submit"
-                disabled={disabled || estimateError}
+                disabled={
+                  disabled || estimateError || transferSelectionIncomplete
+                }
               >
                 {t("accounts.records.save")}
               </Button>
@@ -434,6 +487,7 @@ function AccountSelect({
     </div>
   )
 }
+
 function AmountField({
   label,
   currency,
