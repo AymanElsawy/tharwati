@@ -121,15 +121,6 @@ export function AssetDetailPanel({
                 >
                   {t("assets.quality.resolvePrice")}
                 </Link>
-                <Button
-                  onClick={() =>
-                    window.dispatchEvent(
-                      new CustomEvent("tharwati:add-investment")
-                    )
-                  }
-                >
-                  {t("investment.primaryAction")}
-                </Button>
                 {detail.item.origin === "custom" ? (
                   <>
                     <Button variant="outline" onClick={onEdit}>
@@ -266,12 +257,10 @@ export function ActivityEvidencePanel({
   activity,
   open,
   onOpenChange,
-  onEditInvestment,
 }: {
   activity: AssetActivityEvidence | null
   open: boolean
   onOpenChange: (open: boolean) => void
-  onEditInvestment: (transactionId: string) => void
 }) {
   const { t, language } = useTranslation()
   const locale = language === "ar" ? "ar-SA" : "en-US"
@@ -287,13 +276,6 @@ export function ActivityEvidencePanel({
               </SheetDescription>
             </SheetHeader>
             <div className="p-6">
-              {activity.type === "buy" ? (
-                <div className="mb-6">
-                  <Button onClick={() => onEditInvestment(activity.id)}>
-                    {t("investment.edit.action")}
-                  </Button>
-                </div>
-              ) : null}
               <Definition
                 label={t("portfolio.activity.amount")}
                 value={formatPortfolioAmount(

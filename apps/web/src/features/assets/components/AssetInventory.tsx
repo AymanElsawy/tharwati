@@ -1,12 +1,6 @@
-import { ArrowUpDown, MoreHorizontal, Plus } from "lucide-react"
+import { ArrowUpDown } from "lucide-react"
 
 import { Badge } from "@/components/ui/badge"
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
 import {
   AssetDataStatus,
   AssetOwnershipStatus,
@@ -47,8 +41,6 @@ export function AssetInventory({
 }) {
   const { t, language } = useTranslation()
   const locale = language === "ar" ? "ar-SA" : "en-US"
-  const openInvestment = () =>
-    window.dispatchEvent(new CustomEvent("tharwati:add-investment"))
   return (
     <section aria-labelledby="asset-inventory-title" className="mt-10">
       <header>
@@ -91,9 +83,6 @@ export function AssetInventory({
               </th>
               <th className="text-muted-foreground px-3 py-3 text-start text-xs tracking-[0.1em] uppercase">
                 {t("assets.table.status")}
-              </th>
-              <th className="px-3 py-3 text-end">
-                <span className="sr-only">{t("assets.table.actions")}</span>
               </th>
             </tr>
           </thead>
@@ -159,24 +148,6 @@ export function AssetInventory({
                     )}
                   </Badge>
                 </td>
-                <td className="px-3 py-4 text-end">
-                  <DropdownMenu>
-                    <DropdownMenuTrigger
-                      className="rounded-lg p-2 focus-visible:ring-2"
-                      aria-label={t("assets.workspace.actionsFor", {
-                        name: item.asset.name,
-                      })}
-                    >
-                      <MoreHorizontal size={17} />
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuItem onClick={openInvestment}>
-                        <Plus size={14} />
-                        {t("investment.primaryAction")}
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </td>
               </tr>
             ))}
           </tbody>
@@ -207,22 +178,6 @@ export function AssetInventory({
                   · {item.asset.currency_code}
                 </span>
               </button>
-              <DropdownMenu>
-                <DropdownMenuTrigger
-                  className="rounded-lg p-2 focus-visible:ring-2"
-                  aria-label={t("assets.workspace.actionsFor", {
-                    name: item.asset.name,
-                  })}
-                >
-                  <MoreHorizontal size={17} />
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  <DropdownMenuItem onClick={openInvestment}>
-                    <Plus size={14} />
-                    {t("investment.primaryAction")}
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
             </div>
             <div className="mt-3 flex flex-wrap items-center gap-2">
               <AssetOwnershipStatus item={item} />

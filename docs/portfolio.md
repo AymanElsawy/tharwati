@@ -70,6 +70,10 @@ Portfolio remains read-only on both platforms. Buy, Sell, Dividend, Reinvest,
 Correct, and Reverse actions remain in Brokerage Account and Holding details
 under Accounts.
 
+The Web Portfolio header and empty state expose no investment-mutation CTA.
+Investment mutations belong exclusively to the supported Brokerage Account
+Details flows under Accounts.
+
 ## Relationship to the current web page
 
 The rich composition of the existing web `/portfolio` page becomes the

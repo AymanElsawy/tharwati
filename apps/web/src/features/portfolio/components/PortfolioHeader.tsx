@@ -1,4 +1,4 @@
-import { AlertTriangle, CheckCircle2, Clock3, Shapes } from "lucide-react"
+import { AlertTriangle, CheckCircle2, Clock3 } from "lucide-react"
 
 import type { PortfolioExecutiveViewModel } from "@/features/portfolio/types/portfolio-executive"
 import { useTranslation } from "@/i18n/useTranslation"
@@ -58,16 +58,6 @@ export function PortfolioHeader({
           </select>
         </label>
 
-        <button
-          type="button"
-          onClick={() =>
-            window.dispatchEvent(new CustomEvent("tharwati:add-investment"))
-          }
-          className="tharwati-button-primary h-10 w-full !min-h-10 gap-2 !rounded-xl !py-2 sm:w-auto"
-        >
-          <Shapes size={16} aria-hidden="true" />
-          {t("investment.primaryAction")}
-        </button>
       </div>
 
       <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-xs text-[var(--color-text-secondary)] lg:col-span-2 lg:justify-end">

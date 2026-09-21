@@ -1,4 +1,4 @@
-import { BriefcaseBusiness, FilePlus2 } from "lucide-react"
+import { FilePlus2 } from "lucide-react"
 import { useState } from "react"
 
 import { Button } from "@/components/ui/button"
@@ -11,7 +11,6 @@ type Props = {
   scopeName: string
   onClose: () => void
   onCreateRecord: () => void
-  onRecordInvestment: () => void
   onSelectExisting: (id: string) => void
 }
 
@@ -21,7 +20,6 @@ export function AssetIntentDialog({
   scopeName,
   onClose,
   onCreateRecord,
-  onRecordInvestment,
   onSelectExisting,
 }: Props) {
   const { t } = useTranslation()
@@ -98,7 +96,7 @@ export function AssetIntentDialog({
             <strong className="mt-1 block text-sm font-medium">{scopeName}</strong>
           </div>
 
-          <div className="grid items-stretch gap-3 sm:grid-cols-2">
+          <div>
             <button
               type="button"
               onClick={onCreateRecord}
@@ -108,17 +106,6 @@ export function AssetIntentDialog({
               <strong className="mt-4 block">{t("assets.intent.record")}</strong>
               <span className="mt-1 block text-xs leading-5 text-muted-foreground">
                 {t("assets.intent.recordDescription")}
-              </span>
-            </button>
-            <button
-              type="button"
-              onClick={onRecordInvestment}
-              className="flex min-h-40 flex-col rounded-xl border border-[var(--border-subtle)] p-5 text-start outline-none transition-colors hover:bg-muted/40 focus-visible:ring-2 motion-reduce:transition-none"
-            >
-              <BriefcaseBusiness aria-hidden="true" />
-              <strong className="mt-4 block">{t("assets.intent.investment")}</strong>
-              <span className="mt-1 block text-xs leading-5 text-muted-foreground">
-                {t("assets.intent.investmentDescription")}
               </span>
             </button>
           </div>

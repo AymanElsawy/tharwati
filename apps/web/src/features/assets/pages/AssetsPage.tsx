@@ -32,7 +32,6 @@ import { useAssetsWorkspace } from "@/features/assets/hooks/useAssetsWorkspace"
 import { useTranslation } from "@/i18n/useTranslation"
 import { useCurrentUser } from "@/features/profile/hooks/useCurrentUser"
 import { getProfileCurrencyDefault } from "@/features/profile/domain/currency-default"
-import { EditInvestmentDialog } from "@/features/investments/components/EditInvestmentDialog"
 
 export function AssetsPage() {
   const { baseCurrencyCode } = useCurrentUser()
@@ -90,7 +89,6 @@ export function AssetsPage() {
     asset: AssetSummary
   } | null>(null)
   const [formDirty, setFormDirty] = useState(false)
-  const [editInvestmentId, setEditInvestmentId] = useState<string | null>(null)
   const unsaved = useUnsavedChanges(formDirty)
   const defaults = useMemo<AssetFormValues>(
     () =>
@@ -339,19 +337,6 @@ export function AssetsPage() {
         onOpenChange={(open) => {
           if (!open) setSelectedActivityId(null)
         }}
-        onEditInvestment={(id) => {
-          setSelectedActivityId(null)
-          setEditInvestmentId(id)
-        }}
-      />
-      <EditInvestmentDialog
-        transactionId={editInvestmentId}
-        open={editInvestmentId !== null}
-        onClose={() => setEditInvestmentId(null)}
-        onSuccess={() => {
-          setEditInvestmentId(null)
-          void refresh()
-        }}
       />
       <AssetIntentDialog
         open={intentOpen}
@@ -365,10 +350,6 @@ export function AssetsPage() {
             asset: null,
             createCurrencyCode: getProfileCurrencyDefault(baseCurrencyCode),
           })
-        }}
-        onRecordInvestment={() => {
-          setIntentOpen(false)
-          window.dispatchEvent(new CustomEvent("tharwati:add-investment"))
         }}
         onSelectExisting={(id) => {
           setIntentOpen(false)

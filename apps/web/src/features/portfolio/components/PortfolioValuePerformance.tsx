@@ -32,17 +32,6 @@ export function PortfolioValuePerformance({
         <p className="mt-2 max-w-xl text-sm leading-6 text-[var(--color-text-secondary)]">
           {t("portfolio.empty.description")}
         </p>
-        <button
-          type="button"
-          onClick={() =>
-            window.dispatchEvent(
-              new CustomEvent("tharwati:add-investment"),
-            )
-          }
-          className="tharwati-button-primary mt-6"
-        >
-          {t("investment.primaryAction")}
-        </button>
       </section>
     )
   }

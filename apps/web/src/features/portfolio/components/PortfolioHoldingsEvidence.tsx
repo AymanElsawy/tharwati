@@ -1,13 +1,10 @@
 import { ArrowUpDown, Search } from "lucide-react"
-import { buttonVariants } from "@/components/ui/button"
 import type { PortfolioHoldingEvidence, PortfolioHoldingSort } from "@/features/portfolio/types/portfolio-evidence"
 import type { PortfolioScopeOption } from "@/features/portfolio/types/portfolio-executive"
 import { formatPortfolioAmount, formatPortfolioDecimal, formatPortfolioPercent } from "@/features/portfolio/utils/portfolio-formatters"
 import { useTranslation } from "@/i18n/useTranslation"
-import { cn } from "@/lib/utils"
 import { portfolioAssetClassLabel, portfolioQuantityUnitLabel } from "@/features/portfolio/utils/portfolio-labels"
 import type { TranslationKey } from "@/i18n/en/translations"
-import { Link } from "react-router-dom"
 import { PortfolioSectionHeading } from "@/features/portfolio/components/PortfolioSectionHeading"
 
 const columns: Array<[PortfolioHoldingSort, TranslationKey]> = [
@@ -55,7 +52,6 @@ export function PortfolioHoldingsEvidence({
         eyebrow={t("portfolio.evidence.positions")}
         title={t("portfolio.evidence.holdings")}
         titleId="portfolio-holdings-title"
-        action={<Link to="/assets" className={cn(buttonVariants())}>{t("investment.primaryAction")}</Link>}
       />
       <div className="mt-6 grid gap-3 md:grid-cols-[minmax(14rem,1fr)_12rem_12rem]">
         <label className="relative">
