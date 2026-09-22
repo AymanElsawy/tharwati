@@ -44,6 +44,31 @@ values (
   100000
 );
 
+insert into public.assets (
+  id,
+  user_id,
+  asset_type_code,
+  symbol,
+  name,
+  currency_code,
+  exchange,
+  is_custom,
+  is_active,
+  canonical_quantity_unit
+)
+values (
+  '40000000-0000-4000-8000-000000000001',
+  '10000000-0000-4000-8000-000000000001',
+  'stock',
+  'PTS',
+  'Projection Test Stock',
+  'SAR',
+  'XTEST',
+  true,
+  true,
+  'shares'
+);
+
 select set_config(
   'request.jwt.claim.sub',
   '10000000-0000-4000-8000-000000000001',
@@ -51,35 +76,15 @@ select set_config(
 );
 set local role authenticated;
 
-create temporary table account_balance_test_context (
-  asset_id uuid not null
-) on commit drop;
-
-insert into account_balance_test_context (asset_id)
-select (result->'asset'->>'id')::uuid
-from (
-  select public.add_investment(
+select public.add_brokerage_buy(
   p_account_id => '20000000-0000-4000-8000-000000000001',
-  p_new_account_type_code => null,
-  p_new_account_name => null,
-  p_new_account_currency_code => null,
-  p_asset_id => null,
-  p_new_asset_type_code => 'stock',
-  p_new_asset_name => 'Projection Test Stock',
-  p_new_asset_symbol => 'PTS',
-  p_new_asset_currency_code => 'SAR',
-  p_new_asset_exchange => 'XTEST',
-  p_identifier_scheme => 'ticker',
-  p_identifier_namespace => 'XTEST',
-  p_identifier_value => 'PTS',
-  p_identifier_provider => null,
+  p_asset_id => '40000000-0000-4000-8000-000000000001',
   p_quantity => 10,
   p_unit_price => 2000,
   p_fees => 100,
   p_occurred_at => now(),
   p_notes => null
-  ) as result
-) as investment;
+);
 
 do $test$
 declare
@@ -99,24 +104,9 @@ begin
 end;
 $test$;
 
-select public.add_investment(
+select public.add_brokerage_buy(
   p_account_id => '20000000-0000-4000-8000-000000000001',
-  p_new_account_type_code => null,
-  p_new_account_name => null,
-  p_new_account_currency_code => null,
-  p_asset_id => (
-    select asset_id
-    from account_balance_test_context
-  ),
-  p_new_asset_type_code => null,
-  p_new_asset_name => null,
-  p_new_asset_symbol => null,
-  p_new_asset_currency_code => null,
-  p_new_asset_exchange => null,
-  p_identifier_scheme => null,
-  p_identifier_namespace => null,
-  p_identifier_value => null,
-  p_identifier_provider => null,
+  p_asset_id => '40000000-0000-4000-8000-000000000001',
   p_quantity => 1,
   p_unit_price => 1000,
   p_fees => 10,

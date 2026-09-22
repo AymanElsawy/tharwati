@@ -38,7 +38,8 @@ values
   ('2c000000-0000-4000-8000-000000000005', '1c000000-0000-4000-8000-000000000001', 'bank', 'Reopen Different', 'USD', 500, true, null, 'credit', 1000),
   ('2c000000-0000-4000-8000-000000000006', '1c000000-0000-4000-8000-000000000001', 'bank', 'Reopen Conflict', 'USD', 0, false, null, 'debit', null),
   ('2c000000-0000-4000-8000-000000000007', '1c000000-0000-4000-8000-000000000001', 'bank', 'Reopen Conflict', 'USD', 0, true, null, 'debit', null),
-  ('2c000000-0000-4000-8000-000000000008', '1c000000-0000-4000-8000-000000000001', 'bank', 'Rename Source', 'USD', 0, true, null, 'debit', null);
+  ('2c000000-0000-4000-8000-000000000008', '1c000000-0000-4000-8000-000000000001', 'bank', 'Rename Source', 'USD', 0, true, null, 'debit', null),
+  ('2c000000-0000-4000-8000-000000000009', '1c000000-0000-4000-8000-000000000001', 'bank', 'Rename Target', 'USD', 500, true, null, 'credit', 1000);
 
 insert into public.financial_accounts (
   id, user_id, account_type_code, name, currency_code, opening_balance,
@@ -48,7 +49,7 @@ insert into public.financial_accounts (
 values (
   '2c000000-0000-4000-8000-000000000003',
   '1c000000-0000-4000-8000-000000000001',
-  'real_estate', 'Sold Reusable', 'USD', 0, false, 'sold', 'other', 0, 100
+  'real_estate', 'Sold Reusable', 'USD', 0, false, 'sold', 'other', 100, 100
 );
 
 insert into public.financial_accounts
@@ -76,10 +77,10 @@ $sql$);
 \echo ok 3 - same-type case and whitespace variants are rejected
 
 insert into public.financial_accounts
-  (user_id, account_type_code, name, currency_code, opening_balance)
+  (user_id, account_type_code, name, currency_code, opening_balance, bank_subtype)
 values
-  ('1c000000-0000-4000-8000-000000000001', 'cash', 'Closed Reusable', 'USD', 0),
-  ('1c000000-0000-4000-8000-000000000001', 'bank', 'Sold Reusable', 'USD', 0);
+  ('1c000000-0000-4000-8000-000000000001', 'cash', 'Closed Reusable', 'USD', 0, null),
+  ('1c000000-0000-4000-8000-000000000001', 'bank', 'Sold Reusable', 'USD', 0, 'debit');
 do $test$ begin
   if not exists (
     select 1 from public.financial_accounts
@@ -115,13 +116,13 @@ $sql$);
 \echo ok 6 - reopen rejects same normalized name and same account type
 
 update public.financial_accounts
-set name = ' reopen different '
+set name = ' rename target '
 where id = '2c000000-0000-4000-8000-000000000008';
 do $test$ begin
   if not exists (
     select 1 from public.financial_accounts
     where id = '2c000000-0000-4000-8000-000000000008'
-      and name = ' reopen different '
+      and name = ' rename target '
   ) then raise exception 'cross-subtype rename did not persist'; end if;
 end; $test$;
 \echo ok 7 - rename to a name used by the other Bank subtype is allowed
