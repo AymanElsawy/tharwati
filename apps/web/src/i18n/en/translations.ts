@@ -583,6 +583,11 @@ export const en = {
   "goals.entry.updatedProgress": "Updated progress",
   "goals.entry.updatedWithdrawal": "Updated withdrawal",
   "goals.moreActions": "More goal actions",
+  "goals.delete": "Delete goal",
+  "goals.deleteTitle": "Delete goal?",
+  "goals.deletePrompt": "Permanently delete “{{goalName}}”? This action cannot be undone.",
+  "goals.keepGoal": "Keep goal",
+  "goals.deleteBlocked": "Goals with progress history cannot be deleted. Archive or cancel this goal instead.",
   "goals.error.load": "Goals could not be loaded.",
   "goals.error.action": "The Goal action could not be completed.",
   "goals.reverse.confirm":

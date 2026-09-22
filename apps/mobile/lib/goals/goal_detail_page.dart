@@ -61,7 +61,12 @@ class GoalDetailPage extends StatelessWidget {
             actions: [
               IconButton(
                 icon: const Icon(Icons.more_horiz),
-                onPressed: () => openGoalActions(context, controller, summary),
+                onPressed: () => openGoalActions(
+                  context,
+                  controller,
+                  summary,
+                  leaveOnDelete: true,
+                ),
               ),
             ],
           ),
@@ -250,7 +255,12 @@ class _HeroCard extends StatelessWidget {
                 const SizedBox(width: 8),
                 _SquareIconButton(
                   icon: Icons.more_horiz,
-                  onTap: () => openGoalActions(context, controller, summary),
+                  onTap: () => openGoalActions(
+                    context,
+                    controller,
+                    summary,
+                    leaveOnDelete: true,
+                  ),
                 ),
               ],
             )

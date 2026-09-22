@@ -841,6 +841,10 @@ export type Database = {
         }
         Returns: string
       }
+      delete_goal: {
+        Args: { p_goal_id: string }
+        Returns: undefined
+      }
       update_goal: {
         Args: {
           p_goal_id: string

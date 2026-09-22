@@ -12,6 +12,8 @@ void main() {
     expect(english.unavailableGoal, 'This goal is no longer available.');
     expect(english.history, 'History');
     expect(english.newGoal, 'New goal');
+    expect(english.deleteGoal, 'Delete goal');
+    expect(english.deleteGoalTitle, 'Permanently delete this goal?');
     expect(english.action('correct'), 'Correct last entry');
     expect(english.correctionTitle, 'Record a correction?');
     expect(english.historyTitle('withdrawal'), 'Withdrawn');
@@ -24,6 +26,7 @@ void main() {
     expect(arabic.history, 'السجل');
     expect(arabic.goalCreated, 'تم إنشاء الهدف');
     expect(arabic.newGoal, 'هدف جديد');
+    expect(arabic.deleteGoal, 'حذف الهدف');
     expect(arabic.formSubtitle, contains('صافي ثروتك'));
     expect(arabic.action('correct'), 'تصحيح آخر قيد');
     expect(arabic.correctionTitle, 'تسجيل تصحيح؟');

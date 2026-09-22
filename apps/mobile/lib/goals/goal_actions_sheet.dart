@@ -11,6 +11,7 @@ import 'widgets/goal_sheet.dart';
 /// Result of the Flow 5 overflow sheet (screen 22). The detail page performs the
 /// mutation so all Goals writes stay on one path.
 enum GoalAction {
+  edit,
   addProgress,
   withdraw,
   correctLast,
@@ -20,6 +21,7 @@ enum GoalAction {
   reopen,
   archive,
   unarchive,
+  delete,
 }
 
 /// The bottom sheet of goal actions. "Add progress" / "Withdraw" also live on
@@ -58,6 +60,10 @@ class GoalActionsSheet extends StatelessWidget {
         ),
       );
     }
+
+    // Goal metadata remains editable across every lifecycle state, matching
+    // the web client. Progress and lifecycle mutations retain their guards.
+    row(Icons.edit_outlined, copy.editGoal, GoalAction.edit);
 
     if (goal.isMutable) {
       row(Icons.add, copy.addProgress, GoalAction.addProgress);
@@ -98,6 +104,15 @@ class GoalActionsSheet extends StatelessWidget {
           GoalAction.archive,
         );
       }
+    }
+
+    if (!summary.hasHistory) {
+      row(
+        Icons.delete_outline,
+        copy.deleteGoal,
+        GoalAction.delete,
+        danger: true,
+      );
     }
 
     return GoalSheet(

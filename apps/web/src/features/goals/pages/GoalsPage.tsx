@@ -1,34 +1,25 @@
 import { useCallback, useEffect, useMemo, useState } from "react"
-import {
-  Archive,
-  Check,
-  MoreHorizontal,
-  Plus,
-  RotateCcw,
-  Target,
-  Undo2,
-  WalletCards,
-} from "lucide-react"
+import { Archive, Plus, Target, Undo2, WalletCards } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
 import { Progress } from "@/components/ui/progress"
 import { useTranslation } from "@/i18n/useTranslation"
 import { compareDecimals } from "@/lib/financial-calculations/decimal"
 import { formatPortfolioPercent } from "@/features/portfolio/utils/portfolio-formatters"
 import type { GoalStatus } from "@/lib/supabase/types"
 import { goalErrorMessage } from "../components/goal-error-message"
+import { GoalDeleteDialog } from "../components/GoalDeleteDialog"
 import { GoalEntryDialog } from "../components/GoalEntryDialog"
 import { GoalFormDialog } from "../components/GoalFormDialog"
+import {
+  GoalLifecycleActions,
+  GoalLifecycleBadge,
+} from "../components/GoalLifecycleControls"
 import { GoalMoney } from "../components/GoalMoney"
 import { formatGoalMoney } from "../components/goal-money"
 import type { GoalSummary } from "../domain/goals"
 import {
   correctGoalEntry,
+  deleteGoal,
   groupGoalHistoryEntries,
   loadGoals,
   setGoalArchived,
@@ -51,6 +42,7 @@ export function GoalsPage() {
     mode: "progress" | "withdrawal" | "correct"
     entry?: GoalHistoryEntry
   } | null>(null)
+  const [deleteTarget, setDeleteTarget] = useState<GoalSummary | null>(null)
   const [saving, setSaving] = useState(false)
   const load = useCallback(async () => {
     try {
@@ -102,6 +94,21 @@ export function GoalsPage() {
       .map((e) => e.reverses_entry_id!)
   )
   const historyGroups = groupGoalHistoryEntries(entries)
+  const lifecycleLabels = {
+    status: {
+      active: t("goals.status.active"),
+      completed: t("goals.status.completed"),
+      cancelled: t("goals.status.cancelled"),
+    },
+    archived: t("goals.archivedBadge"),
+    archive: t("goals.archive"),
+    unarchive: t("goals.unarchive"),
+    reopen: t("goals.reopen"),
+    complete: t("goals.complete"),
+    cancel: t("goals.cancelGoal"),
+    moreActions: t("goals.moreActions"),
+    delete: t("goals.delete"),
+  }
   const historyEntryType = (entry: GoalHistoryEntry) => {
     const original = entry.reverses_entry_id
       ? entriesById.get(entry.reverses_entry_id)
@@ -218,6 +225,20 @@ export function GoalsPage() {
   const archive = () =>
     selected &&
     mutate(() => setGoalArchived(selected.id, selected.archived_at === null))
+  const remove = async (goal: GoalSummary) => {
+    if (goal.hasHistory) return
+    setSaving(true)
+    try {
+      await deleteGoal(goal.id)
+      setDeleteTarget(null)
+      setSelectedId(null)
+      await load()
+    } catch (cause) {
+      setError(goalErrorMessage(cause, t))
+    } finally {
+      setSaving(false)
+    }
+  }
   const reverse = (entry: GoalHistoryEntry) => {
     if (window.confirm(t("goals.reverse.confirm")))
       void mutate(() =>
@@ -312,14 +333,11 @@ export function GoalsPage() {
                 <div>
                   <div className="flex items-center gap-2">
                     <h3 className="text-2xl font-bold">{selected.name}</h3>
-                    <span className="rounded-full bg-[var(--color-primary-soft)] px-2.5 py-1 text-xs font-semibold capitalize">
-                      {t(`goals.status.${selected.status}`)}
-                    </span>
-                    {selected.archived_at ? (
-                      <span className="rounded-full bg-gray-100 px-2.5 py-1 text-xs">
-                        {t("goals.archivedBadge")}
-                      </span>
-                    ) : null}
+                    <GoalLifecycleBadge
+                      status={selected.status}
+                      archived={selected.archived_at !== null}
+                      labels={lifecycleLabels}
+                    />
                   </div>
                   <p className="mt-2 text-[var(--color-text-secondary)] capitalize">
                     {typeLabel(selected)}
@@ -379,36 +397,17 @@ export function GoalsPage() {
                       {t("goals.withdraw")}
                     </Button>
                   </>
-                ) : (
-                  <Button className="hidden sm:inline-flex" variant="outline" disabled={Boolean(selected.archived_at)} onClick={() => void changeStatus("active")}>
-                    <RotateCcw size={16} /> {t("goals.reopen")}
-                  </Button>
-                )}
-                {selected.status === "active" && !selected.archived_at ? (
-                  <div className="hidden gap-2 sm:flex">
-                    <Button variant="outline" onClick={() => void changeStatus("completed")}><Check size={16} />{t("goals.complete")}</Button>
-                    <Button variant="outline" onClick={() => void changeStatus("cancelled")}>{t("goals.cancelGoal")}</Button>
-                  </div>
                 ) : null}
-                <Button className="hidden sm:inline-flex" variant="outline" disabled={saving} onClick={() => void archive()}>
-                  {selected.archived_at ? t("goals.unarchive") : t("goals.archive")}
-                </Button>
-                <DropdownMenu>
-                  <DropdownMenuTrigger className="rounded-lg border border-[var(--color-border)] p-2 sm:hidden" aria-label={t("goals.moreActions")}>
-                    <MoreHorizontal size={18} />
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
-                    {selected.status === "active" && !selected.archived_at ? (
-                      <>
-                        <DropdownMenuItem onClick={() => void changeStatus("completed")}>{t("goals.complete")}</DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => void changeStatus("cancelled")}>{t("goals.cancelGoal")}</DropdownMenuItem>
-                      </>
-                    ) : (
-                      <DropdownMenuItem disabled={Boolean(selected.archived_at)} onClick={() => void changeStatus("active")}>{t("goals.reopen")}</DropdownMenuItem>
-                    )}
-                    <DropdownMenuItem disabled={saving} onClick={() => void archive()}>{selected.archived_at ? t("goals.unarchive") : t("goals.archive")}</DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
+                <GoalLifecycleActions
+                  status={selected.status}
+                  archived={selected.archived_at !== null}
+                  labels={lifecycleLabels}
+                  saving={saving}
+                  onArchiveChange={() => void archive()}
+                  onStatusChange={(status) => void changeStatus(status)}
+                  canDelete={!selected.hasHistory}
+                  onDelete={() => setDeleteTarget(selected)}
+                />
               </div>
               <div className="mt-8">
                 <h4 className="text-lg font-semibold">{t("goals.history")}</h4>
@@ -499,6 +498,14 @@ export function GoalsPage() {
           entry={entryDialog.entry}
           onClose={() => setEntryDialog(null)}
           onSaved={load}
+        />
+      ) : null}
+      {deleteTarget ? (
+        <GoalDeleteDialog
+          goalName={deleteTarget.name}
+          deleting={saving}
+          onCancel={() => setDeleteTarget(null)}
+          onConfirm={() => void remove(deleteTarget)}
         />
       ) : null}
     </section>

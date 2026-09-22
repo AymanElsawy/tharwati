@@ -117,6 +117,12 @@ class GoalsCopy {
   String get noteHint => _ar ? 'الغرض من هذا القيد' : 'What this entry is for';
   String get optional => _ar ? 'اختياري' : 'optional';
   String get editGoal => _ar ? 'تعديل الهدف' : 'Edit goal';
+  String get deleteGoal => _ar ? 'حذف الهدف' : 'Delete goal';
+  String get deleteGoalTitle =>
+      _ar ? 'حذف هذا الهدف نهائيًا؟' : 'Permanently delete this goal?';
+  String get deleteGoalBody => _ar
+      ? 'لا يمكن التراجع عن هذا الإجراء. لا يتوفر الحذف إلا للأهداف التي ليس لها سجل تقدم.'
+      : 'This cannot be undone. Delete is available only because this goal has no progress history.';
   String get newGoal => _ar ? 'هدف جديد' : 'New goal';
   String get goalName => _ar ? 'اسم الهدف' : 'Goal name';
   String get goalType => _ar ? 'نوع الهدف' : 'Goal type';

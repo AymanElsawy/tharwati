@@ -26,5 +26,7 @@ export function goalErrorMessage(cause: unknown, t: Translate): string {
     return t("goals.validation.alreadyReversed")
   if (message.includes("Correction would make funded amount negative"))
     return t("goals.validation.correctionNegative")
+  if (message.includes("progress history cannot be deleted"))
+    return t("goals.deleteBlocked")
   return t("goals.error.action")
 }

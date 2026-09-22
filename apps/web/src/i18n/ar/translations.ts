@@ -560,6 +560,11 @@ export const ar: Record<TranslationKey, string> = {
   "goals.entry.updatedProgress": "التقدم المحدّث",
   "goals.entry.updatedWithdrawal": "السحب المحدّث",
   "goals.moreActions": "إجراءات الهدف الأخرى",
+  "goals.delete": "حذف الهدف",
+  "goals.deleteTitle": "حذف الهدف؟",
+  "goals.deletePrompt": "حذف “{{goalName}}” نهائيًا؟ لا يمكن التراجع عن هذا الإجراء.",
+  "goals.keepGoal": "الاحتفاظ بالهدف",
+  "goals.deleteBlocked": "لا يمكن حذف هدف له سجل تقدم. استخدم الأرشفة أو الإلغاء بدلًا من ذلك.",
   "goals.error.load": "تعذر تحميل الأهداف.",
   "goals.error.action": "تعذر إكمال إجراء الهدف.",
   "goals.reverse.confirm":

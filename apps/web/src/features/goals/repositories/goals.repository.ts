@@ -126,6 +126,10 @@ export const goalsRepository = {
     })
     failure(error, "goals.update")
   },
+  async delete(id: string) {
+    const { error } = await supabase.rpc("delete_goal", { p_goal_id: id })
+    failure(error, "goals.delete")
+  },
   async addEntry(goalId: string, input: GoalEntryInput) {
     const { error } = await supabase.rpc("add_goal_progress_entry", {
       p_goal_id: goalId,

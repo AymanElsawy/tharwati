@@ -115,6 +115,10 @@ export async function saveGoal(input: GoalFormInput, id?: string) {
   if (error) throw new GoalValidationError(error)
   return id ? goalsRepository.update(id, input) : goalsRepository.create(input)
 }
+
+export async function deleteGoal(id: string) {
+  return goalsRepository.delete(id)
+}
 export async function addGoalEntry(goalId: string, input: GoalEntryInput) {
   const error = validateEntryInput(input)
   if (error) throw new GoalValidationError(error)

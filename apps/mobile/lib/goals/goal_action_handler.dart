@@ -47,8 +47,9 @@ Future<void> openGoalForm(
 Future<void> openGoalActions(
   BuildContext context,
   GoalsController controller,
-  GoalSummary summary,
-) async {
+  GoalSummary summary, {
+  bool leaveOnDelete = false,
+}) async {
   controller.clearActionError();
   final history = controller.historyFor(summary.goal.id);
   final correctable = lastCorrectableEntry(history);
@@ -64,6 +65,8 @@ Future<void> openGoalActions(
   if (action == null || !context.mounted) return;
 
   switch (action) {
+    case GoalAction.edit:
+      await openGoalForm(context, controller, goal: summary);
     case GoalAction.addProgress:
       await _entry(context, controller, summary.goal, GoalEntryMode.progress);
     case GoalAction.withdraw:
@@ -108,6 +111,20 @@ Future<void> openGoalActions(
       await controller.run((s) => s.setGoalArchived(summary.goal.id, true));
     case GoalAction.unarchive:
       await controller.run((s) => s.setGoalArchived(summary.goal.id, false));
+    case GoalAction.delete:
+      final ok = await _confirm(
+        context,
+        copy.deleteGoalTitle,
+        copy.deleteGoalBody,
+      );
+      if (ok) {
+        final deleted = await controller.run(
+          (s) => s.deleteGoal(summary.goal.id),
+        );
+        if (deleted && leaveOnDelete && context.mounted) {
+          Navigator.of(context).pop();
+        }
+      }
   }
 }
 

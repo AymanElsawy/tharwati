@@ -79,4 +79,9 @@ class GoalsService {
     await _repo.setArchived(goalId, archived);
     DataChange.instance.ping();
   }
+
+  Future<void> deleteGoal(String goalId) async {
+    await _repo.deleteGoal(goalId);
+    DataChange.instance.ping();
+  }
 }

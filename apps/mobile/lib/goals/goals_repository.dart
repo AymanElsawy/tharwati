@@ -176,6 +176,9 @@ class GoalsRepository {
   Future<void> setArchived(String goalId, bool archived) =>
       _rpc('set_goal_archived', {'p_goal_id': goalId, 'p_archived': archived});
 
+  Future<void> deleteGoal(String goalId) =>
+      _rpc('delete_goal', {'p_goal_id': goalId});
+
   Future<String> _rpc(String fn, Map<String, dynamic> params) async {
     try {
       final result = await _client.rpc(fn, params: params);
@@ -209,6 +212,9 @@ class GoalsRepository {
     }
     if (message.contains('date cannot be in the future')) {
       return 'The date can’t be in the future.';
+    }
+    if (message.contains('progress history cannot be deleted')) {
+      return 'Goals with progress history cannot be deleted. Archive or cancel this goal instead.';
     }
     return 'Something went wrong. Please try again.';
   }

@@ -21,15 +21,18 @@ Funded amount is `progress - withdrawal`, with a reversal applying the opposite 
 - Completion is explicit; reaching 100% does not complete automatically.
 - Funded amount and percentage remain uncapped; only the visual bar caps at 100%.
 - Completed and cancelled goals can be reopened. Archive is independent and archived goals remain readable.
+- Permanent deletion is available in every lifecycle/archive state only while the Goal has zero raw progress-history rows. Any initial saved amount, progress, withdrawal, correction, or reversal permanently blocks deletion; Archive or Cancel remains the removal path thereafter.
 - All monetary values, comparisons, and formatting remain decimal-string safe. Native numbers are used only for the final capped progress-bar width required by the visual component.
 
 ## Security and API
 
 RLS permits authenticated users to read only their own goals and entries. Mutation RPCs derive ownership from `auth.uid()`, use a fixed empty `search_path`, validate lifecycle and amounts, and execute create-with-initial-progress and corrections atomically. Authenticated clients receive only SELECT table grants and EXECUTE grants for the narrow mutation RPCs; internal funded-amount and trigger functions are explicitly non-executable by clients. Goals cascade from their owning Auth user, and progress rows cascade from their Goal. The immutable-entry trigger permits only those parent/user cascade paths and continues to reject ordinary direct updates or deletes, preventing orphan Goals or progress rows.
 
+`delete_goal(goal_id)` is the sole client hard-delete path. It locks the owned Goal, rejects missing/not-owned Goals, checks raw `goal_progress_entries` existence rather than funded balance, and deletes only a zero-history Goal. Direct table DELETE remains unavailable, and Goal deletion has no Account, ledger, or Net Worth effect.
+
 ## UI
 
-The protected `/goals` route provides current and archived lists, Add/Edit Goal, details, Add Progress, Withdraw, Correct, Reverse, Complete, Cancel, Reopen, Archive, and Unarchive. While the initial load is in flight the page renders an `aria-busy` skeleton that mirrors the header and two-column layout instead of a text spinner. New goals default their currency selector to the authenticated profile's `base_currency_code`, while edits retain the goal's stored currency. Supported goal currencies are USD, SAR, EGP, EUR, GBP, and AED. Details show the truthful funded amount, target, uncapped percentage, target date, status, and full chronological immutable history. Correction chains are visually grouped beneath their original entry. The original, the recorded correction or reversal, and any updated entry have distinct plain-language labels while the audit explanation remains secondary. Goal money presents the signed amount before the currency (for example, `−500,000 EGP`) in an LTR-isolated span for stable English and Arabic/RTL rendering. Add Progress and Withdraw remain primary actions; lifecycle and archive actions collapse into an overflow menu on narrow screens. English and Arabic cover all Goals labels, validation, confirmation, and error states. The forms and domain/service layer are responsive and reusable by a future mobile client.
+The protected `/goals` route provides current and archived lists, Add/Edit Goal, details, Add Progress, Withdraw, Correct, Reverse, Complete, Cancel, Reopen, Archive, and Unarchive. While the initial load is in flight the page renders an `aria-busy` skeleton that mirrors the header and two-column layout instead of a text spinner. New goals default their currency selector to the authenticated profile's `base_currency_code`, while edits retain the goal's stored currency. Supported goal currencies are USD, SAR, EGP, EUR, GBP, and AED. Details show the truthful funded amount, target, uncapped percentage, target date, status, and full chronological immutable history. An active non-archived goal shows only its Active badge and Archive action. An archived goal shows only its Archived badge and Unarchive action, regardless of its stored lifecycle status. Reopen appears only for non-archived completed or cancelled goals, so details never present contradictory lifecycle and archive states. Archive and Archived use semantic surface, strong-border, and primary-text theme tokens so they remain readable in Light and Dark modes. Correction chains are visually grouped beneath their original entry. The original, the recorded correction or reversal, and any updated entry have distinct plain-language labels while the audit explanation remains secondary. Goal money presents the signed amount before the currency (for example, `−500,000 EGP`) in an LTR-isolated span for stable English and Arabic/RTL rendering. Add Progress and Withdraw remain primary actions; lifecycle and archive actions collapse into an overflow menu on narrow screens. English and Arabic cover all Goals labels, validation, confirmation, and error states. The forms and domain/service layer are responsive and reusable by a future mobile client.
 
 The production Dashboard shows a separate read-only Goals card after Accounts Overview. It displays at most three active, unarchived goals, ordered by target date with undated goals last and oldest creation time as the tie-breaker. Progress uses the same exact funded calculation and remains in each goal's own currency: no FX conversion, cross-goal total, account funding, or Net Worth effect is implied. The card shows uncapped percentage and surplus while capping only the visual bar at 100%, labels overdue dates without forecasting, states that tracking is manual and money is not reserved, and links to `/goals`. Dashboard loading and errors are isolated from valuation data.
 
@@ -48,7 +51,7 @@ currency lock, and correction chains behave identically.
 | `domain/goals.ts` `fundedAmount` / `toGoalSummary` | `goal_math.dart` (progress/withdrawal/reversal replay; uncapped `progressPercent`, `displayPercent` capped at 100 for the bar, `surplusAmount`) |
 | `domain/goals.ts` `validateGoalInput` / `validateEntryInput` | `goal_math.dart` `validateGoalInput` / `validateEntryInput` → `GoalValidation` enum + English messages; run **before** the RPC |
 | `services/goals.service.ts` `buildGoalHistoryEntries` / `groupGoalHistoryEntries` / `historyEntryType` / `historySign` | `goal_history.dart` (reversal/replacement back-links, recursive correction-chain grouping oldest-child-first, sign inheritance) |
-| `repositories/goals.repository.ts` (`list`, `listActiveSummaries`, `create/update/addEntry/correctEntry/setStatus/setArchived`) | `goals_repository.dart` — reads hit the RLS tables; writes call `create_goal` / `update_goal` / `add_goal_progress_entry` / `correct_goal_progress_entry` / `set_goal_status` / `set_goal_archived`. Money/quantity params are passed as decimal **strings**. |
+| `repositories/goals.repository.ts` (`list`, `listActiveSummaries`, `create/update/delete/addEntry/correctEntry/setStatus/setArchived`) | `goals_repository.dart` — reads hit the RLS tables; writes call `create_goal` / `update_goal` / `delete_goal` / `add_goal_progress_entry` / `correct_goal_progress_entry` / `set_goal_status` / `set_goal_archived`. Money/quantity params are passed as decimal **strings**. |
 | `components/goal-error-message.ts` | `goals_repository.dart` `_friendly` — maps the RPC `raise exception` texts ("Withdrawal exceeds funded amount", "currency is locked", "Entry already reversed", "Correction would make funded amount negative", …) to friendly copy; surfaced as `GoalActionException` |
 | `services/goals.service.ts` `loadGoals` + page state | `goals_service.dart` (`loadGoals`, validated mutations, `DataChange.ping()` after every write) + `goals_controller.dart` (`loading`/`error`/`ready`, Current/Archived filter, `busy`/`actionError` mutation wrapper, active-first `visible` sort) |
 
@@ -58,6 +61,10 @@ dashboard Goals card (`DashboardGoalsController`, unchanged) refreshes — the
 mobile stand-in for the web `tharwati:data-changed` event.
 
 ### UI
+
+The Mobile Goal overflow sheet shows **Edit goal** first for Active, Completed, Cancelled, and Archived goals. It closes before opening the shared prefilled Add/Edit Goal sheet. Edit updates metadata only: name, type/custom type, target amount, target date, and currency when no progress history exists; it never exposes saved-so-far/history, lifecycle, or archive controls.
+
+Web lifecycle controls and the Mobile Goal overflow expose a destructive **Delete Goal** action only when the loaded summary has no history. Web uses a Tharwati confirmation dialog that names the selected Goal and offers localized Keep Goal and destructive Delete Goal actions; the RPC is not called before explicit confirmation. Both clients reload Goals after deletion, and Mobile safely leaves an open deleted Goal detail. The RPC remains authoritative if client state is stale.
 
 `goals_page.dart` (Current/Archived segmented lists + footer note + empty/error
 states) → `goal_detail_page.dart` (funded/target hero, Add progress / Withdraw,
@@ -69,8 +76,9 @@ created" — a `title + amount` line, a `date · time · note` line, and a closi
 `goal_form_sheet.dart` (add/edit — type chips, currency locked once history
 exists, add-only starting amount → first `progress` entry), `goal_entry_sheet.dart`
 (progress / withdrawal / correction with confirm), `goal_actions_sheet.dart` (the
-overflow: complete, cancel, reopen, archive/unarchive, correct/reverse last
-entry). Widgets: `goal_money.dart` (sign-first, LTR, ISO code last),
+overflow: Edit first; progress and lifecycle actions; correct/reverse last entry;
+and destructive Delete near the bottom only for zero-history Goals). Widgets:
+`goal_money.dart` (sign-first, LTR, ISO code last),
 `goal_progress_bar.dart` (capped, diagonal hatch when over 100%),
 `goal_status_pill.dart`, `goal_list_card.dart`. Tab 4 of `home_page.dart` (was a
 placeholder).
