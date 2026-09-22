@@ -307,6 +307,31 @@ String absoluteDecimal(String value) =>
 String formatActivityQuantity(String value) =>
     formatQuantity(absoluteDecimal(value), fractionDigits: 8);
 
+/// Presentation-only dividend values derived from immutable ledger legs.
+class DividendActivityValues {
+  const DividendActivityValues({required this.net, required this.reinvested, required this.cash, required this.quantity, required this.isPartial});
+  final String? net;
+  final String? reinvested;
+  final String? cash;
+  final String? quantity;
+  final bool isPartial;
+}
+
+DividendActivityValues? dividendActivityValues(ActivityItem item) {
+  if (!item.isDividend) return null;
+  final partial = item.isPartiallyReinvestedDividend;
+  final reinvested = sumEntries(item.entries, partial ? 'brokerage_dividend_partial_reinvestment' : 'brokerage_dividend_reinvestment', (entry) => entry.accountAmount);
+  final cash = sumEntries(item.entries, partial ? 'brokerage_dividend_partial_cash' : 'brokerage_dividend_cash', (entry) => entry.accountAmount);
+  final quantity = activityAssetEntry(item)?.quantityDelta;
+  return DividendActivityValues(
+    net: partial ? reinvested != null && cash != null ? D.add(reinvested, cash) : null : reinvested ?? cash,
+    reinvested: reinvested,
+    cash: cash,
+    quantity: quantity != null && (D.compare(quantity, '0') ?? 0) > 0 ? quantity : null,
+    isPartial: partial,
+  );
+}
+
 /// Activity grouped under its local calendar date, newest first.
 class ActivityDateGroup {
   const ActivityDateGroup({required this.date, required this.items});

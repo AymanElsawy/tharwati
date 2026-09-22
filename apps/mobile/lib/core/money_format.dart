@@ -26,6 +26,14 @@ class MoneyFormat {
     return '${_group(Decimal.parse(normalized), 2)} $currencyCode';
   }
 
+  /// Decimal-safe two-place amount without a currency code for compact labels
+  /// whose surrounding context already establishes the currency.
+  static String decimal(String? amount, {String unavailableLabel = 'Unavailable'}) {
+    final normalized = D.normalize(amount);
+    if (normalized == null) return unavailableLabel;
+    return _group(Decimal.parse(normalized), 2);
+  }
+
   /// Signed money — `"+12,400.00 EGP"` / `"-3,120.00 EGP"`.
   static String signedMoney(String? amount, String currencyCode) {
     final normalized = D.normalize(amount);

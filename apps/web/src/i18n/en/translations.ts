@@ -1012,6 +1012,8 @@ export const en = {
   "brokerage.partialReinvest": "Partial Reinvest",
   "brokerage.dividendPartiallyReinvested": "Dividend Partially Reinvested",
   "brokerage.reinvestedAmount": "Reinvested Amount",
+  "brokerage.activityReinvested": "reinvested",
+  "brokerage.activityCash": "cash",
   "brokerage.cashRemainder": "Cash Remainder",
   "brokerage.grossDividend": "Gross Dividend",
   "brokerage.withholdingTax": "Withholding Tax",

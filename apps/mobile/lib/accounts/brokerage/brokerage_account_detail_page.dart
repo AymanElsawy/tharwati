@@ -356,6 +356,20 @@ class _ActivityRow extends StatelessWidget {
     final asset = entry?.asset;
     final copy = AccountsCopy.of(AppLanguageScope.of(context).language);
     final label = localizedActivityLabel(item, accountId, copy);
+    final dividend = dividendActivityValues(item);
+    final details = <String>[
+      if (!(dividend?.isPartial ?? false)) copy.ltr(when.time),
+      if (asset != null) copy.ltr(asset.symbol ?? asset.name),
+      if ((dividend?.isPartial ?? false) && dividend?.quantity != null)
+        '+${copy.activityUnits(formatActivityQuantity(dividend!.quantity!))}',
+      if (dividend?.isPartial ?? false) ...[
+        if (dividend!.reinvested != null) '${copy.ltr(MoneyFormat.decimal(dividend.reinvested))} ${copy.partialReinvestAbbreviation}',
+        if (dividend.cash != null) '${copy.ltr(MoneyFormat.decimal(dividend.cash))} ${copy.cash}',
+      ],
+      if (!(dividend?.isPartial ?? false) && dividend?.quantity != null)
+        '+${copy.activityUnits(formatActivityQuantity(dividend!.quantity!))}',
+      if (dividend == null && entry?.quantityDelta != null && (D.compare(entry!.quantityDelta!, '0') ?? 0) != 0) copy.activityUnits(formatActivityQuantity(entry.quantityDelta!)),
+    ];
 
     return Opacity(
       opacity: item.isDeleted ? 0.6 : 1,
@@ -398,9 +412,11 @@ class _ActivityRow extends StatelessWidget {
                   const SizedBox(height: 2),
                   Text(
                     [
-                      copy.ltr(when.time),
-                      if (asset != null) copy.ltr(asset.symbol ?? asset.name),
-                      if (entry?.quantityDelta != null)
+                      ...details,
+                      if (details.isEmpty) copy.ltr(when.time),
+                      if (details.isEmpty && asset != null)
+                        copy.ltr(asset.symbol ?? asset.name),
+                      if (details.isEmpty && entry?.quantityDelta != null)
                         copy.activityUnits(
                           formatActivityQuantity(entry!.quantityDelta!),
                         ),
@@ -419,11 +435,11 @@ class _ActivityRow extends StatelessWidget {
                 ],
               ),
             ),
-            if (entry?.unitPrice != null)
+            if (dividend?.net != null || entry?.unitPrice != null)
               Text(
                 MoneyFormat.money(
-                  entry!.unitPrice,
-                  asset?.currencyCode ?? accountCurrency,
+                  dividend?.net ?? entry!.unitPrice,
+                  dividend != null ? accountCurrency : asset?.currencyCode ?? accountCurrency,
                 ),
                 textDirection: TextDirection.ltr,
                 style: TextStyle(

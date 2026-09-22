@@ -2,6 +2,9 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:tharwati_mobile/accounts/brokerage/brokerage_activity.dart';
 import 'package:tharwati_mobile/accounts/brokerage/brokerage_valuation.dart';
 import 'package:tharwati_mobile/core/decimals.dart';
+import 'package:tharwati_mobile/i18n/accounts_copy.dart';
+import 'package:tharwati_mobile/i18n/app_language.dart';
+import 'package:tharwati_mobile/core/money_format.dart';
 
 ActivityEntry entry({
   String? memo,
@@ -210,6 +213,56 @@ void main() {
       0,
     );
     expect(sumEntries(entries, 'missing', (e) => e.transactionAmount), isNull);
+  });
+
+  group('dividend activity presentation', () {
+    test('partial subtitle copy stays compact and localized', () {
+      expect(AccountsCopy.of(AppLanguage.en).partialReinvestAbbreviation, 'reinv.');
+      expect(AccountsCopy.of(AppLanguage.ar).partialReinvestAbbreviation, isNotEmpty);
+      expect(AccountsCopy.of(AppLanguage.en).cash, 'Cash');
+      expect(MoneyFormat.decimal('6.00'), '6.00');
+    });
+
+    test('cash shows net settlement and omits zero units', () {
+      final values = dividendActivityValues(item(
+        id: 'cash',
+        type: 'dividend',
+        entries: [
+          entry(memo: 'brokerage_dividend_gross', amount: '12.50'),
+          entry(memo: 'brokerage_dividend_tax', amount: '2.00'),
+          entry(memo: 'brokerage_dividend_fee', amount: '0.50'),
+          entry(memo: 'brokerage_dividend_cash', amount: '10.00'),
+        ],
+      ))!;
+      expect(D.compare(values.net!, '10'), 0);
+      expect(values.quantity, isNull);
+    });
+
+    test('full reinvestment shows net settlement and positive units', () {
+      final values = dividendActivityValues(item(
+        id: 'full',
+        type: 'dividend',
+        entries: [entry(memo: 'brokerage_dividend_reinvestment', quantityDelta: '2', amount: '10.00')],
+      ))!;
+      expect(D.compare(values.net!, '10'), 0);
+      expect(D.compare(values.quantity!, '2'), 0);
+    });
+
+    test('partial reinvestment shows total net and both settlements', () {
+      final values = dividendActivityValues(item(
+        id: 'partial',
+        type: 'dividend',
+        entries: [
+          entry(memo: 'brokerage_dividend_partial_reinvestment', quantityDelta: '3', amount: '6.00'),
+          entry(memo: 'brokerage_dividend_partial_cash', amount: '4.00'),
+        ],
+      ))!;
+      expect(D.compare(values.net!, '10'), 0);
+      expect(D.compare(values.reinvested!, '6'), 0);
+      expect(D.compare(values.cash!, '4'), 0);
+      expect(D.compare(values.quantity!, '3'), 0);
+      expect(values.quantity, isNot(equals('0')));
+    });
   });
 
   group('previewDividend', () {

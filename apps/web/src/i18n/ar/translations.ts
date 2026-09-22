@@ -979,6 +979,8 @@ export const ar: Record<TranslationKey, string> = {
   "brokerage.partialReinvest": "إعادة استثمار جزئي",
   "brokerage.dividendPartiallyReinvested": "تمت إعادة استثمار التوزيع جزئيًا",
   "brokerage.reinvestedAmount": "المبلغ المعاد استثماره",
+  "brokerage.activityReinvested": "مُعاد استثماره",
+  "brokerage.activityCash": "نقدًا",
   "brokerage.cashRemainder": "النقد المتبقي",
   "brokerage.grossDividend": "التوزيع الإجمالي",
   "brokerage.withholdingTax": "ضريبة الاستقطاع",

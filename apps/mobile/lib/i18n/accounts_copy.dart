@@ -10,6 +10,9 @@ class AccountsCopy {
   final AppLanguage language;
   bool get _ar => language == AppLanguage.ar;
   String ltr(String value) => '\u2066$value\u2069';
+  String get partialReinvestAbbreviation =>
+      _ar ? '\u0645\u064f\u0639\u0627\u062f \u0627\u0633\u062a\u062b\u0645.' : 'reinv.';
+  String get activityReinvested => _ar ? 'مُعاد استثماره' : 'reinvested';
 
   String get accounts => _ar ? 'الحسابات' : 'Accounts';
   String get financialAccounts =>

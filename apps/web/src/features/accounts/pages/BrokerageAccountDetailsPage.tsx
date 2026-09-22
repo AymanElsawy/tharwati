@@ -24,7 +24,7 @@ import { supabase } from "@/lib/supabase/client"
 import type { AccountSummary, AssetSummary } from "@/lib/supabase/types"
 import { addDecimals, compareDecimals, multiplyDecimals } from "@/lib/financial-calculations/decimal"
 import { formatLocalDateTime } from "@/lib/formatting/local-date-time"
-import { formatPortfolioPercent } from "@/features/portfolio/utils/portfolio-formatters"
+import { formatPortfolioAmount, formatPortfolioPercent } from "@/features/portfolio/utils/portfolio-formatters"
 import {
   assetSearchService,
   type ExternalAssetSearchResult,
@@ -100,6 +100,15 @@ function activityAssetEntry(activity: BrokerageActivityItem) {
   ) ?? activity.entries.find((entry) => entry.asset_id !== null && entry.quantity_delta !== null && compareDecimals(entry.quantity_delta, "0") !== 0)
 }
 
+function dividendActivityValues(activity: BrokerageActivityItem) {
+  const partial = activity.entries.some((entry) => entry.memo === "brokerage_dividend_partial_reinvestment")
+  const reinvested = sumEntries(activity.entries, partial ? "brokerage_dividend_partial_reinvestment" : "brokerage_dividend_reinvestment", "account_amount")
+  const cash = sumEntries(activity.entries, partial ? "brokerage_dividend_partial_cash" : "brokerage_dividend_cash", "account_amount")
+  const net = partial ? reinvested !== null && cash !== null ? addDecimals(reinvested, cash) : null : reinvested ?? cash
+  const quantity = activityAssetEntry(activity)?.quantity_delta ?? null
+  return { partial, reinvested, cash, net, quantity: quantity !== null && hasPositive(quantity) ? quantity : null }
+}
+
 export function BrokerageAccountDetailsPage({
   account,
   brokerageValue,
@@ -158,7 +167,8 @@ export function BrokerageAccountDetailsPage({
   }, [account.id])
 
   useEffect(() => {
-    void load()
+    const timer = window.setTimeout(() => void load(), 0)
+    return () => window.clearTimeout(timer)
   }, [load])
 
   const presentedActivity = useMemo<PresentedActivity[]>(() => {
@@ -495,9 +505,13 @@ function BrokerageActivityRow({
   const transferEntry = item.entries.find((entry) => entry.account_id === accountId && entry.asset_id === null)
   const label = activityLabel(item, accountId, t)
   const hasDetails = assetEntry !== undefined
-  const dividendNet = item.transaction_type_code === "dividend"
-    ? sumEntries(item.entries, item.entries.some((entry) => entry.memo === "brokerage_dividend_partial_reinvestment") ? "brokerage_dividend_partial_cash" : item.entries.some((entry) => entry.memo === "brokerage_dividend_reinvestment") ? "brokerage_dividend_reinvestment" : "brokerage_dividend_cash", "account_amount")
-    : null
+  const dividend = item.transaction_type_code === "dividend" ? dividendActivityValues(item) : null
+  const dividendDetails = dividend?.partial
+    ? [
+        dividend.reinvested === null ? null : `${formatPortfolioAmount(dividend.reinvested, accountCurrency, locale)} ${t("brokerage.activityReinvested")}`,
+        dividend.cash === null ? null : `${formatPortfolioAmount(dividend.cash, accountCurrency, locale)} ${t("brokerage.activityCash")}`,
+      ].filter((value): value is string => value !== null)
+    : []
   const content = <>
     <span className="min-w-0">
       <span className="flex flex-wrap items-center gap-2">
@@ -505,14 +519,24 @@ function BrokerageActivityRow({
         {item.presentation === "updated" ? <span className="text-xs font-medium text-muted-foreground">{t("brokerage.holdingUpdated")}</span> : null}
         {isDeleted ? <span className="rounded border border-[var(--color-border)] bg-[var(--color-surface)] px-1.5 py-0.5 text-xs font-medium text-muted-foreground">{t("brokerage.holdingDeleted")}</span> : null}
       </span>
-      {assetEntry?.asset ? <span className="mt-1 block text-sm text-muted-foreground" dir="ltr">{[assetEntry.asset.symbol, assetEntry.asset.exchange].filter(Boolean).join(" · ") || assetEntry.asset.name}</span> : null}
-      <span className="mt-1 block text-sm text-muted-foreground">
+      {!dividend?.partial && assetEntry?.asset ? <span className="mt-1 block text-sm text-muted-foreground" dir="ltr">{[assetEntry.asset.symbol, assetEntry.asset.exchange].filter(Boolean).join(" · ") || assetEntry.asset.name}</span> : null}
+      {!dividend?.partial ? <span className="mt-1 block text-sm text-muted-foreground">
         {isDeleted ? `${t("brokerage.holdingDeleted")} · ${formatLocalDateTime(item.occurred_at, locale).time}` : formatLocalDateTime(item.occurred_at, locale).time}
-      </span>
+      </span> : null}
+      {dividend?.partial ? <span className="mt-1 block text-sm text-muted-foreground">
+        {[
+          assetEntry?.asset ? (assetEntry.asset.symbol ?? assetEntry.asset.name) : null,
+          ...dividendDetails,
+          dividend.quantity ? `+${absolute(dividend.quantity)} ${t("brokerage.quantityAdded")}` : null,
+        ].filter(Boolean).join(" · ")}
+      </span> : null}
+      {!dividend?.partial && (dividendDetails.length > 0 || dividend?.quantity ? <span className="mt-1 block text-sm text-muted-foreground">
+        {[...dividendDetails, dividend?.quantity ? `+${absolute(dividend.quantity)} ${t("brokerage.quantityAdded")}` : null].filter(Boolean).join(" · ")}
+      </span> : null)}
     </span>
     <span className="text-end text-sm tabular-nums" dir="ltr">
-      {dividendNet !== null
-        ? formatAmount(dividendNet, accountCurrency, locale)
+      {dividend?.net !== null && dividend?.net !== undefined
+        ? formatPortfolioAmount(dividend.net, accountCurrency, locale)
         : assetEntry?.quantity_delta ? absolute(assetEntry.quantity_delta) : transferEntry ? formatAmount(transferEntry.account_amount, accountCurrency, locale) : "--"}
     </span>
   </>
@@ -652,10 +676,12 @@ function ExistingHoldingDialog({
   useEffect(() => {
     const query = externalSearchQuery.trim()
     if (query.length < 2) {
-      setExternalResults([])
-      setIsExternalSearchLoading(false)
-      setIsExternalSearchUnavailable(false)
-      return
+      const timer = window.setTimeout(() => {
+        setExternalResults([])
+        setIsExternalSearchLoading(false)
+        setIsExternalSearchUnavailable(false)
+      }, 0)
+      return () => window.clearTimeout(timer)
     }
     let cancelled = false
     const timer = window.setTimeout(() => {
