@@ -105,9 +105,12 @@ export class AccountRecordsRepository {
     return requireQueryData(data, error, operation) as AccountRecordHistoryRow[]
   }
 
-  async addAccountRecord(values: AccountRecordFormValues): Promise<void> {
+  async addAccountRecord(
+    values: AccountRecordFormValues,
+    idempotencyKey: string
+  ): Promise<void> {
     const operation = "accountRecords.addAccountRecord"
-    const { error } = await this.client.rpc("add_account_record", {
+    const { error } = await this.client.rpc("add_account_record_v2", {
       p_record_type: values.type as "income" | "expense" | "transfer",
       p_account_id: values.accountId,
       p_counterparty_account_id:
@@ -118,6 +121,7 @@ export class AccountRecordsRepository {
       p_occurred_at: localDateTimeInputToIso(values.occurredAt),
       p_category: null,
       p_notes: values.notes.trim() || null,
+      p_idempotency_key: idempotencyKey,
       p_main_category_id:
         values.type === "transfer" ? null : values.mainCategoryId,
       p_subcategory_id:

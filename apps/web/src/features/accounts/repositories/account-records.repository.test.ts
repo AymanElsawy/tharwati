@@ -27,10 +27,10 @@ describe("AccountRecordsRepository.addAccountRecord", () => {
   it("preserves the public add RPC payload for income and expense", async () => {
     const { repository, rpc } = createRepository()
 
-    await repository.addAccountRecord(baseValues)
-    await repository.addAccountRecord({ ...baseValues, type: "expense" })
+    await repository.addAccountRecord(baseValues, "key-income")
+    await repository.addAccountRecord({ ...baseValues, type: "expense" }, "key-expense")
 
-    expect(rpc).toHaveBeenNthCalledWith(1, "add_account_record", {
+    expect(rpc).toHaveBeenNthCalledWith(1, "add_account_record_v2", {
       p_record_type: "income",
       p_account_id: "account-source",
       p_counterparty_account_id: null,
@@ -39,11 +39,13 @@ describe("AccountRecordsRepository.addAccountRecord", () => {
       p_occurred_at: localDateTimeInputToIso("2026-08-21T09:30"),
       p_category: null,
       p_notes: "Record note",
+      p_idempotency_key: "key-income",
       p_main_category_id: "main-category",
       p_subcategory_id: "subcategory",
     })
-    expect(rpc).toHaveBeenNthCalledWith(2, "add_account_record", expect.objectContaining({
+    expect(rpc).toHaveBeenNthCalledWith(2, "add_account_record_v2", expect.objectContaining({
       p_record_type: "expense",
+      p_idempotency_key: "key-expense",
       p_counterparty_account_id: null,
       p_received_amount: null,
     }))
@@ -57,15 +59,15 @@ describe("AccountRecordsRepository.addAccountRecord", () => {
       type: "transfer",
       toAccountId: "account-destination",
       receivedAmount: "125.50",
-    })
+    }, "key-same-currency")
     await repository.addAccountRecord({
       ...baseValues,
       type: "transfer",
       toAccountId: "account-destination",
       receivedAmount: "50100",
-    })
+    }, "key-cross-currency")
 
-    expect(rpc).toHaveBeenNthCalledWith(1, "add_account_record", expect.objectContaining({
+    expect(rpc).toHaveBeenNthCalledWith(1, "add_account_record_v2", expect.objectContaining({
       p_record_type: "transfer",
       p_account_id: "account-source",
       p_counterparty_account_id: "account-destination",
@@ -73,12 +75,14 @@ describe("AccountRecordsRepository.addAccountRecord", () => {
       p_received_amount: "125.50",
       p_main_category_id: null,
       p_subcategory_id: null,
+      p_idempotency_key: "key-same-currency",
     }))
-    expect(rpc).toHaveBeenNthCalledWith(2, "add_account_record", expect.objectContaining({
+    expect(rpc).toHaveBeenNthCalledWith(2, "add_account_record_v2", expect.objectContaining({
       p_record_type: "transfer",
       p_received_amount: "50100",
       p_main_category_id: null,
       p_subcategory_id: null,
+      p_idempotency_key: "key-cross-currency",
     }))
   })
 

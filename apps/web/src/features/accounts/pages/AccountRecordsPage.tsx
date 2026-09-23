@@ -66,6 +66,7 @@ import {
   resolveSubmissionAttempt,
   type SubmissionAttempt,
 } from "../utils/refund-submission"
+import { accountRecordSubmissionFingerprint } from "../utils/account-record-submission"
 
 const historyPageSize = 50
 
@@ -197,6 +198,7 @@ export function AccountRecordsPage({
   const historyRequestVersion = useRef(0)
   const refundAttempt = useRef<SubmissionAttempt | null>(null)
   const cancellationAttempt = useRef<SubmissionAttempt | null>(null)
+  const recordCreationAttempt = useRef<SubmissionAttempt | null>(null)
   const locale = language === "ar" ? "ar-SA" : "en-US"
   const deferredFilters = useDeferredValue(filters)
   const account =
@@ -476,12 +478,20 @@ export function AccountRecordsPage({
     async (values: AccountRecordFormValues) => {
       setIsSaving(true)
       setFormError(null)
+      const attempt = editingRecord
+        ? null
+        : resolveSubmissionAttempt(
+            recordCreationAttempt.current,
+            accountRecordSubmissionFingerprint(values)
+          )
+      if (attempt) recordCreationAttempt.current = attempt
       const outcome = await runMutationThenRefresh({
         mutate: () =>
           editingRecord
             ? correctAccountRecord(editingRecord.id, values)
-            : addAccountRecord(values),
+            : addAccountRecord(values, attempt!.idempotencyKey),
         onCommitted: () => {
+          if (!editingRecord) recordCreationAttempt.current = null
           closeForm()
           window.dispatchEvent(new Event("tharwati:data-changed"))
         },

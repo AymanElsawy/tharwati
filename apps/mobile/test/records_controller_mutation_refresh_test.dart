@@ -13,6 +13,8 @@ class _FakeRecordsRepository extends RecordsRepository {
   var rejectMutation = false;
   var mutationCalls = 0;
   final cancellationKeys = <String>[];
+  final creationKeys = <String>[];
+  var rejectCreates = false;
 
   static const record = AccountRecord(
     id: 'record',
@@ -59,6 +61,15 @@ class _FakeRecordsRepository extends RecordsRepository {
   Future<void> reverseRecord(String recordId) async {
     mutationCalls += 1;
     if (rejectMutation) throw StateError('rejected');
+  }
+
+  @override
+  Future<void> addRecord(
+    AccountRecordFormValues values,
+    String idempotencyKey,
+  ) async {
+    creationKeys.add('${values.amount}:$idempotencyKey');
+    if (rejectCreates) throw StateError('ambiguous');
   }
 
   @override
@@ -123,6 +134,59 @@ void main() {
     final changedKey = repository.cancellationKeys[2].split(':').last;
     expect(retryKey, firstKey);
     expect(changedKey, isNot(firstKey));
+    controller.dispose();
+  });
+
+  test('record create reuses a key until normalized payload changes', () async {
+    final repository = _FakeRecordsRepository()..rejectCreates = true;
+    final controller = RecordsController(
+      accountId: 'account',
+      repository: repository,
+    );
+    final initial = AccountRecordFormValues(
+      type: AccountRecordType.expense,
+      accountId: 'account',
+      amount: '10.00',
+      mainCategoryId: 'main',
+      subcategoryId: 'sub',
+      occurredAt: '2026-09-23T10:30',
+    );
+
+    expect(await controller.submit(initial), isFalse);
+    expect(await controller.submit(initial.copy()..amount = '10.0'), isFalse);
+    expect(await controller.submit(initial.copy()..amount = '11'), isFalse);
+
+    final firstKey = repository.creationKeys[0].split(':').last;
+    final retryKey = repository.creationKeys[1].split(':').last;
+    final changedKey = repository.creationKeys[2].split(':').last;
+    expect(retryKey, firstKey);
+    expect(changedKey, isNot(firstKey));
+    controller.dispose();
+  });
+
+  test('committed record create is not repeated by refresh retry', () async {
+    final repository = _FakeRecordsRepository()..failLoads = true;
+    final controller = RecordsController(
+      accountId: 'account',
+      repository: repository,
+    );
+    final submitted = await controller.submit(
+      AccountRecordFormValues(
+        type: AccountRecordType.income,
+        accountId: 'account',
+        amount: '10',
+        mainCategoryId: 'main',
+        subcategoryId: 'sub',
+        occurredAt: '2026-09-23T10:30',
+      ),
+    );
+
+    expect(submitted, isTrue);
+    await Future<void>.delayed(Duration.zero);
+    expect(controller.refreshStale, isTrue);
+    expect(repository.creationKeys, hasLength(1));
+    await controller.retryRefresh();
+    expect(repository.creationKeys, hasLength(1));
     controller.dispose();
   });
 }

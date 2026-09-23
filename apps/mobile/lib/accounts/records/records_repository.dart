@@ -92,8 +92,11 @@ class RecordsRepository {
     };
   }
 
-  Future<void> addRecord(AccountRecordFormValues v) =>
-      _rpc('add_account_record', _recordParams(v));
+  Future<void> addRecord(AccountRecordFormValues v, String idempotencyKey) =>
+      _rpc('add_account_record_v2', {
+        ..._recordParams(v),
+        'p_idempotency_key': idempotencyKey,
+      });
 
   Future<void> correctRecord(String recordId, AccountRecordFormValues v) =>
       _rpc('correct_account_record', {

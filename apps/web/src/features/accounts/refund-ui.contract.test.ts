@@ -101,6 +101,13 @@ describe("Refund UI", () => {
     expect(page).toContain('t("accounts.records.refund")')
     expect(page).not.toContain("refund_cancellation")
   })
+  it("keeps Account Record create idempotency separate from refresh retry", () => {
+    expect(page).toContain("recordCreationAttempt")
+    expect(page).toContain("accountRecordSubmissionFingerprint(values)")
+    expect(page).toContain("addAccountRecord(values, attempt!.idempotencyKey)")
+    expect(page).toContain("recordCreationAttempt.current = null")
+    expect(page).toContain("refresh: () => loadInitialRecords(true)")
+  })
   it("requires explicit custom confirmation before cancelling a Refund", () => {
     expect(page).not.toContain("window.confirm")
     expect(page).toContain("setRefundToCancel(record)")

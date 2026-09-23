@@ -88,7 +88,7 @@ Triggers (immutability guards once financial history exists):
 
 ### 2.1a Minimal Cash/Bank ledger foundation
 
-`financial_transactions` also carries nullable immutable-correction links: `reverses_transaction_id` and `corrects_transaction_id`. Each is a self-FK with `ON DELETE RESTRICT`, cannot reference itself, and has a unique partial index so an original transaction can have at most one reversal and one corrected replacement. The internal `post_account_record_internal` function accepts both links only at transaction creation; the public `add_account_record` RPC always passes null for both and retains its existing client contract.
+`financial_transactions` also carries nullable immutable-correction links: `reverses_transaction_id` and `corrects_transaction_id`. Each is a self-FK with `ON DELETE RESTRICT`, cannot reference itself, and has a unique partial index so an original transaction can have at most one reversal and one corrected replacement. The internal `post_account_record_internal` function accepts both links only at transaction creation. `add_account_record_v2` is the current Web/Mobile create path; the original `add_account_record` remains available temporarily for deployed-client compatibility.
 
 The current project has a deliberately minimal Cash/Bank ledger foundation:
 
@@ -104,6 +104,7 @@ The current project has a deliberately minimal Cash/Bank ledger foundation:
 - Web canonicalizes decimal and local date-time values before deciding whether an edited Expense has unsaved changes. Its Refund dialog is a nested dialog layered above Edit Record, so a clean Expense opens it immediately while a genuine form edit retains the save-first guard. The dialog displays the inherited full category path, normalized Refund amount input, saved original/refunded/remaining summaries, and a decimal-exact live amount plus remaining-after-refund preview. Effective Web Refund rows retain their inherited category and positive amount, with a localized Refund label under the amount; refund cancellation/audit rows remain absent from normal history. Cancelling a Refund opens a localized custom confirmation with the formatted amount and destination account; only its destructive action invokes the existing cancellation RPC and reload sequence.
 - Native Web account selectors use the shared theme palette for normal, hovered, selected, and disabled options, keeping their browser popup text readable in Light, Dark, and Colorful themes without changing account eligibility or ordering.
 - Web and Mobile treat mutation commitment separately from the subsequent read-model refresh for Account Records, Refund creation/cancellation, and account disposal. A server rejection keeps the form open with its mutation error. A committed mutation closes the form immediately; the page then refreshes independently. If that refresh fails, previous records and authoritative financial values remain visible with a localized stale-data warning and a **Refresh data** action. That action performs reads only and never repeats the mutation RPC. Missing refreshed values remain unavailable and are never replaced with zero.
+- Income, Expense, and Transfer creation calls `add_account_record_v2` with one UUID v4 retained for the same normalized submission. The server scopes a private receipt by authenticated user, operation, and key, takes a transaction-scoped advisory lock, hashes canonical request values, and atomically stores the original committed result with the ledger mutation. An exact replay returns that result with `replayed = true`; reuse with a different payload is rejected. Changing the form payload rotates the client key, while refresh-only retry never invokes the mutation RPC. Clients have no direct access to receipts.
 - Refund creation and cancellation retain one UUID v4 idempotency key while the normalized payload or cancellation target is unchanged. Editing the payload or choosing a different Refund rotates the key. Web and Mobile disposal submissions likewise retain a UUID v4 for the same normalized sale payload; this matches the server replay contract and makes an unchanged repeated request safe.
 - Account Record history is ordered deterministically by `occurred_at DESC`, then immutable transaction `created_at DESC`, then `id DESC`. Web and Mobile preserve that server order while grouping, so a later-created Refund appears above its original Expense when their occurrence times are equal, without changing daily totals, filters, or cancellation visibility.
 - `get_expense_refund_summary(expense_transaction_id)` returns the original amount, effective refunded amount, remaining refundable amount, and currency as decimal strings. Effective totals count posted Refunds without a posted Refund cancellation. This is also the future Budget contract: net expense spending is the original Expense less effective linked Refunds, attributed on each Refund's actual occurrence date (cash basis).
@@ -195,7 +196,7 @@ Logic (must be replicated exactly, either by calling this same RPC from mobile o
 
 ### 2.4 TypeScript domain types
 
-The `add_account_record` RPC atomically posts exactly `income`, `expense`, or `transfer` records for active, owned Cash and Bank accounts. Income debits the selected account and balances against an accountless `owner_contribution`; Expense credits it and balances against an accountless `owner_draw`. Transfers credit the From account and debit the To account. For cross-currency transfers, both entries use the source-native sent amount as their exactly balanced `transaction_amount`, while each `account_amount` remains native to its referenced account; the destination therefore stores the final user-approved received amount. This records a neutral transfer in the ledger without updating `exchange_rates` or persisting a reusable inferred rate. The RPC locks and validates accounts, rejects insufficient available balance, and rejects any Bank Credit inflow when `credit_card_limit` is null or the resulting available credit would exceed that limit.
+The `add_account_record_v2` RPC idempotently delegates to the existing `add_account_record` posting path, which atomically posts exactly `income`, `expense`, or `transfer` records for active, owned Cash and Bank accounts. Income debits the selected account and balances against an accountless `owner_contribution`; Expense credits it and balances against an accountless `owner_draw`. Transfers credit the From account and debit the To account. For cross-currency transfers, both entries use the source-native sent amount as their exactly balanced `transaction_amount`, while each `account_amount` remains native to its referenced account; the destination therefore stores the final user-approved received amount. This records a neutral transfer in the ledger without updating `exchange_rates` or persisting a reusable inferred rate. The posting path locks and validates accounts, rejects insufficient available balance, and rejects any Bank Credit inflow when `credit_card_limit` is null or the resulting available credit would exceed that limit.
 
 ```ts
 type AccountTypeCode =
@@ -387,7 +388,7 @@ class AccountRecordsRepository {
   ): Promise<AccountRecordHistoryRow[]>
   getAccountRecordDetail(recordId): Promise<AccountRecordRow>
   getAccountBalances(accountIds): Promise<AccountBalanceRow[]>
-  addAccountRecord(values): Promise<void> // calls add_account_record with mainCategoryId/subcategoryId for Income and Expense
+  addAccountRecord(values, idempotencyKey): Promise<void> // calls add_account_record_v2; key is stable for an unchanged create submission
   correctAccountRecord(recordId, values): Promise<void> // calls correct_account_record
   reverseAccountRecord(recordId): Promise<void> // calls reverse_account_record
 }
@@ -597,7 +598,7 @@ picker is now a dropdown (was: some segmented).
 - **Cash / Bank detail → Account Records ledger** (`accounts/records/`) — the
   web routes cash & bank accounts to `AccountRecordsPage`; mobile now does the
   same. `records_repository.dart` calls `get_account_record_history`,
-  `add_account_record`, `correct_account_record`, `reverse_account_record`,
+  `add_account_record_v2`, `correct_account_record`, `reverse_account_record`,
   `get_account_balances`; `records_service.dart` ports the mapping / local-day
   grouping / category tree / search; `records_controller.dart` owns the
   cursor-paginated, filtered history + mutations. `account_records_page.dart` is

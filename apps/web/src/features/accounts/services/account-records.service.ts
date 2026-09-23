@@ -241,8 +241,11 @@ export async function estimateTransferReceived(
   return divideDecimals(converted, "1", 2) ?? converted
 }
 
-export async function addAccountRecord(values: AccountRecordFormValues) {
-  await accountRecordsRepository.addAccountRecord(values)
+export async function addAccountRecord(
+  values: AccountRecordFormValues,
+  idempotencyKey: string
+) {
+  await accountRecordsRepository.addAccountRecord(values, idempotencyKey)
 }
 
 export async function correctAccountRecord(

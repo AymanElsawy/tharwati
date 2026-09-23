@@ -1178,6 +1178,22 @@ export type Database = {
         }
         Returns: Json
       }
+      add_account_record_v2: {
+        Args: {
+          p_record_type: "income" | "expense" | "transfer"
+          p_account_id: string
+          p_counterparty_account_id: string | null
+          p_amount: Decimal
+          p_received_amount: Decimal | null
+          p_occurred_at: string
+          p_category: string | null
+          p_notes: string | null
+          p_idempotency_key: string
+          p_main_category_id?: string | null
+          p_subcategory_id?: string | null
+        }
+        Returns: Json
+      }
       reverse_account_record: {
         Args: { p_transaction_id: string }
         Returns: Json

@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 
 import '../../core/data_change.dart';
 import '../../core/idempotency_key.dart';
+import 'record_submission.dart';
 import '../../core/mutation_refresh.dart';
 import '../account_models.dart';
 import '../accounts_repository.dart' show AccountsException;
@@ -41,6 +42,7 @@ class RecordsController extends ChangeNotifier {
   bool refreshStale = false;
   final PayloadIdempotencyKey _refundCancellationAttempt =
       PayloadIdempotencyKey();
+  final PayloadIdempotencyKey _recordCreationAttempt = PayloadIdempotencyKey();
 
   int _requestVersion = 0;
 
@@ -166,12 +168,20 @@ class RecordsController extends ChangeNotifier {
     }
   }
 
-  Future<bool> submit(AccountRecordFormValues values, {String? editingId}) =>
-      _run(
-        () => editingId == null
-            ? _repo.addRecord(values)
-            : _repo.correctRecord(editingId, values),
-      );
+  Future<bool> submit(
+    AccountRecordFormValues values, {
+    String? editingId,
+  }) async {
+    if (editingId != null) {
+      return _run(() => _repo.correctRecord(editingId, values));
+    }
+    final key = _recordCreationAttempt.forPayload(
+      accountRecordSubmissionFingerprint(values),
+    );
+    final committed = await _run(() => _repo.addRecord(values, key));
+    if (committed) _recordCreationAttempt.clear();
+    return committed;
+  }
 
   Future<bool> reverse(String recordId) =>
       _run(() => _repo.reverseRecord(recordId));
