@@ -72,6 +72,15 @@ describe("Account Record history paging", () => {
       { date: "2026-08-19", dailyNet: "-25" },
     ])
   })
+
+  it("preserves server order with a same-time Refund above its Expense", () => {
+    const records = mapAccountRecordHistoryRows([
+      historyRow({ id: "refund", transaction_type_code: "refund", description: "Refund", entry_side: "debit", account_amount: "25" }),
+      historyRow({ id: "expense", transaction_type_code: "expense", description: "Expense", entry_side: "credit", account_amount: "100" }),
+    ])
+
+    expect(groupAccountRecordsByLocalDate(records)[0]?.records.map(({ id }) => id)).toEqual(["refund", "expense"])
+  })
 })
 
 describe("editable Account Records", () => {
