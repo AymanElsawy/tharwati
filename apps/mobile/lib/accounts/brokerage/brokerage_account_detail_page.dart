@@ -130,7 +130,9 @@ class _BrokerageAccountDetailPageState
       body: ListenableBuilder(
         listenable: _controller,
         builder: (context, _) => RefreshIndicator(
-          onRefresh: _controller.load,
+          onRefresh: () async {
+            await _controller.load();
+          },
           color: c.accent,
           child: _body(c, copy),
         ),
@@ -170,6 +172,18 @@ class _BrokerageAccountDetailPageState
         return ListView(
           padding: const EdgeInsets.fromLTRB(20, 12, 20, 32),
           children: [
+            if (_controller.refreshStale) ...[
+              Callout(
+                tone: CalloutTone.warning,
+                message: copy.savedRefreshFailed,
+                action: CompactButton(
+                  label: copy.refreshData,
+                  tone: CompactButtonTone.neutral,
+                  onPressed: _controller.retryRefresh,
+                ),
+              ),
+              const SizedBox(height: 12),
+            ],
             if (_controller.actionError != null) ...[
               Callout(
                 tone: CalloutTone.danger,
@@ -363,12 +377,17 @@ class _ActivityRow extends StatelessWidget {
       if ((dividend?.isPartial ?? false) && dividend?.quantity != null)
         '+${copy.activityUnits(formatActivityQuantity(dividend!.quantity!))}',
       if (dividend?.isPartial ?? false) ...[
-        if (dividend!.reinvested != null) '${copy.ltr(MoneyFormat.decimal(dividend.reinvested))} ${copy.partialReinvestAbbreviation}',
-        if (dividend.cash != null) '${copy.ltr(MoneyFormat.decimal(dividend.cash))} ${copy.cash}',
+        if (dividend!.reinvested != null)
+          '${copy.ltr(MoneyFormat.decimal(dividend.reinvested))} ${copy.partialReinvestAbbreviation}',
+        if (dividend.cash != null)
+          '${copy.ltr(MoneyFormat.decimal(dividend.cash))} ${copy.cash}',
       ],
       if (!(dividend?.isPartial ?? false) && dividend?.quantity != null)
         '+${copy.activityUnits(formatActivityQuantity(dividend!.quantity!))}',
-      if (dividend == null && entry?.quantityDelta != null && (D.compare(entry!.quantityDelta!, '0') ?? 0) != 0) copy.activityUnits(formatActivityQuantity(entry.quantityDelta!)),
+      if (dividend == null &&
+          entry?.quantityDelta != null &&
+          (D.compare(entry!.quantityDelta!, '0') ?? 0) != 0)
+        copy.activityUnits(formatActivityQuantity(entry.quantityDelta!)),
     ];
 
     return Opacity(
@@ -439,7 +458,9 @@ class _ActivityRow extends StatelessWidget {
               Text(
                 MoneyFormat.money(
                   dividend?.net ?? entry!.unitPrice,
-                  dividend != null ? accountCurrency : asset?.currencyCode ?? accountCurrency,
+                  dividend != null
+                      ? accountCurrency
+                      : asset?.currencyCode ?? accountCurrency,
                 ),
                 textDirection: TextDirection.ltr,
                 style: TextStyle(

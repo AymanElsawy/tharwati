@@ -1,6 +1,9 @@
+import 'dart:async';
 import 'package:flutter/foundation.dart';
 
 import '../../core/data_change.dart';
+import '../../core/idempotency_key.dart';
+import '../../core/mutation_refresh.dart';
 import '../account_models.dart';
 import '../accounts_repository.dart' show AccountsException;
 import '../accounts_service.dart';
@@ -8,6 +11,7 @@ import 'brokerage_activity.dart';
 import 'brokerage_models.dart';
 import 'brokerage_repository.dart';
 import 'brokerage_valuation.dart';
+import 'brokerage_submission.dart';
 
 enum BrokerageStatus { loading, error, ready }
 
@@ -34,6 +38,9 @@ class BrokerageController extends ChangeNotifier {
   /// must not hide the portfolio (web keeps separate `holdingsError` /
   /// `activityError` flags).
   bool activityFailed = false;
+  bool refreshStale = false;
+  final PayloadIdempotencyKey _tradeAttempt = PayloadIdempotencyKey();
+  final PayloadIdempotencyKey _dividendAttempt = PayloadIdempotencyKey();
 
   List<ActivityDateGroup> get activityGroups =>
       groupActivityByLocalDate(activity);
@@ -41,9 +48,9 @@ class BrokerageController extends ChangeNotifier {
   /// Guards against a slow reload overwriting a newer one.
   int _requestVersion = 0;
 
-  Future<void> load() async {
+  Future<bool> load({bool preserveOnError = false}) async {
     final version = ++_requestVersion;
-    status = BrokerageStatus.loading;
+    if (!preserveOnError) status = BrokerageStatus.loading;
     notifyListeners();
     try {
       final holdings = await _repo.getHoldingsForAccount(accountId);
@@ -51,7 +58,7 @@ class BrokerageController extends ChangeNotifier {
         for (final h in holdings) h.assetId,
       ]);
       final cash = await _repo.getCashBalance(accountId);
-      if (version != _requestVersion) return;
+      if (version != _requestVersion) return false;
       valuation = valueBrokerageAccount(
         holdings: holdings,
         pricesByAssetId: prices,
@@ -61,20 +68,30 @@ class BrokerageController extends ChangeNotifier {
 
       try {
         final rows = await _repo.getActivity(accountId);
-        if (version != _requestVersion) return;
+        if (version != _requestVersion) return false;
         activity = presentActivity(rows);
         activityFailed = false;
       } catch (_) {
-        if (version != _requestVersion) return;
-        activity = const [];
+        if (version != _requestVersion) return false;
+        if (!preserveOnError) activity = const [];
         activityFailed = true;
+        if (preserveOnError) refreshStale = true;
       }
     } catch (_) {
-      if (version != _requestVersion) return;
-      valuation = null;
-      status = BrokerageStatus.error;
+      if (version != _requestVersion) return false;
+      if (preserveOnError) {
+        refreshStale = true;
+        status = BrokerageStatus.ready;
+      } else {
+        valuation = null;
+        status = BrokerageStatus.error;
+      }
+      notifyListeners();
+      return false;
     }
+    if (!activityFailed) refreshStale = false;
     if (version == _requestVersion) notifyListeners();
+    return !activityFailed;
   }
 
   void clearActionError() {
@@ -96,11 +113,18 @@ class BrokerageController extends ChangeNotifier {
     }
   }
 
-  Future<bool> submitTrade(TradeFormValues values) => _run(
-    () => values.side == TradeSide.buy
-        ? _repo.addBuy(accountId, values)
-        : _repo.addSell(accountId, values),
-  );
+  Future<bool> submitTrade(TradeFormValues values) async {
+    final key = _tradeAttempt.forPayload(
+      brokerageTradeFingerprint(accountId, values),
+    );
+    final committed = await _runBrokerageCreate(
+      () => values.side == TradeSide.buy
+          ? _repo.addBuy(accountId, values, key)
+          : _repo.addSell(accountId, values, key),
+    );
+    if (committed) _tradeAttempt.clear();
+    return committed;
+  }
 
   Future<bool> addExistingHolding(ExistingHoldingFormValues values) =>
       _run(() => _repo.addExistingHolding(accountId, values));
@@ -115,20 +139,65 @@ class BrokerageController extends ChangeNotifier {
     String? notes,
     String? unitPrice,
     String? reinvestedAmount,
-  }) => _run(
-    () => _repo.addDividend(
-      accountId: accountId,
-      assetId: assetId,
-      mode: mode,
-      gross: gross,
-      tax: tax,
-      fees: fees,
-      occurredAt: occurredAt,
-      notes: notes,
-      unitPrice: unitPrice,
-      reinvestedAmount: reinvestedAmount,
-    ),
-  );
+  }) async {
+    final key = _dividendAttempt.forPayload(
+      brokerageDividendFingerprint(
+        accountId: accountId,
+        assetId: assetId,
+        mode: mode,
+        gross: gross,
+        tax: tax,
+        fees: fees,
+        occurredAt: occurredAt,
+        notes: notes,
+        unitPrice: unitPrice,
+        reinvestedAmount: reinvestedAmount,
+      ),
+    );
+    final committed = await _runBrokerageCreate(
+      () => _repo.addDividend(
+        accountId: accountId,
+        assetId: assetId,
+        mode: mode,
+        gross: gross,
+        tax: tax,
+        fees: fees,
+        occurredAt: occurredAt,
+        notes: notes,
+        unitPrice: unitPrice,
+        reinvestedAmount: reinvestedAmount,
+        idempotencyKey: key,
+      ),
+    );
+    if (committed) _dividendAttempt.clear();
+    return committed;
+  }
+
+  Future<bool> _runBrokerageCreate(Future<void> Function() action) async {
+    busy = true;
+    actionError = null;
+    notifyListeners();
+    final outcome = await runMutation(
+      action,
+      errorMessage: (error) => error is AccountsException
+          ? error.message
+          : 'Something went wrong. Please try again.',
+    );
+    busy = false;
+    if (outcome is MutationRejected) {
+      actionError = outcome.message;
+      notifyListeners();
+      return false;
+    }
+    DataChange.instance.ping();
+    notifyListeners();
+    unawaited(load(preserveOnError: true));
+    return true;
+  }
+
+  Future<void> retryRefresh() async {
+    await load(preserveOnError: true);
+  }
 
   Future<List<ActivityItem>> holdingHistory(String assetId) async {
     final rows = await _repo.getHoldingHistory(accountId, assetId);

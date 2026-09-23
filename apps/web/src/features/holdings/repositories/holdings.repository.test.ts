@@ -4,7 +4,47 @@ import { calculateHoldingFinancials } from "../../../lib/financial-calculations"
 import {
   normalizeExistingHoldingHistoryItem,
   normalizeHoldingRow,
+  groupBrokerageActivityInOrder,
+  orderBrokerageActivity,
 } from "./holdings.repository"
+import repositorySource from "./holdings.repository.ts?raw"
+
+describe("Brokerage activity ordering", () => {
+  it("puts a later-created Dividend above a Sell with the same occurred_at", () => {
+    const occurred_at = "2026-09-24T15:42:00Z"
+    const ordered = orderBrokerageActivity([
+      { id: "sell", occurred_at, created_at: "2026-09-24T15:42:01Z" },
+      { id: "dividend", occurred_at, created_at: "2026-09-24T15:42:02Z" },
+    ])
+    expect(ordered.map((item) => item.id)).toEqual(["dividend", "sell"])
+    const groups = groupBrokerageActivityInOrder(
+      ordered,
+      (item) => item.occurred_at.slice(0, 10)
+    )
+    expect(groups[0]?.items.map((item) => item.id)).toEqual(["dividend", "sell"])
+  })
+
+  it("uses id descending as the stable final tie-break", () => {
+    const occurred_at = "2026-09-24T15:42:00Z"
+    const created_at = "2026-09-24T15:42:02Z"
+    expect(orderBrokerageActivity([
+      { id: "00000000-0000-4000-8000-000000000001", occurred_at, created_at },
+      { id: "00000000-0000-4000-8000-000000000002", occurred_at, created_at },
+    ]).map((item) => item.id)).toEqual([
+      "00000000-0000-4000-8000-000000000002",
+      "00000000-0000-4000-8000-000000000001",
+    ])
+  })
+
+  it("selects created_at and requests the same three-key order from PostgREST", () => {
+    const activityMethod = repositorySource.slice(
+      repositorySource.indexOf("async getBrokerageAccountActivity"),
+      repositorySource.indexOf("async reverseExistingHolding")
+    )
+    expect(activityMethod).toContain("id, occurred_at, created_at, transaction_type_code")
+    expect(activityMethod).toContain('.order("occurred_at", { ascending: false })\n      .order("created_at", { ascending: false })\n      .order("id", { ascending: false })')
+  })
+})
 
 describe("normalizeHoldingRow", () => {
   it("normalizes PostgREST numeric JSON before calculation", () => {

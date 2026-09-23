@@ -168,29 +168,37 @@ class BrokerageRepository {
     }
   }
 
-  Future<void> addBuy(String accountId, TradeFormValues v) =>
-      _rpc('add_brokerage_buy', {
-        'p_account_id': accountId,
-        'p_asset_id': v.assetId,
-        'p_quantity': v.quantity.trim(),
-        'p_unit_price': v.unitPrice.trim(),
-        'p_occurred_at': _utc(v.occurredAt),
-        'p_notes': v.notes.trim().isEmpty ? null : v.notes.trim(),
-        'p_fees': v.fees.trim().isEmpty ? '0' : v.fees.trim(),
-        'p_account_fx_rate': _rate(v.accountFxRate),
-      });
+  Future<void> addBuy(
+    String accountId,
+    TradeFormValues v,
+    String idempotencyKey,
+  ) => _rpc('add_brokerage_buy_v2', {
+    'p_account_id': accountId,
+    'p_asset_id': v.assetId,
+    'p_quantity': v.quantity.trim(),
+    'p_unit_price': v.unitPrice.trim(),
+    'p_occurred_at': _utc(v.occurredAt),
+    'p_notes': v.notes.trim().isEmpty ? null : v.notes.trim(),
+    'p_fees': v.fees.trim().isEmpty ? '0' : v.fees.trim(),
+    'p_account_fx_rate': _rate(v.accountFxRate),
+    'p_idempotency_key': idempotencyKey,
+  });
 
-  Future<void> addSell(String accountId, TradeFormValues v) =>
-      _rpc('add_brokerage_sell', {
-        'p_account_id': accountId,
-        'p_asset_id': v.assetId,
-        'p_quantity': v.quantity.trim(),
-        'p_unit_sale_price': v.unitPrice.trim(),
-        'p_occurred_at': _utc(v.occurredAt),
-        'p_notes': v.notes.trim().isEmpty ? null : v.notes.trim(),
-        'p_fees': v.fees.trim().isEmpty ? '0' : v.fees.trim(),
-        'p_account_fx_rate': _rate(v.accountFxRate),
-      });
+  Future<void> addSell(
+    String accountId,
+    TradeFormValues v,
+    String idempotencyKey,
+  ) => _rpc('add_brokerage_sell_v2', {
+    'p_account_id': accountId,
+    'p_asset_id': v.assetId,
+    'p_quantity': v.quantity.trim(),
+    'p_unit_sale_price': v.unitPrice.trim(),
+    'p_occurred_at': _utc(v.occurredAt),
+    'p_notes': v.notes.trim().isEmpty ? null : v.notes.trim(),
+    'p_fees': v.fees.trim().isEmpty ? '0' : v.fees.trim(),
+    'p_account_fx_rate': _rate(v.accountFxRate),
+    'p_idempotency_key': idempotencyKey,
+  });
 
   /// Records a pre-existing position without creating a Brokerage cash entry.
   Future<void> addExistingHolding(
@@ -201,7 +209,7 @@ class BrokerageRepository {
   // ---- activity ------------------------------------------------------
 
   static const _activitySelect =
-      'id,occurred_at,transaction_type_code,transaction_currency_code,notes,'
+      'id,occurred_at,created_at,transaction_type_code,transaction_currency_code,notes,'
       'reverses_transaction_id,corrects_transaction_id,'
       'account_entries:transaction_entries!inner(account_id),'
       'transaction_entries(account_id,asset_id,quantity_delta::text,'
@@ -230,6 +238,7 @@ class BrokerageRepository {
         .inFilter('transaction_type_code', _activityTypes)
         .eq('account_entries.account_id', accountId)
         .order('occurred_at', ascending: false)
+        .order('created_at', ascending: false)
         .order('id', ascending: false);
 
     final list = rows as List;
@@ -254,10 +263,10 @@ class BrokerageRepository {
       }
     }
 
-    return [
+    return orderBrokerageActivity([
       for (final row in list)
         ActivityItem.fromRow((row as Map).cast<String, dynamic>(), assetsById),
-    ];
+    ]);
   }
 
   /// The buy / sell / opening-position history for one position.
@@ -289,6 +298,7 @@ class BrokerageRepository {
     String? notes,
     String? unitPrice,
     String? reinvestedAmount,
+    required String idempotencyKey,
   }) {
     final base = {
       'p_account_id': accountId,
@@ -298,15 +308,16 @@ class BrokerageRepository {
       'p_fees': fees.trim().isEmpty ? '0' : fees.trim(),
       'p_occurred_at': _utc(occurredAt),
       'p_notes': notes == null || notes.trim().isEmpty ? null : notes.trim(),
+      'p_idempotency_key': idempotencyKey,
     };
     return switch (mode) {
-      DividendMode.cash => _rpc('add_brokerage_cash_dividend', base),
-      DividendMode.full => _rpc('add_brokerage_dividend_reinvestment', {
+      DividendMode.cash => _rpc('add_brokerage_cash_dividend_v2', base),
+      DividendMode.full => _rpc('add_brokerage_dividend_reinvestment_v2', {
         ...base,
         'p_unit_price': unitPrice?.trim(),
       }),
       DividendMode.partial =>
-        _rpc('add_brokerage_partial_dividend_reinvestment', {
+        _rpc('add_brokerage_partial_dividend_reinvestment_v2', {
           ...base,
           'p_reinvested_amount': reinvestedAmount?.trim(),
           'p_unit_price': unitPrice?.trim(),

@@ -1043,6 +1043,11 @@ export type Database = {
       }
       add_brokerage_dividend_reinvestment: { Args: { p_account_id: string; p_asset_id: string; p_gross_dividend: Decimal; p_withholding_tax?: Decimal | null; p_fees?: Decimal | null; p_unit_price: Decimal; p_occurred_at?: string | null; p_notes?: string | null }; Returns: Json }
       add_brokerage_partial_dividend_reinvestment: { Args: { p_account_id: string; p_asset_id: string; p_gross_dividend: Decimal; p_withholding_tax?: Decimal | null; p_fees?: Decimal | null; p_reinvested_amount: Decimal; p_unit_price: Decimal; p_occurred_at?: string | null; p_notes?: string | null }; Returns: Json }
+      add_brokerage_buy_v2: { Args: { p_account_id: string; p_asset_id: string; p_quantity: Decimal; p_unit_price: Decimal; p_idempotency_key: string; p_occurred_at?: string | null; p_notes?: string | null; p_fees?: Decimal | null; p_account_fx_rate?: Decimal | null }; Returns: Json }
+      add_brokerage_sell_v2: { Args: { p_account_id: string; p_asset_id: string; p_quantity: Decimal; p_unit_sale_price: Decimal; p_idempotency_key: string; p_occurred_at?: string | null; p_notes?: string | null; p_fees?: Decimal | null; p_account_fx_rate?: Decimal | null }; Returns: Json }
+      add_brokerage_cash_dividend_v2: { Args: { p_account_id: string; p_asset_id: string; p_gross_dividend: Decimal; p_idempotency_key: string; p_withholding_tax?: Decimal | null; p_fees?: Decimal | null; p_occurred_at?: string | null; p_notes?: string | null }; Returns: Json }
+      add_brokerage_dividend_reinvestment_v2: { Args: { p_account_id: string; p_asset_id: string; p_gross_dividend: Decimal; p_unit_price: Decimal; p_idempotency_key: string; p_withholding_tax?: Decimal | null; p_fees?: Decimal | null; p_occurred_at?: string | null; p_notes?: string | null }; Returns: Json }
+      add_brokerage_partial_dividend_reinvestment_v2: { Args: { p_account_id: string; p_asset_id: string; p_gross_dividend: Decimal; p_reinvested_amount: Decimal; p_unit_price: Decimal; p_idempotency_key: string; p_withholding_tax?: Decimal | null; p_fees?: Decimal | null; p_occurred_at?: string | null; p_notes?: string | null }; Returns: Json }
       reverse_existing_holding: {
         Args: { p_transaction_id: string }
         Returns: Json

@@ -112,6 +112,7 @@ export type CorrectExistingHoldingInput = {
 }
 
 export type BrokerageActivityItem = Omit<ExistingHoldingHistoryItem, "transaction_type_code" | "entries"> & {
+  created_at: string
   transaction_type_code: ExistingHoldingHistoryItem["transaction_type_code"] | "transfer" | "dividend"
   entries: Array<ExistingHoldingHistoryItem["entries"][number] & {
     asset: {
@@ -122,6 +123,23 @@ export type BrokerageActivityItem = Omit<ExistingHoldingHistoryItem, "transactio
       currency_code: string
     } | null
   }>
+}
+
+export function orderBrokerageActivity<T extends Pick<BrokerageActivityItem, "id" | "occurred_at" | "created_at">>(items: T[]): T[] {
+  return [...items].sort((left, right) =>
+    right.occurred_at.localeCompare(left.occurred_at) ||
+    (right.created_at ?? "").localeCompare(left.created_at ?? "") ||
+    right.id.localeCompare(left.id)
+  )
+}
+
+export function groupBrokerageActivityInOrder<T>(items: T[], dateKey: (item: T) => string) {
+  const groups = new Map<string, T[]>()
+  for (const item of items) {
+    const key = dateKey(item)
+    groups.set(key, [...(groups.get(key) ?? []), item])
+  }
+  return [...groups.entries()].map(([date, groupedItems]) => ({ date, items: groupedItems }))
 }
 
 type BrokerageActivityRuntimeItem = Omit<BrokerageActivityItem, "entries"> & {
@@ -137,6 +155,7 @@ function normalizeBrokerageActivityItem(
   )
   return {
     ...normalized,
+    created_at: item.created_at,
     transaction_type_code: item.transaction_type_code,
     entries: normalized.entries.map((entry) => ({
       ...entry,
@@ -251,7 +270,7 @@ export class HoldingsRepository {
       .from("financial_transactions")
       .select(
         `
-          id, occurred_at, transaction_type_code, transaction_currency_code,
+          id, occurred_at, created_at, transaction_type_code, transaction_currency_code,
           notes, reverses_transaction_id, corrects_transaction_id,
           account_entries:transaction_entries!inner(account_id),
           transaction_entries(
@@ -273,11 +292,13 @@ export class HoldingsRepository {
       ])
       .eq("account_entries.account_id", accountId)
       .order("occurred_at", { ascending: false })
+      .order("created_at", { ascending: false })
       .order("id", { ascending: false })
 
     const rows = requireQueryData(data, error, operation) as Array<{
       id: string
       occurred_at: string
+      created_at: string
       transaction_type_code: BrokerageActivityItem["transaction_type_code"]
       transaction_currency_code: string
       notes: string | null
@@ -301,9 +322,9 @@ export class HoldingsRepository {
       }
     }
 
-    return rows.map(({ transaction_entries, ...transaction }) =>
+    return orderBrokerageActivity(rows.map(({ transaction_entries, ...transaction }) =>
       normalizeBrokerageActivityItem({ ...transaction, entries: transaction_entries }, assetsById)
-    )
+    ))
   }
 
   async reverseExistingHolding(transactionId: string): Promise<void> {

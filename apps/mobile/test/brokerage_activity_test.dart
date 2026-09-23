@@ -34,10 +34,12 @@ ActivityItem item({
   String? reverses,
   String? corrects,
   String occurredAt = '2026-09-09T10:00:00Z',
+  String createdAt = '',
   List<ActivityEntry> entries = const [],
 }) => ActivityItem(
   id: id,
   occurredAt: occurredAt,
+  createdAt: createdAt,
   transactionTypeCode: type,
   transactionCurrencyCode: 'USD',
   notes: null,
@@ -47,6 +49,41 @@ ActivityItem item({
 );
 
 void main() {
+  group('Brokerage activity ordering', () {
+    test('later-created Dividend precedes Sell at the same occurred time', () {
+      const occurred = '2026-09-24T15:42:00Z';
+      final ordered = orderBrokerageActivity([
+        item(
+          id: 'sell',
+          type: 'sell',
+          occurredAt: occurred,
+          createdAt: '2026-09-24T15:42:01Z',
+        ),
+        item(
+          id: 'dividend',
+          type: 'dividend',
+          occurredAt: occurred,
+          createdAt: '2026-09-24T15:42:02Z',
+        ),
+      ]);
+      expect(ordered.map((row) => row.id), ['dividend', 'sell']);
+      expect(
+        groupActivityByLocalDate(ordered).single.items.map((row) => row.id),
+        ['dividend', 'sell'],
+      );
+    });
+
+    test('id descending is the stable final tie-break', () {
+      const occurred = '2026-09-24T15:42:00Z';
+      const created = '2026-09-24T15:42:02Z';
+      final ordered = orderBrokerageActivity([
+        item(id: '0001', occurredAt: occurred, createdAt: created),
+        item(id: '0002', occurredAt: occurred, createdAt: created),
+      ]);
+      expect(ordered.map((row) => row.id), ['0002', '0001']);
+    });
+  });
+
   group('presentActivity', () {
     test('a plain row is current', () {
       final rows = presentActivity([item(id: 'a')]);
@@ -217,46 +254,68 @@ void main() {
 
   group('dividend activity presentation', () {
     test('partial subtitle copy stays compact and localized', () {
-      expect(AccountsCopy.of(AppLanguage.en).partialReinvestAbbreviation, 'reinv.');
-      expect(AccountsCopy.of(AppLanguage.ar).partialReinvestAbbreviation, isNotEmpty);
+      expect(
+        AccountsCopy.of(AppLanguage.en).partialReinvestAbbreviation,
+        'reinv.',
+      );
+      expect(
+        AccountsCopy.of(AppLanguage.ar).partialReinvestAbbreviation,
+        isNotEmpty,
+      );
       expect(AccountsCopy.of(AppLanguage.en).cash, 'Cash');
       expect(MoneyFormat.decimal('6.00'), '6.00');
     });
 
     test('cash shows net settlement and omits zero units', () {
-      final values = dividendActivityValues(item(
-        id: 'cash',
-        type: 'dividend',
-        entries: [
-          entry(memo: 'brokerage_dividend_gross', amount: '12.50'),
-          entry(memo: 'brokerage_dividend_tax', amount: '2.00'),
-          entry(memo: 'brokerage_dividend_fee', amount: '0.50'),
-          entry(memo: 'brokerage_dividend_cash', amount: '10.00'),
-        ],
-      ))!;
+      final values = dividendActivityValues(
+        item(
+          id: 'cash',
+          type: 'dividend',
+          entries: [
+            entry(memo: 'brokerage_dividend_gross', amount: '12.50'),
+            entry(memo: 'brokerage_dividend_tax', amount: '2.00'),
+            entry(memo: 'brokerage_dividend_fee', amount: '0.50'),
+            entry(memo: 'brokerage_dividend_cash', amount: '10.00'),
+          ],
+        ),
+      )!;
       expect(D.compare(values.net!, '10'), 0);
       expect(values.quantity, isNull);
     });
 
     test('full reinvestment shows net settlement and positive units', () {
-      final values = dividendActivityValues(item(
-        id: 'full',
-        type: 'dividend',
-        entries: [entry(memo: 'brokerage_dividend_reinvestment', quantityDelta: '2', amount: '10.00')],
-      ))!;
+      final values = dividendActivityValues(
+        item(
+          id: 'full',
+          type: 'dividend',
+          entries: [
+            entry(
+              memo: 'brokerage_dividend_reinvestment',
+              quantityDelta: '2',
+              amount: '10.00',
+            ),
+          ],
+        ),
+      )!;
       expect(D.compare(values.net!, '10'), 0);
       expect(D.compare(values.quantity!, '2'), 0);
     });
 
     test('partial reinvestment shows total net and both settlements', () {
-      final values = dividendActivityValues(item(
-        id: 'partial',
-        type: 'dividend',
-        entries: [
-          entry(memo: 'brokerage_dividend_partial_reinvestment', quantityDelta: '3', amount: '6.00'),
-          entry(memo: 'brokerage_dividend_partial_cash', amount: '4.00'),
-        ],
-      ))!;
+      final values = dividendActivityValues(
+        item(
+          id: 'partial',
+          type: 'dividend',
+          entries: [
+            entry(
+              memo: 'brokerage_dividend_partial_reinvestment',
+              quantityDelta: '3',
+              amount: '6.00',
+            ),
+            entry(memo: 'brokerage_dividend_partial_cash', amount: '4.00'),
+          ],
+        ),
+      )!;
       expect(D.compare(values.net!, '10'), 0);
       expect(D.compare(values.reinvested!, '6'), 0);
       expect(D.compare(values.cash!, '4'), 0);

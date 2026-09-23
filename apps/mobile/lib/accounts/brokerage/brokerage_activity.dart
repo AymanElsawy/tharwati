@@ -109,6 +109,7 @@ class ActivityItem {
   const ActivityItem({
     required this.id,
     required this.occurredAt,
+    this.createdAt = '',
     required this.transactionTypeCode,
     required this.transactionCurrencyCode,
     required this.notes,
@@ -120,6 +121,7 @@ class ActivityItem {
 
   final String id;
   final String occurredAt;
+  final String createdAt;
 
   /// `buy` | `sell` | `opening_position` | `opening_position_reversal` |
   /// `dividend` | `transfer`
@@ -134,6 +136,7 @@ class ActivityItem {
   ActivityItem withPresentation(ActivityPresentation value) => ActivityItem(
     id: id,
     occurredAt: occurredAt,
+    createdAt: createdAt,
     transactionTypeCode: transactionTypeCode,
     transactionCurrencyCode: transactionCurrencyCode,
     notes: notes,
@@ -149,6 +152,7 @@ class ActivityItem {
   ) => ActivityItem(
     id: '${row['id']}',
     occurredAt: '${row['occurred_at']}',
+    createdAt: '${row['created_at'] ?? ''}',
     transactionTypeCode: '${row['transaction_type_code']}',
     transactionCurrencyCode: '${row['transaction_currency_code'] ?? ''}',
     notes: row['notes'] as String?,
@@ -171,6 +175,18 @@ class ActivityItem {
 
   bool get isPartiallyReinvestedDividend =>
       entries.any((e) => e.memo == 'brokerage_dividend_partial_reinvestment');
+}
+
+List<ActivityItem> orderBrokerageActivity(List<ActivityItem> activity) {
+  final ordered = [...activity];
+  ordered.sort((left, right) {
+    final occurred = right.occurredAt.compareTo(left.occurredAt);
+    if (occurred != 0) return occurred;
+    final created = right.createdAt.compareTo(left.createdAt);
+    if (created != 0) return created;
+    return right.id.compareTo(left.id);
+  });
+  return ordered;
 }
 
 /// Resolves the append-only ledger into the rows worth showing.

@@ -5,9 +5,9 @@ import type { Database } from "@/lib/supabase/types"
 export class BrokerageSellsRepository {
   private readonly client: TypedSupabaseClient
   constructor(client: TypedSupabaseClient = supabase) { this.client = client }
-  async addBrokerageSell(input: Database["public"]["Functions"]["add_brokerage_sell"]["Args"]) {
+  async addBrokerageSell(input: Database["public"]["Functions"]["add_brokerage_sell_v2"]["Args"]) {
     await requireAuthenticatedUserId(this.client, "brokerageSells.addBrokerageSell")
-    const { data, error } = await this.client.rpc("add_brokerage_sell", input)
+    const { data, error } = await this.client.rpc("add_brokerage_sell_v2", input)
     return requireQueryData(data, error, "brokerageSells.addBrokerageSell")
   }
 }

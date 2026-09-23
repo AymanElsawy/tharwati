@@ -12,7 +12,7 @@ import {
   assetsRepository,
   type AssetTypeSummary,
 } from "@/features/assets/repositories/assets.repository"
-import { holdingsRepository } from "@/features/holdings/repositories/holdings.repository"
+import { groupBrokerageActivityInOrder, holdingsRepository } from "@/features/holdings/repositories/holdings.repository"
 import type { BrokerageActivityItem } from "@/features/holdings/repositories/holdings.repository"
 import type { HoldingDetails } from "@/features/holdings/types/holding"
 import type { HoldingValuationResult } from "@/features/portfolio-valuation/types/portfolio-valuation"
@@ -131,14 +131,15 @@ export function BrokerageAccountDetailsPage({
   const [isExistingHoldingOpen, setIsExistingHoldingOpen] = useState(false)
   const [isBuyOpen, setIsBuyOpen] = useState(false)
   const [isDividendOpen, setIsDividendOpen] = useState(false)
+  const [refreshStale, setRefreshStale] = useState(false)
 
-  const load = useCallback(async () => {
+  const load = useCallback(async (preserveOnError = false) => {
     setIsHoldingsLoading(true)
     setHoldingsError(false)
     setIsActivityLoading(true)
     setActivityError(false)
 
-    await Promise.all([
+    const results = await Promise.all([
       holdingsRepository
         .getHoldingsForAccount(account.id)
         .then((value) => {
@@ -146,7 +147,7 @@ export function BrokerageAccountDetailsPage({
           return value
         })
         .catch(() => {
-          setHoldings([])
+          if (!preserveOnError) setHoldings([])
           setHoldingsError(true)
           return null
         })
@@ -158,12 +159,15 @@ export function BrokerageAccountDetailsPage({
           return value
         })
         .catch(() => {
-          setActivity([])
+          if (!preserveOnError) setActivity([])
           setActivityError(true)
           return null
         })
         .finally(() => setIsActivityLoading(false)),
     ])
+    const current = results.every((result) => result !== null)
+    if (current) setRefreshStale(false)
+    return current
   }, [account.id])
 
   useEffect(() => {
@@ -193,16 +197,15 @@ export function BrokerageAccountDetailsPage({
     })
   }, [activity])
   const activityGroups = useMemo(() => {
-    const groups = new Map<string, PresentedActivity[]>()
-    for (const item of presentedActivity) {
-      const key = localDateKey(item.occurred_at)
-      groups.set(key, [...(groups.get(key) ?? []), item])
-    }
-    return [...groups.entries()].map(([date, items]) => ({ date, items }))
+    return groupBrokerageActivityInOrder(
+      presentedActivity,
+      (item) => localDateKey(item.occurred_at)
+    )
   }, [presentedActivity])
 
   return (
     <div className="pb-12">
+      {refreshStale ? <div className="mb-4 flex items-center justify-between gap-3 rounded-xl border border-amber-300 bg-amber-50 p-3 text-sm text-amber-950 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-100"><span>{t("accounts.records.savedRefreshFailed")}</span><Button size="sm" variant="outline" onClick={() => void load(true)}>{t("accounts.records.refreshData")}</Button></div> : null}
       <Button
         variant="ghost"
         className="-ms-3 mb-3"
@@ -373,12 +376,11 @@ export function BrokerageAccountDetailsPage({
         availableCash={brokerageValue?.availableCash ?? null}
         onClose={() => setIsBuyOpen(false)}
         onSaved={async () => {
-          setIsBuyOpen(false)
-          await load()
-          window.dispatchEvent(new Event("tharwati:data-changed"))
+          if (!(await load(true))) throw new Error("refresh failed")
         }}
+        onRefreshStale={() => setRefreshStale(true)}
       />
-      <BrokerageDividendDialog account={isDividendOpen ? account : null} onClose={() => setIsDividendOpen(false)} onSaved={async () => { setIsDividendOpen(false); await load(); window.dispatchEvent(new Event("tharwati:data-changed")) }} />
+      <BrokerageDividendDialog account={isDividendOpen ? account : null} onClose={() => setIsDividendOpen(false)} onSaved={async () => { if (!(await load(true))) throw new Error("refresh failed") }} onRefreshStale={() => setRefreshStale(true)} />
       <BrokerageActivityDialog
         activity={selectedActivity}
         accountCurrency={account.currency_code}

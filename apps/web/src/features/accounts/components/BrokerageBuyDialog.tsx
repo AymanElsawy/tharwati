@@ -1,6 +1,6 @@
 import { Dialog } from "@base-ui/react/dialog"
 import { Search, X } from "lucide-react"
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 
 import { Button } from "@/components/ui/button"
 import { assetsRepository } from "@/features/assets/repositories/assets.repository"
@@ -11,6 +11,9 @@ import { countries } from "@/lib/countries"
 import { formatLocalDateTimeInput, localDateTimeInputToIso } from "@/lib/formatting/local-date-time"
 import type { AccountSummary, AssetSummary } from "@/lib/supabase/types"
 import { assetSearchService, type ExternalAssetSearchResult } from "@/services/asset-search/asset-search.service"
+import { runMutationThenRefresh } from "@/lib/mutations/mutation-refresh"
+import { brokerageAttempt, brokerageTradeFingerprint } from "@/features/investments/utils/brokerage-submission"
+import type { SubmissionAttempt } from "../utils/refund-submission"
 
 const fieldClass = "mt-1 w-full rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2 text-sm"
 
@@ -28,7 +31,7 @@ function isNonNegativeDecimal(value: string) {
   return /^\d+(?:\.\d+)?$/.test(value.trim())
 }
 
-export function BrokerageBuyDialog({ account, availableCash, onClose, onSaved }: { account: AccountSummary | null; availableCash: string | null; onClose: () => void; onSaved: () => Promise<void> }) {
+export function BrokerageBuyDialog({ account, availableCash, onClose, onSaved, onRefreshStale }: { account: AccountSummary | null; availableCash: string | null; onClose: () => void; onSaved: () => Promise<void>; onRefreshStale?: () => void }) {
   const { language, t } = useTranslation()
   const locale = language === "ar" ? "ar-SA" : "en-US"
   const [assets, setAssets] = useState<AssetSummary[]>([])
@@ -49,6 +52,7 @@ export function BrokerageBuyDialog({ account, availableCash, onClose, onSaved }:
   const [selectedExternalResult, setSelectedExternalResult] = useState<ExternalAssetSearchResult | null>(null)
   const [resolvingExternalIdentity, setResolvingExternalIdentity] = useState<string | null>(null)
   const [externalResolutionError, setExternalResolutionError] = useState(false)
+  const attemptRef = useRef<SubmissionAttempt | null>(null)
 
   useEffect(() => {
     if (!account) return
@@ -117,16 +121,21 @@ export function BrokerageBuyDialog({ account, availableCash, onClose, onSaved }:
   const save = async () => {
     if (!account || !asset || !valid) return
     setSaving(true); setError(null)
-    try {
-      await brokerageBuysRepository.addBrokerageBuy({
+    const occurred = localDateTimeInputToIso(occurredAt)
+    const attempt = brokerageAttempt(attemptRef.current, brokerageTradeFingerprint({ side: "buy", accountId: account.id, assetId: asset.id, quantity, unitPrice, occurredAt: occurred, notes, fees, accountFxRate: isCrossCurrency ? rate : null }))
+    attemptRef.current = attempt
+    const outcome = await runMutationThenRefresh({
+      mutate: () => brokerageBuysRepository.addBrokerageBuy({
         p_account_id: account.id, p_asset_id: asset.id, p_quantity: quantity, p_unit_price: unitPrice,
-        p_occurred_at: localDateTimeInputToIso(occurredAt), p_notes: notes.trim() || null,
+        p_idempotency_key: attempt.idempotencyKey, p_occurred_at: occurred, p_notes: notes.trim() || null,
         p_fees: fees.trim() || "0", p_account_fx_rate: isCrossCurrency ? rate : null,
-      })
-      await onSaved()
-    } catch (cause) {
-      setError(cause instanceof Error ? cause.message : t("brokerage.buyError"))
-    } finally { setSaving(false) }
+      }).then(() => undefined),
+      onCommitted: () => { attemptRef.current = null; onClose(); window.dispatchEvent(new Event("tharwati:data-changed")) },
+      refresh: onSaved,
+    })
+    if (outcome.mutation === "rejected") setError(outcome.error instanceof Error ? outcome.error.message : t("brokerage.buyError"))
+    else if (outcome.refresh === "stale") onRefreshStale?.()
+    setSaving(false)
   }
 
   return <Dialog.Root open={account !== null} onOpenChange={(open) => { if (!open && !saving) onClose() }}>

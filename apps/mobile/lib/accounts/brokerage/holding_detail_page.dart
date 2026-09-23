@@ -80,7 +80,16 @@ class _HoldingDetailPageState extends State<HoldingDetailPage> {
         presetAssetId: widget.assetId,
       ),
     );
-    if (done == true) await _load();
+    if (done == true) {
+      await widget.controller.retryRefresh();
+      if (!mounted) return;
+      if (!widget.controller.refreshStale &&
+          widget.controller.holdingForAsset(widget.assetId) == null) {
+        Navigator.of(context).pop(true);
+        return;
+      }
+      await _load();
+    }
   }
 
   Future<void> _buy() async {

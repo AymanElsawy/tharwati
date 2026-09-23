@@ -1,5 +1,5 @@
 import { Dialog } from "@base-ui/react/dialog"
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { assetsRepository } from "@/features/assets/repositories/assets.repository"
 import { addBrokerageCashDividend, addBrokerageDividendReinvestment, addBrokeragePartialDividendReinvestment } from "@/features/investments/repositories/brokerage-dividends.repository"
@@ -8,12 +8,15 @@ import { useTranslation } from "@/i18n/useTranslation"
 import { localDateTimeInputToIso, formatLocalDateTimeInput } from "@/lib/formatting/local-date-time"
 import type { AccountSummary, AssetSummary } from "@/lib/supabase/types"
 import { compareDecimals } from "@/lib/financial-calculations/decimal"
+import { runMutationThenRefresh } from "@/lib/mutations/mutation-refresh"
+import { brokerageAttempt, brokerageDividendFingerprint } from "@/features/investments/utils/brokerage-submission"
+import type { SubmissionAttempt } from "../utils/refund-submission"
 
 const fieldClass = "mt-1 w-full rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2 text-sm"
 const valid = (v: string) => /^\d+(?:\.\d+)?$/.test(v.trim())
 type DividendMode = "cash" | "full" | "partial"
 
-export function BrokerageDividendDialog({ account, onClose, onSaved }: { account: AccountSummary | null; onClose: () => void; onSaved: () => Promise<void> }) {
+export function BrokerageDividendDialog({ account, onClose, onSaved, onRefreshStale }: { account: AccountSummary | null; onClose: () => void; onSaved: () => Promise<void>; onRefreshStale?: () => void }) {
   const { t, language } = useTranslation()
   const locale = language === "ar" ? "ar-SA" : "en-US"
   const [assets, setAssets] = useState<AssetSummary[]>([])
@@ -28,6 +31,7 @@ export function BrokerageDividendDialog({ account, onClose, onSaved }: { account
   const [notes, setNotes] = useState("")
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const attemptRef = useRef<SubmissionAttempt | null>(null)
   useEffect(() => {
     if (account)
       void assetsRepository
@@ -57,34 +61,35 @@ export function BrokerageDividendDialog({ account, onClose, onSaved }: { account
     if (!account || !asset || !canSave) return
     setSaving(true)
     setError(null)
-    try {
-      const input = {
+    const occurred = localDateTimeInputToIso(occurredAt)
+    const attempt = brokerageAttempt(attemptRef.current, brokerageDividendFingerprint({ mode, accountId: account.id, assetId: asset.id, gross, tax, fees, occurredAt: occurred, notes, unitPrice, reinvestedAmount }))
+    attemptRef.current = attempt
+    const input = {
         p_account_id: account.id,
         p_asset_id: asset.id,
         p_gross_dividend: gross,
         p_withholding_tax: tax,
         p_fees: fees,
-        p_occurred_at: localDateTimeInputToIso(occurredAt),
+        p_idempotency_key: attempt.idempotencyKey,
+        p_occurred_at: occurred,
         p_notes: notes.trim() || null,
       }
-      if (mode === "partial")
-        await addBrokeragePartialDividendReinvestment({
+    const mutate = async () => {
+      if (mode === "partial") await addBrokeragePartialDividendReinvestment({
           ...input,
           p_reinvested_amount: reinvestedAmount,
           p_unit_price: unitPrice,
         })
-      else if (mode === "full")
-        await addBrokerageDividendReinvestment({
+      else if (mode === "full") await addBrokerageDividendReinvestment({
           ...input,
           p_unit_price: unitPrice,
         })
       else await addBrokerageCashDividend(input)
-      await onSaved()
-    } catch (e) {
-      setError(e instanceof Error ? e.message : t("brokerage.dividendError"))
-    } finally {
-      setSaving(false)
     }
+    const outcome = await runMutationThenRefresh({ mutate, onCommitted: () => { attemptRef.current = null; onClose(); window.dispatchEvent(new Event("tharwati:data-changed")) }, refresh: onSaved })
+    if (outcome.mutation === "rejected") setError(outcome.error instanceof Error ? outcome.error.message : t("brokerage.dividendError"))
+    else if (outcome.refresh === "stale") onRefreshStale?.()
+    setSaving(false)
   }
   const title = mode === "partial" ? t("brokerage.partialReinvest") : mode === "full" ? t("brokerage.reinvestDividend") : t("brokerage.dividend")
   return (

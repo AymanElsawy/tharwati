@@ -131,8 +131,9 @@ export function BrokerageHoldingDetailsPage() {
   const [isDeleting, setIsDeleting] = useState(false)
   const [deleteError, setDeleteError] = useState<string | null>(null)
   const [isSellOpen, setIsSellOpen] = useState(false)
+  const [refreshStale, setRefreshStale] = useState(false)
 
-  const load = useCallback(async () => {
+  const load = useCallback(async (preserveOnError = false) => {
     if (!account || account.account_type_code !== "brokerage") return
     setIsLoading(true)
     setHasError(false)
@@ -160,10 +161,12 @@ export function BrokerageHoldingDetailsPage() {
       }
       return nextHolding
     } catch {
-      setHolding(null)
-      setHistory([])
-      setValuation(null)
-      setValuationError(false)
+      if (!preserveOnError) {
+        setHolding(null)
+        setHistory([])
+        setValuation(null)
+        setValuationError(false)
+      }
       setHasError(true)
       return undefined
     } finally {
@@ -176,7 +179,7 @@ export function BrokerageHoldingDetailsPage() {
   }, [load])
 
   useEffect(() => {
-    const handleDataChanged = () => void load()
+    const handleDataChanged = () => void load(true)
     window.addEventListener("tharwati:data-changed", handleDataChanged)
     return () => window.removeEventListener("tharwati:data-changed", handleDataChanged)
   }, [load])
@@ -353,6 +356,7 @@ export function BrokerageHoldingDetailsPage() {
 
   return (
     <div className="pb-12">
+      {refreshStale ? <div className="mb-4 flex items-center justify-between gap-3 rounded-xl border border-amber-300 bg-amber-50 p-3 text-sm text-amber-950 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-100"><span>{t("accounts.records.savedRefreshFailed")}</span><Button size="sm" variant="outline" onClick={() => void load(true).then((value) => value !== undefined && setRefreshStale(false))}>{t("accounts.records.refreshData")}</Button></div> : null}
       <Button
         variant="ghost"
         className="-ms-3 mb-3"
@@ -670,11 +674,12 @@ export function BrokerageHoldingDetailsPage() {
         holdingQuantity={holding.quantity}
         onClose={() => setIsSellOpen(false)}
         onSaved={async () => {
-          setIsSellOpen(false)
-          const nextHolding = await load()
-          window.dispatchEvent(new Event("tharwati:data-changed"))
+          const nextHolding = await load(true)
+          if (nextHolding === undefined) throw new Error("refresh failed")
+          setRefreshStale(false)
           if (nextHolding === null) navigate(`/accounts/${accountId}`)
         }}
+        onRefreshStale={() => setRefreshStale(true)}
       />
     </div>
   )
