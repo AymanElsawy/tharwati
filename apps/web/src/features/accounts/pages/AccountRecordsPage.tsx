@@ -60,6 +60,12 @@ import {
 } from "../types/account-record"
 import type { VisibleRecordMainCategory } from "../types/record-category"
 import type { Decimal } from "@/lib/supabase/types"
+import { runMutationThenRefresh } from "@/lib/mutations/mutation-refresh"
+import {
+  refundSubmissionFingerprint,
+  resolveSubmissionAttempt,
+  type SubmissionAttempt,
+} from "../utils/refund-submission"
 
 const historyPageSize = 50
 
@@ -176,14 +182,21 @@ export function AccountRecordsPage({
     useState<ExpenseRefundSummary | null>(null)
   const [refundExpense, setRefundExpense] =
     useState<EditableAccountRecord | null>(null)
-  const [refundToCancel, setRefundToCancel] = useState<AccountRecord | null>(null)
-  const [refundCancellationError, setRefundCancellationError] = useState<string | null>(null)
+  const [refundToCancel, setRefundToCancel] = useState<AccountRecord | null>(
+    null
+  )
+  const [refundCancellationError, setRefundCancellationError] = useState<
+    string | null
+  >(null)
+  const [refreshStale, setRefreshStale] = useState(false)
   const [loadMoreTarget, setLoadMoreTarget] = useState<HTMLDivElement | null>(
     null
   )
   const [observerGeneration, setObserverGeneration] = useState(0)
   const isPageRequestInFlight = useRef(false)
   const historyRequestVersion = useRef(0)
+  const refundAttempt = useRef<SubmissionAttempt | null>(null)
+  const cancellationAttempt = useRef<SubmissionAttempt | null>(null)
   const locale = language === "ar" ? "ar-SA" : "en-US"
   const deferredFilters = useDeferredValue(filters)
   const account =
@@ -277,41 +290,52 @@ export function AccountRecordsPage({
     []
   )
 
-  const loadInitialRecords = useCallback(async () => {
-    if (!accountId) return
-    const requestVersion = ++historyRequestVersion.current
-    setIsLoading(true)
-    setIsError(false)
-    setPageError(null)
-    try {
-      const page = await getAccountRecordHistoryPage(
-        accountId,
-        null,
-        historyPageSize,
-        getRuntimeTimeZone(),
-        deferredFilters
-      )
-      if (requestVersion !== historyRequestVersion.current) return
-      setRecords(page.records)
-      setNextCursor(page.nextCursor)
-      setHasMore(page.hasMore)
+  const loadInitialRecords = useCallback(
+    async (preserveOnError = false) => {
+      if (!accountId) return
+      const requestVersion = ++historyRequestVersion.current
+      if (!preserveOnError) setIsLoading(true)
+      if (!preserveOnError) setIsError(false)
+      setPageError(null)
       try {
-        const visibleCategories = await getVisibleRecordCategoryTree()
+        const page = await getAccountRecordHistoryPage(
+          accountId,
+          null,
+          historyPageSize,
+          getRuntimeTimeZone(),
+          deferredFilters
+        )
+        if (requestVersion !== historyRequestVersion.current) return
+        setRecords(page.records)
+        setNextCursor(page.nextCursor)
+        setHasMore(page.hasMore)
+        setRefreshStale(false)
+        try {
+          const visibleCategories = await getVisibleRecordCategoryTree()
+          if (requestVersion === historyRequestVersion.current)
+            setCategories(visibleCategories)
+        } catch {
+          if (requestVersion === historyRequestVersion.current)
+            setCategories([])
+        }
+      } catch (error) {
+        if (requestVersion !== historyRequestVersion.current) return
+        if (preserveOnError) {
+          setRefreshStale(true)
+        } else {
+          setRecords([])
+          setNextCursor(null)
+          setHasMore(false)
+          setIsError(true)
+        }
+        throw error
+      } finally {
         if (requestVersion === historyRequestVersion.current)
-          setCategories(visibleCategories)
-      } catch {
-        if (requestVersion === historyRequestVersion.current) setCategories([])
+          setIsLoading(false)
       }
-    } catch {
-      if (requestVersion !== historyRequestVersion.current) return
-      setRecords([])
-      setNextCursor(null)
-      setHasMore(false)
-      setIsError(true)
-    } finally {
-      if (requestVersion === historyRequestVersion.current) setIsLoading(false)
-    }
-  }, [accountId, deferredFilters])
+    },
+    [accountId, deferredFilters]
+  )
 
   const loadNextPage = useCallback(
     async (isRetry = false) => {
@@ -361,7 +385,7 @@ export function AccountRecordsPage({
 
   useEffect(() => {
     async function initialize() {
-      await loadInitialRecords()
+      await loadInitialRecords().catch(() => undefined)
     }
     void initialize()
   }, [loadInitialRecords])
@@ -426,33 +450,46 @@ export function AccountRecordsPage({
     if (!refundToCancel) return
     setIsSaving(true)
     setRefundCancellationError(null)
-    try {
-      await cancelExpenseRefund(refundToCancel.id)
-      await loadInitialRecords()
-      setRefundToCancel(null)
-      window.dispatchEvent(new Event("tharwati:data-changed"))
-    } catch (error) {
-      setRefundCancellationError(errorMessage(error, t("accounts.records.error")))
-    } finally {
-      setIsSaving(false)
-    }
+    const attempt = resolveSubmissionAttempt(
+      cancellationAttempt.current,
+      refundToCancel.id
+    )
+    cancellationAttempt.current = attempt
+    const outcome = await runMutationThenRefresh({
+      mutate: () =>
+        cancelExpenseRefund(refundToCancel.id, attempt.idempotencyKey),
+      onCommitted: () => {
+        cancellationAttempt.current = null
+        setRefundToCancel(null)
+        window.dispatchEvent(new Event("tharwati:data-changed"))
+      },
+      refresh: () => loadInitialRecords(true),
+    })
+    if (outcome.mutation === "rejected")
+      setRefundCancellationError(
+        errorMessage(outcome.error, t("accounts.records.error"))
+      )
+    setIsSaving(false)
   }, [loadInitialRecords, refundToCancel, t])
 
   const submitRecord = useCallback(
     async (values: AccountRecordFormValues) => {
       setIsSaving(true)
       setFormError(null)
-      try {
-        if (editingRecord) await correctAccountRecord(editingRecord.id, values)
-        else await addAccountRecord(values)
-        await loadInitialRecords()
-        closeForm()
-        window.dispatchEvent(new Event("tharwati:data-changed"))
-      } catch (error) {
-        setFormError(errorMessage(error, t("accounts.records.error")))
-      } finally {
-        setIsSaving(false)
-      }
+      const outcome = await runMutationThenRefresh({
+        mutate: () =>
+          editingRecord
+            ? correctAccountRecord(editingRecord.id, values)
+            : addAccountRecord(values),
+        onCommitted: () => {
+          closeForm()
+          window.dispatchEvent(new Event("tharwati:data-changed"))
+        },
+        refresh: () => loadInitialRecords(true),
+      })
+      if (outcome.mutation === "rejected")
+        setFormError(errorMessage(outcome.error, t("accounts.records.error")))
+      setIsSaving(false)
     },
     [closeForm, editingRecord, loadInitialRecords, t]
   )
@@ -461,16 +498,17 @@ export function AccountRecordsPage({
     if (!editingRecord) return
     setIsSaving(true)
     setDeleteError(null)
-    try {
-      await reverseAccountRecord(editingRecord.id)
-      await loadInitialRecords()
-      closeForm()
-      window.dispatchEvent(new Event("tharwati:data-changed"))
-    } catch (error) {
-      setDeleteError(errorMessage(error, t("accounts.records.error")))
-    } finally {
-      setIsSaving(false)
-    }
+    const outcome = await runMutationThenRefresh({
+      mutate: () => reverseAccountRecord(editingRecord.id),
+      onCommitted: () => {
+        closeForm()
+        window.dispatchEvent(new Event("tharwati:data-changed"))
+      },
+      refresh: () => loadInitialRecords(true),
+    })
+    if (outcome.mutation === "rejected")
+      setDeleteError(errorMessage(outcome.error, t("accounts.records.error")))
+    setIsSaving(false)
   }, [closeForm, editingRecord, loadInitialRecords, t])
 
   const openRefund = useCallback(async () => {
@@ -495,21 +533,33 @@ export function AccountRecordsPage({
       if (!refundExpense) return
       setIsSaving(true)
       setFormError(null)
-      try {
-        await addExpenseRefund({
-          expenseTransactionId: refundExpense.id,
-          ...values,
-        })
-        setRefundExpense(null)
-        setRefundSummary(null)
-        closeForm()
-        await loadInitialRecords()
-        window.dispatchEvent(new Event("tharwati:data-changed"))
-      } catch (error) {
-        setFormError(errorMessage(error, t("accounts.records.error")))
-      } finally {
-        setIsSaving(false)
+      const input = {
+        expenseTransactionId: refundExpense.id,
+        ...values,
       }
+      const attempt = resolveSubmissionAttempt(
+        refundAttempt.current,
+        refundSubmissionFingerprint(input)
+      )
+      refundAttempt.current = attempt
+      const outcome = await runMutationThenRefresh({
+        mutate: () =>
+          addExpenseRefund({
+            ...input,
+            idempotencyKey: attempt.idempotencyKey,
+          }),
+        onCommitted: () => {
+          refundAttempt.current = null
+          setRefundExpense(null)
+          setRefundSummary(null)
+          closeForm()
+          window.dispatchEvent(new Event("tharwati:data-changed"))
+        },
+        refresh: () => loadInitialRecords(true),
+      })
+      if (outcome.mutation === "rejected")
+        setFormError(errorMessage(outcome.error, t("accounts.records.error")))
+      setIsSaving(false)
     },
     [closeForm, loadInitialRecords, refundExpense, t]
   )
@@ -709,6 +759,21 @@ export function AccountRecordsPage({
         <p role="alert" className="mt-4 text-sm text-red-600">
           {formError}
         </p>
+      )}
+      {refreshStale && (
+        <div
+          role="status"
+          className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-200"
+        >
+          <span>{t("accounts.records.savedRefreshFailed")}</span>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => void loadInitialRecords(true).catch(() => undefined)}
+          >
+            {t("accounts.records.refreshData")}
+          </Button>
+        </div>
       )}
       <div className="mt-6 min-[1180px]:grid min-[1180px]:grid-cols-[15rem_minmax(0,1fr)] min-[1180px]:gap-6">
         <aside className="hidden min-[1180px]:block">

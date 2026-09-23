@@ -84,21 +84,24 @@ export class AccountRecordsRepository {
     filters: AccountRecordHistoryFilters = emptyAccountRecordHistoryFilters
   ): Promise<AccountRecordHistoryRow[]> {
     const operation = "accountRecords.getAccountRecordHistory"
-    const { data, error } = await this.client.rpc("get_account_record_history", {
-      p_account_id: accountId,
-      p_cursor_occurred_at: cursor?.occurredAt ?? null,
-      p_cursor_id: cursor?.id ?? null,
-      p_page_size: pageSize,
-      p_time_zone: timeZone,
-      p_search: filters.search.trim() || null,
-      p_from_date: filters.fromDate || null,
-      p_to_date: filters.toDate || null,
-      p_record_type: filters.recordType || null,
-      p_main_category_id: filters.mainCategoryId || null,
-      p_subcategory_id: filters.subcategoryId || null,
-      p_min_amount: filters.minAmount.trim() || null,
-      p_max_amount: filters.maxAmount.trim() || null,
-    })
+    const { data, error } = await this.client.rpc(
+      "get_account_record_history",
+      {
+        p_account_id: accountId,
+        p_cursor_occurred_at: cursor?.occurredAt ?? null,
+        p_cursor_id: cursor?.id ?? null,
+        p_page_size: pageSize,
+        p_time_zone: timeZone,
+        p_search: filters.search.trim() || null,
+        p_from_date: filters.fromDate || null,
+        p_to_date: filters.toDate || null,
+        p_record_type: filters.recordType || null,
+        p_main_category_id: filters.mainCategoryId || null,
+        p_subcategory_id: filters.subcategoryId || null,
+        p_min_amount: filters.minAmount.trim() || null,
+        p_max_amount: filters.maxAmount.trim() || null,
+      }
+    )
     return requireQueryData(data, error, operation) as AccountRecordHistoryRow[]
   }
 
@@ -107,14 +110,18 @@ export class AccountRecordsRepository {
     const { error } = await this.client.rpc("add_account_record", {
       p_record_type: values.type as "income" | "expense" | "transfer",
       p_account_id: values.accountId,
-      p_counterparty_account_id: values.type === "transfer" ? values.toAccountId : null,
+      p_counterparty_account_id:
+        values.type === "transfer" ? values.toAccountId : null,
       p_amount: values.amount,
-      p_received_amount: values.type === "transfer" ? values.receivedAmount || null : null,
+      p_received_amount:
+        values.type === "transfer" ? values.receivedAmount || null : null,
       p_occurred_at: localDateTimeInputToIso(values.occurredAt),
       p_category: null,
       p_notes: values.notes.trim() || null,
-      p_main_category_id: values.type === "transfer" ? null : values.mainCategoryId,
-      p_subcategory_id: values.type === "transfer" ? null : values.subcategoryId,
+      p_main_category_id:
+        values.type === "transfer" ? null : values.mainCategoryId,
+      p_subcategory_id:
+        values.type === "transfer" ? null : values.subcategoryId,
     })
     if (error) throw toRepositoryError(error, operation)
   }
@@ -129,58 +136,97 @@ export class AccountRecordsRepository {
       .eq("user_id", userId)
       .single()
 
-    return requireQueryData(data, error, operation) as unknown as AccountRecordRow
+    return requireQueryData(
+      data,
+      error,
+      operation
+    ) as unknown as AccountRecordRow
   }
 
-  async correctAccountRecord(recordId: string, values: AccountRecordFormValues): Promise<void> {
+  async correctAccountRecord(
+    recordId: string,
+    values: AccountRecordFormValues
+  ): Promise<void> {
     const operation = "accountRecords.correctAccountRecord"
     const { error } = await this.client.rpc("correct_account_record", {
       p_transaction_id: recordId,
       p_record_type: values.type as "income" | "expense" | "transfer",
       p_account_id: values.accountId,
-      p_counterparty_account_id: values.type === "transfer" ? values.toAccountId : null,
+      p_counterparty_account_id:
+        values.type === "transfer" ? values.toAccountId : null,
       p_amount: values.amount,
-      p_received_amount: values.type === "transfer" ? values.receivedAmount || null : null,
+      p_received_amount:
+        values.type === "transfer" ? values.receivedAmount || null : null,
       p_occurred_at: localDateTimeInputToIso(values.occurredAt),
       p_category: null,
       p_notes: values.notes.trim() || null,
-      p_main_category_id: values.type === "transfer" ? null : values.mainCategoryId,
-      p_subcategory_id: values.type === "transfer" ? null : values.subcategoryId,
+      p_main_category_id:
+        values.type === "transfer" ? null : values.mainCategoryId,
+      p_subcategory_id:
+        values.type === "transfer" ? null : values.subcategoryId,
     })
     if (error) throw toRepositoryError(error, operation)
   }
 
   async reverseAccountRecord(recordId: string): Promise<void> {
     const operation = "accountRecords.reverseAccountRecord"
-    const { error } = await this.client.rpc("reverse_account_record", { p_transaction_id: recordId })
+    const { error } = await this.client.rpc("reverse_account_record", {
+      p_transaction_id: recordId,
+    })
     if (error) throw toRepositoryError(error, operation)
   }
 
-  async getExpenseRefundSummary(expenseTransactionId: string): Promise<ExpenseRefundSummary> {
-    const { data, error } = await this.client.rpc("get_expense_refund_summary", { p_expense_transaction_id: expenseTransactionId })
-    const row = requireQueryData(data, error, "accountRecords.getExpenseRefundSummary")[0]
+  async getExpenseRefundSummary(
+    expenseTransactionId: string
+  ): Promise<ExpenseRefundSummary> {
+    const { data, error } = await this.client.rpc(
+      "get_expense_refund_summary",
+      { p_expense_transaction_id: expenseTransactionId }
+    )
+    const row = requireQueryData(
+      data,
+      error,
+      "accountRecords.getExpenseRefundSummary"
+    )[0]
     if (!row) throw new Error("Expense refund summary is unavailable")
-    return { originalAmount: row.original_amount, effectiveRefundedAmount: row.effective_refunded_amount, remainingRefundableAmount: row.remaining_refundable_amount, currencyCode: row.currency_code }
+    return {
+      originalAmount: row.original_amount,
+      effectiveRefundedAmount: row.effective_refunded_amount,
+      remainingRefundableAmount: row.remaining_refundable_amount,
+      currencyCode: row.currency_code,
+    }
   }
 
   async addExpenseRefund(values: ExpenseRefundValues): Promise<void> {
     const { error } = await this.client.rpc("add_expense_refund", {
-      p_expense_transaction_id: values.expenseTransactionId, p_amount: values.amount,
-      p_occurred_at: localDateTimeInputToIso(values.occurredAt), p_idempotency_key: crypto.randomUUID(),
-      p_destination_account_id: values.destinationAccountId, p_notes: values.notes.trim() || null,
+      p_expense_transaction_id: values.expenseTransactionId,
+      p_amount: values.amount,
+      p_occurred_at: localDateTimeInputToIso(values.occurredAt),
+      p_idempotency_key: values.idempotencyKey,
+      p_destination_account_id: values.destinationAccountId,
+      p_notes: values.notes.trim() || null,
     })
     if (error) throw toRepositoryError(error, "accountRecords.addExpenseRefund")
   }
 
-  async cancelExpenseRefund(refundTransactionId: string): Promise<void> {
-    const { error } = await this.client.rpc("cancel_expense_refund", { p_refund_transaction_id: refundTransactionId, p_idempotency_key: crypto.randomUUID() })
-    if (error) throw toRepositoryError(error, "accountRecords.cancelExpenseRefund")
+  async cancelExpenseRefund(
+    refundTransactionId: string,
+    idempotencyKey: string
+  ): Promise<void> {
+    const { error } = await this.client.rpc("cancel_expense_refund", {
+      p_refund_transaction_id: refundTransactionId,
+      p_idempotency_key: idempotencyKey,
+    })
+    if (error)
+      throw toRepositoryError(error, "accountRecords.cancelExpenseRefund")
   }
 
   async getAccountBalances(accountIds: string[]): Promise<AccountBalanceRow[]> {
     if (accountIds.length === 0) return []
     const operation = "accountRecords.getAccountBalances"
-    const { data, error } = await this.client.rpc("get_account_balances", { p_account_ids: accountIds })
+    const { data, error } = await this.client.rpc("get_account_balances", {
+      p_account_ids: accountIds,
+    })
     return requireQueryData(data, error, operation) as AccountBalanceRow[]
   }
 }

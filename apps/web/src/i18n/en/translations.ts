@@ -585,9 +585,11 @@ export const en = {
   "goals.moreActions": "More goal actions",
   "goals.delete": "Delete goal",
   "goals.deleteTitle": "Delete goal?",
-  "goals.deletePrompt": "Permanently delete “{{goalName}}”? This action cannot be undone.",
+  "goals.deletePrompt":
+    "Permanently delete “{{goalName}}”? This action cannot be undone.",
   "goals.keepGoal": "Keep goal",
-  "goals.deleteBlocked": "Goals with progress history cannot be deleted. Archive or cancel this goal instead.",
+  "goals.deleteBlocked":
+    "Goals with progress history cannot be deleted. Archive or cancel this goal instead.",
   "goals.error.load": "Goals could not be loaded.",
   "goals.error.action": "The Goal action could not be completed.",
   "goals.reverse.confirm":
@@ -690,6 +692,9 @@ export const en = {
   "accounts.records.title": "Account records",
   "accounts.records.empty": "No account records yet.",
   "accounts.records.error": "We couldn't load account records.",
+  "accounts.records.savedRefreshFailed":
+    "Saved successfully, but the latest data couldn't be loaded. Your previous data remains visible.",
+  "accounts.records.refreshData": "Refresh data",
   "accounts.records.date": "Date",
   "accounts.records.time": "Time",
   "accounts.records.description": "Description",
@@ -726,15 +731,19 @@ export const en = {
   "accounts.records.cancelRefund": "Cancel refund",
   "accounts.records.keepRefund": "Keep refund",
   "accounts.records.cancelRefundTitle": "Cancel refund?",
-  "accounts.records.cancelRefundQuestion": "Are you sure you want to cancel this {{amount}} refund?",
-  "accounts.records.cancelRefundDescription": "{{amount}} will be deducted from {{destination}}, and the refund will disappear from your transaction history.",
+  "accounts.records.cancelRefundQuestion":
+    "Are you sure you want to cancel this {{amount}} refund?",
+  "accounts.records.cancelRefundDescription":
+    "{{amount}} will be deducted from {{destination}}, and the refund will disappear from your transaction history.",
   "accounts.records.originalAmount": "Original amount",
   "accounts.records.refunded": "Refunded",
   "accounts.records.remainingRefundable": "Remaining refundable",
   "accounts.records.currentRefundAmount": "Current refund amount",
   "accounts.records.remainingAfterRefund": "Remaining after this refund",
-  "accounts.records.saveBeforeRefund": "Save changes before recording a refund.",
-  "accounts.records.cancelRefundConfirm": "Cancel this refund? It will be removed from normal history.",
+  "accounts.records.saveBeforeRefund":
+    "Save changes before recording a refund.",
+  "accounts.records.cancelRefundConfirm":
+    "Cancel this refund? It will be removed from normal history.",
   "accounts.records.account": "Account",
   "accounts.records.fromAccount": "From account",
   "accounts.records.toAccount": "To account",

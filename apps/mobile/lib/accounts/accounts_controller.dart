@@ -89,17 +89,20 @@ class AccountsController extends ChangeNotifier {
     return list;
   }
 
-  Future<void> load() async {
-    status = AccountsStatus.loading;
+  Future<bool> load({bool preserveOnError = false}) async {
+    if (!preserveOnError) status = AccountsStatus.loading;
     notifyListeners();
     try {
       model = await _service.loadAccounts();
       status = AccountsStatus.ready;
+      notifyListeners();
+      return true;
     } catch (_) {
-      model = null;
-      status = AccountsStatus.error;
+      if (!preserveOnError) model = null;
+      status = preserveOnError ? AccountsStatus.ready : AccountsStatus.error;
+      notifyListeners();
+      return false;
     }
-    notifyListeners();
   }
 
   void setSearch(String value) {

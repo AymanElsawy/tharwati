@@ -1,6 +1,10 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 
 import '../../core/data_change.dart';
+import '../../core/idempotency_key.dart';
+import '../../core/mutation_refresh.dart';
 import '../account_models.dart';
 import '../accounts_repository.dart' show AccountsException;
 import 'records_models.dart';
@@ -34,24 +38,30 @@ class RecordsController extends ChangeNotifier {
   String? actionError;
   String? accountBalance;
   bool hasAuthoritativeBalance = false;
+  bool refreshStale = false;
+  final PayloadIdempotencyKey _refundCancellationAttempt =
+      PayloadIdempotencyKey();
 
   int _requestVersion = 0;
 
   List<AccountRecordDateGroup> get groups =>
       groupAccountRecordsByLocalDate(records);
 
-  Future<Map<String, String>> _loadAccountBalance() async {
+  Future<({Map<String, String> values, bool available})>
+  _loadAccountBalance() async {
     try {
-      return await _repo.getAccountBalances([accountId]);
+      return (
+        values: await _repo.getAccountBalances([accountId]),
+        available: true,
+      );
     } catch (_) {
-      // The header renders unavailable rather than keeping a stale balance.
-      return const <String, String>{};
+      return (values: const <String, String>{}, available: false);
     }
   }
 
-  Future<void> load() async {
+  Future<bool> load({bool preserveOnError = false}) async {
     final version = ++_requestVersion;
-    status = RecordsStatus.loading;
+    if (!preserveOnError) status = RecordsStatus.loading;
     pageError = null;
     notifyListeners();
     try {
@@ -60,13 +70,22 @@ class RecordsController extends ChangeNotifier {
         _loadAccountBalance(),
       ]);
       final page = results[0] as AccountRecordHistoryPage;
-      final balances = results[1] as Map<String, String>;
-      if (version != _requestVersion) return;
+      final balanceResult =
+          results[1] as ({Map<String, String> values, bool available});
+      if (version != _requestVersion) return false;
       records = page.records;
       _cursor = page.nextCursor;
       hasMore = page.hasMore;
-      accountBalance = balances[accountId];
-      hasAuthoritativeBalance = true;
+      if (balanceResult.available) {
+        accountBalance = balanceResult.values[accountId];
+        hasAuthoritativeBalance = true;
+      } else if (!preserveOnError) {
+        accountBalance = null;
+        hasAuthoritativeBalance = true;
+      } else {
+        refreshStale = true;
+      }
+      refreshStale = !balanceResult.available && preserveOnError;
       status = RecordsStatus.ready;
       notifyListeners();
       try {
@@ -79,13 +98,21 @@ class RecordsController extends ChangeNotifier {
         if (version == _requestVersion) categories = const [];
       }
     } catch (_) {
-      if (version != _requestVersion) return;
-      records = const [];
-      _cursor = null;
-      hasMore = false;
-      status = RecordsStatus.error;
+      if (version != _requestVersion) return false;
+      if (preserveOnError) {
+        refreshStale = true;
+        status = RecordsStatus.ready;
+      } else {
+        records = const [];
+        _cursor = null;
+        hasMore = false;
+        status = RecordsStatus.error;
+      }
+      if (version == _requestVersion) notifyListeners();
+      return false;
     }
     if (version == _requestVersion) notifyListeners();
+    return true;
   }
 
   Future<void> loadMore() async {
@@ -149,29 +176,70 @@ class RecordsController extends ChangeNotifier {
   Future<bool> reverse(String recordId) =>
       _run(() => _repo.reverseRecord(recordId));
 
-  Future<bool> cancelRefund(String recordId) => _run(() => _repo.cancelRefund(recordId));
-  Future<ExpenseRefundSummary?> refundSummary(String expenseId) async { try { return await _repo.refundSummary(expenseId); } catch (e) { actionError = e is AccountsException ? e.message : 'Refund summary is unavailable.'; notifyListeners(); return null; } }
-  Future<bool> addRefund({required String expenseId, required String amount, required String accountId, required String occurredAt, required String notes, required String idempotencyKey}) => _run(() => _repo.addRefund(expenseId: expenseId, amount: amount, accountId: accountId, occurredAt: occurredAt, notes: notes, idempotencyKey: idempotencyKey));
+  Future<bool> cancelRefund(String recordId) async {
+    final key = _refundCancellationAttempt.forPayload(recordId);
+    final committed = await _run(() => _repo.cancelRefund(recordId, key));
+    if (committed) _refundCancellationAttempt.clear();
+    return committed;
+  }
+
+  Future<ExpenseRefundSummary?> refundSummary(String expenseId) async {
+    try {
+      return await _repo.refundSummary(expenseId);
+    } catch (e) {
+      actionError = e is AccountsException
+          ? e.message
+          : 'Refund summary is unavailable.';
+      notifyListeners();
+      return null;
+    }
+  }
+
+  Future<bool> addRefund({
+    required String expenseId,
+    required String amount,
+    required String accountId,
+    required String occurredAt,
+    required String notes,
+    required String idempotencyKey,
+  }) => _run(
+    () => _repo.addRefund(
+      expenseId: expenseId,
+      amount: amount,
+      accountId: accountId,
+      occurredAt: occurredAt,
+      notes: notes,
+      idempotencyKey: idempotencyKey,
+    ),
+  );
 
   Future<bool> _run(Future<void> Function() action) async {
     busy = true;
     actionError = null;
     notifyListeners();
-    try {
-      await action();
-      await load();
+    final outcome = await runMutation(
+      action,
+      errorMessage: (error) => error is AccountsException
+          ? error.message
+          : 'We could not save this record. Please try again.',
+    );
+    if (outcome is MutationCommitted) {
       DataChange.instance.ping();
-      return true;
-    } on AccountsException catch (e) {
-      actionError = e.message;
-      return false;
-    } catch (_) {
-      actionError = 'We couldn’t save this record. Please try again.';
-      return false;
-    } finally {
       busy = false;
       notifyListeners();
+      unawaited(load(preserveOnError: true));
+      return true;
     }
+    if (outcome is MutationRejected) {
+      actionError = outcome.message;
+    }
+    busy = false;
+    notifyListeners();
+    return false;
+  }
+
+  Future<void> retryRefresh() async {
+    await load(preserveOnError: true);
   }
 
   Future<void> reloadCategories() async {

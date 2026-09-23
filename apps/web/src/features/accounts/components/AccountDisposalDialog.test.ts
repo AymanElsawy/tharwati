@@ -3,6 +3,7 @@ import { renderToStaticMarkup } from "react-dom/server"
 import { afterEach, describe, expect, it, vi } from "vitest"
 
 import dialog from "./AccountDisposalDialog.tsx?raw"
+import details from "../pages/AccountDetailsPage.tsx?raw"
 import { ar } from "@/i18n/ar/translations"
 import { en } from "@/i18n/en/translations"
 import english from "@/i18n/en/translations.ts?raw"
@@ -14,7 +15,7 @@ function OwnershipMessage() {
   return createElement(
     "span",
     null,
-    t("accounts.disposal.fullSaleOnly", { percentage: "100" }),
+    t("accounts.disposal.fullSaleOnly", { percentage: "100" })
   )
 }
 
@@ -36,13 +37,24 @@ describe("AccountDisposalDialog", () => {
     )
     expect(dialog).toContain("getEligibleDisposalDestinationAccounts")
     expect(dialog).toContain("resolveAccountDisposalSubmissionAttempt")
-    expect(dialog).toContain("idempotencyKey: submissionAttempt.current.idempotencyKey")
+    expect(dialog).toContain(
+      "idempotencyKey: submissionAttempt.current.idempotencyKey"
+    )
+  })
+
+  it("closes after commit before refresh and exposes refresh-only recovery", () => {
+    expect(dialog.indexOf("onClose()")).toBeLessThan(
+      dialog.indexOf("await onSaved()")
+    )
+    expect(dialog).toContain("onRefreshFailed?.()")
+    expect(details).toContain("savedRefreshFailed")
+    expect(details).toContain("refreshData")
   })
 
   it("renders remaining ownership instead of a literal percentage placeholder", () => {
     vi.stubGlobal("localStorage", { getItem: () => null })
     const message = renderToStaticMarkup(
-      createElement(LanguageProvider, null, createElement(OwnershipMessage)),
+      createElement(LanguageProvider, null, createElement(OwnershipMessage))
     )
 
     expect(message).toContain("100%")

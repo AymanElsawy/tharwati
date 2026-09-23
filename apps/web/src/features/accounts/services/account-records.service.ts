@@ -14,12 +14,18 @@ import {
   type ExpenseRefundValues,
 } from "../types/account-record"
 import type { AccountSummary, Decimal } from "@/lib/supabase/types"
-import { divideDecimals, multiplyDecimals, normalizeDecimal } from "@/lib/financial-calculations/decimal"
+import {
+  divideDecimals,
+  multiplyDecimals,
+  normalizeDecimal,
+} from "@/lib/financial-calculations/decimal"
 import { exchangeRateService } from "@/services/exchange-rates"
 import { formatLocalDateTimeInput } from "@/lib/formatting/local-date-time"
 import type { VisibleRecordMainCategory } from "../types/record-category"
 
-export function mapAccountRecordHistoryRows(rows: readonly AccountRecordHistoryRow[]): AccountRecord[] {
+export function mapAccountRecordHistoryRows(
+  rows: readonly AccountRecordHistoryRow[]
+): AccountRecord[] {
   return rows.flatMap((row) => {
     if (!row.account_amount) return []
     return [
@@ -27,14 +33,18 @@ export function mapAccountRecordHistoryRows(rows: readonly AccountRecordHistoryR
         id: row.id,
         occurredAt: row.occurred_at,
         type: row.transaction_type_code,
-        isEditable: ["income", "expense", "transfer"].includes(
-          row.transaction_type_code
-        ) && row.description !== "Brokerage cash transfer",
+        isEditable:
+          ["income", "expense", "transfer"].includes(
+            row.transaction_type_code
+          ) && row.description !== "Brokerage cash transfer",
         description: row.description,
         notes: row.notes,
         mainCategoryId: row.main_category_id,
         subcategoryId: row.subcategory_id,
-        amount: row.entry_side === "credit" ? `-${row.account_amount}` : row.account_amount,
+        amount:
+          row.entry_side === "credit"
+            ? `-${row.account_amount}`
+            : row.account_amount,
         currencyCode: row.currency_code,
         localDate: row.local_date,
         dailyNet: row.daily_net,
@@ -61,22 +71,33 @@ export function mapAccountRecordHistoryPage(
   }
 }
 
-export function mapEditableAccountRecord(row: AccountRecordRow): EditableAccountRecord {
-  const entryFor = (side: "debit" | "credit") => row.account_entries.find(
-    (entry) => entry.entry_side === side && entry.account_id
-  )
+export function mapEditableAccountRecord(
+  row: AccountRecordRow
+): EditableAccountRecord {
+  const entryFor = (side: "debit" | "credit") =>
+    row.account_entries.find(
+      (entry) => entry.entry_side === side && entry.account_id
+    )
   const occurredAt = formatLocalDateTimeInput(new Date(row.occurred_at))
 
-  if (row.transaction_type_code === "income" || row.transaction_type_code === "expense") {
-    const accountEntry = entryFor(row.transaction_type_code === "income" ? "debit" : "credit")
-    if (!accountEntry?.account_id || !accountEntry.account_amount) throw new Error("Account record cannot be edited")
+  if (
+    row.transaction_type_code === "income" ||
+    row.transaction_type_code === "expense"
+  ) {
+    const accountEntry = entryFor(
+      row.transaction_type_code === "income" ? "debit" : "credit"
+    )
+    if (!accountEntry?.account_id || !accountEntry.account_amount)
+      throw new Error("Account record cannot be edited")
     return {
       id: row.id,
       values: {
         type: row.transaction_type_code,
         accountId: accountEntry.account_id,
         toAccountId: "",
-        amount: normalizeDecimal(accountEntry.account_amount) ?? accountEntry.account_amount,
+        amount:
+          normalizeDecimal(accountEntry.account_amount) ??
+          accountEntry.account_amount,
         receivedAmount: "",
         mainCategoryId: row.main_category_id ?? "",
         subcategoryId: row.subcategory_id ?? "",
@@ -88,7 +109,11 @@ export function mapEditableAccountRecord(row: AccountRecordRow): EditableAccount
 
   const source = entryFor("credit")
   const destination = entryFor("debit")
-  if (row.transaction_type_code !== "transfer" || !source?.account_id || !destination?.account_id) {
+  if (
+    row.transaction_type_code !== "transfer" ||
+    !source?.account_id ||
+    !destination?.account_id
+  ) {
     throw new Error("Account record cannot be edited")
   }
   return {
@@ -98,7 +123,9 @@ export function mapEditableAccountRecord(row: AccountRecordRow): EditableAccount
       accountId: source.account_id,
       toAccountId: destination.account_id,
       amount: normalizeDecimal(source.account_amount) ?? source.account_amount,
-      receivedAmount: normalizeDecimal(destination.account_amount) ?? destination.account_amount,
+      receivedAmount:
+        normalizeDecimal(destination.account_amount) ??
+        destination.account_amount,
       mainCategoryId: "",
       subcategoryId: "",
       occurredAt,
@@ -125,7 +152,12 @@ export function groupAccountRecordsByLocalDate(
     if (existing) {
       existing.records.push(record)
     } else {
-      groups.set(date, { date, dailyNet: record.dailyNet, currencyCode: record.currencyCode, records: [record] })
+      groups.set(date, {
+        date,
+        dailyNet: record.dailyNet,
+        currencyCode: record.currencyCode,
+        records: [record],
+      })
     }
   }
   return [...groups.values()]
@@ -137,7 +169,9 @@ export function getAccountRecordCategoryLabel(
 ) {
   if (record.type === "transfer") return null
   for (const main of categories) {
-    const subcategory = main.subcategories.find((item) => item.id === record.subcategoryId)
+    const subcategory = main.subcategories.find(
+      (item) => item.id === record.subcategoryId
+    )
     if (subcategory) return subcategory.name
   }
   return record.description.replace(/^(Income|Expense):\s*/i, "") || record.type
@@ -149,7 +183,9 @@ export function getAccountRecordCategoryPath(
 ) {
   if (record.type === "transfer") return null
   for (const main of categories) {
-    const subcategory = main.subcategories.find((item) => item.id === record.subcategoryId)
+    const subcategory = main.subcategories.find(
+      (item) => item.id === record.subcategoryId
+    )
     if (subcategory) return `${main.name} → ${subcategory.name}`
   }
   return getAccountRecordCategoryLabel(record, categories)
@@ -163,19 +199,30 @@ export async function getAccountRecordHistoryPage(
   filters: AccountRecordHistoryFilters = emptyAccountRecordHistoryFilters
 ): Promise<AccountRecordHistoryPage> {
   return mapAccountRecordHistoryPage(
-    await accountRecordsRepository.getAccountRecordHistory(accountId, cursor, pageSize, timeZone, filters),
+    await accountRecordsRepository.getAccountRecordHistory(
+      accountId,
+      cursor,
+      pageSize,
+      timeZone,
+      filters
+    ),
     pageSize
   )
 }
 
 export async function getEditableAccountRecord(recordId: string) {
-  return mapEditableAccountRecord(await accountRecordsRepository.getAccountRecordDetail(recordId))
+  return mapEditableAccountRecord(
+    await accountRecordsRepository.getAccountRecordDetail(recordId)
+  )
 }
 
 export function getRecordAccounts(accounts: readonly AccountSummary[]) {
-  return accounts.filter((account) => account.is_active && (
-    account.account_type_code === "cash" || account.account_type_code === "bank"
-  ))
+  return accounts.filter(
+    (account) =>
+      account.is_active &&
+      (account.account_type_code === "cash" ||
+        account.account_type_code === "bank")
+  )
 }
 
 export async function estimateTransferReceived(
@@ -189,7 +236,8 @@ export async function estimateTransferReceived(
     destinationCurrencyCode: to.currency_code,
   })
   const converted = multiplyDecimals(amount, resolved.rate)
-  if (converted === null) throw new Error("Invalid transfer amount or exchange rate")
+  if (converted === null)
+    throw new Error("Invalid transfer amount or exchange rate")
   return divideDecimals(converted, "1", 2) ?? converted
 }
 
@@ -197,22 +245,43 @@ export async function addAccountRecord(values: AccountRecordFormValues) {
   await accountRecordsRepository.addAccountRecord(values)
 }
 
-export async function correctAccountRecord(recordId: string, values: AccountRecordFormValues) {
+export async function correctAccountRecord(
+  recordId: string,
+  values: AccountRecordFormValues
+) {
   await accountRecordsRepository.correctAccountRecord(recordId, values)
 }
 
 export async function reverseAccountRecord(recordId: string) {
   await accountRecordsRepository.reverseAccountRecord(recordId)
 }
-export async function getExpenseRefundSummary(recordId: string): Promise<ExpenseRefundSummary> { return accountRecordsRepository.getExpenseRefundSummary(recordId) }
-export async function addExpenseRefund(values: ExpenseRefundValues) { await accountRecordsRepository.addExpenseRefund(values) }
-export async function cancelExpenseRefund(recordId: string) { await accountRecordsRepository.cancelExpenseRefund(recordId) }
+export async function getExpenseRefundSummary(
+  recordId: string
+): Promise<ExpenseRefundSummary> {
+  return accountRecordsRepository.getExpenseRefundSummary(recordId)
+}
+export async function addExpenseRefund(values: ExpenseRefundValues) {
+  await accountRecordsRepository.addExpenseRefund(values)
+}
+export async function cancelExpenseRefund(
+  recordId: string,
+  idempotencyKey: string
+) {
+  await accountRecordsRepository.cancelExpenseRefund(recordId, idempotencyKey)
+}
 
-export function eligibleRefundAccounts(accounts: readonly AccountSummary[], currencyCode: string) {
-  return getRecordAccounts(accounts).filter((account) => account.currency_code === currencyCode)
+export function eligibleRefundAccounts(
+  accounts: readonly AccountSummary[],
+  currencyCode: string
+) {
+  return getRecordAccounts(accounts).filter(
+    (account) => account.currency_code === currencyCode
+  )
 }
 
 export async function getAccountRecordBalances(accountIds: string[]) {
   const rows = await accountRecordsRepository.getAccountBalances(accountIds)
-  return new Map(rows.map((row) => [row.account_id, row.current_balance] as const))
+  return new Map(
+    rows.map((row) => [row.account_id, row.current_balance] as const)
+  )
 }

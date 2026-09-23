@@ -9,6 +9,7 @@ import '../../i18n/accounts_copy.dart';
 import '../../i18n/app_language.dart';
 import '../../theme/tokens.dart';
 import '../../widgets/app_sheet.dart';
+import '../../widgets/callout.dart';
 import '../../widgets/form_controls.dart';
 import '../../widgets/primary_button.dart';
 import '../account_models.dart';
@@ -173,6 +174,18 @@ class _AccountRecordsPageState extends State<AccountRecordsPage> {
                 onAdd: a.isActive ? () => _openForm() : null,
               ),
               if (_controller.busy) const LinearProgressIndicator(),
+              if (_controller.refreshStale)
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 8, 20, 0),
+                  child: Callout(
+                    tone: CalloutTone.warning,
+                    message: copy.savedRefreshFailed,
+                    action: TextButton(
+                      onPressed: _controller.retryRefresh,
+                      child: Text(copy.refreshData),
+                    ),
+                  ),
+                ),
               _SearchRow(
                 controller: _search,
                 onChanged: (v) {

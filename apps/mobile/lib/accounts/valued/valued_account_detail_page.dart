@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
@@ -6,12 +8,14 @@ import '../../i18n/accounts_copy.dart';
 import '../../i18n/app_language.dart';
 import '../../theme/tokens.dart';
 import '../../widgets/app_sheet.dart';
+import '../../widgets/callout.dart';
 import '../../widgets/primary_button.dart';
 import '../account_form_sheet.dart';
 import '../account_models.dart';
 import '../accounts_controller.dart';
 import 'valued_models.dart';
 import 'valued_repository.dart';
+import 'disposal_submission.dart';
 
 /// Real Estate / Business account detail — port of the web
 /// `ValuedAccountDetailsPage`: attributable value, metadata, valuation history,
@@ -38,6 +42,7 @@ class _ValuedAccountDetailPageState extends State<ValuedAccountDetailPage> {
   AccountOwnershipProjection? _ownership;
   bool _loading = true;
   bool _loadError = false;
+  bool _refreshStale = false;
 
   Account? get _account {
     for (final i in widget.controller.model?.items ?? const []) {
@@ -63,7 +68,7 @@ class _ValuedAccountDetailPageState extends State<ValuedAccountDetailPage> {
     if (mounted) setState(() {});
   }
 
-  Future<void> _load() async {
+  Future<bool> _load({bool preserveOnError = false}) async {
     setState(() => _loading = true);
     try {
       final results = await Future.wait([
@@ -71,21 +76,28 @@ class _ValuedAccountDetailPageState extends State<ValuedAccountDetailPage> {
         _repo.getCurrentOwnership(widget.accountId),
         _repo.getDisposals(widget.accountId),
       ]);
-      if (!mounted) return;
+      if (!mounted) return false;
       setState(() {
         _valuations = results[0] as List<AccountValuationEntry>;
         _ownership = results[1] as AccountOwnershipProjection?;
         _disposals = results[2] as List<AccountDisposal>;
         _loading = false;
         _loadError = false;
+        _refreshStale = false;
       });
+      return true;
     } catch (_) {
       if (mounted) {
         setState(() {
           _loading = false;
-          _loadError = true;
+          if (preserveOnError) {
+            _refreshStale = true;
+          } else {
+            _loadError = true;
+          }
         });
       }
+      return false;
     }
   }
 
@@ -191,6 +203,17 @@ class _ValuedAccountDetailPageState extends State<ValuedAccountDetailPage> {
         child: ListView(
           padding: const EdgeInsets.fromLTRB(20, 14, 20, 32),
           children: [
+            if (_refreshStale) ...[
+              Callout(
+                tone: CalloutTone.warning,
+                message: copy.savedRefreshFailed,
+                action: TextButton(
+                  onPressed: () => _load(preserveOnError: true),
+                  child: Text(copy.refreshData),
+                ),
+              ),
+              const SizedBox(height: 12),
+            ],
             if (widget.controller.actionError != null) ...[
               Text(
                 widget.controller.actionError!,
@@ -570,8 +593,17 @@ class _ValuedAccountDetailPageState extends State<ValuedAccountDetailPage> {
       ),
     );
     if (saved == true) {
-      await widget.controller.load();
-      await _load();
+      unawaited(_refreshAfterCommittedDisposal());
+    }
+  }
+
+  Future<void> _refreshAfterCommittedDisposal() async {
+    final results = await Future.wait([
+      widget.controller.load(preserveOnError: true),
+      _load(preserveOnError: true),
+    ]);
+    if (mounted && results.any((succeeded) => !succeeded)) {
+      setState(() => _refreshStale = true);
     }
   }
 }
@@ -780,6 +812,7 @@ class _DisposalSheet extends StatefulWidget {
 }
 
 class _DisposalSheetState extends State<_DisposalSheet> {
+  final _submissionKey = DisposalSubmissionKey();
   final _amount = TextEditingController();
   final _ownershipSold = TextEditingController();
   final _notes = TextEditingController();
@@ -829,16 +862,25 @@ class _DisposalSheetState extends State<_DisposalSheet> {
       _saving = true;
     });
     try {
+      final ownershipSold = widget.isProperty
+          ? widget.currentOwnership
+          : _ownershipSold.text.trim();
       await widget.repo.addDisposal(
         widget.account.id,
         AddAccountDisposalInput(
           disposedOn: _soldOn,
           saleAmount: raw,
           saleCurrencyCode: _currency,
-          ownershipPercentageSold: widget.isProperty
-              ? widget.currentOwnership
-              : _ownershipSold.text.trim(),
-          idempotencyKey: '${DateTime.now().microsecondsSinceEpoch}',
+          ownershipPercentageSold: ownershipSold,
+          idempotencyKey: _submissionKey.forPayload(
+            accountId: widget.account.id,
+            disposedOn: _soldOn,
+            saleAmount: raw,
+            currencyCode: _currency,
+            ownershipPercentageSold: ownershipSold,
+            destinationAccountId: _positiveProceeds ? _destinationId : null,
+            notes: _notes.text.trim().isEmpty ? null : _notes.text.trim(),
+          ),
           destinationAccountId: _positiveProceeds ? _destinationId : null,
           notes: _notes.text.trim().isEmpty ? null : _notes.text.trim(),
         ),

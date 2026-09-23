@@ -26,6 +26,7 @@ type AccountDisposalDialogProps = {
   currentOwnership: Decimal | null
   onClose: () => void
   onSaved: () => Promise<void>
+  onRefreshFailed?: () => void
 }
 
 export function AccountDisposalDialog(props: AccountDisposalDialogProps) {
@@ -44,6 +45,7 @@ function AccountDisposalDialogContent({
   currentOwnership,
   onClose,
   onSaved,
+  onRefreshFailed,
 }: Omit<AccountDisposalDialogProps, "account"> & { account: AccountSummary }) {
   const { t } = useTranslation()
   const { accounts, isLoading: areAccountsLoading } = useAccounts()
@@ -98,9 +100,13 @@ function AccountDisposalDialogContent({
         ...input,
         idempotencyKey: submissionAttempt.current.idempotencyKey,
       })
-      await onSaved()
       onClose()
       window.dispatchEvent(new Event("tharwati:data-changed"))
+      try {
+        await onSaved()
+      } catch {
+        onRefreshFailed?.()
+      }
     } catch {
       setError(t("accounts.error.unexpected"))
     } finally {

@@ -562,9 +562,11 @@ export const ar: Record<TranslationKey, string> = {
   "goals.moreActions": "إجراءات الهدف الأخرى",
   "goals.delete": "حذف الهدف",
   "goals.deleteTitle": "حذف الهدف؟",
-  "goals.deletePrompt": "حذف “{{goalName}}” نهائيًا؟ لا يمكن التراجع عن هذا الإجراء.",
+  "goals.deletePrompt":
+    "حذف “{{goalName}}” نهائيًا؟ لا يمكن التراجع عن هذا الإجراء.",
   "goals.keepGoal": "الاحتفاظ بالهدف",
-  "goals.deleteBlocked": "لا يمكن حذف هدف له سجل تقدم. استخدم الأرشفة أو الإلغاء بدلًا من ذلك.",
+  "goals.deleteBlocked":
+    "لا يمكن حذف هدف له سجل تقدم. استخدم الأرشفة أو الإلغاء بدلًا من ذلك.",
   "goals.error.load": "تعذر تحميل الأهداف.",
   "goals.error.action": "تعذر إكمال إجراء الهدف.",
   "goals.reverse.confirm":
@@ -663,6 +665,9 @@ export const ar: Record<TranslationKey, string> = {
   "accounts.records.title": "سجلات الحساب",
   "accounts.records.empty": "لا توجد سجلات للحساب بعد.",
   "accounts.records.error": "تعذر تحميل سجلات الحساب.",
+  "accounts.records.savedRefreshFailed":
+    "تم الحفظ بنجاح، ولكن تعذر تحميل أحدث البيانات. تظل بياناتك السابقة ظاهرة.",
+  "accounts.records.refreshData": "تحديث البيانات",
   "accounts.records.date": "التاريخ",
   "accounts.records.time": "الوقت",
   "accounts.records.description": "الوصف",
@@ -700,14 +705,16 @@ export const ar: Record<TranslationKey, string> = {
   "accounts.records.keepRefund": "الاحتفاظ بالاسترداد",
   "accounts.records.cancelRefundTitle": "إلغاء الاسترداد؟",
   "accounts.records.cancelRefundQuestion": "هل تريد إلغاء استرداد {{amount}}؟",
-  "accounts.records.cancelRefundDescription": "سيتم خصم {{amount}} من حساب {{destination}}، وستختفي حركة الاسترداد من سجل المعاملات.",
+  "accounts.records.cancelRefundDescription":
+    "سيتم خصم {{amount}} من حساب {{destination}}، وستختفي حركة الاسترداد من سجل المعاملات.",
   "accounts.records.originalAmount": "المبلغ الأصلي",
   "accounts.records.refunded": "تم استرداده",
   "accounts.records.remainingRefundable": "المتبقي للاسترداد",
   "accounts.records.currentRefundAmount": "مبلغ الاسترداد الحالي",
   "accounts.records.remainingAfterRefund": "المتبقي بعد هذا الاسترداد",
   "accounts.records.saveBeforeRefund": "احفظ التغييرات قبل تسجيل الاسترداد.",
-  "accounts.records.cancelRefundConfirm": "إلغاء هذا الاسترداد؟ سيُخفى من السجل العادي.",
+  "accounts.records.cancelRefundConfirm":
+    "إلغاء هذا الاسترداد؟ سيُخفى من السجل العادي.",
   "accounts.records.account": "الحساب",
   "accounts.records.fromAccount": "من حساب",
   "accounts.records.toAccount": "إلى حساب",

@@ -10,8 +10,9 @@ class AccountsCopy {
   final AppLanguage language;
   bool get _ar => language == AppLanguage.ar;
   String ltr(String value) => '\u2066$value\u2069';
-  String get partialReinvestAbbreviation =>
-      _ar ? '\u0645\u064f\u0639\u0627\u062f \u0627\u0633\u062a\u062b\u0645.' : 'reinv.';
+  String get partialReinvestAbbreviation => _ar
+      ? '\u0645\u064f\u0639\u0627\u062f \u0627\u0633\u062a\u062b\u0645.'
+      : 'reinv.';
   String get activityReinvested => _ar ? 'مُعاد استثماره' : 'reinvested';
 
   String get accounts => _ar ? 'الحسابات' : 'Accounts';
@@ -42,6 +43,10 @@ class AccountsCopy {
       ? 'سجلاتك آمنة. اسحب للتحديث أو حاول مجددًا.'
       : 'Your records are safe. Pull to refresh or try again.';
   String get tryAgain => _ar ? 'حاول مجددًا' : 'Try again';
+  String get savedRefreshFailed => _ar
+      ? 'تم الحفظ بنجاح، ولكن تعذر تحميل أحدث البيانات. تظل بياناتك السابقة ظاهرة.'
+      : 'Saved successfully, but the latest data could not be loaded. Your previous data remains visible.';
+  String get refreshData => _ar ? 'تحديث البيانات' : 'Refresh data';
   String get addFirstAccount =>
       _ar ? 'أضف حسابك الأول' : 'Add your first account';
   String get noFilteredAccounts => _ar
@@ -397,23 +402,28 @@ class AccountsCopy {
 
   String get recordRefund => _ar ? 'تسجيل استرداد' : 'Record refund';
   String get refundAmount => _ar ? 'مبلغ الاسترداد' : 'Refund amount';
-  String get currentRefundAmount => _ar ? 'الاسترداد الحالي' : 'Current refund amount';
-  String get remainingAfterRefund => _ar ? 'المتبقي بعد هذا الاسترداد' : 'Remaining after this refund';
+  String get currentRefundAmount =>
+      _ar ? 'الاسترداد الحالي' : 'Current refund amount';
+  String get remainingAfterRefund =>
+      _ar ? 'المتبقي بعد هذا الاسترداد' : 'Remaining after this refund';
   String get invalidRefundRequest => _ar
       ? 'تعذر تسجيل الاسترداد. تحقق من البيانات وحاول مرة أخرى.'
       : 'Couldn’t record the refund. Check the details and try again.';
   String get cancelRefund => _ar ? 'إلغاء الاسترداد' : 'Cancel refund';
-  String get cancelRefundTitle =>
-      _ar ? 'إلغاء الاسترداد؟' : 'Cancel refund?';
+  String get cancelRefundTitle => _ar ? 'إلغاء الاسترداد؟' : 'Cancel refund?';
   String get keepRefund => _ar ? 'الاحتفاظ بالاسترداد' : 'Keep refund';
   String cancelRefundBody(String amount, String destinationAccount) => _ar
       ? 'هل تريد إلغاء استرداد $amount؟\nسيتم خصم $amount من حساب $destinationAccount، وستختفي حركة الاسترداد من سجل المعاملات.'
       : 'Are you sure you want to cancel this $amount refund?\n$amount will be deducted from $destinationAccount, and the refund will disappear from your transaction history.';
   String get originalAmount => _ar ? 'المبلغ الأصلي' : 'Original amount';
   String get refunded => _ar ? 'المسترد' : 'Refunded';
-  String get remainingRefundable => _ar ? 'المتبقي للاسترداد' : 'Remaining refundable';
-  String get destinationAccountLabel => _ar ? 'حساب الوجهة' : 'Destination account';
-  String get saveBeforeRefund => _ar ? 'احفظ التغييرات قبل تسجيل الاسترداد.' : 'Save changes before recording a refund.';
+  String get remainingRefundable =>
+      _ar ? 'المتبقي للاسترداد' : 'Remaining refundable';
+  String get destinationAccountLabel =>
+      _ar ? 'حساب الوجهة' : 'Destination account';
+  String get saveBeforeRefund => _ar
+      ? 'احفظ التغييرات قبل تسجيل الاسترداد.'
+      : 'Save changes before recording a refund.';
 
   // Cash/Bank record write and category-management presentation.
   String get editRecord => _ar ? 'تعديل السجل' : 'Edit record';

@@ -3,7 +3,6 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../core/local_datetime.dart';
 import '../accounts_repository.dart' show AccountsException;
 import 'records_models.dart';
-import 'refund_submission.dart';
 
 /// RPC layer for the account-records ledger — 1:1 with the web
 /// `account-records.repository.ts` / `record-categories.repository.ts` calls
@@ -105,22 +104,43 @@ class RecordsRepository {
   Future<void> reverseRecord(String recordId) =>
       _rpc('reverse_account_record', {'p_transaction_id': recordId});
 
-  Future<void> cancelRefund(String recordId) => _rpc('cancel_expense_refund', {
-    'p_refund_transaction_id': recordId,
-    'p_idempotency_key': newRefundIdempotencyKey(),
-  });
+  Future<void> cancelRefund(String recordId, String idempotencyKey) => _rpc(
+    'cancel_expense_refund',
+    {'p_refund_transaction_id': recordId, 'p_idempotency_key': idempotencyKey},
+  );
 
   Future<ExpenseRefundSummary> refundSummary(String expenseId) async {
-    final rows = await _client.rpc('get_expense_refund_summary', params: {'p_expense_transaction_id': expenseId}) as List;
+    final rows =
+        await _client.rpc(
+              'get_expense_refund_summary',
+              params: {'p_expense_transaction_id': expenseId},
+            )
+            as List;
     if (rows.isEmpty) throw AccountsException('Refund summary is unavailable.');
     return ExpenseRefundSummary.fromRow(rows.first as Map);
   }
 
-  Future<void> addRefund({required String expenseId, required String amount, required String accountId, required String occurredAt, required String notes, required String idempotencyKey}) async {
+  Future<void> addRefund({
+    required String expenseId,
+    required String amount,
+    required String accountId,
+    required String occurredAt,
+    required String notes,
+    required String idempotencyKey,
+  }) async {
     try {
-      await _rpc('add_expense_refund', {'p_expense_transaction_id': expenseId, 'p_amount': amount, 'p_destination_account_id': accountId, 'p_occurred_at': localDateTimeInputToIso(occurredAt), 'p_notes': notes.trim().isEmpty ? null : notes.trim(), 'p_idempotency_key': idempotencyKey});
+      await _rpc('add_expense_refund', {
+        'p_expense_transaction_id': expenseId,
+        'p_amount': amount,
+        'p_destination_account_id': accountId,
+        'p_occurred_at': localDateTimeInputToIso(occurredAt),
+        'p_notes': notes.trim().isEmpty ? null : notes.trim(),
+        'p_idempotency_key': idempotencyKey,
+      });
     } on AccountsException catch (e) {
-      if (e.message.toLowerCase().contains('invalid input syntax for type uuid')) {
+      if (e.message.toLowerCase().contains(
+        'invalid input syntax for type uuid',
+      )) {
         throw AccountsException('invalid_refund_request');
       }
       rethrow;

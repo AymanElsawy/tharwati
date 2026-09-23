@@ -56,8 +56,20 @@ export type AccountRecordFormValues = {
   notes: string
 }
 
-export type ExpenseRefundSummary = { originalAmount: Decimal; effectiveRefundedAmount: Decimal; remainingRefundableAmount: Decimal; currencyCode: string }
-export type ExpenseRefundValues = { expenseTransactionId: string; amount: Decimal; destinationAccountId: string; occurredAt: string; notes: string }
+export type ExpenseRefundSummary = {
+  originalAmount: Decimal
+  effectiveRefundedAmount: Decimal
+  remainingRefundableAmount: Decimal
+  currencyCode: string
+}
+export type ExpenseRefundValues = {
+  expenseTransactionId: string
+  amount: Decimal
+  destinationAccountId: string
+  occurredAt: string
+  notes: string
+  idempotencyKey: string
+}
 
 export const emptyAccountRecordFormValues: AccountRecordFormValues = {
   type: "expense",

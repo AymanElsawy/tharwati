@@ -42,7 +42,9 @@ describe("Refund UI", () => {
       "b",
     ]))
   it("defaults amount to remaining and blocks over-remaining", () => {
-    expect(refund).toContain("normalizeDecimal(summary.remainingRefundableAmount)")
+    expect(refund).toContain(
+      "normalizeDecimal(summary.remainingRefundableAmount)"
+    )
     expect(refund).toContain(
       "compareDecimals(normalizedAmount, summary.remainingRefundableAmount)"
     )
@@ -87,10 +89,13 @@ describe("Refund UI", () => {
     expect(refund).toContain("z-[140]")
     expect(page).not.toContain("Add refund")
   })
-  it("creates, refreshes, cancels, and labels Refund without treating it as Income", () => {
-    expect(page).toContain("await addExpenseRefund")
-    expect(page).toContain("await cancelExpenseRefund")
-    expect(page).toContain("await loadInitialRecords()")
+  it("completes Refund mutations before a separate refresh", () => {
+    expect(page).toContain("runMutationThenRefresh")
+    expect(page).toContain('mutation === "rejected"')
+    expect(page).toContain("setRefreshStale(true)")
+    expect(page).toContain("loadInitialRecords(true)")
+    expect(page).toContain("savedRefreshFailed")
+    expect(page).toContain("refreshData")
     expect(page).toContain('record?.type === "refund"')
     expect(page).toContain('record.type === "refund"')
     expect(page).toContain('t("accounts.records.refund")')
