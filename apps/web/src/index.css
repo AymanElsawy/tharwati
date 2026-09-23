@@ -279,6 +279,27 @@ select:dir(rtl) {
   background-position: left 0.65rem center;
 }
 
+/* Native popup menus do not consistently inherit the select's color scheme. */
+select option {
+  color: var(--color-text-primary);
+  background-color: var(--color-surface);
+}
+
+select option:hover {
+  color: var(--color-text-primary);
+  background-color: var(--color-surface-hover);
+}
+
+select option:checked {
+  color: var(--color-text-on-primary);
+  background-color: var(--color-primary);
+}
+
+select option:disabled {
+  color: var(--color-text-muted);
+  background-color: var(--color-surface-muted);
+}
+
 [dir="rtl"] .lucide-arrow-left {
   transform: rotate(180deg);
 }
