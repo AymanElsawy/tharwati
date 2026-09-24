@@ -128,6 +128,29 @@ describe("PortfolioValuationService", () => {
     expect(result.holdings[0]).toMatchObject({ marketValueBase: "120", marketPriceSource: "twelve_data", marketPriceType: "realtime" })
   })
 
+  it("requests a price for an asset present in the refreshed holding set", async () => {
+    const refreshedHolding = holding({
+      id: "holding-new",
+      asset_id: "asset-new",
+      asset: { ...holding().asset!, id: "asset-new", symbol: "NEW" },
+    })
+    const getCurrentPrices = vi.fn().mockResolvedValue([
+      price({ assetId: "asset-new", price: "15" }),
+    ])
+    const valuation = new PortfolioValuationService({
+      prices: { getCurrentPrice: vi.fn(), getCurrentPrices },
+      rates: { resolveCurrentRate: vi.fn().mockResolvedValue(rate("USD", "USD", "1")) },
+    })
+
+    const result = await valuation.calculate({
+      baseCurrency: "USD",
+      holdings: [refreshedHolding],
+    })
+
+    expect(getCurrentPrices).toHaveBeenCalledWith(["asset-new"])
+    expect(result.holdings[0]).toMatchObject({ assetId: "asset-new", marketValueBase: "150" })
+  })
+
   it("calculates exact market value and fee-inclusive profitable performance", async () => {
     const result = await service({
       prices: { "asset-1": price() },

@@ -756,7 +756,7 @@ function ExistingHoldingDialog({
         const { error } = await supabase.rpc("add_existing_holding_v2", { ...params, p_idempotency_key: attempt.current!.idempotencyKey })
         if (error) throw error
       },
-      onCommitted: () => { attempt.current = null; onClose() },
+      onCommitted: () => { attempt.current = null; onClose(); window.dispatchEvent(new Event("tharwati:data-changed")) },
       refresh: onSaved,
     })
     setSaving(false)
