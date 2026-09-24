@@ -96,26 +96,14 @@ select pg_catalog.set_config(
 );
 set local role authenticated;
 
-select public.add_investment(
+insert into public.assets (id,user_id,asset_type_code,name,symbol,currency_code,exchange,is_custom,canonical_quantity_unit)
+values ('31000000-0000-4000-8000-000000000001',auth.uid(),'stock','Holdings Security Stock A','HSA','USD','XTEST',true,'shares');
+select public.add_brokerage_buy_v2(
   p_account_id => '21000000-0000-4000-8000-000000000001',
-  p_new_account_type_code => null,
-  p_new_account_name => null,
-  p_new_account_currency_code => null,
-  p_asset_id => null,
-  p_new_asset_type_code => 'stock',
-  p_new_asset_name => 'Holdings Security Stock A',
-  p_new_asset_symbol => 'HSA',
-  p_new_asset_currency_code => 'USD',
-  p_new_asset_exchange => 'XTEST',
-  p_identifier_scheme => 'ticker',
-  p_identifier_namespace => 'XTEST',
-  p_identifier_value => 'HSA',
-  p_identifier_provider => null,
-  p_quantity => 2,
-  p_unit_price => 100,
-  p_fees => 5,
-  p_occurred_at => now(),
-  p_notes => null
+  p_asset_id => '31000000-0000-4000-8000-000000000001',
+  p_quantity => 2, p_unit_price => 100, p_fees => 5,
+  p_occurred_at => now(), p_notes => null, p_account_fx_rate => null,
+  p_idempotency_key => gen_random_uuid()
 );
 
 do $test$
@@ -202,26 +190,14 @@ select pg_catalog.set_config(
 );
 set local role authenticated;
 
-select public.add_investment(
+insert into public.assets (id,user_id,asset_type_code,name,symbol,currency_code,exchange,is_custom,canonical_quantity_unit)
+values ('31000000-0000-4000-8000-000000000002',auth.uid(),'stock','Holdings Security Stock B','HSB','USD','XTEST',true,'shares');
+select public.add_brokerage_buy_v2(
   p_account_id => '21000000-0000-4000-8000-000000000002',
-  p_new_account_type_code => null,
-  p_new_account_name => null,
-  p_new_account_currency_code => null,
-  p_asset_id => null,
-  p_new_asset_type_code => 'stock',
-  p_new_asset_name => 'Holdings Security Stock B',
-  p_new_asset_symbol => 'HSB',
-  p_new_asset_currency_code => 'USD',
-  p_new_asset_exchange => 'XTEST',
-  p_identifier_scheme => 'ticker',
-  p_identifier_namespace => 'XTEST',
-  p_identifier_value => 'HSB',
-  p_identifier_provider => null,
-  p_quantity => 3,
-  p_unit_price => 50,
-  p_fees => 2,
-  p_occurred_at => now(),
-  p_notes => null
+  p_asset_id => '31000000-0000-4000-8000-000000000002',
+  p_quantity => 3, p_unit_price => 50, p_fees => 2,
+  p_occurred_at => now(), p_notes => null, p_account_fx_rate => null,
+  p_idempotency_key => gen_random_uuid()
 );
 
 do $test$
@@ -307,7 +283,7 @@ begin
 end;
 $test$;
 
-\echo ok 9 - trusted add-investment posting rebuilds the holding
+\echo ok 9 - trusted Brokerage Buy v2 posting rebuilds the holding
 
 do $test$
 declare
@@ -327,8 +303,7 @@ begin
   perform public.rebuild_holding_projection(
     '11000000-0000-4000-8000-000000000001',
     v_user_a_holding.account_id,
-    v_user_a_holding.asset_id,
-    null
+    v_user_a_holding.asset_id
   );
 
   select count(*) into v_after_count

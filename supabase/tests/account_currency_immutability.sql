@@ -104,62 +104,10 @@ $test$;
 
 \echo ok 1 - currency changes before history exists
 
--- Fixture setup is administrative; the assertions below exercise account
--- updates through the authenticated/RLS boundary.
-reset role;
-
-insert into public.financial_transactions (
-  id,
-  user_id,
-  transaction_type_code,
-  transaction_currency_code,
-  status,
-  occurred_at,
-  description
-)
-values (
-  '32000000-0000-4000-8000-000000000001',
-  '12000000-0000-4000-8000-000000000001',
-  'deposit',
-  'USD',
-  'draft',
-  now(),
-  'Account currency test'
-);
-
-insert into public.transaction_entries (
-  transaction_id,
-  user_id,
-  account_id,
-  entry_side,
-  transaction_amount,
-  account_amount,
-  memo
-)
-values
-  (
-    '32000000-0000-4000-8000-000000000001',
-    '12000000-0000-4000-8000-000000000001',
-    '22000000-0000-4000-8000-000000000002',
-    'debit',
-    10,
-    10,
-    'deposit'
-  ),
-  (
-    '32000000-0000-4000-8000-000000000001',
-    '12000000-0000-4000-8000-000000000001',
-    '22000000-0000-4000-8000-000000000002',
-    'credit',
-    10,
-    10,
-    'offset'
-  );
-
-set local role authenticated;
-
-select public.post_transaction(
-  '32000000-0000-4000-8000-000000000001'
+-- Create posted history through the supported authenticated account-record flow.
+select public.add_account_record(
+  'income', '22000000-0000-4000-8000-000000000002', null,
+  10, null, now(), 'Account currency test', null
 );
 
 do $test$
@@ -182,26 +130,24 @@ $test$;
 
 \echo ok 2 - currency cannot change after a posted transaction
 
-select public.add_investment(
+insert into public.assets (
+  id, user_id, asset_type_code, name, symbol, currency_code,
+  exchange, is_custom, canonical_quantity_unit
+) values (
+  '42000000-0000-4000-8000-000000000001', auth.uid(), 'stock',
+  'Account Currency Test Stock', 'ACTS', 'USD', 'XTEST', true, 'shares'
+);
+
+select public.add_brokerage_buy_v2(
   p_account_id => '22000000-0000-4000-8000-000000000003',
-  p_new_account_type_code => null,
-  p_new_account_name => null,
-  p_new_account_currency_code => null,
-  p_asset_id => null,
-  p_new_asset_type_code => 'stock',
-  p_new_asset_name => 'Account Currency Test Stock',
-  p_new_asset_symbol => 'ACTS',
-  p_new_asset_currency_code => 'USD',
-  p_new_asset_exchange => 'XTEST',
-  p_identifier_scheme => 'ticker',
-  p_identifier_namespace => 'XTEST',
-  p_identifier_value => 'ACTS',
-  p_identifier_provider => null,
+  p_asset_id => '42000000-0000-4000-8000-000000000001',
   p_quantity => 1,
   p_unit_price => 100,
   p_fees => 1,
   p_occurred_at => now(),
-  p_notes => null
+  p_notes => null,
+  p_account_fx_rate => null,
+  p_idempotency_key => gen_random_uuid()
 );
 
 do $test$

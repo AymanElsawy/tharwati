@@ -64,7 +64,7 @@ Uniqueness:
 - **Non-metal accounts**: unique on `(user_id, lower(trim(name)), account_type_code, coalesce(bank_subtype, ''))` among active rows where `account_type_code <> 'gold'` and `is_active = true`. Bank subtype participates because Bank Debit and Bank Credit are distinct user-facing account types: an active user may have both with the same normalized name, while two active Bank Debit accounts with that name conflict. Other non-metal types follow the same same-name/same-type rule. Closed and Sold accounts retain their historical names without reserving them, so a new active account may reuse one. Reopening a Closed account re-enters this DB-enforced type-scoped rule. Whitespace/case variants within the same type still conflict. Sold accounts remain non-reopenable.
 - **Gold/silver accounts**: unique on `(user_id, currency_code, metal_type)` where `account_type_code = 'gold'` — **only one Gold and one Silver account per currency, per user.** This is why gold/silver accounts are always auto-named "Gold"/"Silver" and the name field is hidden in the form.
 
-RLS: standard per-user CRUD (`auth.uid() = user_id`).
+RLS: per-user SELECT/INSERT/UPDATE (`auth.uid() = user_id`). Account deletion uses the guarded pristine-account RPC; authenticated clients have no direct DELETE grant.
 
 ### Real Estate / Business valuations and disposals
 
@@ -78,8 +78,8 @@ The v2 create RPC returns the committed account with numeric fields encoded as d
 
 Triggers (immutability guards once financial history exists):
 
-- Changing `currency_code` on an account with existing `transaction_entries` raises Postgres error `23514` ("This account already contains financial history. Its currency cannot be changed.").
-- Changing `opening_balance` similarly raises `23514` for opening balance.
+- Changing `currency_code`, `opening_balance`, or `account_type_code` after financial history exists raises Postgres error `23514`. History includes draft/posted ledger entries, holdings, metal purchases (including funding-account references), valuations, and disposals, even when corrected or reversed. The currency/opening-balance errors retain their existing client-recognized messages.
+- Unchanged financial fields and harmless metadata edits remain allowed. Supported history writers lock the account before validation/insertion, serializing their work with account edits; pristine accounts remain editable subject to existing type constraints.
 - `get_account_lifecycle_eligibility()` returns server-authoritative history, Close, and Delete eligibility for owned accounts. It covers ledger entries, holdings, metal purchases and funding links, valuations, and disposals. For Cash, Bank, and Brokerage Close checks, the text-based balance read model is accepted only when it is a valid finite decimal and is then explicitly converted to `numeric`; missing or malformed values fail closed as `current_value_unavailable` and are never treated as zero.
 - Authenticated table updates cannot directly change `is_active`, `closed_reason`, or `closed_on`; Close/Reopen RPCs own ordinary lifecycle transitions, while disposal projection alone owns Sold status and date.
 
@@ -91,7 +91,8 @@ Triggers (immutability guards once financial history exists):
 Web and Mobile create through `add_metal_purchase_v2`, `add_existing_holding_v2`,
 `add_account_valuation_v2`, `create_financial_account_v2`, and
 `create_valued_account_v2`. Each requires `p_idempotency_key uuid`. The legacy
-RPCs and direct table paths remain available for deployed-client compatibility.
+RPCs remain available for deployed-client compatibility. Direct ordinary-account
+creation remains available under RLS; direct metal-purchase insertion is denied.
 The simplified Web Cash Accounts caller also uses `create_financial_account_v2`.
 
 These entry points reuse `private.account_record_mutation_receipts` and its
@@ -123,7 +124,7 @@ The current project has a deliberately minimal Cash/Bank ledger foundation:
 - Account Records use `income`, `expense`, and `transfer`; Real Estate/Business sale allocations use the separate internal `account_disposal_proceeds` classification and therefore never appear as ordinary income or owner contribution.
 - `financial_transactions` stores authenticated-user transaction headers, status, occurrence time, description, and notes.
 - `transaction_entries` stores exact decimal debit/credit amounts. `transaction_amount` is the balanced transaction-currency value; `account_amount` is the referenced account-native value. Accountless entries are restricted to the approved external-flow convention.
-- Posted transactions and their entries are immutable. Ownership checks restrict Account Records entries to owned Cash or Bank accounts, exact debit/credit balance is validated before posting, and `get_account_balances` projects opening balance plus posted non-asset ledger effects for Cash, Bank, and active Brokerage accounts. Brokerage Available Cash is `opening_balance + posted debits - posted credits`; holding entries are excluded. The internal-only `get_brokerage_available_cash(account_id, required_cash, lock_account)` helper validates an owned active Brokerage account and can reject insufficient cash while holding the account lock for future posting flows.
+- Posted transactions and their entries are immutable. Entry updates lock and check both OLD and NEW transaction parents in ID order, so an entry cannot be moved out of or into a posted transaction. Draft construction and posting remain supported. Ownership checks restrict Account Records entries to owned Cash or Bank accounts, exact debit/credit balance is validated before posting, and `get_account_balances` projects opening balance plus posted non-asset ledger effects for Cash, Bank, and active Brokerage accounts. Brokerage Available Cash is `opening_balance + posted debits - posted credits`; holding entries are excluded. The internal-only `get_brokerage_available_cash(account_id, required_cash, lock_account)` helper validates an owned active Brokerage account and can reject insufficient cash while holding the account lock for future posting flows.
 - `reverse_account_record(transaction_id)` is an authenticated, immutable reversal path for supported posted Income, Expense, and Transfer records. It creates a new linked transaction with `reverses_transaction_id` set at insert time; it never updates or deletes the original. A reversal must leave every affected account non-negative and respect Bank Credit limits. Cross-currency transfers reverse both native account amounts while retaining the original shared transaction amount.
 - `correct_account_record(...)` is an authenticated atomic correction path. It locks an owned posted original, rejects already reversed/corrected originals, posts its linked reversal, then posts the submitted replacement with `corrects_transaction_id` set at creation. The submitted type, accounts, amounts (including cross-currency received amount), category IDs, notes, and occurrence time are passed unchanged into the normal internal posting validation; an error from either step rolls back the full correction.
 - Refunds are a distinct `refund` transaction type and are never represented as Income. `financial_transactions.refunds_transaction_id` links each Refund to one effective posted Expense, while allowing multiple Refunds for that Expense. `add_expense_refund(expense_transaction_id, amount, occurred_at, idempotency_key, destination_account_id, notes)` locks the original Expense, sums effective linked Refunds, and rejects any amount that would make the total exceed the original Expense. It copies the original main category and subcategory server-side, leaves the Expense unchanged and visible, and posts a balanced destination debit plus an accountless `expense_refund` credit. The default destination is the original account; an alternate must be an owned active same-currency Cash or Bank account. Refund V1 never performs FX conversion. Bank Credit destinations retain the available-credit cap. A user-scoped unique idempotency key and advisory lock make identical retries safe and reject changed replays.
@@ -173,8 +174,8 @@ create table public.metal_purchases (
   cost_per_unit numeric(20, 2) not null,      -- check: > 0
   fees numeric(20, 2) not null default 0,     -- check: >= 0
   funding_mode text not null,                 -- 'external' | 'cash_account'
-  funding_account_id uuid references public.financial_accounts (id) on delete set null,
-  funding_transaction_id uuid references public.financial_transactions (id) on delete restrict,
+  funding_account_id uuid references public.financial_accounts (id) on delete no action deferrable initially deferred,
+  funding_transaction_id uuid references public.financial_transactions (id) on delete no action deferrable initially deferred,
   notes text,
   created_at timestamptz not null default now()
 )
@@ -183,7 +184,8 @@ create table public.metal_purchases (
 - `funding_account_id` required if and only if `funding_mode = 'cash_account'`.
 - Funded purchases retain the posted `investment_purchase` transaction in
   `funding_transaction_id`; external purchases retain no funding transaction.
-- RLS: **select + insert only** — no update/delete policy. Purchase records are immutable from the client once created.
+- Authenticated access is SELECT only under own-row RLS. Direct INSERT/UPDATE/DELETE/MAINTAIN and the INSERT policy are removed; both legacy and v2 purchase RPCs remain supported.
+- `metal_purchases`, `metal_purchase_lifecycle_events`, `account_valuations`, and `account_disposals` reject UPDATE/DELETE at the database level, including service-role and SECURITY DEFINER execution. Corrections/reversals append new rows. The only deletion exception matches the posted ledger: the owning `auth.users` row must already be gone during whole-user deletion. Deferred history cross-links permit that cascade without allowing history updates. Holdings and account projections retain their existing mutation behavior.
 
 ### 2.2a Metal purchase lifecycle events
 
@@ -212,7 +214,7 @@ Logic (must be replicated exactly, either by calling this same RPC from mobile o
 2. Validates `quantity_grams > 0`, `cost_per_unit > 0`, `fees >= 0`, and `purity` against the metal-specific enum.
 3. `subtotal = quantity_grams * cost_per_unit`; `cost_basis = subtotal + fees`.
 4. **Funding**:
-   - `funding_mode = 'cash_account'`: funding account must be active, owned, type `cash` or `bank`, **same currency** as the gold account, and have `opening_balance >= cost_basis`. Debits the funding account: `opening_balance -= cost_basis`.
+   - `funding_mode = 'cash_account'`: funding account must be active, owned, type `cash` or `bank`, **same currency** as the gold account, and have sufficient ledger-projected available balance. Posts the funding debit through the ledger; `opening_balance` remains unchanged.
    - `funding_mode = 'external'`: no debit; `funding_account_id` forced to `null`.
 5. **Weighted-average cost update** (core valuation formula):
    ```

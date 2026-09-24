@@ -104,62 +104,10 @@ $test$;
 
 \echo ok 1 - opening balance changes before history exists
 
--- Fixture setup is administrative; the assertions below exercise account
--- updates through the authenticated/RLS boundary.
-reset role;
-
-insert into public.financial_transactions (
-  id,
-  user_id,
-  transaction_type_code,
-  transaction_currency_code,
-  status,
-  occurred_at,
-  description
-)
-values (
-  '33000000-0000-4000-8000-000000000001',
-  '13000000-0000-4000-8000-000000000001',
-  'deposit',
-  'USD',
-  'draft',
-  now(),
-  'Opening balance test'
-);
-
-insert into public.transaction_entries (
-  transaction_id,
-  user_id,
-  account_id,
-  entry_side,
-  transaction_amount,
-  account_amount,
-  memo
-)
-values
-  (
-    '33000000-0000-4000-8000-000000000001',
-    '13000000-0000-4000-8000-000000000001',
-    '23000000-0000-4000-8000-000000000002',
-    'debit',
-    10,
-    10,
-    'deposit'
-  ),
-  (
-    '33000000-0000-4000-8000-000000000001',
-    '13000000-0000-4000-8000-000000000001',
-    '23000000-0000-4000-8000-000000000002',
-    'credit',
-    10,
-    10,
-    'offset'
-  );
-
-set local role authenticated;
-
-select public.post_transaction(
-  '33000000-0000-4000-8000-000000000001'
+-- Create posted history through the supported authenticated account-record flow.
+select public.add_account_record(
+  'income', '23000000-0000-4000-8000-000000000002', null,
+  10, null, now(), 'Opening balance test', null
 );
 
 do $test$
@@ -182,26 +130,24 @@ $test$;
 
 \echo ok 2 - opening balance cannot change after a posted transaction
 
-select public.add_investment(
+insert into public.assets (
+  id, user_id, asset_type_code, name, symbol, currency_code,
+  exchange, is_custom, canonical_quantity_unit
+) values (
+  '43000000-0000-4000-8000-000000000001', auth.uid(), 'stock',
+  'Opening Balance Test Stock', 'OBTS', 'USD', 'XTEST', true, 'shares'
+);
+
+select public.add_brokerage_buy_v2(
   p_account_id => '23000000-0000-4000-8000-000000000003',
-  p_new_account_type_code => null,
-  p_new_account_name => null,
-  p_new_account_currency_code => null,
-  p_asset_id => null,
-  p_new_asset_type_code => 'stock',
-  p_new_asset_name => 'Opening Balance Test Stock',
-  p_new_asset_symbol => 'OBTS',
-  p_new_asset_currency_code => 'USD',
-  p_new_asset_exchange => 'XTEST',
-  p_identifier_scheme => 'ticker',
-  p_identifier_namespace => 'XTEST',
-  p_identifier_value => 'OBTS',
-  p_identifier_provider => null,
+  p_asset_id => '43000000-0000-4000-8000-000000000001',
   p_quantity => 1,
   p_unit_price => 100,
   p_fees => 1,
   p_occurred_at => now(),
-  p_notes => null
+  p_notes => null,
+  p_account_fx_rate => null,
+  p_idempotency_key => gen_random_uuid()
 );
 
 do $test$
