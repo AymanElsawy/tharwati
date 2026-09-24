@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../home_page.dart';
+import '../i18n/app_language.dart';
 import '../main.dart';
 import '../onboarding/onboarding_flow.dart';
 import '../theme/tokens.dart';
@@ -152,6 +153,7 @@ class _AccountLoadError extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
+    final ar = AppLanguageScope.of(context).language == AppLanguage.ar;
     return Scaffold(
       backgroundColor: c.canvas,
       body: SafeArea(
@@ -162,19 +164,22 @@ class _AccountLoadError extends StatelessWidget {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                const Callout(
+                Callout(
                   tone: CalloutTone.danger,
-                  title: 'Couldn’t load your account',
-                  message:
-                      'Check your connection and try again. Nothing was '
-                      'changed.',
+                  title: ar ? 'تعذر تحميل حسابك' : 'Couldn’t load your account',
+                  message: ar
+                      ? 'تحقق من اتصالك وحاول مرة أخرى. لم يتم تغيير أي شيء.'
+                      : 'Check your connection and try again. Nothing was changed.',
                 ),
                 const SizedBox(height: 16),
-                PrimaryButton(label: 'Retry', onPressed: onRetry),
+                PrimaryButton(
+                  label: ar ? 'إعادة المحاولة' : 'Retry',
+                  onPressed: onRetry,
+                ),
                 const SizedBox(height: 4),
                 TextButton(
                   onPressed: authService.signOut,
-                  child: const Text('Sign out'),
+                  child: Text(ar ? 'تسجيل الخروج' : 'Sign out'),
                 ),
               ],
             ),

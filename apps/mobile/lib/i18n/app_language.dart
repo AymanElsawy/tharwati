@@ -17,8 +17,7 @@ enum AppLanguage {
     AppLanguage.ar => 'العربية',
   };
 
-  static AppLanguage fromCode(String? code) =>
-      code == ar.code ? ar : en;
+  static AppLanguage fromCode(String? code) => code == ar.code ? ar : en;
 }
 
 abstract interface class LanguageStore {
@@ -28,7 +27,9 @@ abstract interface class LanguageStore {
 
 class SharedPreferencesLanguageStore implements LanguageStore {
   static const _key = 'tharwati-language';
-  final SharedPreferencesAsync _preferences = SharedPreferencesAsync();
+  SharedPreferencesAsync? _preferencesValue;
+  SharedPreferencesAsync get _preferences =>
+      _preferencesValue ??= SharedPreferencesAsync();
 
   @override
   Future<String?> readLanguage() => _preferences.getString(_key);
@@ -76,7 +77,8 @@ class AppLanguageScope extends InheritedNotifier<AppLanguageController> {
   }) : super(notifier: controller);
 
   static AppLanguageController of(BuildContext context) {
-    final scope = context.dependOnInheritedWidgetOfExactType<AppLanguageScope>();
+    final scope = context
+        .dependOnInheritedWidgetOfExactType<AppLanguageScope>();
     assert(scope != null, 'AppLanguageScope is required above this widget.');
     return scope!.notifier!;
   }

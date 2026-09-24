@@ -37,6 +37,7 @@ import { NotFoundPage } from "../pages/NotFoundPage"
 import { useTranslation } from "../i18n/useTranslation"
 import { canPreserveAuthenticatedTree } from "../features/auth/auth-session-lifecycle"
 import { SettingsPage } from "../features/settings/pages/SettingsPage"
+import { type StartupStage, withStartupTimeout } from "./startup-state"
 
 export default function App() {
   const { t } = useTranslation()
@@ -44,8 +45,8 @@ export default function App() {
   const [onboardingCompleted, setOnboardingCompleted] = useState<
     boolean | null
   >(null)
-  const [isLoading, setIsLoading] = useState(true)
-  const [startupError, setStartupError] = useState<string | null>(null)
+  const [startupStage, setStartupStage] =
+    useState<StartupStage>("reading-session")
   // Recognise the recovery link synchronously so the router never gets a chance
   // to route the freshly-created session into the authenticated app.
   const [isPasswordRecovery, setIsPasswordRecovery] = useState(
@@ -58,46 +59,49 @@ export default function App() {
   >("checking")
   const authenticatedUserId = useRef<string | null>(null)
 
-  const resolveSession = useCallback(async (currentSession: Session | null) => {
+  const resolveAccount = useCallback(async (currentSession: Session | null) => {
     setSession(currentSession)
     authenticatedUserId.current = currentSession?.user.id ?? null
-    setStartupError(null)
 
     if (!currentSession) {
       setOnboardingCompleted(null)
-      setIsLoading(false)
+      setStartupStage("ready")
       return
     }
 
+    setStartupStage("reading-account")
     try {
-      setOnboardingCompleted(await getOnboardingCompletion())
-    } catch (error) {
-      console.error("startup: failed to load onboarding state", error)
-      setStartupError("We couldn't load your account. Please try again.")
-    } finally {
-      setIsLoading(false)
+      setOnboardingCompleted(
+        await withStartupTimeout(getOnboardingCompletion()),
+      )
+      setStartupStage("ready")
+    } catch {
+      setStartupStage("failed-account")
     }
   }, [])
 
-  useEffect(() => {
-    async function loadSession() {
-      const { data, error } = await supabase.auth.getSession()
-
-      if (error) {
-        console.error("startup: failed to read auth session", error)
-        setStartupError("We couldn't load your account. Please try again.")
-        setRecoveryStatus("invalid")
-        setIsLoading(false)
-        return
-      }
-
-      await resolveSession(data.session)
-      setRecoveryStatus((current) =>
-        current === "valid" ? current : "invalid"
+  const loadSession = useCallback(async () => {
+    setStartupStage("reading-session")
+    try {
+      const { data, error } = await withStartupTimeout(
+        supabase.auth.getSession(),
       )
+      if (error) throw error
+      await resolveAccount(data.session)
+      setRecoveryStatus((current) =>
+        current === "valid" ? current : "invalid",
+      )
+    } catch {
+      setRecoveryStatus("invalid")
+      setStartupStage("failed-session")
     }
+  }, [resolveAccount])
 
-    void loadSession()
+  useEffect(() => {
+    let active = true
+    queueMicrotask(() => {
+      if (active) void loadSession()
+    })
 
     const {
       data: { subscription },
@@ -109,7 +113,7 @@ export default function App() {
         setRecoveryStatus(currentSession ? "valid" : "invalid")
         setSession(currentSession)
         authenticatedUserId.current = currentSession?.user.id ?? null
-        setIsLoading(false)
+        setStartupStage("ready")
         return
       }
       if (
@@ -121,14 +125,14 @@ export default function App() {
         setSession(currentSession)
         return
       }
-      setIsLoading(true)
-      void resolveSession(currentSession)
+      void resolveAccount(currentSession)
     })
 
     return () => {
+      active = false
       subscription.unsubscribe()
     }
-  }, [resolveSession])
+  }, [loadSession, resolveAccount])
 
   if (isPasswordRecovery) {
     return (
@@ -145,7 +149,10 @@ export default function App() {
     )
   }
 
-  if (isLoading) {
+  if (
+    startupStage === "reading-session" ||
+    startupStage === "reading-account"
+  ) {
     return (
       <main className="flex min-h-screen items-center justify-center">
         <p>{t("common.loading")}</p>
@@ -153,26 +160,39 @@ export default function App() {
     )
   }
 
-  if (startupError) {
+  if (
+    startupStage === "failed-session" ||
+    startupStage === "failed-account"
+  ) {
+    const failedSession = startupStage === "failed-session"
     return (
       <main className="flex min-h-screen items-center justify-center bg-[var(--color-background)] px-4">
         <div className="tharwati-card max-w-md p-8 text-center">
           <h1 className="text-xl font-semibold text-[var(--color-text)]">
-            We couldn&apos;t load your account
+            {t(failedSession ? "startup.connection.title" : "startup.account.title")}
           </h1>
           <p className="mt-3 text-sm text-[var(--color-text-secondary)]">
-            {startupError}
+            {t("startup.safeMessage")}
           </p>
           <button
             type="button"
             className="tharwati-button-primary mt-6"
             onClick={() => {
-              setIsLoading(true)
-              void resolveSession(session)
+              if (failedSession) void loadSession()
+              else void resolveAccount(session)
             }}
           >
-            Try again
+            {t("startup.retry")}
           </button>
+          {!failedSession && session ? (
+            <button
+              type="button"
+              className="tharwati-button-secondary mt-3"
+              onClick={() => void supabase.auth.signOut()}
+            >
+              {t("startup.signOut")}
+            </button>
+          ) : null}
         </div>
       </main>
     )

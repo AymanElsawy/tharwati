@@ -13,6 +13,11 @@ export const ar: Record<TranslationKey, string> = {
   "common.close": "إغلاق",
   "common.dismiss": "تجاهل",
   "common.loading": "جارٍ التحميل…",
+  "startup.connection.title": "الاتصال غير متاح",
+  "startup.account.title": "الحساب غير متاح",
+  "startup.safeMessage": "بياناتك وجلستك محفوظتان. يرجى المحاولة مرة أخرى.",
+  "startup.retry": "إعادة المحاولة",
+  "startup.signOut": "تسجيل الخروج",
   "common.optional": "اختياري",
   "auth.forgotPassword": "نسيت كلمة المرور؟",
   "auth.loginError":

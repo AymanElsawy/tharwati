@@ -1,56 +1,65 @@
-import 'package:app_links/app_links.dart';
+import 'dart:async';
+import 'dart:ui';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'auth/auth_gate.dart';
 import 'auth/auth_recovery_coordinator.dart';
 import 'auth/auth_service.dart';
 import 'auth/reset_password_page.dart';
-import 'env.dart';
+import 'bootstrap/app_bootstrap_controller.dart';
+import 'bootstrap/bootstrap_app.dart';
+import 'errors/app_error_reporter.dart';
+import 'errors/global_failure_controller.dart';
 import 'i18n/app_language.dart';
 import 'splash/splash_screen.dart';
 import 'theme/app_theme.dart';
 import 'theme/app_theme_controller.dart';
 
-late final AuthService authService;
+late AuthService authService;
 
-Future<void> main() async {
-  WidgetsFlutterBinding.ensureInitialized();
-  if (!Env.supabasePublishableKey.startsWith('sb_publishable_')) {
-    throw StateError('SUPABASE_PUBLISHABLE_KEY must be configured');
-  }
-  final appLinks = AppLinks();
-  final initialUri = await _readInitialUri(appLinks);
-  await Supabase.initialize(
-    url: Env.supabaseUrl,
-    publishableKey: Env.supabasePublishableKey,
-    authOptions: const FlutterAuthClientOptions(detectSessionInUri: false),
-    // supabase_flutter persists the session and auto-refreshes tokens by default.
-  );
-  authService = AuthService(Supabase.instance.client);
-  final recoveryCoordinator = AuthRecoveryCoordinator(authService);
-  await recoveryCoordinator.start(
-    initialUri: initialUri,
-    linkStream: appLinks.uriLinkStream,
-  );
-  final themeController = AppThemeController();
-  await themeController.load();
-  runApp(
-    TharwatiApp(
-      recoveryCoordinator: recoveryCoordinator,
-      themeController: themeController,
-    ),
-  );
-}
+void main() {
+  final reporter = const NoopAppErrorReporter();
+  final failureController = GlobalFailureController();
 
-Future<Uri?> _readInitialUri(AppLinks appLinks) async {
-  try {
-    return await appLinks.getInitialLink();
-  } catch (_) {
-    // A platform-link lookup failure must not block ordinary app startup.
-    return null;
-  }
+  runZonedGuarded(
+    () {
+      WidgetsFlutterBinding.ensureInitialized();
+      FlutterError.onError = (details) {
+        reporter.capture(
+          AppErrorCategory.flutterFramework,
+          details.exception,
+          details.stack ?? StackTrace.current,
+        );
+        WidgetsBinding.instance.addPostFrameCallback(
+          (_) => failureController.reportFatal(),
+        );
+      };
+      PlatformDispatcher.instance.onError = (error, stackTrace) {
+        reporter.capture(AppErrorCategory.platform, error, stackTrace);
+        failureController.reportFatal();
+        return true;
+      };
+      ErrorWidget.builder = (_) => const ColoredBox(
+        color: Color(0xFF071C17),
+        child: Center(
+          child: Icon(Icons.error_outline, color: Color(0xFFC9A96B)),
+        ),
+      );
+
+      runApp(
+        BootstrapApp(
+          controller: AppBootstrapController(reporter: reporter),
+          failureController: failureController,
+        ),
+      );
+    },
+    (error, stackTrace) {
+      reporter.capture(AppErrorCategory.zone, error, stackTrace);
+      failureController.reportFatal();
+    },
+  );
 }
 
 class TharwatiApp extends StatefulWidget {
@@ -59,11 +68,13 @@ class TharwatiApp extends StatefulWidget {
     required this.recoveryCoordinator,
     this.languageController,
     this.themeController,
+    this.ownsBootstrapResources = true,
   });
 
   final AuthRecoveryCoordinator recoveryCoordinator;
   final AppLanguageController? languageController;
   final AppThemeController? themeController;
+  final bool ownsBootstrapResources;
 
   @override
   State<TharwatiApp> createState() => _TharwatiAppState();
@@ -81,10 +92,14 @@ class _TharwatiAppState extends State<TharwatiApp> {
     super.initState();
     _ownsLanguageController = widget.languageController == null;
     _languageController = widget.languageController ?? AppLanguageController();
-    _languageController.load();
+    if (_ownsLanguageController) {
+      unawaited(_languageController.load());
+    }
     _ownsThemeController = widget.themeController == null;
     _themeController = widget.themeController ?? AppThemeController();
-    _themeController.load();
+    if (_ownsThemeController) {
+      unawaited(_themeController.load());
+    }
   }
 
   @override
@@ -95,7 +110,9 @@ class _TharwatiAppState extends State<TharwatiApp> {
     if (_ownsThemeController) {
       _themeController.dispose();
     }
-    widget.recoveryCoordinator.dispose();
+    if (widget.ownsBootstrapResources) {
+      widget.recoveryCoordinator.dispose();
+    }
     super.dispose();
   }
 

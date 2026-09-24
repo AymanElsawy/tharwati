@@ -8,7 +8,9 @@ abstract interface class ThemeStore {
 
 class SharedPreferencesThemeStore implements ThemeStore {
   static const _key = 'tharwati-theme';
-  final SharedPreferencesAsync _preferences = SharedPreferencesAsync();
+  SharedPreferencesAsync? _preferencesValue;
+  SharedPreferencesAsync get _preferences =>
+      _preferencesValue ??= SharedPreferencesAsync();
 
   @override
   Future<String?> readTheme() => _preferences.getString(_key);

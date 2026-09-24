@@ -8,6 +8,11 @@ export const en = {
   "common.close": "Close",
   "common.dismiss": "Dismiss",
   "common.loading": "Loading…",
+  "startup.connection.title": "Connection unavailable",
+  "startup.account.title": "Account unavailable",
+  "startup.safeMessage": "Your data and session are safe. Please try again.",
+  "startup.retry": "Retry",
+  "startup.signOut": "Sign out",
   "common.optional": "optional",
   "auth.forgotPassword": "Forgot password?",
   "auth.loginError":
