@@ -1,3 +1,5 @@
+import { createFingerprint } from "../utils/create-submission"
+import { resolveSubmissionAttempt, type SubmissionAttempt } from "../utils/refund-submission"
 import { useCallback, useEffect, useRef, useState } from "react"
 import { useTranslation } from "../../../i18n/useTranslation"
 
@@ -5,6 +7,7 @@ import type { AccountSummary } from "../../../lib/supabase/types"
 import { RepositoryError } from "../../../lib/supabase/types"
 import {
   accountsRepository,
+  accountCreateParams,
   type CreateAccountInput,
   type UpdateAccountInput,
 } from "../repositories/accounts.repository"
@@ -71,6 +74,7 @@ export function useAccounts(): UseAccountsResult {
   const [closeEligibility, setCloseEligibility] = useState<
     ReadonlyMap<string, string | null>
   >(new Map())
+  const createAttempt = useRef<SubmissionAttempt | null>(null)
   const mutationInFlight = useRef(false)
 
   const loadAccounts = useCallback(
@@ -212,7 +216,9 @@ export function useAccounts(): UseAccountsResult {
               : null,
           ...toAccountTypeSpecificFields(values),
         }
-        const createdAccount = await accountsRepository.createAccount(input)
+        createAttempt.current = resolveSubmissionAttempt(createAttempt.current, createFingerprint(accountCreateParams(input)))
+        const createdAccount = await accountsRepository.createAccount(input, createAttempt.current.idempotencyKey)
+        createAttempt.current = null
 
         return createdAccount
       }),

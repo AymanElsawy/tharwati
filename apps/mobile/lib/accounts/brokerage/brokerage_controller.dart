@@ -1,3 +1,4 @@
+import '../create_submission.dart';
 import 'dart:async';
 import 'package:flutter/foundation.dart';
 
@@ -39,6 +40,7 @@ class BrokerageController extends ChangeNotifier {
   /// `activityError` flags).
   bool activityFailed = false;
   bool refreshStale = false;
+  final PayloadIdempotencyKey _existingAttempt = PayloadIdempotencyKey();
   final PayloadIdempotencyKey _tradeAttempt = PayloadIdempotencyKey();
   final PayloadIdempotencyKey _dividendAttempt = PayloadIdempotencyKey();
 
@@ -126,8 +128,17 @@ class BrokerageController extends ChangeNotifier {
     return committed;
   }
 
-  Future<bool> addExistingHolding(ExistingHoldingFormValues values) =>
-      _run(() => _repo.addExistingHolding(accountId, values));
+  Future<bool> addExistingHolding(ExistingHoldingFormValues values) async {
+    if (busy) return false;
+    final key = _existingAttempt.forPayload(
+      createFingerprint(existingHoldingRpcParams(accountId, values)),
+    );
+    final committed = await _runBrokerageCreate(
+      () => _repo.addExistingHolding(accountId, values, key),
+    );
+    if (committed) _existingAttempt.clear();
+    return committed;
+  }
 
   Future<bool> submitDividend({
     required String assetId,

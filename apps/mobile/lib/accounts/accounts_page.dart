@@ -127,6 +127,16 @@ class _AccountsPageState extends State<AccountsPage> {
         return ListView(
           padding: const EdgeInsets.fromLTRB(20, 4, 20, 32),
           children: [
+            if (_controller.refreshStale) ...[
+              Callout(
+                tone: CalloutTone.warning,
+                message: copy.savedRefreshFailed,
+              ),
+              TextButton(
+                onPressed: _controller.retryRefresh,
+                child: Text(copy.refreshData),
+              ),
+            ],
             if (_controller.actionError != null) ...[
               Callout(
                 tone: CalloutTone.danger,

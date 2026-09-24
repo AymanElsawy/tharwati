@@ -34,6 +34,17 @@ class _Repository extends BrokerageRepository {
   Future<List<ActivityItem>> getActivity(String accountId) async => const [];
 
   @override
+  Future<void> addExistingHolding(
+    String accountId,
+    ExistingHoldingFormValues value,
+    String idempotencyKey,
+  ) async {
+    mutationCalls += 1;
+    keys.add(idempotencyKey);
+    if (rejectMutation) throw AccountsException('rejected');
+  }
+
+  @override
   Future<void> addBuy(
     String accountId,
     TradeFormValues value,
@@ -55,6 +66,41 @@ TradeFormValues _buy({String quantity = '1.00'}) => TradeFormValues(
 );
 
 void main() {
+  test(
+    'existing holding uncertain retries reuse keys; committed stale refresh never reposts',
+    () async {
+      final repository = _Repository()..rejectMutation = true;
+      final controller = BrokerageController(
+        accountId: 'account',
+        repository: repository,
+      );
+      ExistingHoldingFormValues input(String quantity) =>
+          ExistingHoldingFormValues(
+            assetId: 'asset',
+            quantity: quantity,
+            averageCost: '10',
+            occurredAt: '2026-09-01T10:00:00Z',
+          );
+      expect(await controller.addExistingHolding(input('1.0')), isFalse);
+      expect(await controller.addExistingHolding(input('1')), isFalse);
+      expect(repository.keys[1], repository.keys[0]);
+      expect(await controller.addExistingHolding(input('2')), isFalse);
+      expect(repository.keys[2], isNot(repository.keys[1]));
+      repository.rejectMutation = false;
+      repository.rejectReads = true;
+      expect(await controller.addExistingHolding(input('2')), isTrue);
+      await Future<void>.delayed(Duration.zero);
+      expect(repository.keys[3], repository.keys[2]);
+      expect(controller.refreshStale, isTrue);
+      await controller.retryRefresh();
+      expect(repository.mutationCalls, 4);
+      expect(await controller.addExistingHolding(input('2')), isTrue);
+      expect(repository.keys[4], isNot(repository.keys[3]));
+      await Future<void>.delayed(Duration.zero);
+      controller.dispose();
+    },
+  );
+
   test(
     'committed mutation closes while failed refresh retains known value',
     () async {

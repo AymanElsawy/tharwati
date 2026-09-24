@@ -1,3 +1,6 @@
+import '../core/idempotency_key.dart';
+import 'create_submission.dart';
+import 'accounts_repository.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
@@ -31,6 +34,7 @@ class AccountFormSheet extends StatefulWidget {
 }
 
 class _AccountFormSheetState extends State<AccountFormSheet> {
+  final _attempt = PayloadIdempotencyKey();
   late final AccountFormValues _v = widget.isEditing
       ? AccountFormValues.fromAccount(widget.account!)
       : AccountFormValues(
@@ -122,13 +126,22 @@ class _AccountFormSheetState extends State<AccountFormSheet> {
     });
     if (errs.isNotEmpty) return;
 
-    final ok = await widget.controller.run((s) async {
-      if (widget.isEditing) {
-        await s.updateAccount(widget.account!.id, _v);
-      } else {
-        await s.createAccount(_v);
-      }
-    });
+    final ok =
+        await (widget.isEditing
+            ? widget.controller.run
+            : widget.controller.runCreate)((s) async {
+          if (widget.isEditing) {
+            await s.updateAccount(widget.account!.id, _v);
+          } else {
+            await s.createAccount(
+              _v,
+              _attempt.forPayload(
+                createFingerprint(AccountsRepository.accountCreateParams(_v)),
+              ),
+            );
+            _attempt.clear();
+          }
+        });
     if (ok && mounted) Navigator.of(context).pop(true);
   }
 

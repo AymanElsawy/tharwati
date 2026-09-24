@@ -204,7 +204,11 @@ class BrokerageRepository {
   Future<void> addExistingHolding(
     String accountId,
     ExistingHoldingFormValues v,
-  ) => _rpc(existingHoldingRpcName, existingHoldingRpcParams(accountId, v));
+    String idempotencyKey,
+  ) => _rpc(existingHoldingRpcName, {
+    ...existingHoldingRpcParams(accountId, v),
+    'p_idempotency_key': idempotencyKey,
+  });
 
   // ---- activity ------------------------------------------------------
 
@@ -386,7 +390,7 @@ class BrokerageRepository {
   }
 }
 
-const existingHoldingRpcName = 'add_existing_holding';
+const existingHoldingRpcName = 'add_existing_holding_v2';
 
 /// Kept pure so the exact destructive financial boundary is directly testable:
 /// this payload has no cash amount and targets only `add_existing_holding`.

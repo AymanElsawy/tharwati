@@ -28,14 +28,18 @@ class ValuedRepository {
     ];
   }
 
-  Future<void> addValuation(String accountId, AccountValuationInput v) =>
-      _rpc('add_account_valuation', {
-        'p_account_id': accountId,
-        'p_valuation_amount': v.valuationAmount,
-        'p_valued_on': v.valuedOn,
-        'p_valuation_method': v.valuationMethod,
-        'p_notes': v.notes,
-      });
+  Future<void> addValuation(
+    String accountId,
+    AccountValuationInput v,
+    String idempotencyKey,
+  ) => _rpc('add_account_valuation_v2', {
+    'p_idempotency_key': idempotencyKey,
+    'p_account_id': accountId,
+    'p_valuation_amount': v.valuationAmount,
+    'p_valued_on': v.valuedOn,
+    'p_valuation_method': v.valuationMethod,
+    'p_notes': v.notes,
+  });
 
   Future<void> correctValuation(String valuationId, AccountValuationInput v) =>
       _rpc('correct_account_valuation', {

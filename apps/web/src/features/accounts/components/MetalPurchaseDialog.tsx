@@ -1,7 +1,10 @@
+import { createFingerprint } from "../utils/create-submission"
+import { resolveSubmissionAttempt, type SubmissionAttempt } from "../utils/refund-submission"
+import { runMutationThenRefresh } from "@/lib/mutations/mutation-refresh"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { Dialog } from "@base-ui/react/dialog"
 import { X } from "lucide-react"
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import { useForm, useWatch } from "react-hook-form"
 
 import { Button } from "@/components/ui/button"
@@ -12,6 +15,7 @@ import { formatPortfolioAmount } from "@/features/portfolio/utils/portfolio-form
 import { formatLocalDateTimeInput } from "@/lib/formatting/local-date-time"
 import {
   addMetalPurchase,
+  buildAddMetalPurchaseCommand,
   getEligibleMetalFundingAccounts,
 } from "../services/metal-purchases.service"
 import { createMetalPurchaseSchema } from "../schemas/metal-purchase.schema"
@@ -349,8 +353,13 @@ export function MetalPurchaseEntryDialog({
   onSaved?: () => Promise<void> | void
 }) {
   const [isSaving, setIsSaving] = useState(false)
+  const attempt = useRef<SubmissionAttempt | null>(null)
+  const [refreshStale, setRefreshStale] = useState(false)
+  const { t } = useTranslation()
 
   return (
+    <>
+    {refreshStale ? <div role="status">{t("accounts.records.savedRefreshFailed")} <Button onClick={() => { void Promise.resolve(onSaved?.()).then(() => setRefreshStale(false)).catch(() => setRefreshStale(true)) }}>{t("accounts.records.refreshData")}</Button></div> : null}
     <MetalPurchaseDialog
       account={account}
       fundingAccounts={getEligibleMetalFundingAccounts(
@@ -364,14 +373,19 @@ export function MetalPurchaseEntryDialog({
         if (!account) return
         setIsSaving(true)
         try {
-          await addMetalPurchase(account.id, values)
-          await onSaved?.()
-          window.dispatchEvent(new Event("tharwati:data-changed"))
-          onClose()
+          attempt.current = resolveSubmissionAttempt(attempt.current, createFingerprint(buildAddMetalPurchaseCommand(account.id, values)))
+          const outcome = await runMutationThenRefresh({
+            mutate: () => addMetalPurchase(account.id, values, attempt.current!.idempotencyKey),
+            onCommitted: () => { attempt.current = null; onClose(); window.dispatchEvent(new Event("tharwati:data-changed")) },
+            refresh: async () => { await onSaved?.() },
+          })
+          if (outcome.mutation === "rejected") throw outcome.error
+          setRefreshStale(outcome.refresh === "stale")
         } finally {
           setIsSaving(false)
         }
       }}
     />
+    </>
   )
 }

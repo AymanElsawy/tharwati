@@ -115,14 +115,14 @@ export class CashAccountsRepository {
     }
   }
 
-  async create(input: SaveCashAccountInput) {
+  async create(input: SaveCashAccountInput, idempotencyKey: string) {
     return accountsRepository.createAccount({
       accountTypeCode: "cash",
       name: input.name,
       currencyCode: input.currencyCode,
       openingBalance: input.balance,
       notes: input.notes,
-    })
+    }, idempotencyKey)
   }
 
   async update(accountId: string, input: SaveCashAccountInput) {

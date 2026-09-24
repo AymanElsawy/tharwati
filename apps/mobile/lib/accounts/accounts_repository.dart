@@ -101,46 +101,60 @@ class AccountsRepository {
 
   // ---- mutations --------------------------------------------------------
 
-  Future<Account> createAccount(AccountFormValues v) async {
+  static Map<String, dynamic> accountCreateParams(AccountFormValues v) {
     final fields = toAccountTypeSpecificFields(v);
-    final name = _accountName(v);
-    try {
-      if (v.type.isValued) {
-        // Real Estate / Business are created atomically with their first
-        // valuation via the dedicated RPC (docs/accounts.md §2.1).
-        final row = await _client.rpc(
-          'create_valued_account',
-          params: {
-            'p_account_type_code': v.type.code,
-            'p_name': name,
-            'p_currency_code': v.currencyCode,
-            'p_property_type': fields.propertyType,
-            'p_business_type': fields.businessType,
-            'p_industry': fields.industry,
-            'p_ownership_percentage': v.ownershipPercentage.trim(),
-            'p_location': fields.location,
-            'p_account_notes': _blankToNull(v.notes),
-            'p_valuation_amount': v.openingBalance.trim(),
-            'p_valued_on': v.valuationDate.trim(),
-            // Free-text method, sent verbatim (web `p_valuation_method`).
-            'p_valuation_method': _blankToNull(v.valuationMethod),
-            'p_valuation_notes': _blankToNull(v.valuationNotes),
-          },
-        );
-        final id = row is Map ? '${row['id']}' : '$row';
-        return getAccount(id);
-      }
+    final common = <String, dynamic>{
+      'p_account_type_code': v.type.code,
+      'p_name': _accountName(v),
+      'p_currency_code': v.currencyCode,
+    };
+    if (v.type.isValued) {
+      return {
+        ...common,
+        'p_property_type': fields.propertyType,
+        'p_business_type': fields.businessType,
+        'p_industry': fields.industry,
+        'p_ownership_percentage': v.ownershipPercentage.trim(),
+        'p_location': fields.location,
+        'p_account_notes': _blankToNull(v.notes),
+        'p_valuation_amount': v.openingBalance.trim(),
+        'p_valued_on': v.valuationDate.trim(),
+        'p_valuation_method': _blankToNull(v.valuationMethod),
+        'p_valuation_notes': _blankToNull(v.valuationNotes),
+      };
+    }
+    return {
+      ...common,
+      'p_opening_balance': fields.openingBalance ?? '0',
+      'p_notes': _blankToNull(v.notes),
+      'p_bank_subtype': fields.bankSubtype,
+      'p_credit_card_limit': fields.creditCardLimit,
+      'p_due_day_of_month': fields.dueDayOfMonth,
+      'p_investment_type': fields.investmentType,
+      'p_metal_type': fields.metalType,
+      'p_balance_grams': fields.balanceGrams,
+      'p_purity': fields.purity,
+      'p_purchase_date': fields.purchaseDate,
+      'p_cost_per_unit': fields.costPerUnit,
+    };
+  }
 
-      final columns = fields.toColumns(name: name, currencyCode: v.currencyCode)
-        ..['user_id'] = _userId
-        ..['account_type_code'] = v.type.code
-        ..['notes'] = _blankToNull(v.notes);
-      final row = await _client
-          .from('financial_accounts')
-          .insert(columns)
-          .select(_accountSelect)
-          .single();
-      return Account.fromRow((row).cast<String, dynamic>());
+  Future<Account> createAccount(
+    AccountFormValues v,
+    String idempotencyKey,
+  ) async {
+    try {
+      final row = await _client.rpc(
+        v.type.isValued
+            ? 'create_valued_account_v2'
+            : 'create_financial_account_v2',
+        params: {
+          ...accountCreateParams(v),
+          'p_idempotency_key': idempotencyKey,
+        },
+      );
+      // Decimal fields are text in the receipt result. No fallible post-commit read.
+      return Account.fromRow((row as Map).cast<String, dynamic>());
     } on PostgrestException catch (e) {
       throw AccountsException(_friendly(e));
     }

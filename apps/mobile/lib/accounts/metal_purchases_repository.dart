@@ -16,7 +16,7 @@ class MetalPurchasesRepository {
   /// The shared purchase payload — `add_metal_purchase` and
   /// `correct_metal_purchase` take the same fields, differing only in whether
   /// they are keyed by account or by the purchase being replaced.
-  static Map<String, dynamic> _purchaseParams(MetalPurchaseFormValues v) => {
+  static Map<String, dynamic> purchaseParams(MetalPurchaseFormValues v) => {
     'p_purity': v.purity,
     'p_occurred_at': DateTime.parse(v.purchaseDate).toUtc().toIso8601String(),
     'p_quantity_grams': v.unitsGrams.trim(),
@@ -29,10 +29,15 @@ class MetalPurchasesRepository {
     'p_notes': v.notes.trim().isEmpty ? null : v.notes.trim(),
   };
 
-  Future<void> addPurchase(String accountId, MetalPurchaseFormValues v) => _rpc(
-    'add_metal_purchase',
-    {'p_account_id': accountId, ..._purchaseParams(v)},
-  );
+  Future<void> addPurchase(
+    String accountId,
+    MetalPurchaseFormValues v,
+    String idempotencyKey,
+  ) => _rpc('add_metal_purchase_v2', {
+    'p_account_id': accountId,
+    ...purchaseParams(v),
+    'p_idempotency_key': idempotencyKey,
+  });
 
   /// Supersedes a purchase with corrected figures. The RPC writes a new
   /// effective row and links the old one, so history stays append-only —
@@ -40,7 +45,7 @@ class MetalPurchasesRepository {
   Future<void> correctPurchase(String purchaseId, MetalPurchaseFormValues v) =>
       _rpc('correct_metal_purchase', {
         'p_purchase_id': purchaseId,
-        ..._purchaseParams(v),
+        ...purchaseParams(v),
       });
 
   /// Backs a purchase out, releasing any funding-account debit with it.

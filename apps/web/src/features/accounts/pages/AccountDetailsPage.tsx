@@ -381,6 +381,7 @@ function ValuedAccountDetailsPage({ account }: { account: AccountSummary }) {
         account={isDialogOpen ? account : null}
         onClose={() => setIsDialogOpen(false)}
         onSaved={load}
+        onRefreshFailed={() => setRefreshStale(true)}
       />
       <AccountDisposalDialog
         account={isDisposalOpen ? account : null}

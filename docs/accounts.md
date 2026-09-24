@@ -74,7 +74,7 @@ Ownership is event-driven: current attributable value is the latest effective fu
 
 New Real Estate/Business accounts are created atomically with their first valuation and use `opening_balance = 0` only as an unused legacy placeholder. No legacy opening-balance demo data is backfilled. Missing valuation or initial ownership is unavailable; an explicit zero valuation remains a valid zero. After valuation/disposal history exists, currency, opening balance, and ordinary ownership edits are locked; ownership projection changes are only made by the disposal timeline. Hard delete is allowed only when no valuation, disposal, ledger, holding, or metal history exists.
 
-The create RPC's table-row response is immediately re-read through the standard account select, which casts all numeric fields to decimal strings. This preserves the client decimal contract without treating the legacy placeholder as a value source.
+The v2 create RPC returns the committed account with numeric fields encoded as decimal strings. Its receipt preserves the original result, so a follow-up read is not part of determining whether creation committed.
 
 Triggers (immutability guards once financial history exists):
 
@@ -85,6 +85,34 @@ Triggers (immutability guards once financial history exists):
 
 `account_types` reference table (seed data only, not queried dynamically by the client — types are hardcoded client-side):
 `cash, bank, brokerage, gold, real_estate, business, other`.
+
+### Create submission receipts (Phase 2 Slice 3)
+
+Web and Mobile create through `add_metal_purchase_v2`, `add_existing_holding_v2`,
+`add_account_valuation_v2`, `create_financial_account_v2`, and
+`create_valued_account_v2`. Each requires `p_idempotency_key uuid`. The legacy
+RPCs and direct table paths remain available for deployed-client compatibility.
+The simplified Web Cash Accounts caller also uses `create_financial_account_v2`.
+
+These entry points reuse `private.account_record_mutation_receipts` and its
+transaction advisory lock, scoped to authenticated user, operation and key.
+Server-normalized decimal strings, UTC timestamps, dates, applicable account
+fields and normalized optional text form the request hash. Replay lookup precedes
+business validation: the same effective request returns the stored original JSON
+with `replayed: true`; a changed request using the same key rejects. The original
+business effect and its receipt commit or roll back together. Metal, holding,
+valuation and valued-account mutations delegate to the existing business RPCs.
+Ordinary account creation retains table constraints, triggers and authenticated
+ownership. Receipts and helper functions have no direct authenticated access.
+
+Account-create results include PostgreSQL decimal strings, eliminating a separate
+post-commit account read. Web retains one UUID attempt for an unchanged normalized
+command; Mobile uses `PayloadIdempotencyKey`. Rejection or an uncertain response
+retains the key, a changed command rotates it, and confirmed commitment clears
+it. The forms distinguish commitment from refresh: a stale refresh can be retried
+through reads only and never resubmits a create. Keys are in-memory form/controller
+state; closing the app or reloading the browser does not persist an uncertain
+attempt.
 
 ### 2.1a Minimal Cash/Bank ledger foundation
 

@@ -11,7 +11,7 @@ import 'package:tharwati_mobile/core/data_change.dart';
 void main() {
   group('existing holding RPC contract', () {
     test('same-currency payload contains only opening-position inputs', () {
-      expect(existingHoldingRpcName, 'add_existing_holding');
+      expect(existingHoldingRpcName, 'add_existing_holding_v2');
       final params = existingHoldingRpcParams(
         'account-1',
         ExistingHoldingFormValues(
@@ -114,6 +114,7 @@ void main() {
 
     repository.addCompleter.complete();
     expect(await first, isTrue);
+    await Future<void>.delayed(Duration.zero);
     expect(repository.holdingsLoads, 1);
     expect(repository.activityLoads, 1);
     expect(controller.valuation?.cashBalance, '250');
@@ -135,6 +136,7 @@ class _FakeRepository extends BrokerageRepository {
   Future<void> addExistingHolding(
     String accountId,
     ExistingHoldingFormValues values,
+    String idempotencyKey,
   ) {
     addCalls += 1;
     return addCompleter.future;

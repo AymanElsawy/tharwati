@@ -1,6 +1,9 @@
+import { createFingerprint } from "../utils/create-submission"
+import { resolveSubmissionAttempt, type SubmissionAttempt } from "../utils/refund-submission"
+import { runMutationThenRefresh } from "@/lib/mutations/mutation-refresh"
 import { Dialog } from "@base-ui/react/dialog"
 import { X } from "lucide-react"
-import { useState } from "react"
+import { useRef, useState } from "react"
 
 import { Button } from "@/components/ui/button"
 import { addAccountValuation } from "@/features/accounts/services/account-valuations.service"
@@ -20,12 +23,15 @@ export function AccountValuationDialog({
   account,
   onClose,
   onSaved,
+  onRefreshFailed,
 }: {
   account: AccountSummary | null
   onClose: () => void
   onSaved: () => Promise<void>
+  onRefreshFailed?: () => void
 }) {
   const { t } = useTranslation()
+  const attempt = useRef<SubmissionAttempt | null>(null)
   const [amount, setAmount] = useState("")
   const [valuedOn, setValuedOn] = useState(() =>
     new Date().toISOString().slice(0, 10)
@@ -64,7 +70,7 @@ export function AccountValuationDialog({
     setError(null)
     setIsSaving(true)
     try {
-      await addAccountValuation(account.id, {
+      const input = {
         valuationAmount: amount.trim(),
         valuedOn,
         valuationMethod: valuationAccountType
@@ -75,9 +81,15 @@ export function AccountValuationDialog({
             )
           : null,
         notes: notes.trim() || null,
+      }
+      attempt.current = resolveSubmissionAttempt(attempt.current, createFingerprint({ accountId: account.id, ...input }))
+      const outcome = await runMutationThenRefresh({
+        mutate: () => addAccountValuation(account.id, input, attempt.current!.idempotencyKey).then(() => undefined),
+        onCommitted: () => { attempt.current = null; onClose() },
+        refresh: onSaved,
       })
-      await onSaved()
-      onClose()
+      if (outcome.mutation === "rejected") throw outcome.error
+      if (outcome.refresh === "stale") onRefreshFailed?.()
     } catch {
       setError(t("accounts.error.unexpected"))
     } finally {

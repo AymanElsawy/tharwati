@@ -1,6 +1,9 @@
+import { createFingerprint } from "../utils/create-submission"
+import { resolveSubmissionAttempt, type SubmissionAttempt } from "../utils/refund-submission"
+import { runMutationThenRefresh } from "@/lib/mutations/mutation-refresh"
 import { Dialog } from "@base-ui/react/dialog"
 import { ArrowLeft, Plus, Search, X } from "lucide-react"
-import { useCallback, useEffect, useMemo, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { useNavigate } from "react-router-dom"
 
 import { Button } from "@/components/ui/button"
@@ -367,9 +370,9 @@ export function BrokerageAccountDetailsPage({
         account={isExistingHoldingOpen ? account : null}
         onClose={() => setIsExistingHoldingOpen(false)}
         onSaved={async () => {
-          setIsExistingHoldingOpen(false)
-          await load()
+          if (!(await load(true))) throw new Error("refresh failed")
         }}
+        onRefreshStale={() => setRefreshStale(true)}
       />
       <BrokerageBuyDialog
         account={isBuyOpen ? account : null}
@@ -631,12 +634,15 @@ function ExistingHoldingDialog({
   account,
   onClose,
   onSaved,
+  onRefreshStale,
 }: {
   account: AccountSummary | null
   onClose: () => void
   onSaved: () => Promise<void>
+  onRefreshStale: () => void
 }) {
   const { t } = useTranslation()
+  const attempt = useRef<SubmissionAttempt | null>(null)
   const [assets, setAssets] = useState<AssetSummary[]>([])
   const [assetTypes, setAssetTypes] = useState<AssetTypeSummary[]>([])
   const [assetId, setAssetId] = useState("")
@@ -735,7 +741,7 @@ function ExistingHoldingDialog({
 
     setSaving(true)
     setError(null)
-    const { error: rpcError } = await supabase.rpc("add_existing_holding", {
+    const params = {
       p_account_id: account.id,
       p_asset_id: selected.id,
       p_quantity: quantity,
@@ -743,15 +749,20 @@ function ExistingHoldingDialog({
       p_occurred_at: new Date(occurredAt).toISOString(),
       p_notes: notes.trim() || null,
       p_account_fx_rate: isCrossCurrency ? rate : null,
+    }
+    attempt.current = resolveSubmissionAttempt(attempt.current, createFingerprint(params))
+    const outcome = await runMutationThenRefresh({
+      mutate: async () => {
+        const { error } = await supabase.rpc("add_existing_holding_v2", { ...params, p_idempotency_key: attempt.current!.idempotencyKey })
+        if (error) throw error
+      },
+      onCommitted: () => { attempt.current = null; onClose() },
+      refresh: onSaved,
     })
     setSaving(false)
+    if (outcome.mutation === "rejected") setError(t("accounts.error.unexpected"))
+    else if (outcome.refresh === "stale") onRefreshStale()
 
-    if (rpcError) {
-      setError(rpcError.message)
-      return
-    }
-
-    await onSaved()
   }
 
   const handleAssetCreated = (asset: AssetSummary) => {

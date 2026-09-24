@@ -64,11 +64,12 @@ export class MetalPurchasesRepository {
     this.client = client
   }
 
-  async addPurchase(command: AddMetalPurchaseCommand): Promise<void> {
+  async addPurchase(command: AddMetalPurchaseCommand, idempotencyKey: string): Promise<void> {
     const operation = "metalPurchases.addPurchase"
     await requireAuthenticatedUserId(this.client, operation)
 
-    const { data, error } = await this.client.rpc("add_metal_purchase", {
+    const { data, error } = await this.client.rpc("add_metal_purchase_v2", {
+      p_idempotency_key: idempotencyKey,
       p_account_id: command.accountId,
       p_purity: command.purity,
       p_occurred_at: command.occurredAt,

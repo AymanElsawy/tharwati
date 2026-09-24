@@ -1,3 +1,5 @@
+import '../../core/idempotency_key.dart';
+import '../create_submission.dart';
 import 'dart:async';
 
 import 'package:flutter/material.dart';
@@ -572,8 +574,7 @@ class _ValuedAccountDetailPageState extends State<ValuedAccountDetailPage> {
       builder: (_) => _ValuationSheet(account: a, repo: _repo),
     );
     if (saved == true) {
-      await widget.controller.load();
-      await _load();
+      unawaited(_refreshAfterCommittedDisposal());
     }
   }
 
@@ -620,6 +621,7 @@ class _ValuationSheet extends StatefulWidget {
 }
 
 class _ValuationSheetState extends State<_ValuationSheet> {
+  final _attempt = PayloadIdempotencyKey();
   final _amount = TextEditingController();
   final _method = TextEditingController();
   final _notes = TextEditingController();
@@ -662,7 +664,17 @@ class _ValuationSheetState extends State<_ValuationSheet> {
               : _method.text.trim(),
           notes: _notes.text.trim().isEmpty ? null : _notes.text.trim(),
         ),
+        _attempt.forPayload(
+          createFingerprint({
+            'p_account_id': widget.account.id,
+            'p_valuation_amount': _amount.text,
+            'p_valued_on': _valuedOn,
+            'p_valuation_method': _method.text,
+            'p_notes': _notes.text,
+          }),
+        ),
       );
+      _attempt.clear();
       if (mounted) Navigator.of(context).pop(true);
     } catch (_) {
       setState(() => _error = copy.unexpectedError);

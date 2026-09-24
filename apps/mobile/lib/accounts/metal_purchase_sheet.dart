@@ -1,3 +1,6 @@
+import '../core/idempotency_key.dart';
+import 'create_submission.dart';
+import 'metal_purchases_repository.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
@@ -37,6 +40,7 @@ class MetalPurchaseSheet extends StatefulWidget {
 }
 
 class _MetalPurchaseSheetState extends State<MetalPurchaseSheet> {
+  final _attempt = PayloadIdempotencyKey();
   final _v = MetalPurchaseFormValues();
   final _grams = TextEditingController();
   final _cost = TextEditingController();
@@ -107,11 +111,25 @@ class _MetalPurchaseSheetState extends State<MetalPurchaseSheet> {
     });
     if (errs.isNotEmpty) return;
     final editing = widget.editing;
-    final ok = await widget.controller.run(
-      (s) => editing == null
-          ? s.addMetalPurchase(widget.account.id, _v)
-          : s.correctMetalPurchase(editing.id, _v),
-    );
+    final ok =
+        await (editing == null
+            ? widget.controller.runCreate
+            : widget.controller.run)(
+          (s) => editing == null
+              ? s
+                    .addMetalPurchase(
+                      widget.account.id,
+                      _v,
+                      _attempt.forPayload(
+                        createFingerprint({
+                          'p_account_id': widget.account.id,
+                          ...MetalPurchasesRepository.purchaseParams(_v),
+                        }),
+                      ),
+                    )
+                    .then((_) => _attempt.clear())
+              : s.correctMetalPurchase(editing.id, _v),
+        );
     if (ok && mounted) Navigator.of(context).pop(true);
   }
 

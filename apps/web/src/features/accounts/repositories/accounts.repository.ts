@@ -210,6 +210,31 @@ function throwAccountConstraintError(
   }
 }
 
+export function accountCreateParams(input: CreateAccountInput) {
+  if (input.accountTypeCode === "real_estate" || input.accountTypeCode === "business") {
+    return {
+      p_account_type_code: input.accountTypeCode, p_name: input.name.trim(), p_currency_code: input.currencyCode,
+      p_property_type: input.accountTypeCode === "real_estate" ? input.propertyType ?? null : null,
+      p_business_type: input.accountTypeCode === "business" ? input.businessType ?? null : null,
+      p_industry: input.accountTypeCode === "business" ? input.industry ?? null : null,
+      p_ownership_percentage: input.ownershipPercentage ?? "100",
+      p_location: input.accountTypeCode === "real_estate" ? input.location ?? null : null,
+      p_account_notes: input.notes ?? null, p_valuation_amount: input.valuationAmount ?? "0",
+      p_valued_on: input.valuedOn ?? new Date().toISOString().slice(0, 10),
+      p_valuation_method: input.valuationMethod ?? null, p_valuation_notes: input.valuationNotes ?? null,
+    }
+  }
+  return {
+    p_account_type_code: input.accountTypeCode, p_name: input.name.trim(), p_currency_code: input.currencyCode,
+    p_opening_balance: input.openingBalance ?? "0", p_notes: input.notes ?? null,
+    p_bank_subtype: input.bankSubtype ?? null, p_credit_card_limit: input.creditCardLimit ?? null,
+    p_due_day_of_month: input.dueDayOfMonth ?? null, p_investment_type: input.investmentType ?? null,
+    p_metal_type: input.metalType ?? null,
+    p_balance_grams: input.balanceGrams ?? null, p_purity: input.purity ?? null,
+    p_purchase_date: input.purchaseDate ?? null, p_cost_per_unit: input.costPerUnit ?? null,
+  }
+}
+
 export class AccountsRepository {
   private readonly client: TypedSupabaseClient
 
@@ -247,66 +272,15 @@ export class AccountsRepository {
     )
   }
 
-  async createAccount(input: CreateAccountInput): Promise<AccountSummary> {
+  async createAccount(input: CreateAccountInput, idempotencyKey: string): Promise<AccountSummary> {
     const operation = "accounts.createAccount"
-    if (
-      input.accountTypeCode === "real_estate" ||
-      input.accountTypeCode === "business"
-    ) {
-      const { data, error } = await this.client.rpc("create_valued_account", {
-        p_account_type_code: input.accountTypeCode,
-        p_name: input.name,
-        p_currency_code: input.currencyCode,
-        p_property_type: input.propertyType ?? null,
-        p_business_type: input.businessType ?? null,
-        p_industry: input.industry ?? null,
-        p_ownership_percentage: input.ownershipPercentage ?? "100",
-        p_location: input.location ?? null,
-        p_account_notes: input.notes ?? null,
-        p_valuation_amount: input.valuationAmount ?? "0",
-        p_valued_on: input.valuedOn ?? new Date().toISOString().slice(0, 10),
-        p_valuation_method: input.valuationMethod ?? null,
-        p_valuation_notes: input.valuationNotes ?? null,
-      })
-      throwAccountConstraintError(error, operation)
-      const createdAccount = requireQueryData(data, error, operation)
-      // PostgreSQL numerics in an RPC composite return may be JSON numbers. Re-read
-      // through accountSelect so all decimal fields retain the repository's string contract.
-      return this.getAccount(createdAccount.id)
-    }
-    const userId = await requireAuthenticatedUserId(this.client, operation)
-    const { data, error } = await this.client
-      .from("financial_accounts")
-      .insert({
-        user_id: userId,
-        account_type_code: input.accountTypeCode,
-        name: input.name,
-        currency_code: input.currencyCode,
-        opening_balance: input.openingBalance,
-        notes: input.notes,
-        bank_subtype: input.bankSubtype,
-        credit_card_limit: input.creditCardLimit,
-        due_day_of_month: input.dueDayOfMonth,
-        investment_type: input.investmentType,
-        balance_grams: input.balanceGrams,
-        property_type: input.propertyType,
-        ownership_percentage: input.ownershipPercentage,
-        business_type: input.businessType,
-        industry: input.industry,
-        location: input.location,
-        metal_type: input.metalType,
-        purity: input.purity,
-        purchase_date: input.purchaseDate,
-        cost_per_unit: input.costPerUnit,
-      })
-      .select(accountSelect)
-      .single()
-
+    const params = accountCreateParams(input)
+    const { data, error } = params.p_valuation_amount !== undefined
+      ? await this.client.rpc("create_valued_account_v2", { ...params, p_idempotency_key: idempotencyKey })
+      : await this.client.rpc("create_financial_account_v2", { ...params, p_idempotency_key: idempotencyKey })
     throwAccountConstraintError(error, operation)
-    return mapAccountSummary(
-      requireQueryData(data, error, operation),
-      operation
-    )
+    // v2 returns decimal strings atomically; no post-commit read can masquerade as create failure.
+    return mapAccountSummary(requireQueryData(data, error, operation), operation)
   }
 
   async updateAccount(

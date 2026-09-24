@@ -188,8 +188,8 @@ class AccountsService {
     }
   }
 
-  Future<Account> createAccount(AccountFormValues v) =>
-      _guard(() => _accounts.createAccount(v));
+  Future<Account> createAccount(AccountFormValues v, String idempotencyKey) =>
+      _guard(() => _accounts.createAccount(v, idempotencyKey));
 
   Future<Account> updateAccount(String id, AccountFormValues v) =>
       _guard(() => _accounts.updateAccount(id, v));
@@ -203,8 +203,11 @@ class AccountsService {
   Future<void> deleteAccount(String id) =>
       _guard(() => _accounts.deleteAccount(id));
 
-  Future<void> addMetalPurchase(String accountId, MetalPurchaseFormValues v) =>
-      _guard(() => _metal.addPurchase(accountId, v));
+  Future<void> addMetalPurchase(
+    String accountId,
+    MetalPurchaseFormValues v,
+    String idempotencyKey,
+  ) => _guard(() => _metal.addPurchase(accountId, v, idempotencyKey));
 
   Future<void> correctMetalPurchase(
     String purchaseId,

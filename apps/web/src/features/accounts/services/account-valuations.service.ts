@@ -18,8 +18,9 @@ export async function getEffectiveAccountValuations(accountIds: readonly string[
   return requireQueryData(data, error, "accountValuations.getEffective").map(mapValuation)
 }
 
-export async function addAccountValuation(accountId: string, input: AccountValuationInput) {
-  const { data, error } = await supabase.rpc("add_account_valuation", {
+export async function addAccountValuation(accountId: string, input: AccountValuationInput, idempotencyKey: string) {
+  const { data, error } = await supabase.rpc("add_account_valuation_v2", {
+    p_idempotency_key: idempotencyKey,
     p_account_id: accountId, p_valuation_amount: input.valuationAmount, p_valued_on: input.valuedOn,
     p_valuation_method: input.valuationMethod ?? null, p_notes: input.notes ?? null,
   })

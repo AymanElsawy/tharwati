@@ -1,3 +1,5 @@
+import 'dart:async';
+import '../core/mutation_refresh.dart';
 import 'package:flutter/foundation.dart';
 
 import 'account_models.dart';
@@ -24,6 +26,7 @@ class AccountsController extends ChangeNotifier {
   AccountsStatus status = AccountsStatus.loading;
   AccountsListModel? model;
   bool busy = false;
+  bool refreshStale = false;
   String? actionError;
 
   String search = '';
@@ -95,9 +98,11 @@ class AccountsController extends ChangeNotifier {
     try {
       model = await _service.loadAccounts();
       status = AccountsStatus.ready;
+      refreshStale = false;
       notifyListeners();
       return true;
     } catch (_) {
+      if (preserveOnError) refreshStale = true;
       if (!preserveOnError) model = null;
       status = preserveOnError ? AccountsStatus.ready : AccountsStatus.error;
       notifyListeners();
@@ -146,6 +151,34 @@ class AccountsController extends ChangeNotifier {
 
   bool get hasVisibleAccounts =>
       activeItems.isNotEmpty || closedItems.isNotEmpty || soldItems.isNotEmpty;
+
+  Future<bool> runCreate(
+    Future<void> Function(AccountsService s) action,
+  ) async {
+    if (busy) return false;
+    busy = true;
+    actionError = null;
+    notifyListeners();
+    final outcome = await runMutation(
+      () => action(_service),
+      errorMessage: (e) => e is AccountsException
+          ? e.message
+          : 'Something went wrong. Please try again.',
+    );
+    busy = false;
+    if (outcome is MutationRejected) {
+      actionError = outcome.message;
+      notifyListeners();
+      return false;
+    }
+    notifyListeners();
+    unawaited(load(preserveOnError: true));
+    return true;
+  }
+
+  Future<void> retryRefresh() async {
+    await load(preserveOnError: true);
+  }
 
   Future<bool> run(Future<void> Function(AccountsService s) action) async {
     busy = true;

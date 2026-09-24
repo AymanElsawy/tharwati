@@ -936,6 +936,11 @@ export type Database = {
         Args: { p_account_ids?: string[] | null }
         Returns: Array<AccountDisposalRow & { is_effective: boolean }>
       }
+      add_metal_purchase_v2: { Args: Database["public"]["Functions"]["add_metal_purchase"]["Args"] & { p_idempotency_key: string }; Returns: Json }
+      add_existing_holding_v2: { Args: Database["public"]["Functions"]["add_existing_holding"]["Args"] & { p_idempotency_key: string }; Returns: Json }
+      add_account_valuation_v2: { Args: Database["public"]["Functions"]["add_account_valuation"]["Args"] & { p_idempotency_key: string }; Returns: AccountValuationRow & { replayed: boolean } }
+      create_valued_account_v2: { Args: Database["public"]["Functions"]["create_valued_account"]["Args"] & { p_idempotency_key: string }; Returns: FinancialAccountRow & { replayed: boolean } }
+      create_financial_account_v2: { Args: { p_account_type_code: string; p_name: string; p_currency_code: string; p_idempotency_key: string; p_opening_balance?: Decimal; p_notes?: string | null; p_bank_subtype?: string | null; p_credit_card_limit?: Decimal | null; p_due_day_of_month?: number | null; p_investment_type?: string | null; p_metal_type?: string | null; p_balance_grams?: Decimal | null; p_purity?: string | null; p_purchase_date?: string | null; p_cost_per_unit?: Decimal | null }; Returns: FinancialAccountRow & { replayed: boolean } }
       add_account_valuation: {
         Args: { p_account_id: string; p_valuation_amount: Decimal; p_valued_on: string; p_valuation_method?: string | null; p_notes?: string | null }
         Returns: AccountValuationRow

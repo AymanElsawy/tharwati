@@ -148,13 +148,26 @@ describe("AccountsRepository.updateAccount", () => {
 })
 
 describe("AccountsRepository.createAccount", () => {
+  it("returns the ordinary account receipt without a post-commit read", async () => {
+    const rpc = vi.fn().mockResolvedValue({ data: { ...account, opening_balance: "123.45", replayed: true }, error: null })
+    const from = vi.fn()
+    const client = { rpc, from } as unknown as TypedSupabaseClient
+    await expect(new AccountsRepository(client).createAccount({
+      accountTypeCode: "cash", name: "Cash", currencyCode: "SAR", openingBalance: "123.45",
+    }, "00000000-0000-4000-8000-000000000001")).resolves.toMatchObject({ opening_balance: "123.45" })
+    expect(rpc).toHaveBeenCalledWith("create_financial_account_v2", expect.objectContaining({
+      p_opening_balance: "123.45", p_idempotency_key: "00000000-0000-4000-8000-000000000001",
+    }))
+    expect(from).not.toHaveBeenCalled()
+  })
+
   it.each(["real_estate", "business"] as const)(
-    "re-reads a %s account after the valued-account RPC returns numeric legacy placeholder fields",
+    "returns a %s committed account without a post-commit read",
     async (accountTypeCode) => {
       const rpc = vi
         .fn()
         .mockResolvedValue({
-          data: { id: "valued-account", opening_balance: 0 },
+          data: { ...account, id: "valued-account", account_type_code: accountTypeCode, opening_balance: "0", replayed: false },
           error: null,
         })
       const single = vi
@@ -199,16 +212,16 @@ describe("AccountsRepository.createAccount", () => {
             accountTypeCode === "business"
               ? "owner_estimate"
               : "professional_appraisal",
-        })
+        }, "00000000-0000-4000-8000-000000000001")
       ).resolves.toMatchObject({ id: "valued-account", opening_balance: "0" })
 
       expect(rpc).toHaveBeenCalledWith(
-        "create_valued_account",
+        "create_valued_account_v2",
         expect.objectContaining({ p_valuation_amount: "500" })
       )
-      expect(builder.select).toHaveBeenCalled()
+      expect(builder.select).not.toHaveBeenCalled()
       expect(rpc).toHaveBeenCalledWith(
-        "create_valued_account",
+        "create_valued_account_v2",
         expect.objectContaining({
           p_valuation_method:
             accountTypeCode === "business"

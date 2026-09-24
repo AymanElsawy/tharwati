@@ -1,3 +1,5 @@
+import { createFingerprint } from "@/features/accounts/utils/create-submission"
+import { resolveSubmissionAttempt, type SubmissionAttempt } from "@/features/accounts/utils/refund-submission"
 import { useCallback, useEffect, useRef, useState } from "react"
 
 import { findCurrency, type CurrencyOption } from "@/features/onboarding/data/currencies"
@@ -31,6 +33,7 @@ function toInput(values: CashAccountFormValues): SaveCashAccountInput {
 }
 
 export function useCashAccounts() {
+  const attempt = useRef<SubmissionAttempt | null>(null)
   const [accounts, setAccounts] = useState<CashAccountSummary[]>([])
   const [baseCurrencyCode, setBaseCurrencyCode] = useState("")
   const [currencyOptions, setCurrencyOptions] = useState<CurrencyOption[]>([])
@@ -101,7 +104,13 @@ export function useCashAccounts() {
     refresh: load,
     clearError: () => setError(null),
     createAccount: (values: CashAccountFormValues) =>
-      mutate("cashAccounts.create", () => cashAccountsRepository.create(toInput(values))),
+      mutate("cashAccounts.create", async () => {
+        const input = toInput(values)
+        attempt.current = resolveSubmissionAttempt(attempt.current, createFingerprint({ ...input, balance: undefined, p_opening_balance: input.balance }))
+        const result = await cashAccountsRepository.create(input, attempt.current.idempotencyKey)
+        attempt.current = null
+        return result
+      }),
     updateAccount: (id: string, values: CashAccountFormValues) =>
       mutate("cashAccounts.update", () =>
         cashAccountsRepository.update(id, toInput(values)),

@@ -46,10 +46,11 @@ export function buildAddMetalPurchaseCommand(
 
 export async function addMetalPurchase(
   accountId: string,
-  values: MetalPurchaseFormValues
+  values: MetalPurchaseFormValues,
+  idempotencyKey: string
 ): Promise<void> {
   await metalPurchasesRepository.addPurchase(
-    buildAddMetalPurchaseCommand(accountId, values)
+    buildAddMetalPurchaseCommand(accountId, values), idempotencyKey
   )
 }
 
