@@ -137,10 +137,9 @@ export class AssetsWorkspaceService {
         (transactions) => ({ transactions, error: null }),
         (cause: unknown) => ({
           transactions: [],
-          error:
-            cause instanceof Error
-              ? cause.message
-              : "Asset activity data is malformed",
+          error: cause instanceof Error
+            ? cause
+            : new Error("Asset activity is unavailable", { cause }),
         })
       ),
       this.accounts.getAccounts(),

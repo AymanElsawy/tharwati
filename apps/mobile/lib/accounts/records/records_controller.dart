@@ -1,6 +1,8 @@
 import 'dart:async';
 
 import 'package:flutter/foundation.dart';
+import '../../errors/safe_app_error.dart';
+import '../../i18n/app_language.dart';
 
 import '../../core/data_change.dart';
 import '../../core/idempotency_key.dart';
@@ -20,11 +22,14 @@ enum RecordsStatus { loading, error, ready }
 /// state): a filtered, cursor-paginated history plus add / correct / reverse
 /// mutations, and the visible category tree used for labels and the picker.
 class RecordsController extends ChangeNotifier {
-  RecordsController({required this.accountId, RecordsRepository? repository})
-    : _repo = repository ?? RecordsRepository();
+  RecordsController({required this.accountId, RecordsRepository? repository,
+    AppLanguage Function()? language})
+    : _repo = repository ?? RecordsRepository(),
+      _language = language ?? (() => AppLanguage.en);
 
   final String accountId;
   final RecordsRepository _repo;
+  final AppLanguage Function() _language;
 
   RecordsStatus status = RecordsStatus.loading;
   List<AccountRecord> records = const [];
@@ -134,9 +139,7 @@ class RecordsController extends ChangeNotifier {
       _cursor = page.nextCursor;
       hasMore = page.hasMore;
     } catch (e) {
-      pageError = e is AccountsException
-          ? e.message
-          : 'We couldn’t load account records.';
+      pageError = safeAppErrorMessage(e, _language());
     } finally {
       loadingMore = false;
       notifyListeners();
@@ -160,9 +163,7 @@ class RecordsController extends ChangeNotifier {
     try {
       return await _repo.getEditableRecord(recordId);
     } catch (e) {
-      actionError = e is AccountsException
-          ? e.message
-          : 'We couldn’t load account records.';
+      actionError = safeAppErrorMessage(e, _language());
       notifyListeners();
       return null;
     }
@@ -197,9 +198,7 @@ class RecordsController extends ChangeNotifier {
     try {
       return await _repo.refundSummary(expenseId);
     } catch (e) {
-      actionError = e is AccountsException
-          ? e.message
-          : 'Refund summary is unavailable.';
+      actionError = safeAppErrorMessage(e, _language());
       notifyListeners();
       return null;
     }
@@ -229,9 +228,10 @@ class RecordsController extends ChangeNotifier {
     notifyListeners();
     final outcome = await runMutation(
       action,
-      errorMessage: (error) => error is AccountsException
+      errorMessage: (error) => error is AccountsException &&
+              error.message == 'invalid_refund_request'
           ? error.message
-          : 'We could not save this record. Please try again.',
+          : safeAppErrorMessage(error, _language()),
     );
     if (outcome is MutationCommitted) {
       DataChange.instance.ping();

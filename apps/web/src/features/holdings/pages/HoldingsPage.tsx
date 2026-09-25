@@ -1,5 +1,6 @@
 import { AlertCircle, Layers3, RefreshCw, Search } from "lucide-react"
 import { useMemo, useState } from "react"
+import { safeErrorMessage } from "@/lib/errors/app-error"
 
 import { useTranslation } from "../../../i18n/useTranslation"
 import { assetTypeOptions } from "../../assets/types/asset-form"
@@ -88,7 +89,7 @@ export function HoldingsPage() {
           <h2 className="mt-4 text-xl font-bold text-red-900">
             {t("holdings.error.title")}
           </h2>
-          <p className="mt-2 text-sm text-red-700">{error.message}</p>
+          <p className="mt-2 text-sm text-red-700">{safeErrorMessage(error, t)}</p>
           <button
             type="button"
             onClick={() => void refresh()}

@@ -12,6 +12,7 @@ import { formatLocalDateTimeInput, localDateTimeInputToIso } from "@/lib/formatt
 import type { AccountSummary, AssetSummary } from "@/lib/supabase/types"
 import { assetSearchService, type ExternalAssetSearchResult } from "@/services/asset-search/asset-search.service"
 import { runMutationThenRefresh } from "@/lib/mutations/mutation-refresh"
+import { safeErrorMessage } from "@/lib/errors/app-error"
 import { brokerageAttempt, brokerageTradeFingerprint } from "@/features/investments/utils/brokerage-submission"
 import type { SubmissionAttempt } from "../utils/refund-submission"
 
@@ -133,7 +134,7 @@ export function BrokerageBuyDialog({ account, availableCash, onClose, onSaved, o
       onCommitted: () => { attemptRef.current = null; onClose(); window.dispatchEvent(new Event("tharwati:data-changed")) },
       refresh: onSaved,
     })
-    if (outcome.mutation === "rejected") setError(outcome.error instanceof Error ? outcome.error.message : t("brokerage.buyError"))
+    if (outcome.mutation === "rejected") setError(safeErrorMessage(outcome.error, t))
     else if (outcome.refresh === "stale") onRefreshStale?.()
     setSaving(false)
   }

@@ -43,7 +43,7 @@ function storageError(
 
   return new MarketDataError({
     code: "storage_error",
-    message: error.message,
+    message: "Market prices could not be loaded.",
     assetId,
     cause: error,
   })
@@ -67,7 +67,7 @@ export class MarketDataRepository {
     if (error || !data) {
       throw new MarketDataError({
         code: "storage_error",
-        message: error?.message ?? `Asset ${assetId} was not found`,
+        message: "Market prices could not be loaded.",
         assetId,
         cause: error,
       })
@@ -101,7 +101,7 @@ export class MarketDataRepository {
     if (error) {
       throw new MarketDataError({
         code: "storage_error",
-        message: error.message,
+        message: "Market prices could not be loaded.",
         cause: error,
       })
     }
@@ -166,7 +166,7 @@ export class MarketDataRepository {
     if (error) {
       throw new MarketDataError({
         code: "storage_error",
-        message: error.message,
+        message: "Market prices could not be loaded.",
         cause: error,
       })
     }

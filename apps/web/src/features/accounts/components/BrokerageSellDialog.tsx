@@ -1,6 +1,7 @@
 import { Dialog } from "@base-ui/react/dialog"
 import { X } from "lucide-react"
 import { useMemo, useRef, useState } from "react"
+import { safeErrorMessage } from "@/lib/errors/app-error"
 
 import { Button } from "@/components/ui/button"
 import { brokerageSellsRepository } from "@/features/investments/repositories/brokerage-sells.repository"
@@ -86,7 +87,7 @@ export function BrokerageSellDialog({
       onCommitted: () => { attemptRef.current = null; onClose(); window.dispatchEvent(new Event("tharwati:data-changed")) },
       refresh: onSaved,
     })
-    if (outcome.mutation === "rejected") setError(outcome.error instanceof Error ? outcome.error.message : t("brokerage.sellError"))
+    if (outcome.mutation === "rejected") setError(safeErrorMessage(outcome.error, t))
     else if (outcome.refresh === "stale") onRefreshStale?.()
     setSaving(false)
   }

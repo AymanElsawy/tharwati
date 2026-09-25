@@ -1,4 +1,5 @@
 import { AlertCircle, Box, RefreshCw } from "lucide-react"
+import { safeErrorMessage } from "@/lib/errors/app-error"
 
 import { useTranslation } from "@/i18n/useTranslation"
 
@@ -10,7 +11,7 @@ export function AssetWorkspaceSkeleton() {
 
 export function AssetWorkspaceError({ error, onRetry }: { error: Error; onRetry: () => void }) {
   const { t } = useTranslation()
-  return <div role="alert" className="border-y border-destructive/30 py-14 text-center"><AlertCircle className="mx-auto text-destructive" size={30} /><h1 className="mt-4 font-heading text-2xl">{t("assets.error.loadTitle")}</h1><p className="mx-auto mt-2 max-w-lg text-sm text-muted-foreground">{error.message}</p><button type="button" onClick={onRetry} className="tharwati-button-primary mt-5 inline-flex gap-2"><RefreshCw size={15} />{t("assets.actions.tryAgain")}</button></div>
+  return <div role="alert" className="border-y border-destructive/30 py-14 text-center"><AlertCircle className="mx-auto text-destructive" size={30} /><h1 className="mt-4 font-heading text-2xl">{t("assets.error.loadTitle")}</h1><p className="mx-auto mt-2 max-w-lg text-sm text-muted-foreground">{safeErrorMessage(error, t)}</p><button type="button" onClick={onRetry} className="tharwati-button-primary mt-5 inline-flex gap-2"><RefreshCw size={15} />{t("assets.actions.tryAgain")}</button></div>
 }
 
 export function AssetWorkspaceEmpty({ filtered, onClear }: { filtered: boolean; onClear: () => void }) {

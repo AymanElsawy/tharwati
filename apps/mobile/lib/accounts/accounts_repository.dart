@@ -1,4 +1,5 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
+import '../errors/safe_app_error.dart';
 
 import 'account_form.dart';
 import 'account_models.dart';
@@ -6,9 +7,22 @@ import 'account_models.dart';
 /// Raised for account reads/mutations; [message] is already user-facing (port of
 /// the web `RepositoryError` + `createAccount`/`updateAccount` friendly-error
 /// translation, docs/accounts.md §4, §5).
-class AccountsException implements Exception {
-  AccountsException(this.message);
+class AccountsException implements Exception, AppErrorCarrier {
+  AccountsException(this.message, {this.appErrorCode = AppErrorCode.unknown, this.originalCause, this.trustedBusinessMessage});
+  factory AccountsException.fromPostgrest(PostgrestException error, String safeMessage,
+      {AppErrorCode? code}) {
+    final category = code ?? classifyAppError(error).code;
+    return AccountsException(safeMessage, appErrorCode: category,
+      originalCause: error,
+      trustedBusinessMessage: category == AppErrorCode.businessRule ? safeMessage : null);
+  }
   final String message;
+  @override
+  final AppErrorCode appErrorCode;
+  @override
+  final Object? originalCause;
+  @override
+  final String? trustedBusinessMessage;
   @override
   String toString() => message;
 }
@@ -53,7 +67,7 @@ class AccountsRepository {
           .single();
       return Account.fromRow((row).cast<String, dynamic>());
     } on PostgrestException catch (e) {
-      throw AccountsException(_friendly(e));
+      throw AccountsException.fromPostgrest(e, _friendly(e));
     }
   }
 
@@ -156,7 +170,7 @@ class AccountsRepository {
       // Decimal fields are text in the receipt result. No fallible post-commit read.
       return Account.fromRow((row as Map).cast<String, dynamic>());
     } on PostgrestException catch (e) {
-      throw AccountsException(_friendly(e));
+      throw AccountsException.fromPostgrest(e, _friendly(e));
     }
   }
 
@@ -177,7 +191,7 @@ class AccountsRepository {
           .single();
       return Account.fromRow((row).cast<String, dynamic>());
     } on PostgrestException catch (e) {
-      throw AccountsException(_friendly(e));
+      throw AccountsException.fromPostgrest(e, _friendly(e));
     }
   }
 
@@ -192,7 +206,7 @@ class AccountsRepository {
     try {
       await _client.rpc(fn, params: {'p_account_id': id});
     } on PostgrestException catch (e) {
-      throw AccountsException(_friendly(e));
+      throw AccountsException.fromPostgrest(e, _friendly(e));
     }
   }
 

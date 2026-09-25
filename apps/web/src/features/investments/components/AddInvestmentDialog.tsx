@@ -2,6 +2,7 @@ import { zodResolver } from "@hookform/resolvers/zod"
 import { AlertCircle, Plus, X } from "lucide-react"
 import { useEffect, useMemo, useState } from "react"
 import { useForm, useWatch } from "react-hook-form"
+import { safeErrorMessage } from "@/lib/errors/app-error"
 
 import { useTranslation } from "../../../i18n/useTranslation"
 import type { TranslationKey } from "../../../i18n/en/translations"
@@ -130,11 +131,7 @@ export function AddInvestmentDialog({ isOpen, onClose, onSuccess }: Props) {
         setAccounts(nextAccounts.filter((account) => account.is_active))
         setAssets(nextAssets)
       } catch (cause) {
-        setLoadError(
-          cause instanceof Error
-            ? cause.message
-            : t("investment.error.loadOptions")
-        )
+        setLoadError(safeErrorMessage(cause, t))
       } finally {
         setIsLoadingOptions(false)
       }
@@ -203,7 +200,7 @@ export function AddInvestmentDialog({ isOpen, onClose, onSuccess }: Props) {
               className="flex gap-3 rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-800"
             >
               <AlertCircle size={18} className="shrink-0" />
-              <span>{error?.message ?? loadError}</span>
+              <span>{error ? safeErrorMessage(error, t) : loadError}</span>
             </div>
           )}
 

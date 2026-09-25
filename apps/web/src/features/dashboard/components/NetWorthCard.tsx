@@ -2,6 +2,7 @@ import { AlertTriangle, Landmark, RefreshCw, WalletCards } from "lucide-react"
 import { Link } from "react-router-dom"
 
 import { Button } from "@/components/ui/button"
+import { safeErrorMessage } from "@/lib/errors/app-error"
 import { AnimatedNetWorthValue } from "@/features/dashboard/components/AnimatedNetWorthValue"
 import type { DashboardAggregate } from "@/features/dashboard/services/dashboard-aggregate.service"
 import { formatPortfolioAmount } from "@/features/portfolio/utils/portfolio-formatters"
@@ -76,7 +77,7 @@ export function NetWorthCard({
           <h2 className="font-bold">{unavailable}</h2>
         </div>
         <p className="mt-3 text-sm text-[var(--color-text-secondary)]">
-          {error.message}
+          {safeErrorMessage(error, t)}
         </p>
         <Button
           className="mt-5"

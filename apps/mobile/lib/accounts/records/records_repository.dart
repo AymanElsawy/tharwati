@@ -1,4 +1,5 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
+import '../../errors/safe_app_error.dart';
 
 import '../../core/local_datetime.dart';
 import '../accounts_repository.dart' show AccountsException;
@@ -68,7 +69,7 @@ class RecordsRepository {
         hasMore: rows.length == pageSize,
       );
     } on PostgrestException catch (e) {
-      throw AccountsException(e.message);
+      throw _recordError(e);
     }
   }
 
@@ -141,10 +142,11 @@ class RecordsRepository {
         'p_idempotency_key': idempotencyKey,
       });
     } on AccountsException catch (e) {
-      if (e.message.toLowerCase().contains(
-        'invalid input syntax for type uuid',
-      )) {
-        throw AccountsException('invalid_refund_request');
+      if (e.appErrorCode == AppErrorCode.validation &&
+          e.originalCause is PostgrestException &&
+          (e.originalCause as PostgrestException).code == '22P02') {
+        throw AccountsException('invalid_refund_request',
+          appErrorCode: AppErrorCode.validation, originalCause: e.originalCause);
       }
       rethrow;
     }
@@ -154,7 +156,7 @@ class RecordsRepository {
     try {
       await _client.rpc(fn, params: params);
     } on PostgrestException catch (e) {
-      throw AccountsException(_friendly(e));
+      throw _recordError(e);
     }
   }
 
@@ -177,7 +179,7 @@ class RecordsRepository {
           .single();
       return _mapEditable((row).cast<String, dynamic>());
     } on PostgrestException catch (e) {
-      throw AccountsException(_friendly(e));
+      throw _recordError(e);
     }
   }
 
@@ -330,8 +332,16 @@ class RecordsRepository {
     try {
       await op();
     } on PostgrestException catch (e) {
-      throw AccountsException(_friendly(e));
+      throw _recordError(e);
     }
+  }
+
+  static AccountsException _recordError(PostgrestException e) {
+    final message = _friendly(e);
+    final code = message == 'A current exchange rate is unavailable.'
+        ? AppErrorCode.fxUnavailable
+        : classifyAppError(e).code;
+    return AccountsException.fromPostgrest(e, message, code: code);
   }
 
   static String _friendly(PostgrestException e) {
@@ -343,6 +353,6 @@ class RecordsRepository {
       return 'That record is no longer available.';
     }
     if (e.code == '42501') return 'You don’t have permission to do that.';
-    return e.message;
+    return 'We could not complete this request. Please try again.';
   }
 }

@@ -1,6 +1,23 @@
 import type { TranslationKey } from "../en/translations"
 
 export const ar: Record<TranslationKey, string> = {
+  "errors.validation": "تحقق من البيانات ثم حاول مرة أخرى.",
+  "errors.businessRule": "لا يمكن إجراء هذا التغيير في حالة الحساب الحالية.",
+  "errors.unauthorized": "انتهت جلستك. سجّل الدخول مرة أخرى.",
+  "errors.forbidden": "ليس لديك صلاحية لإجراء ذلك.",
+  "errors.offline": "يبدو أنك غير متصل بالإنترنت. تحقق من اتصالك ثم حاول مرة أخرى.",
+  "errors.timeout": "استغرق الطلب وقتًا طويلًا. تحقق من اتصالك ثم حاول مرة أخرى.",
+  "errors.serviceUnavailable": "الخدمة غير متاحة الآن. حاول مرة أخرى لاحقًا.",
+  "errors.marketPriceUnavailable": "سعر السوق غير متاح. لا يمكن حساب القيمة.",
+  "errors.fxUnavailable": "سعر الصرف غير متاح. لا يمكن تحويل القيمة.",
+  "errors.fxStale": "سعر الصرف قديم. راجعه قبل الاعتماد على هذه القيمة.",
+  "errors.unknown": "حدث خطأ. حاول مرة أخرى.",
+  "errors.accountCurrencyLocked": "لا يمكن تغيير عملة هذا الحساب لأن له سجلًا ماليًا.",
+  "errors.accountOpeningBalanceLocked": "لا يمكن تغيير الرصيد الافتتاحي لهذا الحساب لأن له سجلًا ماليًا.",
+  "errors.duplicateMetalAccount": "لديك حساب معادن من هذا النوع وبهذه العملة. أضف عملية شراء إلى الحساب الحالي.",
+  "errors.duplicateAccount": "يوجد حساب نشط بهذا الاسم والنوع.",
+  "errors.futureMarketPrice": "لا يمكن أن يكون تاريخ سعر السوق في المستقبل.",
+  "errors.insufficientBrokerageAvailableCash": "تتطلب عملية الشراء هذه مبلغًا أكبر من النقد المتاح في حساب الوساطة. أضف نقدًا أو قلّل مبلغ الشراء.",
   "dashboard.accountsOverview.totalCurrentValue": "إجمالي القيمة الحالية",
   "dashboard.accountsOverview.currentValueUnavailable":
     "القيمة الحالية غير متاحة",

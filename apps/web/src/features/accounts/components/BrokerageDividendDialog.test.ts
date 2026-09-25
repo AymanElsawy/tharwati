@@ -8,7 +8,8 @@ describe("BrokerageDividendDialog", () => {
     expect(compactDialog).toContain("addBrokerageCashDividend(input)")
     expect(compactDialog).toContain("p_notes:notes.trim()||null")
     expect(compactDialog).toContain("setSaving(true)")
-    expect(compactDialog).toContain('t("brokerage.dividendError")')
+    expect(compactDialog).toContain('safeErrorMessage(outcome.error,t)')
+    expect(compactDialog).not.toContain('outcome.error.message')
     expect(compactDialog).toContain('t("brokerage.netDividend")')
   })
 

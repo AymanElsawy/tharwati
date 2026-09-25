@@ -1,5 +1,6 @@
 import { Dialog } from "@base-ui/react/dialog"
 import { useEffect, useMemo, useRef, useState } from "react"
+import { safeErrorMessage } from "@/lib/errors/app-error"
 import { Button } from "@/components/ui/button"
 import { assetsRepository } from "@/features/assets/repositories/assets.repository"
 import { addBrokerageCashDividend, addBrokerageDividendReinvestment, addBrokeragePartialDividendReinvestment } from "@/features/investments/repositories/brokerage-dividends.repository"
@@ -87,7 +88,7 @@ export function BrokerageDividendDialog({ account, onClose, onSaved, onRefreshSt
       else await addBrokerageCashDividend(input)
     }
     const outcome = await runMutationThenRefresh({ mutate, onCommitted: () => { attemptRef.current = null; onClose(); window.dispatchEvent(new Event("tharwati:data-changed")) }, refresh: onSaved })
-    if (outcome.mutation === "rejected") setError(outcome.error instanceof Error ? outcome.error.message : t("brokerage.dividendError"))
+    if (outcome.mutation === "rejected") setError(safeErrorMessage(outcome.error, t))
     else if (outcome.refresh === "stale") onRefreshStale?.()
     setSaving(false)
   }

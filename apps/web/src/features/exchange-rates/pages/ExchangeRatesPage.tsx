@@ -1,6 +1,8 @@
 import { Pencil, Plus, RefreshCw, Trash2 } from "lucide-react"
 import { useMemo, useState } from "react"
+import { safeErrorMessage } from "@/lib/errors/app-error"
 import { useLocation } from "react-router-dom"
+import { useTranslation } from "@/i18n/useTranslation"
 
 import { Button } from "@/components/ui/button"
 import { DeleteExchangeRateDialog } from "@/features/exchange-rates/components/DeleteExchangeRateDialog"
@@ -15,6 +17,7 @@ type FormState = { mode: "create"; rate: null } | { mode: "edit"; rate: StoredEx
 type MissingPairState = { sourceCurrencyCode?: string; destinationCurrencyCode?: string }
 
 export function ExchangeRatesPage() {
+  const { t } = useTranslation()
   const location = useLocation()
   const prefill = (location.state as MissingPairState | null) ?? {}
   const { rates, currencies, error, isLoading, isSaving, refresh, create, update, remove } = useExchangeRates()
@@ -42,7 +45,7 @@ export function ExchangeRatesPage() {
         </div>
         <Button size="lg" className="w-full sm:w-auto" onClick={() => setForm({ mode: "create", rate: null })}><Plus /> Add Exchange Rate</Button>
       </header>
-      {error && <div role="alert" className="mb-5 rounded-2xl border border-red-200 bg-red-50 p-4 text-red-800">{error.message}</div>}
+      {error && <div role="alert" className="mb-5 rounded-2xl border border-red-200 bg-red-50 p-4 text-red-800">{safeErrorMessage(error, t)}</div>}
       {isLoading ? <div className="h-64 animate-pulse rounded-3xl bg-[var(--color-surface)]" /> : rates.length === 0 ? (
         <div className="flex min-h-72 flex-col items-center justify-center rounded-3xl border border-dashed border-[var(--color-border)] bg-[var(--color-surface)] p-8 text-center">
           <h2 className="text-xl font-bold">No exchange rates</h2>

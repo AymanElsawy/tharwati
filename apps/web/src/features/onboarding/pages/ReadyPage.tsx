@@ -1,11 +1,14 @@
 import { useState } from "react"
 import { useNavigate } from "react-router-dom"
+import { useTranslation } from "@/i18n/useTranslation"
+import { safeErrorMessage } from "@/lib/errors/app-error"
 
 import { Button } from "@/components/ui/button"
 import { Progress } from "@/components/ui/progress"
 import { useOnboarding } from "@/features/onboarding/hooks/useOnboarding"
 
 export default function ReadyPage() {
+  const { t } = useTranslation()
   const navigate = useNavigate()
   const { completeOnboarding } = useOnboarding()
   const [isSaving, setIsSaving] = useState(false)
@@ -19,11 +22,7 @@ export default function ReadyPage() {
       await completeOnboarding()
       navigate("/dashboard", { replace: true })
     } catch (error) {
-      setErrorMessage(
-        error instanceof Error
-          ? error.message
-          : "We couldn't save your onboarding preferences. Please try again.",
-      )
+      setErrorMessage(safeErrorMessage(error, t))
       setIsSaving(false)
     }
   }

@@ -1,6 +1,7 @@
 import { AlertTriangle } from "lucide-react"
 import { useMemo, useState } from "react"
 import { useNavigate } from "react-router-dom"
+import { safeErrorMessage } from "@/lib/errors/app-error"
 
 import { AssetActiveFilters } from "@/features/assets/components/AssetActiveFilters"
 import { AssetClassNavigator } from "@/features/assets/components/AssetClassNavigator"
@@ -263,7 +264,7 @@ export function AssetsPage() {
         />
         <AssetRecentActivity
           activity={activity}
-          error={snapshot.activityError}
+          error={snapshot.activityError ? t("errors.serviceUnavailable") : null}
           accountId={evidenceFilters.activityAccountId}
           activityType={evidenceFilters.activityType}
           accounts={snapshot.scopeOptions}
@@ -411,7 +412,7 @@ export function AssetsPage() {
           >
             ×
           </button>
-          {mutationError.message}
+          {safeErrorMessage(mutationError, t)}
         </div>
       ) : null}
     </div>

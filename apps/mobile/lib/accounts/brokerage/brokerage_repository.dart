@@ -119,8 +119,8 @@ class BrokerageRepository {
       return _rank(parsed, normalized);
     } on AccountsException {
       rethrow;
-    } catch (_) {
-      throw AccountsException(_searchUnavailable);
+    } catch (error) {
+      throw AccountsException(_searchUnavailable, originalCause: error);
     }
   }
 
@@ -164,7 +164,7 @@ class BrokerageRepository {
       }
       return '${row['id']}';
     } on PostgrestException catch (e) {
-      throw AccountsException(_friendly(e));
+      throw AccountsException.fromPostgrest(e, _friendly(e));
     }
   }
 
@@ -360,7 +360,7 @@ class BrokerageRepository {
     try {
       await _client.rpc(fn, params: params);
     } on PostgrestException catch (e) {
-      throw AccountsException(_friendly(e));
+      throw AccountsException.fromPostgrest(e, _friendly(e));
     }
   }
 

@@ -43,6 +43,8 @@ import { getVisibleRecordCategoryTree } from "@/features/accounts/services/recor
 import { formatPortfolioAmount } from "@/features/portfolio/utils/portfolio-formatters"
 import { compareDecimals } from "@/lib/financial-calculations/decimal"
 import { useTranslation } from "@/i18n/useTranslation"
+import type { Translate } from "@/i18n/context"
+import { safeErrorMessage } from "@/lib/errors/app-error"
 import {
   formatLocalCalendarDate,
   formatLocalDateTime,
@@ -84,8 +86,8 @@ function netColor(amount: string) {
       ? "text-muted-foreground"
       : "text-emerald-700 dark:text-emerald-400"
 }
-function errorMessage(error: unknown, fallback: string) {
-  return error instanceof Error ? error.message : fallback
+function errorMessage(error: unknown, t: Translate) {
+  return safeErrorMessage(error, t)
 }
 
 function MobileAccountRecordRow({
@@ -368,7 +370,7 @@ export function AccountRecordsPage({
         setObserverGeneration((current) => current + 1)
       } catch (error) {
         if (requestVersion === historyRequestVersion.current)
-          setPageError(errorMessage(error, t("accounts.records.error")))
+          setPageError(errorMessage(error, t))
       } finally {
         isPageRequestInFlight.current = false
         setIsLoadingMore(false)
@@ -442,7 +444,7 @@ export function AccountRecordsPage({
       try {
         setEditingRecord(await getEditableAccountRecord(recordId))
       } catch (error) {
-        setFormError(errorMessage(error, t("accounts.records.error")))
+        setFormError(errorMessage(error, t))
       }
     },
     [records, t]
@@ -469,7 +471,7 @@ export function AccountRecordsPage({
     })
     if (outcome.mutation === "rejected")
       setRefundCancellationError(
-        errorMessage(outcome.error, t("accounts.records.error"))
+        errorMessage(outcome.error, t)
       )
     setIsSaving(false)
   }, [loadInitialRecords, refundToCancel, t])
@@ -498,7 +500,7 @@ export function AccountRecordsPage({
         refresh: () => loadInitialRecords(true),
       })
       if (outcome.mutation === "rejected")
-        setFormError(errorMessage(outcome.error, t("accounts.records.error")))
+        setFormError(errorMessage(outcome.error, t))
       setIsSaving(false)
     },
     [closeForm, editingRecord, loadInitialRecords, t]
@@ -517,7 +519,7 @@ export function AccountRecordsPage({
       refresh: () => loadInitialRecords(true),
     })
     if (outcome.mutation === "rejected")
-      setDeleteError(errorMessage(outcome.error, t("accounts.records.error")))
+      setDeleteError(errorMessage(outcome.error, t))
     setIsSaving(false)
   }, [closeForm, editingRecord, loadInitialRecords, t])
 
@@ -530,7 +532,7 @@ export function AccountRecordsPage({
         setRefundSummary(summary)
       }
     } catch (error) {
-      setFormError(errorMessage(error, t("accounts.records.error")))
+      setFormError(errorMessage(error, t))
     }
   }, [editingRecord, t])
   const submitRefund = useCallback(
@@ -568,7 +570,7 @@ export function AccountRecordsPage({
         refresh: () => loadInitialRecords(true),
       })
       if (outcome.mutation === "rejected")
-        setFormError(errorMessage(outcome.error, t("accounts.records.error")))
+        setFormError(errorMessage(outcome.error, t))
       setIsSaving(false)
     },
     [closeForm, loadInitialRecords, refundExpense, t]

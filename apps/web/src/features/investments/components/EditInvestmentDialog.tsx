@@ -7,6 +7,7 @@ import { Dialog } from "@base-ui/react/dialog"
 import { UnsavedChangesDialog } from "@/components/UnsavedChangesDialog"
 import { useUnsavedChanges } from "@/hooks/useUnsavedChanges"
 import { useTranslation } from "@/i18n/useTranslation"
+import { safeErrorMessage } from "@/lib/errors/app-error"
 import { createEditInvestmentSchema } from "../schemas/edit-investment.schema"
 import { useEditInvestment } from "../hooks/useEditInvestment"
 import type { EditInvestmentValues } from "../types/edit-investment"
@@ -39,7 +40,7 @@ export function EditInvestmentDialog({ transactionId, open, onClose, onSuccess }
         </header>
         {isLoading ? <p role="status" className="p-6">{t("common.loading")}</p> :
           <form id="edit-investment-form" className="min-h-0 flex-1 space-y-5 overflow-y-auto p-6" onSubmit={handleSubmit(async (values) => { await save(values); reset(values); onSuccess(); onClose() })}>
-            {error ? <p role="alert" className="text-sm text-red-700 dark:text-red-300">{error.message}</p> : null}
+            {error ? <p role="alert" className="text-sm text-red-700 dark:text-red-300">{safeErrorMessage(error, t)}</p> : null}
             <div className="rounded-xl border border-amber-500/30 p-4 text-sm text-amber-800 dark:text-amber-200">{t("investment.edit.correctionNotice")}</div>
             <input type="hidden" {...register("transactionId")} /><input type="hidden" {...register("accountId")} /><input type="hidden" {...register("assetId")} />
             <div className="grid gap-4 sm:grid-cols-2">

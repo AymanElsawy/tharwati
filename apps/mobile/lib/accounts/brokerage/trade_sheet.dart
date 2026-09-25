@@ -8,6 +8,7 @@ import '../../core/money_format.dart';
 import '../../core/quantity_format.dart';
 import '../../i18n/accounts_copy.dart';
 import '../../i18n/app_language.dart';
+import '../../errors/safe_app_error.dart';
 import '../../theme/tokens.dart';
 import '../../widgets/app_sheet.dart';
 import '../../widgets/form_controls.dart';
@@ -498,7 +499,7 @@ class _BrokerageAssetPickerSheetState extends State<BrokerageAssetPickerSheet> {
       if (!mounted) return;
       setState(() {
         _searching = false;
-        _searchError = '$e';
+        _searchError = safeAppErrorMessage(e, AppLanguageScope.of(context).language);
       });
     }
   }

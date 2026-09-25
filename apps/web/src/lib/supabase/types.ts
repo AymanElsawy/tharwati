@@ -1323,9 +1323,12 @@ export type RepositoryErrorCode =
   | "constraint_violation"
   | "forbidden"
   | "database_error"
+  | "insufficient_brokerage_available_cash"
+  | "unknown"
 
 type SupabaseErrorLike = {
   code?: string
+  status?: number
   message: string
   details?: string
   hint?: string
@@ -1364,11 +1367,17 @@ export function toRepositoryError(
     "23514": "constraint_violation",
     "42501": "forbidden",
     PGRST116: "not_found",
+    PGRST301: "authentication_required",
+    "401": "authentication_required",
   }
 
+  const code = error.status === 401 ? "authentication_required"
+    : error.status === 403 ? "forbidden"
+    : codeByDatabaseCode[error.code ?? ""] ?? "database_error"
+
   return new RepositoryError({
-    code: codeByDatabaseCode[error.code ?? ""] ?? "database_error",
-    message: error.message,
+    code,
+    message: code === "authentication_required" ? "Please sign in again." : code === "forbidden" ? "You do not have permission to do that." : "The request could not be completed.",
     operation,
     details: error.details,
     hint: error.hint,

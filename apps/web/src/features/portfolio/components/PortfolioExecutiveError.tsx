@@ -1,6 +1,7 @@
 import { AlertTriangle, RefreshCw } from "lucide-react"
 
 import { useTranslation } from "@/i18n/useTranslation"
+import { safeErrorMessage } from "@/lib/errors/app-error"
 
 export function PortfolioExecutiveError({
   error,
@@ -23,7 +24,7 @@ export function PortfolioExecutiveError({
         {t("portfolio.error.title")}
       </h1>
       <p className="mt-2 max-w-xl text-sm leading-6 text-[var(--color-text-secondary)]">
-        {error.message || t("portfolio.error.description")}
+        {safeErrorMessage(error, t)}
       </p>
       <button
         type="button"

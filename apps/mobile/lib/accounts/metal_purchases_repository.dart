@@ -56,7 +56,7 @@ class MetalPurchasesRepository {
     try {
       await _client.rpc(fn, params: params);
     } on PostgrestException catch (e) {
-      throw AccountsException(_friendly(e));
+      throw AccountsException.fromPostgrest(e, _friendly(e));
     }
   }
 

@@ -43,6 +43,9 @@ class AccountRecordsPage extends StatefulWidget {
 class _AccountRecordsPageState extends State<AccountRecordsPage> {
   late final RecordsController _controller = RecordsController(
     accountId: widget.account.id,
+    language: () => mounted
+        ? AppLanguageScope.of(context).language
+        : AppLanguage.en,
   )..load();
   final _search = TextEditingController();
   final _scroll = ScrollController();

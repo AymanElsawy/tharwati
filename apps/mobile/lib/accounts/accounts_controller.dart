@@ -1,6 +1,8 @@
 import 'dart:async';
 import '../core/mutation_refresh.dart';
 import 'package:flutter/foundation.dart';
+import '../errors/safe_app_error.dart';
+import '../i18n/app_language.dart';
 
 import 'account_models.dart';
 import 'accounts_repository.dart';
@@ -16,12 +18,14 @@ enum AccountSort { name, type, balance }
 /// mutation wrapper. It is the source of account changes, so it does not itself
 /// listen to `DataChange`.
 class AccountsController extends ChangeNotifier {
-  AccountsController({AccountsService? service})
-    : _service = service ?? AccountsService() {
+  AccountsController({AccountsService? service, AppLanguage Function()? language})
+    : _service = service ?? AccountsService(),
+      _language = language ?? (() => AppLanguage.en) {
     load();
   }
 
   final AccountsService _service;
+  final AppLanguage Function() _language;
 
   AccountsStatus status = AccountsStatus.loading;
   AccountsListModel? model;
@@ -161,9 +165,7 @@ class AccountsController extends ChangeNotifier {
     notifyListeners();
     final outcome = await runMutation(
       () => action(_service),
-      errorMessage: (e) => e is AccountsException
-          ? e.message
-          : 'Something went wrong. Please try again.',
+      errorMessage: (e) => safeAppErrorMessage(e, _language()),
     );
     busy = false;
     if (outcome is MutationRejected) {
@@ -189,7 +191,7 @@ class AccountsController extends ChangeNotifier {
       await load();
       return true;
     } on AccountsException catch (e) {
-      actionError = e.message;
+      actionError = safeAppErrorMessage(e, _language());
       return false;
     } catch (_) {
       actionError = 'Something went wrong. Please try again.';

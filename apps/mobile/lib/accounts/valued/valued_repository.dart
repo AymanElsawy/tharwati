@@ -1,4 +1,5 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
+import '../../errors/safe_app_error.dart';
 
 import '../../core/decimals.dart';
 import '../accounts_repository.dart' show AccountsException;
@@ -95,7 +96,9 @@ class ValuedRepository {
     try {
       await _client.rpc(fn, params: params);
     } on PostgrestException catch (e) {
-      throw AccountsException(_friendly(e));
+      final code = classifyAppError(e).code;
+      final message = _friendly(e);
+      throw AccountsException.fromPostgrest(e, message, code: code);
     }
   }
 
@@ -106,7 +109,7 @@ class ValuedRepository {
       return 'The ownership percentage isn’t valid for this account.';
     }
     if (e.code == '42501') return 'You don’t have permission to do that.';
-    return e.message;
+    return 'We could not update this account. Please try again.';
   }
 }
 

@@ -955,7 +955,11 @@ class _BrokerageAccountRoute extends StatefulWidget {
 }
 
 class _BrokerageAccountRouteState extends State<_BrokerageAccountRoute> {
-  late final AccountsController controller = AccountsController();
+  late final AccountsController controller = AccountsController(
+    language: () => mounted
+        ? AppLanguageScope.of(context).language
+        : AppLanguage.en,
+  );
   @override
   void dispose() {
     controller.dispose();

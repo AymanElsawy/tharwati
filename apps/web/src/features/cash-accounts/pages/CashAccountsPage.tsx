@@ -1,5 +1,7 @@
 import { AlertCircle, Banknote, Pencil, Plus, RefreshCw, Trash2, Wallet } from "lucide-react"
 import { useMemo, useState } from "react"
+import { useTranslation } from "@/i18n/useTranslation"
+import { safeErrorMessage } from "@/lib/errors/app-error"
 
 import { Button } from "@/components/ui/button"
 import { CashAccountFormDialog } from "@/features/cash-accounts/components/CashAccountFormDialog"
@@ -24,6 +26,7 @@ function formatBalance(value: string, currencyCode: string) {
 }
 
 export function CashAccountsPage() {
+  const { t } = useTranslation()
   const {
     accounts,
     baseCurrencyCode,
@@ -95,7 +98,7 @@ export function CashAccountsPage() {
           <AlertCircle className="mt-0.5 size-5 shrink-0" />
           <div className="flex-1">
             <p className="font-semibold">Cash account action failed</p>
-            <p className="mt-1 text-sm">{error.message}</p>
+            <p className="mt-1 text-sm">{safeErrorMessage(error, t)}</p>
           </div>
           <button type="button" className="ms-auto text-sm font-semibold underline" onClick={clearError}>
             Dismiss

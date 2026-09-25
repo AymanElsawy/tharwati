@@ -2,6 +2,7 @@ import { Dialog } from "@base-ui/react/dialog"
 import { ArrowLeft, Pencil, Trash2, X } from "lucide-react"
 import { useCallback, useEffect, useMemo, useState } from "react"
 import { useNavigate, useParams } from "react-router-dom"
+import { safeErrorMessage } from "@/lib/errors/app-error"
 
 import { Button } from "@/components/ui/button"
 import { BrokerageSellDialog } from "@/features/accounts/components/BrokerageSellDialog"
@@ -249,9 +250,7 @@ export function BrokerageHoldingDetailsPage() {
       }
     } catch (error) {
       setDeleteError(
-        error instanceof Error
-          ? error.message
-          : t("brokerage.holdingDeleteError")
+        safeErrorMessage(error, t)
       )
     } finally {
       setIsDeleting(false)
@@ -290,9 +289,7 @@ export function BrokerageHoldingDetailsPage() {
       ) {
         return t("brokerage.holdingChangedError")
       }
-      return error instanceof Error
-        ? error.message
-        : t("brokerage.holdingEditError")
+      return safeErrorMessage(error, t)
     }
   }
 

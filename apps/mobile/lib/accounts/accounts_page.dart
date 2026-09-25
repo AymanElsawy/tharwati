@@ -30,7 +30,9 @@ class AccountsPage extends StatefulWidget {
 
 class _AccountsPageState extends State<AccountsPage> {
   late final AccountsController _controller =
-      widget.controller ?? AccountsController();
+      widget.controller ?? AccountsController(language: () => mounted
+          ? AppLanguageScope.of(context).language
+          : AppLanguage.en);
   final _search = TextEditingController();
 
   @override

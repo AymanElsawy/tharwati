@@ -1,6 +1,7 @@
 import { Dialog } from "@base-ui/react/dialog"
 import { AlertTriangle, Check, ChevronLeft, ChevronRight, X } from "lucide-react"
 import { useMemo, useState } from "react"
+import { safeErrorMessage } from "@/lib/errors/app-error"
 
 import { Button } from "@/components/ui/button"
 import { useTranslation } from "@/i18n/useTranslation"
@@ -199,11 +200,7 @@ export function AccountFormDialog({
                     try {
                       await onSubmit(values)
                     } catch (cause) {
-                      setSubmitError(
-                        cause instanceof Error
-                          ? cause.message
-                          : t("accounts.error.unexpected")
-                      )
+                      setSubmitError(safeErrorMessage(cause, t))
                     }
                   }}
                   onDirtyChange={onDirtyChange}

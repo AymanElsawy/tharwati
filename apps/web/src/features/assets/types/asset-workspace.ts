@@ -153,7 +153,7 @@ export interface AssetWorkspaceSnapshot {
   analysis: AssetHealthAnalysis
   relationships: AssetRelationshipEvidence[]
   activity: AssetActivityEvidence[]
-  activityError: string | null
+  activityError: Error | null
 }
 
 export interface AssetEvidenceFilters {

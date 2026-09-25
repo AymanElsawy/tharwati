@@ -1,6 +1,8 @@
 import { ArrowLeft, ChevronDown, MoreHorizontal, Plus, Trash2 } from "lucide-react"
 import { useCallback, useEffect, useMemo, useState } from "react"
 import { useNavigate, useParams } from "react-router-dom"
+import type { Translate } from "@/i18n/context"
+import { safeErrorMessage } from "@/lib/errors/app-error"
 
 import { Button } from "@/components/ui/button"
 import {
@@ -142,8 +144,8 @@ function toMetalPurchaseFormValues(
   }
 }
 
-function errorMessage(error: unknown, fallback: string) {
-  return error instanceof Error ? error.message : fallback
+function errorMessage(error: unknown, t: Translate) {
+  return safeErrorMessage(error, t)
 }
 
 export function MetalPurityDetailsPage() {
@@ -247,7 +249,7 @@ export function MetalPurityDetailsPage() {
       setEditingPurchase(null)
       window.dispatchEvent(new Event("tharwati:data-changed"))
     } catch (error) {
-      setEditError(errorMessage(error, t("accounts.metalPurchase.editError")))
+      setEditError(errorMessage(error, t))
     } finally {
       setIsEditing(false)
     }

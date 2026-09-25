@@ -1,5 +1,6 @@
 import { Pencil, Plus, RefreshCw } from "lucide-react"
 import { useMemo, useState } from "react"
+import { safeErrorMessage } from "@/lib/errors/app-error"
 
 import { Button } from "@/components/ui/button"
 import { useManualMarketPrices } from "@/features/market-prices/hooks/useManualMarketPrices"
@@ -104,7 +105,7 @@ export function MarketPricesPage() {
 
       {error ? (
         <div role="alert" className="mb-5 rounded-xl bg-red-50 p-4 text-red-700">
-          {error.message}
+          {safeErrorMessage(error, t)}
         </div>
       ) : null}
       {isLoading ? (

@@ -26,7 +26,7 @@ export class ExchangeRateRepository {
     if (error) {
       throw new ExchangeRateError({
         code: error.code === "23505" ? "duplicate_rate" : "storage_error",
-        message: error.message,
+        message: "Exchange rates could not be loaded.",
         cause: error,
       })
     }
@@ -50,7 +50,7 @@ export class ExchangeRateRepository {
     if (error) {
       throw new ExchangeRateError({
         code: "storage_error",
-        message: error.message,
+        message: "Exchange rates could not be loaded.",
         cause: error,
       })
     }
@@ -114,7 +114,7 @@ export class ExchangeRateRepository {
     if (error) {
       throw new ExchangeRateError({
         code: "storage_error",
-        message: error.message,
+        message: "Exchange rates could not be loaded.",
         cause: error,
       })
     }
@@ -142,7 +142,7 @@ export class ExchangeRateRepository {
     if (error) {
       throw new ExchangeRateError({
         code: "storage_error",
-        message: error.message,
+        message: "Exchange rates could not be loaded.",
         cause: error,
       })
     }
@@ -165,7 +165,7 @@ export class ExchangeRateRepository {
     if (error) {
       throw new ExchangeRateError({
         code: "storage_error",
-        message: error.message,
+        message: "Exchange rates could not be loaded.",
         pair,
         cause: error,
       })
@@ -206,7 +206,7 @@ export class ExchangeRateRepository {
     if (error) {
       throw new ExchangeRateError({
         code: "storage_error",
-        message: error.message,
+        message: "Exchange rates could not be loaded.",
         cause: error,
       })
     }
