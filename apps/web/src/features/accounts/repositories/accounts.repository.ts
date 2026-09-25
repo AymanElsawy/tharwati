@@ -13,6 +13,7 @@ import type {
   TableUpdate,
 } from "../../../lib/supabase/types"
 import { normalizeDecimal } from "@/lib/financial-calculations/decimal"
+import { READ_DEADLINE_MS, readWithDeadline } from "@/lib/network/read-deadline"
 
 export type CreateAccountInput = {
   accountTypeCode: string
@@ -242,34 +243,44 @@ export class AccountsRepository {
     this.client = client
   }
 
-  async getAccounts(): Promise<AccountSummary[]> {
+  async getAccounts(parentSignal?: AbortSignal): Promise<AccountSummary[]> {
     const operation = "accounts.getAccounts"
-    const userId = await requireAuthenticatedUserId(this.client, operation)
-    const { data, error } = await this.client
-      .from("financial_accounts")
-      .select(accountSelect)
-      .eq("user_id", userId)
-      .order("created_at", { ascending: false })
-
-    return requireQueryData(data, error, operation).map((row) =>
-      mapAccountSummary(row, operation)
-    )
+    return readWithDeadline(READ_DEADLINE_MS.simple, async (signal) => {
+      const userId = await requireAuthenticatedUserId(this.client, operation)
+      if (signal.aborted) throw new Error("Read canceled")
+      const { data, error } = await this.client
+        .from("financial_accounts")
+        .select(accountSelect)
+        .eq("user_id", userId)
+        .order("created_at", { ascending: false })
+        .abortSignal(signal)
+      return requireQueryData(data, error, operation).map((row) => mapAccountSummary(row, operation))
+    }, parentSignal)
   }
 
   async getAccount(id: string): Promise<AccountSummary> {
     const operation = "accounts.getAccount"
-    const userId = await requireAuthenticatedUserId(this.client, operation)
-    const { data, error } = await this.client
-      .from("financial_accounts")
-      .select(accountSelect)
-      .eq("id", id)
-      .eq("user_id", userId)
-      .single()
+    return readWithDeadline(READ_DEADLINE_MS.simple, async (signal) => {
+      const userId = await requireAuthenticatedUserId(this.client, operation)
+      if (signal.aborted) throw new Error("Read canceled")
+      const { data, error } = await this.client
+        .from("financial_accounts")
+        .select(accountSelect)
+        .eq("id", id)
+        .eq("user_id", userId)
+        .abortSignal(signal)
+        .single()
+      return mapAccountSummary(requireQueryData(data, error, operation), operation)
+    })
+  }
 
-    return mapAccountSummary(
-      requireQueryData(data, error, operation),
-      operation
-    )
+  /** Post-commit refresh belongs to mutation outcome handling in Slice 2B. */
+  private async getAccountAfterMutation(id: string): Promise<AccountSummary> {
+    const operation = "accounts.getAccount"
+    const userId = await requireAuthenticatedUserId(this.client, operation)
+    const { data, error } = await this.client.from("financial_accounts")
+      .select(accountSelect).eq("id", id).eq("user_id", userId).single()
+    return mapAccountSummary(requireQueryData(data, error, operation), operation)
   }
 
   async createAccount(input: CreateAccountInput, idempotencyKey: string): Promise<AccountSummary> {
@@ -373,7 +384,7 @@ export class AccountsRepository {
       p_account_id: id,
     })
     requireQueryData(true, error, operation)
-    return this.getAccount(id)
+    return this.getAccountAfterMutation(id)
   }
 
   async reopenAccount(id: string): Promise<AccountSummary> {
@@ -383,18 +394,17 @@ export class AccountsRepository {
     })
     throwAccountConstraintError(error, operation)
     requireQueryData(true, error, operation)
-    return this.getAccount(id)
+    return this.getAccountAfterMutation(id)
   }
 
   async getAccountLifecycleEligibility(
-    accountIds: string[]
+    accountIds: string[], parentSignal?: AbortSignal
   ): Promise<AccountLifecycleEligibility[]> {
     const operation = "accounts.getAccountLifecycleEligibility"
     if (accountIds.length === 0) return []
-    const { data, error } = await this.client.rpc(
-      "get_account_lifecycle_eligibility",
-      { p_account_ids: accountIds }
-    )
+    const { data, error } = await readWithDeadline(READ_DEADLINE_MS.financial, (signal) =>
+      this.client.rpc("get_account_lifecycle_eligibility", { p_account_ids: accountIds }).abortSignal(signal),
+    parentSignal)
     return requireQueryData(data, error, operation).map((row) => ({
       accountId: row.account_id,
       canClose: row.can_close,

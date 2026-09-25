@@ -3,6 +3,7 @@ import { requireQueryData } from "@/lib/supabase/repository"
 import { divideDecimals, multiplyDecimals, normalizeDecimal } from "@/lib/financial-calculations/decimal"
 import type { Decimal } from "@/lib/supabase/types"
 import type { AccountValuation, AccountValuationInput } from "../types/account-valuation"
+import { READ_DEADLINE_MS, readWithDeadline } from "@/lib/network/read-deadline"
 
 function mapValuation(row: {
   id: string; account_id: string; valuation_amount: Decimal; valued_on: string
@@ -14,7 +15,8 @@ function mapValuation(row: {
 
 export async function getEffectiveAccountValuations(accountIds: readonly string[]) {
   if (accountIds.length === 0) return [] as AccountValuation[]
-  const { data, error } = await supabase.rpc("get_effective_account_valuations", { p_account_ids: [...accountIds] })
+  const { data, error } = await readWithDeadline(READ_DEADLINE_MS.financial, (signal) =>
+    supabase.rpc("get_effective_account_valuations", { p_account_ids: [...accountIds] }).abortSignal(signal))
   return requireQueryData(data, error, "accountValuations.getEffective").map(mapValuation)
 }
 

@@ -6,6 +6,7 @@ import '../../core/money_format.dart';
 import '../../core/quantity_format.dart';
 import '../../i18n/accounts_copy.dart';
 import '../../i18n/app_language.dart';
+import '../../errors/safe_app_error.dart';
 import '../../theme/tokens.dart';
 import '../../widgets/app_sheet.dart';
 import '../../widgets/callout.dart';
@@ -156,7 +157,12 @@ class _BrokerageAccountDetailPageState
             Callout(
               tone: CalloutTone.danger,
               title: copy.brokerageLoadError,
-              message: copy.brokerageSafeError,
+              message: _controller.readErrorCode == null
+                  ? copy.brokerageSafeError
+                  : safeAppErrorCodeMessage(
+                      _controller.readErrorCode!,
+                      AppLanguageScope.of(context).language,
+                    ),
               action: CompactButton(
                 label: copy.tryAgain,
                 tone: CompactButtonTone.neutral,
@@ -312,7 +318,12 @@ class _BrokerageAccountDetailPageState
             const SizedBox(height: 8),
             if (_controller.activityFailed)
               Text(
-                copy.activityLoadError,
+                _controller.activityErrorCode == null
+                    ? copy.activityLoadError
+                    : safeAppErrorCodeMessage(
+                        _controller.activityErrorCode!,
+                        AppLanguageScope.of(context).language,
+                      ),
                 style: TextStyle(color: c.inkMuted, fontSize: 13, height: 1.4),
               )
             else if (_controller.activity.isEmpty)

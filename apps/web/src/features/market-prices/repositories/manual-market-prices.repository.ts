@@ -4,6 +4,7 @@ import type { AssetSummary } from "@/lib/supabase/types"
 import { RepositoryError } from "@/lib/supabase/types"
 import { marketDataService } from "@/services/market-data"
 import { MarketDataError } from "@/services/market-data/errors"
+import { READ_DEADLINE_MS, readWithDeadline } from "@/lib/network/read-deadline"
 
 const supportedTypes = new Set([
   "stock",
@@ -14,10 +15,10 @@ const supportedTypes = new Set([
 
 export class ManualMarketPricesRepository {
   async getConfiguration() {
-    const [prices, assets] = await Promise.all([
-      marketDataService.listManualPrices(),
-      assetsRepository.getAssets(),
-    ])
+    const [prices, assets] = await readWithDeadline(READ_DEADLINE_MS.financial, (signal) => Promise.all([
+      marketDataService.listManualPrices(signal),
+      assetsRepository.getAssets(signal),
+    ]))
     return {
       prices,
       assets: assets.filter(

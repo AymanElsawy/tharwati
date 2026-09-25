@@ -5,6 +5,7 @@ import {
 import { MarketDataError } from "./errors"
 import type { MarketDataProvider } from "./provider"
 import { MarketDataRepository } from "./repository"
+import { READ_DEADLINE_MS, readWithDeadline } from "../../lib/network/read-deadline"
 import type {
   CurrentMarketPrice,
   MarketAssetReference,
@@ -134,9 +135,11 @@ export class MarketDataService {
   ): Promise<CurrentMarketPrice[]> {
     const unique = [...new Set(assetIds)]
     if (unique.length === 0) return []
-    const { data, error } = await this.client.functions.invoke<{ prices: EdgeMarketPrice[] }>("market-prices", {
-      body: { assetIds: unique },
-    })
+    const { data, error } = await readWithDeadline(READ_DEADLINE_MS.market, (signal) =>
+      this.client.functions.invoke<{ prices: EdgeMarketPrice[] }>("market-prices", {
+        body: { assetIds: unique }, signal,
+      }),
+    )
     if (error) {
       throw new MarketDataError({
         code: "provider_error",
@@ -175,8 +178,8 @@ export class MarketDataService {
     }
   }
 
-  listManualPrices() {
-    return this.readRepository.listManualPrices()
+  listManualPrices(signal?: AbortSignal) {
+    return this.readRepository.listManualPrices(signal)
   }
 
   async createManualPrice(input: ProviderMarketPrice) {

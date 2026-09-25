@@ -8,6 +8,7 @@ import {
 } from "../../../lib/supabase/repository"
 import type { Decimal } from "@/lib/supabase/types"
 import type { HoldingDetails } from "../types/holding"
+import { READ_DEADLINE_MS, readWithDeadline } from "@/lib/network/read-deadline"
 
 type HoldingRuntimeRow = Omit<
   HoldingDetails,
@@ -184,8 +185,9 @@ export class HoldingsRepository {
     assetId: string
   ): Promise<HoldingDetails | null> {
     const operation = "holdings.getHoldingForAccountAsset"
-    const userId = await requireAuthenticatedUserId(this.client, operation)
-    const { data, error } = await this.client
+    const userId = await readWithDeadline(READ_DEADLINE_MS.simple,
+      () => requireAuthenticatedUserId(this.client, operation))
+    const { data, error } = await readWithDeadline(READ_DEADLINE_MS.financial, (signal) => this.client
       .from("holdings")
       .select(
         `
@@ -202,7 +204,8 @@ export class HoldingsRepository {
       .eq("user_id", userId)
       .eq("account_id", accountId)
       .eq("asset_id", assetId)
-      .maybeSingle()
+      .abortSignal(signal)
+      .maybeSingle())
 
     const holding = requireQueryData(data, error, operation)
     return holding
@@ -215,8 +218,9 @@ export class HoldingsRepository {
     assetId: string
   ): Promise<ExistingHoldingHistoryItem[]> {
     const operation = "holdings.getExistingHoldingHistory"
-    const userId = await requireAuthenticatedUserId(this.client, operation)
-    const { data, error } = await this.client
+    const userId = await readWithDeadline(READ_DEADLINE_MS.simple,
+      () => requireAuthenticatedUserId(this.client, operation))
+    const { data, error } = await readWithDeadline(READ_DEADLINE_MS.financial, (signal) => this.client
       .from("financial_transactions")
       .select(
         `
@@ -241,6 +245,7 @@ export class HoldingsRepository {
       .eq("asset_entries.asset_id", assetId)
       .order("occurred_at", { ascending: false })
       .order("id", { ascending: false })
+      .abortSignal(signal))
 
     const rows = requireQueryData(data, error, operation) as Array<{
       id: string
@@ -265,8 +270,9 @@ export class HoldingsRepository {
     accountId: string
   ): Promise<BrokerageActivityItem[]> {
     const operation = "holdings.getBrokerageAccountActivity"
-    const userId = await requireAuthenticatedUserId(this.client, operation)
-    const { data, error } = await this.client
+    const userId = await readWithDeadline(READ_DEADLINE_MS.simple,
+      () => requireAuthenticatedUserId(this.client, operation))
+    const { data, error } = await readWithDeadline(READ_DEADLINE_MS.financial, (signal) => this.client
       .from("financial_transactions")
       .select(
         `
@@ -294,6 +300,7 @@ export class HoldingsRepository {
       .order("occurred_at", { ascending: false })
       .order("created_at", { ascending: false })
       .order("id", { ascending: false })
+      .abortSignal(signal))
 
     const rows = requireQueryData(data, error, operation) as Array<{
       id: string
@@ -312,10 +319,11 @@ export class HoldingsRepository {
     const assetsById = new Map<string, BrokerageActivityItem["entries"][number]["asset"]>()
 
     if (assetIds.length > 0) {
-      const { data: assets, error: assetsError } = await this.client
+      const { data: assets, error: assetsError } = await readWithDeadline(READ_DEADLINE_MS.simple, (signal) => this.client
         .from("assets")
         .select("id, name, symbol, exchange, currency_code")
         .in("id", assetIds)
+        .abortSignal(signal))
       const visibleAssets = requireQueryData(assets, assetsError, operation)
       for (const asset of visibleAssets) {
         assetsById.set(asset.id, asset)
@@ -356,7 +364,8 @@ export class HoldingsRepository {
     accountId?: string
   ): Promise<HoldingDetails[]> {
     const operation = "holdings.getHoldings"
-    const userId = await requireAuthenticatedUserId(this.client, operation)
+    const userId = await readWithDeadline(READ_DEADLINE_MS.simple,
+      () => requireAuthenticatedUserId(this.client, operation))
     const query = this.client
       .from("holdings")
       .select(
@@ -382,9 +391,9 @@ export class HoldingsRepository {
       .gt("quantity", "0")
       .order("updated_at", { ascending: false })
 
-    const { data, error } = await (accountId
-      ? query.eq("account_id", accountId)
-      : query)
+    const { data, error } = await readWithDeadline(READ_DEADLINE_MS.financial, (signal) =>
+      (accountId ? query.eq("account_id", accountId) : query).abortSignal(signal),
+    )
 
     const holdings = requireQueryData(data, error, operation)
     return holdings.map((holding) =>

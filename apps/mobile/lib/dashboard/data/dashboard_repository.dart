@@ -1,4 +1,5 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
+import '../../core/read_deadline.dart';
 
 import 'account_summary.dart';
 import 'dashboard_snapshot.dart';
@@ -36,20 +37,28 @@ class DashboardRepository {
       'is_active,bank_subtype,credit_card_limit::text,metal_type';
 
   Future<String?> fetchBaseCurrency() async {
-    final row = await _client
-        .from('profiles')
-        .select('base_currency_code')
-        .eq('id', _client.auth.currentUser!.id)
-        .single();
+    final row = await readWithDeadline(
+      simpleReadDeadline,
+      (abort) => _client
+          .from('profiles')
+          .select('base_currency_code')
+          .eq('id', _client.auth.currentUser!.id)
+          .single()
+          .abortSignal(abort),
+    );
     final code = row['base_currency_code'] as String?;
     return (code != null && code.isNotEmpty) ? code : null;
   }
 
   Future<List<AccountSummary>> fetchAccounts() async {
-    final rows = await _client
-        .from('financial_accounts')
-        .select(_accountSelect)
-        .eq('is_active', true);
+    final rows = await readWithDeadline(
+      simpleReadDeadline,
+      (abort) => _client
+          .from('financial_accounts')
+          .select(_accountSelect)
+          .eq('is_active', true)
+          .abortSignal(abort),
+    );
     return (rows as List)
         .map((r) => AccountSummary.fromRow((r as Map).cast<String, dynamic>()))
         .toList();
@@ -60,8 +69,16 @@ class DashboardRepository {
   /// server cache, so repeat calls are cheap.
   Future<DashboardSnapshot> fetchSnapshot() async {
     try {
-      final response = await _client.functions.invoke('dashboard-valuation');
+      final response = await readWithDeadline(
+        dashboardReadDeadline,
+        (abort) =>
+            _client.functions.invoke('dashboard-valuation', abortSignal: abort),
+      );
       return DashboardSnapshot.parse(response.data);
+    } on ReadTimeoutException {
+      rethrow;
+    } on ReadAbortedException {
+      rethrow;
     } on FunctionException catch (e) {
       final details = e.details;
       final reason = details is Map ? details['reason'] as String? : null;

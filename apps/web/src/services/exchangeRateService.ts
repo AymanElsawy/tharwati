@@ -1,5 +1,6 @@
 import { supabase } from "@/lib/supabase/client"
 import type { Decimal } from "@/lib/supabase/types"
+import { READ_DEADLINE_MS, ReadTimeoutError, ReadAbortedError, readWithDeadline } from "@/lib/network/read-deadline"
 
 export type ResolvedFxRate = {
   available: true
@@ -31,6 +32,7 @@ type FxFunctionRequest = {
 
 export type FxFunctionInvoker = (
   request: FxFunctionRequest,
+  signal?: AbortSignal,
 ) => Promise<{ data: unknown; error: unknown }>
 
 function currency(value: string) {
@@ -81,8 +83,8 @@ export class CurrentFxClient {
   private readonly pending = new Map<string, Promise<ResolvedFxRate | null>>()
   private readonly invoke: FxFunctionInvoker
 
-  constructor(invoke: FxFunctionInvoker = async (body) => {
-    const { data, error } = await supabase.functions.invoke("fx-rates", { body })
+  constructor(invoke: FxFunctionInvoker = async (body, signal) => {
+    const { data, error } = await supabase.functions.invoke("fx-rates", { body, signal })
     return { data, error }
   }) {
     this.invoke = invoke
@@ -95,7 +97,7 @@ export class CurrentFxClient {
     const key = `${from}/${to}`
     const inFlight = this.pending.get(key)
     if (inFlight) return inFlight
-    const request = this.invokeRate(from, to)
+    const request = readWithDeadline(READ_DEADLINE_MS.market, (signal) => this.invokeRate(from, to, signal))
     this.pending.set(key, request)
     try {
       return await request
@@ -104,16 +106,17 @@ export class CurrentFxClient {
     }
   }
 
-  private async invokeRate(from: string, to: string): Promise<ResolvedFxRate | null> {
+  private async invokeRate(from: string, to: string, signal: AbortSignal): Promise<ResolvedFxRate | null> {
     try {
       const { data, error } = await this.invoke({
         fromCurrencyCode: from,
         toCurrencyCode: to,
         mode: "current",
-      })
+      }, signal)
       if (error) return null
       return parseResolvedRate(data)
     } catch (error) {
+      if (error instanceof ReadTimeoutError || error instanceof ReadAbortedError) throw error
       console.error("Current FX Edge Function request failed", {
         message: error instanceof Error ? error.message : String(error),
       })

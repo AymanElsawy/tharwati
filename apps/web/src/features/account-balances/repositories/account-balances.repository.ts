@@ -4,6 +4,7 @@ import {
   requireQueryData,
 } from "@/lib/supabase/repository"
 import type { Decimal } from "@/lib/supabase/types"
+import { READ_DEADLINE_MS, readWithDeadline } from "@/lib/network/read-deadline"
 import type {
   AccountBalance,
   AccountBalanceRepository as AccountBalanceRepositoryContract,
@@ -32,9 +33,10 @@ export class AccountBalancesRepository
   ): Promise<AccountBalance[]> {
     const operation = "accountBalances.getAll"
     await requireAuthenticatedUserId(this.client, operation)
-    const { data, error } = await this.client.rpc("get_account_balances", {
-      p_account_ids: accountIds ? [...accountIds] : null,
-    })
+    const { data, error } = await readWithDeadline(READ_DEADLINE_MS.financial, (signal) =>
+      this.client.rpc("get_account_balances", {
+        p_account_ids: accountIds ? [...accountIds] : null,
+      }).abortSignal(signal))
     const rows = requireQueryData(data, error, operation)
 
     return rows.map((row) => ({

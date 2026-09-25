@@ -1,4 +1,5 @@
 import { supabase } from "@/lib/supabase"
+import { READ_DEADLINE_MS, readWithDeadline } from "@/lib/network/read-deadline"
 import {
   requireAuthenticatedUserId,
   requireQueryData,
@@ -17,14 +18,13 @@ export async function getCurrentUserProfile(userId: string) {
 
 export async function getCurrentUserBaseCurrency() {
   const operation = "profile.getBaseCurrency"
-  const userId = await requireAuthenticatedUserId(supabase, operation)
-  const { data, error } = await supabase
-    .from("profiles")
-    .select("base_currency_code")
-    .eq("id", userId)
-    .single()
-
-  return requireQueryData(data, error, operation).base_currency_code
+  return readWithDeadline(READ_DEADLINE_MS.simple, async (signal) => {
+    const userId = await requireAuthenticatedUserId(supabase, operation)
+    if (signal.aborted) throw new Error("Read canceled")
+    const { data, error } = await supabase.from("profiles")
+      .select("base_currency_code").eq("id", userId).abortSignal(signal).single()
+    return requireQueryData(data, error, operation).base_currency_code
+  })
 }
 
 export async function updateCurrentUserFullName(fullName: string | null) {

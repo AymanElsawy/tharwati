@@ -1,6 +1,7 @@
 import 'dart:async';
 import '../core/mutation_refresh.dart';
 import 'package:flutter/foundation.dart';
+import '../core/read_deadline.dart';
 import '../errors/safe_app_error.dart';
 import '../i18n/app_language.dart';
 
@@ -18,9 +19,11 @@ enum AccountSort { name, type, balance }
 /// mutation wrapper. It is the source of account changes, so it does not itself
 /// listen to `DataChange`.
 class AccountsController extends ChangeNotifier {
-  AccountsController({AccountsService? service, AppLanguage Function()? language})
-    : _service = service ?? AccountsService(),
-      _language = language ?? (() => AppLanguage.en) {
+  AccountsController({
+    AccountsService? service,
+    AppLanguage Function()? language,
+  }) : _service = service ?? AccountsService(),
+       _language = language ?? (() => AppLanguage.en) {
     load();
   }
 
@@ -32,6 +35,8 @@ class AccountsController extends ChangeNotifier {
   bool busy = false;
   bool refreshStale = false;
   String? actionError;
+  int _loadVersion = 0;
+  AppErrorCode? readErrorCode;
 
   String search = '';
   AccountType? typeFilter;
@@ -97,15 +102,24 @@ class AccountsController extends ChangeNotifier {
   }
 
   Future<bool> load({bool preserveOnError = false}) async {
+    final version = ++_loadVersion;
     if (!preserveOnError) status = AccountsStatus.loading;
     notifyListeners();
     try {
-      model = await _service.loadAccounts();
+      final next = await readWithDeadline(
+        compositeReadDeadline,
+        (_) => _service.loadAccounts(),
+      );
+      if (version != _loadVersion) return false;
+      model = next;
+      readErrorCode = null;
       status = AccountsStatus.ready;
       refreshStale = false;
       notifyListeners();
       return true;
-    } catch (_) {
+    } catch (error) {
+      if (version != _loadVersion) return false;
+      readErrorCode = classifyAppError(error).code;
       if (preserveOnError) refreshStale = true;
       if (!preserveOnError) model = null;
       status = preserveOnError ? AccountsStatus.ready : AccountsStatus.error;

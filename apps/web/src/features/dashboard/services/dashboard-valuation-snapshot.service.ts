@@ -2,6 +2,7 @@ import type { AccountBalance } from "@/features/account-balances/types/account-b
 import { supabase } from "@/lib/supabase/client"
 import type { AccountSummary, Decimal } from "@/lib/supabase/types"
 import { ExchangeRateError } from "@/services/exchange-rates"
+import { READ_DEADLINE_MS, readWithDeadline } from "@/lib/network/read-deadline"
 
 export type DashboardPortfolioAllocationHolding = {
   assetId: string
@@ -94,10 +95,12 @@ export function parseDashboardValuationSnapshot(value: unknown): DashboardValuat
 }
 
 /** Requests the unchanged Edge Function payload so callers can time transport separately from parsing. */
-export async function requestDashboardValuationSnapshot(): Promise<unknown> {
-  const { data, error } = await supabase.functions.invoke("dashboard-valuation")
-  if (error) throw error
-  return data
+export async function requestDashboardValuationSnapshot(signal?: AbortSignal): Promise<unknown> {
+  return readWithDeadline(READ_DEADLINE_MS.dashboard, async (readSignal) => {
+    const { data, error } = await supabase.functions.invoke("dashboard-valuation", { signal: readSignal })
+    if (error) throw error
+    return data
+  }, signal)
 }
 
 export async function getDashboardValuationSnapshot(): Promise<DashboardValuationSnapshot> {

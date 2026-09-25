@@ -7,6 +7,7 @@ import type {
   ProviderRate,
 } from "./types"
 import { requireAuthenticatedUserId } from "../../lib/supabase/repository"
+import { READ_DEADLINE_MS, readWithDeadline } from "../../lib/network/read-deadline"
 
 export type StoredExchangeRate = Omit<TableRow<"exchange_rates">, "rate"> & {
   rate: Decimal
@@ -40,13 +41,15 @@ export class ExchangeRateRepository {
   }
 
   async list(): Promise<StoredExchangeRate[]> {
-    const userId = await requireAuthenticatedUserId(this.client, "exchangeRates.list")
-    const { data, error } = await this.client
+    const userId = await readWithDeadline(READ_DEADLINE_MS.simple,
+      () => requireAuthenticatedUserId(this.client, "exchangeRates.list"))
+    const { data, error } = await readWithDeadline(READ_DEADLINE_MS.simple, (signal) => this.client
       .from("exchange_rates")
       .select("*")
       .eq("user_id", userId)
       .order("effective_at", { ascending: false })
       .order("id", { ascending: false })
+      .abortSignal(signal))
     if (error) {
       throw new ExchangeRateError({
         code: "storage_error",
@@ -125,8 +128,9 @@ export class ExchangeRateRepository {
     quoteCurrencyCode: string,
     atOrBefore: string,
   ): Promise<StoredExchangeRate | null> {
-    const userId = await requireAuthenticatedUserId(this.client, "exchangeRates.findLatest")
-    const { data, error } = await this.client
+    const userId = await readWithDeadline(READ_DEADLINE_MS.simple,
+      () => requireAuthenticatedUserId(this.client, "exchangeRates.findLatest"))
+    const { data, error } = await readWithDeadline(READ_DEADLINE_MS.simple, (signal) => this.client
       .from("exchange_rates")
       .select("*")
       .eq("user_id", userId)
@@ -137,7 +141,8 @@ export class ExchangeRateRepository {
       .order("effective_at", { ascending: false })
       .order("id", { ascending: false })
       .limit(1)
-      .maybeSingle()
+      .abortSignal(signal)
+      .maybeSingle())
 
     if (error) {
       throw new ExchangeRateError({
@@ -154,14 +159,14 @@ export class ExchangeRateRepository {
     pair: CurrencyPair,
     requestedAt: string,
   ): Promise<HistoricalExchangeRate | null> {
-    const { data, error } = await this.client.rpc(
+    const { data, error } = await readWithDeadline(READ_DEADLINE_MS.financial, (signal) => this.client.rpc(
       "resolve_historical_exchange_rate",
       {
         p_source_currency_code: pair.sourceCurrencyCode,
         p_destination_currency_code: pair.destinationCurrencyCode,
         p_requested_at: requestedAt,
       },
-    )
+    ).abortSignal(signal))
     if (error) {
       throw new ExchangeRateError({
         code: "storage_error",

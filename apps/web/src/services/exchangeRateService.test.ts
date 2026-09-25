@@ -1,4 +1,7 @@
-import { describe, expect, it, vi } from "vitest"
+import { afterEach, describe, expect, it, vi } from "vitest"
+import { ReadTimeoutError } from "@/lib/network/read-deadline"
+
+afterEach(() => vi.useRealTimers())
 
 import {
   CurrentFxClient,
@@ -42,7 +45,7 @@ describe("CurrentFxClient", () => {
       fromCurrencyCode: from,
       toCurrencyCode: to,
       mode: "current",
-    })
+    }, expect.any(AbortSignal))
   })
 
   it("uses the shared identity response for SAR/SAR", async () => {
@@ -84,6 +87,20 @@ describe("CurrentFxClient", () => {
     const client = new CurrentFxClient(invoke)
     await Promise.all([client.get("USD", "SAR"), client.get("USD", "SAR")])
     await client.get("USD", "SAR")
+    expect(invoke).toHaveBeenCalledTimes(2)
+  })
+
+  it("clears a timed-out pending pair so Try Again starts a new read", async () => {
+    vi.useFakeTimers()
+    const invoke = vi.fn()
+      .mockImplementationOnce(() => new Promise(() => {}))
+      .mockResolvedValue({ data: resolvedRate(), error: null })
+    const client = new CurrentFxClient(invoke)
+    const first = client.get("USD", "SAR")
+    const rejection = expect(first).rejects.toBeInstanceOf(ReadTimeoutError)
+    await vi.advanceTimersByTimeAsync(20_000)
+    await rejection
+    await expect(client.get("USD", "SAR")).resolves.toMatchObject({ rate: "3.75" })
     expect(invoke).toHaveBeenCalledTimes(2)
   })
 

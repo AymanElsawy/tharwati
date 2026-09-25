@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../main.dart';
 import '../i18n/app_language.dart';
+import '../errors/safe_app_error.dart';
 import '../i18n/dashboard_copy.dart';
 import '../settings/settings_profile_repository.dart';
 import '../theme/tokens.dart';
@@ -163,7 +164,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
           Callout(
             tone: CalloutTone.danger,
             title: copy.valuesUnavailable,
-            message: copy.serverUnavailable,
+            message: _dashboard.readErrorCode == null
+                ? copy.serverUnavailable
+                : safeAppErrorCodeMessage(
+                    _dashboard.readErrorCode!,
+                    AppLanguageScope.of(context).language,
+                  ),
             action: OutlinedButton(
               onPressed: _dashboard.refresh,
               child: Text(copy.retry),

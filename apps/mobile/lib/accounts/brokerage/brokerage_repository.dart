@@ -1,4 +1,5 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
+import '../../core/read_deadline.dart';
 
 import '../accounts_repository.dart' show AccountsException;
 import 'brokerage_activity.dart';
@@ -27,12 +28,16 @@ class BrokerageRepository {
   /// Open positions only (`quantity > 0`), newest first — matches the web
   /// `getFilteredHoldings`.
   Future<List<Holding>> getHoldingsForAccount(String accountId) async {
-    final rows = await _client
-        .from('holdings')
-        .select(_holdingSelect)
-        .eq('account_id', accountId)
-        .gt('quantity', 0)
-        .order('updated_at', ascending: false);
+    final rows = await readWithDeadline(
+      financialReadDeadline,
+      (abort) => _client
+          .from('holdings')
+          .select(_holdingSelect)
+          .eq('account_id', accountId)
+          .gt('quantity', 0)
+          .order('updated_at', ascending: false)
+          .abortSignal(abort),
+    );
     return [
       for (final row in rows as List)
         Holding.fromRow((row as Map).cast<String, dynamic>()),
@@ -41,11 +46,16 @@ class BrokerageRepository {
 
   /// The account's uninvested cash leg (`get_account_balances`).
   Future<String> getCashBalance(String accountId) async {
-    final rows = await _client.rpc(
-      'get_account_balances',
-      params: {
-        'p_account_ids': [accountId],
-      },
+    final rows = await readWithDeadline(
+      financialReadDeadline,
+      (abort) => _client
+          .rpc(
+            'get_account_balances',
+            params: {
+              'p_account_ids': [accountId],
+            },
+          )
+          .abortSignal(abort),
     );
     for (final row in rows as List) {
       if ('${(row as Map)['account_id']}' == accountId) {
@@ -63,9 +73,13 @@ class BrokerageRepository {
     final unique = assetIds.toSet().toList();
     if (unique.isEmpty) return const {};
     try {
-      final response = await _client.functions.invoke(
-        'market-prices',
-        body: {'assetIds': unique},
+      final response = await readWithDeadline(
+        marketReadDeadline,
+        (abort) => _client.functions.invoke(
+          'market-prices',
+          body: {'assetIds': unique},
+          abortSignal: abort,
+        ),
       );
       final data = response.data;
       if (data is! Map) return const {};
@@ -80,6 +94,10 @@ class BrokerageRepository {
         }
       }
       return result;
+    } on ReadTimeoutException {
+      rethrow;
+    } on ReadAbortedException {
+      rethrow;
     } catch (_) {
       // A price outage must not fail the page (web swallows
       // `market_price_unavailable` / `provider_error` the same way).
@@ -235,15 +253,19 @@ class BrokerageRepository {
   /// web repository does, because the entry→asset relation is not exposed as an
   /// embeddable join here.
   Future<List<ActivityItem>> getActivity(String accountId) async {
-    final rows = await _client
-        .from('financial_transactions')
-        .select(_activitySelect)
-        .eq('status', 'posted')
-        .inFilter('transaction_type_code', _activityTypes)
-        .eq('account_entries.account_id', accountId)
-        .order('occurred_at', ascending: false)
-        .order('created_at', ascending: false)
-        .order('id', ascending: false);
+    final rows = await readWithDeadline(
+      financialReadDeadline,
+      (abort) => _client
+          .from('financial_transactions')
+          .select(_activitySelect)
+          .eq('status', 'posted')
+          .inFilter('transaction_type_code', _activityTypes)
+          .eq('account_entries.account_id', accountId)
+          .order('occurred_at', ascending: false)
+          .order('created_at', ascending: false)
+          .order('id', ascending: false)
+          .abortSignal(abort),
+    );
 
     final list = rows as List;
     final assetIds = <String>{
@@ -255,10 +277,14 @@ class BrokerageRepository {
 
     final assetsById = <String, ActivityAsset>{};
     if (assetIds.isNotEmpty) {
-      final assets = await _client
-          .from('assets')
-          .select('id,name,symbol,exchange,currency_code')
-          .inFilter('id', assetIds.toList());
+      final assets = await readWithDeadline(
+        simpleReadDeadline,
+        (abort) => _client
+            .from('assets')
+            .select('id,name,symbol,exchange,currency_code')
+            .inFilter('id', assetIds.toList())
+            .abortSignal(abort),
+      );
       for (final asset in assets as List) {
         final parsed = ActivityAsset.fromRow(
           (asset as Map).cast<String, dynamic>(),

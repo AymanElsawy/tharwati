@@ -4,6 +4,7 @@ import {
   requireQueryData,
 } from "@/lib/supabase/repository"
 import { toRepositoryError } from "@/lib/supabase/types"
+import { READ_DEADLINE_MS, readWithDeadline } from "@/lib/network/read-deadline"
 import { localDateTimeInputToIso } from "@/lib/formatting/local-date-time"
 import {
   emptyAccountRecordHistoryFilters,
@@ -228,9 +229,8 @@ export class AccountRecordsRepository {
   async getAccountBalances(accountIds: string[]): Promise<AccountBalanceRow[]> {
     if (accountIds.length === 0) return []
     const operation = "accountRecords.getAccountBalances"
-    const { data, error } = await this.client.rpc("get_account_balances", {
-      p_account_ids: accountIds,
-    })
+    const { data, error } = await readWithDeadline(READ_DEADLINE_MS.financial, (signal) =>
+      this.client.rpc("get_account_balances", { p_account_ids: accountIds }).abortSignal(signal))
     return requireQueryData(data, error, operation) as AccountBalanceRow[]
   }
 }

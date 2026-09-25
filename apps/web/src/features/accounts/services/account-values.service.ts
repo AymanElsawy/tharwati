@@ -22,6 +22,7 @@ import { attributableValuation, getEffectiveAccountValuations } from "./account-
 import type { AccountValuation } from "../types/account-valuation"
 import { getAccountCurrentOwnership } from "./account-disposals.service"
 import type { AccountOwnershipProjection } from "../types/account-disposal"
+import { ReadTimeoutError } from "@/lib/network/read-deadline"
 
 function requireDecimal(value: Decimal | null, message: string): Decimal {
   if (value === null) throw new Error(message)
@@ -259,7 +260,8 @@ export async function getAccountCurrentValues(
         accountCurrencyCode: account.currency_code,
         holdings: accountHoldings,
       }))
-    } catch {
+    } catch (error) {
+      if (error instanceof ReadTimeoutError) throw error
       brokerageCurrentValues.set(account.id, {
         value: null,
         availableCash: balance.currentBalance,

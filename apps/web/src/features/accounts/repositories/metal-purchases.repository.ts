@@ -10,6 +10,7 @@ import {
   type MetalPurchaseRecord,
 } from "@/lib/supabase/types"
 import type { AddMetalPurchaseCommand } from "../types/metal-purchase"
+import { READ_DEADLINE_MS, readWithDeadline } from "@/lib/network/read-deadline"
 
 export type MetalPurchaseLedgerRow = {
   id: string
@@ -124,9 +125,8 @@ export class MetalPurchasesRepository {
 
     const operation = "metalPurchases.getPurchases"
     await requireAuthenticatedUserId(this.client, operation)
-    const { data, error } = await this.client.rpc("get_effective_metal_purchases", {
-      p_account_ids: [...accountIds],
-    })
+    const { data, error } = await readWithDeadline(READ_DEADLINE_MS.financial, (signal) =>
+      this.client.rpc("get_effective_metal_purchases", { p_account_ids: [...accountIds] }).abortSignal(signal))
 
     return requireQueryData(data, error, operation)
       .map((row) => mapMetalPurchaseHistoryRow(row as MetalPurchaseRecord))

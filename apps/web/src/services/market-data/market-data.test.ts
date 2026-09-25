@@ -38,6 +38,7 @@ describe("MarketDataService", () => {
     })
     expect(client.functions.invoke).toHaveBeenCalledWith("market-prices", {
       body: { assetIds: ["asset-aapl"] },
+      signal: expect.any(AbortSignal),
     })
   })
 

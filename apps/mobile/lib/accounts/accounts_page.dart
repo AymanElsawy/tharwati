@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../theme/tokens.dart';
 import '../i18n/app_language.dart';
+import '../errors/safe_app_error.dart';
 import '../i18n/accounts_copy.dart';
 import '../widgets/app_sheet.dart';
 import '../widgets/callout.dart';
@@ -30,9 +31,11 @@ class AccountsPage extends StatefulWidget {
 
 class _AccountsPageState extends State<AccountsPage> {
   late final AccountsController _controller =
-      widget.controller ?? AccountsController(language: () => mounted
-          ? AppLanguageScope.of(context).language
-          : AppLanguage.en);
+      widget.controller ??
+      AccountsController(
+        language: () =>
+            mounted ? AppLanguageScope.of(context).language : AppLanguage.en,
+      );
   final _search = TextEditingController();
 
   @override
@@ -109,7 +112,12 @@ class _AccountsPageState extends State<AccountsPage> {
             Callout(
               tone: CalloutTone.danger,
               title: copy.loadError,
-              message: copy.recordsSafe,
+              message: _controller.readErrorCode == null
+                  ? copy.recordsSafe
+                  : safeAppErrorCodeMessage(
+                      _controller.readErrorCode!,
+                      AppLanguageScope.of(context).language,
+                    ),
               action: CompactButton(
                 label: copy.tryAgain,
                 tone: CompactButtonTone.neutral,

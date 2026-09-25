@@ -1,6 +1,8 @@
 import 'package:flutter/foundation.dart';
 
 import '../../core/data_change.dart';
+import '../../core/read_deadline.dart';
+import '../../errors/safe_app_error.dart';
 import '../data/dashboard_repository.dart';
 import '../logic/dashboard_aggregate.dart';
 import '../data/dashboard_snapshot.dart';
@@ -30,6 +32,7 @@ class DashboardController extends ChangeNotifier {
   PortfolioAllocationStatus? allocationStatus;
   KeyInsight? insight;
   String? errorReason;
+  AppErrorCode? readErrorCode;
 
   /// True when the most recent completed load was a background refresh — the
   /// net-worth hero uses this to skip replaying its count-up.
@@ -58,29 +61,42 @@ class DashboardController extends ChangeNotifier {
     }
 
     try {
-      final baseCurrency = await _repo.fetchBaseCurrency();
-      if (baseCurrency == null) {
+      final (
+        nextAggregate,
+        snapshot,
+      ) = await readWithDeadline<(DashboardAggregate?, DashboardSnapshot?)>(
+        compositeReadDeadline,
+        (_) async {
+          final baseCurrency = await _repo.fetchBaseCurrency();
+          if (baseCurrency == null) return (null, null);
+          final accounts = await _repo.fetchAccounts();
+          final snapshot = await _repo.fetchSnapshot();
+          final aggregate = calculateDashboardAggregate(
+            baseCurrencyCode: baseCurrency,
+            accounts: accounts,
+            snapshot: snapshot,
+          ).withSnapshotMeta(snapshot);
+          return (aggregate, snapshot);
+        },
+      );
+      if (snapshot == null) {
         status = DashboardStatus.noBaseCurrency;
         aggregate = null;
         allocation = const [];
         allocationStatus = null;
         insight = null;
       } else {
-        final accounts = await _repo.fetchAccounts();
-        final snapshot = await _repo.fetchSnapshot();
-        final agg = calculateDashboardAggregate(
-          baseCurrencyCode: baseCurrency,
-          accounts: accounts,
-          snapshot: snapshot,
-        ).withSnapshotMeta(snapshot);
+        final agg = nextAggregate!;
         aggregate = agg;
         allocation = portfolioAllocationItems(snapshot.portfolioAllocation);
         allocationStatus = snapshot.portfolioAllocation.status;
         insight = keyInsightFor(agg);
         errorReason = null;
+        readErrorCode = null;
         status = DashboardStatus.ready;
       }
     } on DashboardException catch (e) {
+      readErrorCode = classifyAppError(e).code;
       if (e.kind == DashboardErrorKind.noBaseCurrency) {
         status = DashboardStatus.noBaseCurrency;
       } else {
@@ -88,6 +104,7 @@ class DashboardController extends ChangeNotifier {
         errorReason = e.reason;
       }
     } catch (e) {
+      readErrorCode = classifyAppError(e).code;
       status = DashboardStatus.error;
       errorReason = e.toString();
     } finally {

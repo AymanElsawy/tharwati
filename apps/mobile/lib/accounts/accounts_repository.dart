@@ -1,5 +1,6 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../errors/safe_app_error.dart';
+import '../core/read_deadline.dart';
 
 import 'account_form.dart';
 import 'account_models.dart';
@@ -8,13 +9,26 @@ import 'account_models.dart';
 /// the web `RepositoryError` + `createAccount`/`updateAccount` friendly-error
 /// translation, docs/accounts.md §4, §5).
 class AccountsException implements Exception, AppErrorCarrier {
-  AccountsException(this.message, {this.appErrorCode = AppErrorCode.unknown, this.originalCause, this.trustedBusinessMessage});
-  factory AccountsException.fromPostgrest(PostgrestException error, String safeMessage,
-      {AppErrorCode? code}) {
+  AccountsException(
+    this.message, {
+    this.appErrorCode = AppErrorCode.unknown,
+    this.originalCause,
+    this.trustedBusinessMessage,
+  });
+  factory AccountsException.fromPostgrest(
+    PostgrestException error,
+    String safeMessage, {
+    AppErrorCode? code,
+  }) {
     final category = code ?? classifyAppError(error).code;
-    return AccountsException(safeMessage, appErrorCode: category,
+    return AccountsException(
+      safeMessage,
+      appErrorCode: category,
       originalCause: error,
-      trustedBusinessMessage: category == AppErrorCode.businessRule ? safeMessage : null);
+      trustedBusinessMessage: category == AppErrorCode.businessRule
+          ? safeMessage
+          : null,
+    );
   }
   final String message;
   @override
@@ -47,11 +61,15 @@ class AccountsRepository {
   // ---- reads --------------------------------------------------------------
 
   Future<List<Account>> getAccounts() async {
-    final rows = await _client
-        .from('financial_accounts')
-        .select(_accountSelect)
-        .eq('user_id', _userId)
-        .order('created_at', ascending: false);
+    final rows = await readWithDeadline(
+      simpleReadDeadline,
+      (abort) => _client
+          .from('financial_accounts')
+          .select(_accountSelect)
+          .eq('user_id', _userId)
+          .order('created_at', ascending: false)
+          .abortSignal(abort),
+    );
     return (rows as List)
         .map((r) => Account.fromRow((r as Map).cast<String, dynamic>()))
         .toList();
@@ -59,12 +77,16 @@ class AccountsRepository {
 
   Future<Account> getAccount(String id) async {
     try {
-      final row = await _client
-          .from('financial_accounts')
-          .select(_accountSelect)
-          .eq('id', id)
-          .eq('user_id', _userId)
-          .single();
+      final row = await readWithDeadline(
+        simpleReadDeadline,
+        (abort) => _client
+            .from('financial_accounts')
+            .select(_accountSelect)
+            .eq('id', id)
+            .eq('user_id', _userId)
+            .single()
+            .abortSignal(abort),
+      );
       return Account.fromRow((row).cast<String, dynamic>());
     } on PostgrestException catch (e) {
       throw AccountsException.fromPostgrest(e, _friendly(e));
@@ -73,9 +95,11 @@ class AccountsRepository {
 
   Future<List<AccountBalance>> getAccountBalances(List<String> ids) async {
     if (ids.isEmpty) return const [];
-    final rows = await _client.rpc(
-      'get_account_balances',
-      params: {'p_account_ids': ids},
+    final rows = await readWithDeadline(
+      financialReadDeadline,
+      (abort) => _client
+          .rpc('get_account_balances', params: {'p_account_ids': ids})
+          .abortSignal(abort),
     );
     return (rows as List)
         .map((r) => AccountBalance.fromRow((r as Map).cast<String, dynamic>()))
@@ -86,9 +110,14 @@ class AccountsRepository {
     List<String> ids,
   ) async {
     if (ids.isEmpty) return const [];
-    final rows = await _client.rpc(
-      'get_effective_account_valuations',
-      params: {'p_account_ids': ids},
+    final rows = await readWithDeadline(
+      financialReadDeadline,
+      (abort) => _client
+          .rpc(
+            'get_effective_account_valuations',
+            params: {'p_account_ids': ids},
+          )
+          .abortSignal(abort),
     );
     // Ordered valued_on desc, created_at desc — first row per account is latest.
     return (rows as List)
@@ -102,9 +131,14 @@ class AccountsRepository {
     List<String> ids,
   ) async {
     if (ids.isEmpty) return const [];
-    final rows = await _client.rpc(
-      'get_account_lifecycle_eligibility',
-      params: {'p_account_ids': ids},
+    final rows = await readWithDeadline(
+      financialReadDeadline,
+      (abort) => _client
+          .rpc(
+            'get_account_lifecycle_eligibility',
+            params: {'p_account_ids': ids},
+          )
+          .abortSignal(abort),
     );
     return (rows as List)
         .map(

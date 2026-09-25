@@ -2,6 +2,7 @@ import type { TypedSupabaseClient } from "../../lib/supabase/client"
 import type { Decimal, TableRow } from "../../lib/supabase/types"
 import { MarketDataError } from "./errors"
 import { requireAuthenticatedUserId } from "../../lib/supabase/repository"
+import { READ_DEADLINE_MS, readWithDeadline } from "../../lib/network/read-deadline"
 import type {
   CurrentMarketPrice,
   MarketAssetReference,
@@ -119,11 +120,12 @@ export class MarketDataRepository {
   async getLatestCachedPrice(
     assetId: string,
   ): Promise<CurrentMarketPrice | null> {
-    const { data, error } = await this.client
+    const { data, error } = await readWithDeadline(READ_DEADLINE_MS.financial, (signal) => this.client
       .rpc("get_current_market_price", {
         p_asset_id: assetId,
       })
-      .maybeSingle()
+      .abortSignal(signal)
+      .maybeSingle())
     if (error) {
       throw storageError(error, assetId)
     }
@@ -151,18 +153,19 @@ export class MarketDataRepository {
     }
   }
 
-  async listManualPrices(): Promise<TableRow<"market_prices">[]> {
-    const userId = await requireAuthenticatedUserId(
+  async listManualPrices(parentSignal?: AbortSignal): Promise<TableRow<"market_prices">[]> {
+    const userId = await readWithDeadline(READ_DEADLINE_MS.simple, () => requireAuthenticatedUserId(
       this.client,
       "marketData.listManualPrices",
-    )
-    const { data, error } = await this.client
+    ), parentSignal)
+    const { data, error } = await readWithDeadline(READ_DEADLINE_MS.simple, (signal) => this.client
       .from("market_prices")
       .select("*")
       .eq("user_id", userId)
       .eq("provider", "manual")
       .order("as_of", { ascending: false })
       .order("id", { ascending: false })
+      .abortSignal(signal), parentSignal)
     if (error) {
       throw new MarketDataError({
         code: "storage_error",

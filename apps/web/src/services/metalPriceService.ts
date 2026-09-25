@@ -1,4 +1,5 @@
 import { convertCurrency } from "@/services/exchangeRateService"
+import { READ_DEADLINE_MS, ReadTimeoutError, readWithDeadline } from "@/lib/network/read-deadline"
 
 export type MetalSymbol = "XAU" | "XAG"
 
@@ -46,7 +47,8 @@ export class CurrentMetalPriceClient {
   private async fetchPricePerGramUsd(symbol: MetalSymbol): Promise<number | null> {
     const url = `https://api.gold-api.com/price/${symbol}`
     try {
-      const response = await this.fetcher(url)
+      const response = await readWithDeadline(READ_DEADLINE_MS.market,
+        (signal) => this.fetcher(url, { signal }))
       if (!response.ok) return null
       const payload = (await response.json()) as MetalApiPayload
       const failures = [
@@ -60,6 +62,7 @@ export class CurrentMetalPriceClient {
       this.cache.set(symbol, { value: pricePerGram, expiresAt: this.now() + cacheDurationMs })
       return pricePerGram
     } catch (error) {
+      if (error instanceof ReadTimeoutError) throw error
       console.error("Metal price request failed", {
         url,
         message: error instanceof Error ? error.message : String(error),

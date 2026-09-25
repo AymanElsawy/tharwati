@@ -1,5 +1,6 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../errors/safe_app_error.dart';
+import '../../core/read_deadline.dart';
 
 import '../../core/decimals.dart';
 import '../accounts_repository.dart' show AccountsException;
@@ -16,11 +17,16 @@ class ValuedRepository {
   // ---- valuations ---------------------------------------------------
 
   Future<List<AccountValuationEntry>> getEffectiveValuations(String id) async {
-    final rows = await _client.rpc(
-      'get_effective_account_valuations',
-      params: {
-        'p_account_ids': [id],
-      },
+    final rows = await readWithDeadline(
+      financialReadDeadline,
+      (abort) => _client
+          .rpc(
+            'get_effective_account_valuations',
+            params: {
+              'p_account_ids': [id],
+            },
+          )
+          .abortSignal(abort),
     );
     // Ordered valued_on desc, created_at desc — newest first.
     return [
@@ -54,11 +60,16 @@ class ValuedRepository {
   // ---- disposals + ownership -------------------------------------
 
   Future<AccountOwnershipProjection?> getCurrentOwnership(String id) async {
-    final rows = await _client.rpc(
-      'get_account_current_ownership',
-      params: {
-        'p_account_ids': [id],
-      },
+    final rows = await readWithDeadline(
+      financialReadDeadline,
+      (abort) => _client
+          .rpc(
+            'get_account_current_ownership',
+            params: {
+              'p_account_ids': [id],
+            },
+          )
+          .abortSignal(abort),
     );
     final list = rows as List;
     if (list.isEmpty) return null;
@@ -68,11 +79,16 @@ class ValuedRepository {
   }
 
   Future<List<AccountDisposal>> getDisposals(String id) async {
-    final rows = await _client.rpc(
-      'get_account_disposals',
-      params: {
-        'p_account_ids': [id],
-      },
+    final rows = await readWithDeadline(
+      financialReadDeadline,
+      (abort) => _client
+          .rpc(
+            'get_account_disposals',
+            params: {
+              'p_account_ids': [id],
+            },
+          )
+          .abortSignal(abort),
     );
     return [
       for (final r in rows as List)

@@ -1,4 +1,5 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
+import '../core/read_deadline.dart';
 
 import 'account_models.dart';
 import 'accounts_repository.dart';
@@ -65,9 +66,14 @@ class MetalPurchasesRepository {
     List<String> accountIds,
   ) async {
     if (accountIds.isEmpty) return const [];
-    final rows = await _client.rpc(
-      'get_effective_metal_purchases',
-      params: {'p_account_ids': accountIds},
+    final rows = await readWithDeadline(
+      financialReadDeadline,
+      (abort) => _client
+          .rpc(
+            'get_effective_metal_purchases',
+            params: {'p_account_ids': accountIds},
+          )
+          .abortSignal(abort),
     );
     return (rows as List)
         .map((r) => MetalPurchase.fromRow((r as Map).cast<String, dynamic>()))

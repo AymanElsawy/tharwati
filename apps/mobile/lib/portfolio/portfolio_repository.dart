@@ -3,6 +3,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../accounts/account_models.dart';
 import '../accounts/brokerage/brokerage_models.dart';
 import '../core/decimals.dart';
+import '../core/read_deadline.dart';
 import 'portfolio_models.dart';
 
 abstract interface class PortfolioDataSource {
@@ -164,9 +165,13 @@ class SupabasePortfolioDataSource implements PortfolioDataSource {
   Future<Map<String, MarketPrice>> loadPrices(List<String> assetIds) async {
     if (assetIds.isEmpty) return const {};
     try {
-      final response = await _client.functions.invoke(
-        'market-prices',
-        body: {'assetIds': assetIds},
+      final response = await readWithDeadline(
+        marketReadDeadline,
+        (abort) => _client.functions.invoke(
+          'market-prices',
+          body: {'assetIds': assetIds},
+          abortSignal: abort,
+        ),
       );
       final data = response.data;
       if (data is! Map || data['prices'] is! List) return const {};
@@ -179,6 +184,10 @@ class SupabasePortfolioDataSource implements PortfolioDataSource {
         }
       }
       return result;
+    } on ReadTimeoutException {
+      rethrow;
+    } on ReadAbortedException {
+      rethrow;
     } catch (_) {
       return const {};
     }
@@ -187,13 +196,17 @@ class SupabasePortfolioDataSource implements PortfolioDataSource {
   @override
   Future<PortfolioFxRate?> loadFxRate(String from, String to) async {
     try {
-      final response = await _client.functions.invoke(
-        'fx-rates',
-        body: {
-          'fromCurrencyCode': from,
-          'toCurrencyCode': to,
-          'mode': 'current',
-        },
+      final response = await readWithDeadline(
+        marketReadDeadline,
+        (abort) => _client.functions.invoke(
+          'fx-rates',
+          body: {
+            'fromCurrencyCode': from,
+            'toCurrencyCode': to,
+            'mode': 'current',
+          },
+          abortSignal: abort,
+        ),
       );
       final data = response.data;
       if (data is! Map || data['available'] != true) return null;
@@ -214,6 +227,10 @@ class SupabasePortfolioDataSource implements PortfolioDataSource {
         stale: data['stale'] == true,
         direction: data['direction'] as String?,
       );
+    } on ReadTimeoutException {
+      rethrow;
+    } on ReadAbortedException {
+      rethrow;
     } catch (_) {
       return null;
     }

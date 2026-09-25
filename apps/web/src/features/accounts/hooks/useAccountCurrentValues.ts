@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react"
 
 import { getAccountCurrentValues, type AccountCurrentValueStatus, type BrokerageCurrentValue } from "../services/account-values.service"
 import type { AccountSummary, Decimal } from "@/lib/supabase/types"
+import { READ_DEADLINE_MS, readWithDeadline } from "@/lib/network/read-deadline"
 
 /** Loads resolved account values without placing value-selection logic in a React component. */
 export function useAccountCurrentValues(accounts: readonly AccountSummary[]) {
@@ -11,9 +12,13 @@ export function useAccountCurrentValues(accounts: readonly AccountSummary[]) {
   const [statuses, setStatuses] = useState<Map<string, AccountCurrentValueStatus>>(new Map())
   const [brokerageValues, setBrokerageValues] = useState<Map<string, BrokerageCurrentValue>>(new Map())
   const requestVersion = useRef(0)
+  const readAbort = useRef<AbortController | null>(null)
 
   const refresh = useCallback(async () => {
     const version = ++requestVersion.current
+    readAbort.current?.abort()
+    const controller = new AbortController()
+    readAbort.current = controller
     if (accounts.length === 0) {
       setValues(new Map())
       setHasResolutionError(false)
@@ -23,9 +28,11 @@ export function useAccountCurrentValues(accounts: readonly AccountSummary[]) {
     setIsLoading(true)
     try {
       const nextBrokerageValues = new Map<string, BrokerageCurrentValue>()
-      const nextValues = await getAccountCurrentValues(accounts, (current) => {
-        for (const [accountId, value] of current) nextBrokerageValues.set(accountId, value)
-      })
+      const nextValues = await readWithDeadline(READ_DEADLINE_MS.composite,
+        (signal) => getAccountCurrentValues(accounts, (current) => {
+          if (signal.aborted) return
+          for (const [accountId, value] of current) nextBrokerageValues.set(accountId, value)
+        }), controller.signal)
       if (version === requestVersion.current) {
         setValues(nextValues)
         setStatuses(new Map([...nextBrokerageValues].map(([id, value]) => [id, value.status])))
@@ -35,6 +42,7 @@ export function useAccountCurrentValues(accounts: readonly AccountSummary[]) {
     } catch {
       if (version === requestVersion.current) setHasResolutionError(true)
     } finally {
+      if (readAbort.current === controller) readAbort.current = null
       if (version === requestVersion.current) setIsLoading(false)
     }
   }, [accounts])
@@ -43,6 +51,10 @@ export function useAccountCurrentValues(accounts: readonly AccountSummary[]) {
     const timeoutId = window.setTimeout(() => void refresh(), 0)
     return () => window.clearTimeout(timeoutId)
   }, [refresh])
+  useEffect(() => () => {
+    requestVersion.current += 1
+    readAbort.current?.abort()
+  }, [])
   useEffect(() => {
     const reload = () => void refresh()
     window.addEventListener("tharwati:data-changed", reload)

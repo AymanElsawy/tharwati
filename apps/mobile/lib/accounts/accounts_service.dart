@@ -1,5 +1,6 @@
 import '../core/data_change.dart';
 import '../dashboard/data/dashboard_repository.dart';
+import '../core/read_deadline.dart';
 import 'account_form.dart';
 import 'account_models.dart';
 import 'account_valuation.dart';
@@ -114,6 +115,10 @@ class AccountsService {
       try {
         final snapshot = await _dashboard.fetchSnapshot();
         snapshotValues = snapshot.currentValues;
+      } on ReadTimeoutException {
+        rethrow;
+      } on ReadAbortedException {
+        rethrow;
       } catch (_) {
         // These types show "unavailable" rather than a cost-basis fallback.
       }
@@ -138,26 +143,32 @@ class AccountsService {
   }
 
   Future<GoldAccountDetail> loadGoldDetail(String accountId) async {
-    final account = await _accounts.getAccount(accountId);
-    final purchases = await _metal.getPurchaseHistory([accountId]);
-    String? snapshotValue;
-    try {
-      final snapshot = await _dashboard.fetchSnapshot();
-      snapshotValue = snapshot.currentValues[accountId];
-    } catch (_) {}
-    final currentValue = resolveCurrentValue(
-      account: account,
-      snapshotValue: snapshotValue,
-    );
-    return GoldAccountDetail(
-      account: account,
-      purchases: purchases,
-      currentValue: currentValue,
-      pricePerGram: derivePricePerGram(
-        accountCurrentValue: currentValue.amount,
+    return readWithDeadline(compositeReadDeadline, (_) async {
+      final account = await _accounts.getAccount(accountId);
+      final purchases = await _metal.getPurchaseHistory([accountId]);
+      String? snapshotValue;
+      try {
+        final snapshot = await _dashboard.fetchSnapshot();
+        snapshotValue = snapshot.currentValues[accountId];
+      } on ReadTimeoutException {
+        rethrow;
+      } on ReadAbortedException {
+        rethrow;
+      } catch (_) {}
+      final currentValue = resolveCurrentValue(
+        account: account,
+        snapshotValue: snapshotValue,
+      );
+      return GoldAccountDetail(
+        account: account,
         purchases: purchases,
-      ),
-    );
+        currentValue: currentValue,
+        pricePerGram: derivePricePerGram(
+          accountCurrentValue: currentValue.amount,
+          purchases: purchases,
+        ),
+      );
+    });
   }
 
   Future<List<Account>> fundingCandidates(String currencyCode) async {

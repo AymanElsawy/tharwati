@@ -2,6 +2,7 @@ import { normalizeDecimal } from "@/lib/financial-calculations/decimal"
 import { supabase } from "@/lib/supabase"
 import { requireQueryData } from "@/lib/supabase/repository"
 import type { AccountSummary, Decimal } from "@/lib/supabase/types"
+import { READ_DEADLINE_MS, readWithDeadline } from "@/lib/network/read-deadline"
 import type {
   AccountDisposal,
   AddAccountDisposalInput,
@@ -36,7 +37,8 @@ function mapDisposal(row: DisposalRow): AccountDisposal {
 
 export async function getAccountCurrentOwnership(accountIds: readonly string[]): Promise<AccountOwnershipProjection[]> {
   if (accountIds.length === 0) return []
-  const { data, error } = await supabase.rpc("get_account_current_ownership", { p_account_ids: [...accountIds] })
+  const { data, error } = await readWithDeadline(READ_DEADLINE_MS.financial, (signal) =>
+    supabase.rpc("get_account_current_ownership", { p_account_ids: [...accountIds] }).abortSignal(signal))
   return requireQueryData(data, error, "accountDisposals.getCurrentOwnership").map((row) => ({
     accountId: row.account_id,
     ownershipPercentage: row.ownership_percentage === null ? null : decimal(row.ownership_percentage, "ownership percentage"),
@@ -46,7 +48,8 @@ export async function getAccountCurrentOwnership(accountIds: readonly string[]):
 
 export async function getAccountDisposals(accountIds: readonly string[]): Promise<AccountDisposal[]> {
   if (accountIds.length === 0) return []
-  const { data, error } = await supabase.rpc("get_account_disposals", { p_account_ids: [...accountIds] })
+  const { data, error } = await readWithDeadline(READ_DEADLINE_MS.financial, (signal) =>
+    supabase.rpc("get_account_disposals", { p_account_ids: [...accountIds] }).abortSignal(signal))
   return requireQueryData(data, error, "accountDisposals.get").map(mapDisposal)
 }
 

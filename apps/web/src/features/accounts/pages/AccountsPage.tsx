@@ -3,6 +3,7 @@ import { useMemo, useState } from "react"
 import { useNavigate, useSearchParams } from "react-router-dom"
 
 import { Button } from "@/components/ui/button"
+import { safeErrorMessage } from "@/lib/errors/app-error"
 import { UnsavedChangesDialog } from "@/components/UnsavedChangesDialog"
 import {
   AccountFilterBar,
@@ -222,7 +223,7 @@ export function AccountsPage() {
       <div className="flex min-h-[50vh] flex-col items-center justify-center gap-4 text-center">
         <AlertTriangle size={28} className="text-amber-600" />
         <p className="max-w-sm text-sm text-[var(--color-text-secondary)]">
-          {t("accounts.error.loadTitle")}
+          {safeErrorMessage(accounts.error, t)}
         </p>
         <Button onClick={() => void accounts.refreshAccounts()}>
           {t("accounts.actions.tryAgain")}
@@ -267,7 +268,7 @@ export function AccountsPage() {
         >
           <span className="inline-flex items-center gap-2">
             <AlertTriangle size={16} />
-            {t("accounts.error.actionTitle")}
+            {safeErrorMessage(accounts.error, t)}
           </span>
           <button
             onClick={() => void accounts.refreshAccounts()}

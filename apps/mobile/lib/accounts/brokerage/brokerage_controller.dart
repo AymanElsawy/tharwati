@@ -5,6 +5,8 @@ import 'package:flutter/foundation.dart';
 import '../../core/data_change.dart';
 import '../../core/idempotency_key.dart';
 import '../../core/mutation_refresh.dart';
+import '../../core/read_deadline.dart';
+import '../../errors/safe_app_error.dart';
 import '../account_models.dart';
 import '../accounts_repository.dart' show AccountsException;
 import '../accounts_service.dart';
@@ -39,7 +41,9 @@ class BrokerageController extends ChangeNotifier {
   /// must not hide the portfolio (web keeps separate `holdingsError` /
   /// `activityError` flags).
   bool activityFailed = false;
+  AppErrorCode? activityErrorCode;
   bool refreshStale = false;
+  AppErrorCode? readErrorCode;
   final PayloadIdempotencyKey _existingAttempt = PayloadIdempotencyKey();
   final PayloadIdempotencyKey _tradeAttempt = PayloadIdempotencyKey();
   final PayloadIdempotencyKey _dividendAttempt = PayloadIdempotencyKey();
@@ -55,11 +59,17 @@ class BrokerageController extends ChangeNotifier {
     if (!preserveOnError) status = BrokerageStatus.loading;
     notifyListeners();
     try {
-      final holdings = await _repo.getHoldingsForAccount(accountId);
-      final prices = await _repo.getPrices([
-        for (final h in holdings) h.assetId,
-      ]);
-      final cash = await _repo.getCashBalance(accountId);
+      final (holdings, prices, cash) = await readWithDeadline(
+        compositeReadDeadline,
+        (_) async {
+          final holdings = await _repo.getHoldingsForAccount(accountId);
+          final prices = await _repo.getPrices([
+            for (final h in holdings) h.assetId,
+          ]);
+          final cash = await _repo.getCashBalance(accountId);
+          return (holdings, prices, cash);
+        },
+      );
       if (version != _requestVersion) return false;
       valuation = valueBrokerageAccount(
         holdings: holdings,
@@ -67,20 +77,24 @@ class BrokerageController extends ChangeNotifier {
         cashBalance: cash,
       );
       status = BrokerageStatus.ready;
+      readErrorCode = null;
 
       try {
         final rows = await _repo.getActivity(accountId);
         if (version != _requestVersion) return false;
         activity = presentActivity(rows);
         activityFailed = false;
-      } catch (_) {
+        activityErrorCode = null;
+      } catch (error) {
         if (version != _requestVersion) return false;
         if (!preserveOnError) activity = const [];
         activityFailed = true;
+        activityErrorCode = classifyAppError(error).code;
         if (preserveOnError) refreshStale = true;
       }
-    } catch (_) {
+    } catch (error) {
       if (version != _requestVersion) return false;
+      readErrorCode = classifyAppError(error).code;
       if (preserveOnError) {
         refreshStale = true;
         status = BrokerageStatus.ready;

@@ -2,6 +2,7 @@ import { supabase } from "@/lib/supabase"
 import { requireQueryData } from "@/lib/supabase/repository"
 import { exchangeRateService } from "@/services/exchange-rates"
 import type { ExchangeRateFormValues } from "@/features/exchange-rates/types/exchange-rate-form"
+import { READ_DEADLINE_MS, readWithDeadline } from "@/lib/network/read-deadline"
 
 export class ManagedExchangeRatesRepository {
   async list() {
@@ -9,11 +10,12 @@ export class ManagedExchangeRatesRepository {
   }
 
   async listActiveCurrencies() {
-    const { data, error } = await supabase
+    const { data, error } = await readWithDeadline(READ_DEADLINE_MS.simple, (signal) => supabase
       .from("currencies")
       .select("*")
       .eq("is_active", true)
       .order("code")
+      .abortSignal(signal))
     return requireQueryData(data, error, "exchangeRates.listCurrencies")
   }
 

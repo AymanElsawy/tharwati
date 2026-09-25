@@ -101,14 +101,16 @@ export class AssetsRepository {
     return [...uniqueAssets.values()].slice(0, normalizedLimit)
   }
 
-  async getAssets(): Promise<AssetSummary[]> {
+  async getAssets(signal?: AbortSignal): Promise<AssetSummary[]> {
     const operation = "assets.getAssets"
     await requireAuthenticatedUserId(this.client, operation)
-    const { data, error } = await this.client
+    if (signal?.aborted) throw new Error("Read canceled")
+    const query = this.client
       .from("assets")
       .select("*")
       .order("is_custom")
       .order("name")
+    const { data, error } = await (signal ? query.abortSignal(signal) : query)
 
     return requireQueryData(data, error, operation)
   }

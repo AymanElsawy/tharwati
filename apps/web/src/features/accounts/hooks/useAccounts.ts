@@ -5,6 +5,7 @@ import { useTranslation } from "../../../i18n/useTranslation"
 
 import type { AccountSummary } from "../../../lib/supabase/types"
 import { RepositoryError } from "../../../lib/supabase/types"
+import { READ_DEADLINE_MS, readWithDeadline } from "@/lib/network/read-deadline"
 import {
   accountsRepository,
   accountCreateParams,
@@ -76,19 +77,32 @@ export function useAccounts(): UseAccountsResult {
   >(new Map())
   const createAttempt = useRef<SubmissionAttempt | null>(null)
   const mutationInFlight = useRef(false)
+  const loadVersion = useRef(0)
+  const loadAbort = useRef<AbortController | null>(null)
 
   const loadAccounts = useCallback(
     async (showLoading: boolean) => {
+      const version = ++loadVersion.current
+      loadAbort.current?.abort()
+      const controller = new AbortController()
+      loadAbort.current = controller
       if (showLoading) {
         setIsLoading(true)
       }
 
       try {
-        const nextAccounts = await accountsRepository.getAccounts()
-        const deletionEligibility =
-          await accountsRepository.getAccountLifecycleEligibility(
-            nextAccounts.map((account) => account.id)
-          )
+        const { nextAccounts, deletionEligibility } = await readWithDeadline(
+          READ_DEADLINE_MS.composite,
+          async (signal) => {
+            const nextAccounts = await accountsRepository.getAccounts(signal)
+            const deletionEligibility = await accountsRepository.getAccountLifecycleEligibility(
+              nextAccounts.map((account) => account.id), signal
+            )
+            return { nextAccounts, deletionEligibility }
+          },
+          controller.signal,
+        )
+        if (version !== loadVersion.current) return
 
         setAccounts(nextAccounts)
         setDeletableAccountIds(
@@ -111,6 +125,7 @@ export function useAccounts(): UseAccountsResult {
         ])))
         setError(null)
       } catch (loadError) {
+        if (version !== loadVersion.current) return
         setError(
           normalizeError(
             loadError,
@@ -119,7 +134,8 @@ export function useAccounts(): UseAccountsResult {
           )
         )
       } finally {
-        if (showLoading) {
+        if (loadAbort.current === controller) loadAbort.current = null
+        if (showLoading && version === loadVersion.current) {
           setIsLoading(false)
         }
       }
@@ -131,6 +147,11 @@ export function useAccounts(): UseAccountsResult {
     async () => loadAccounts(true),
     [loadAccounts]
   )
+
+  useEffect(() => () => {
+    loadVersion.current += 1
+    loadAbort.current?.abort()
+  }, [])
 
   useEffect(() => {
     async function initializeAccounts() {
