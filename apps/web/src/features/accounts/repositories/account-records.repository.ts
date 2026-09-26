@@ -85,7 +85,7 @@ export class AccountRecordsRepository {
     filters: AccountRecordHistoryFilters = emptyAccountRecordHistoryFilters
   ): Promise<AccountRecordHistoryRow[]> {
     const operation = "accountRecords.getAccountRecordHistory"
-    const { data, error } = await this.client.rpc(
+    const { data, error } = await readWithDeadline(READ_DEADLINE_MS.financial, (signal) => this.client.rpc(
       "get_account_record_history",
       {
         p_account_id: accountId,
@@ -102,7 +102,7 @@ export class AccountRecordsRepository {
         p_min_amount: filters.minAmount.trim() || null,
         p_max_amount: filters.maxAmount.trim() || null,
       }
-    )
+    ).abortSignal(signal))
     return requireQueryData(data, error, operation) as AccountRecordHistoryRow[]
   }
 
@@ -133,19 +133,18 @@ export class AccountRecordsRepository {
 
   async getAccountRecordDetail(recordId: string): Promise<AccountRecordRow> {
     const operation = "accountRecords.getAccountRecordDetail"
-    const userId = await requireAuthenticatedUserId(this.client, operation)
-    const { data, error } = await this.client
-      .from("financial_transactions")
-      .select(accountRecordSelect)
-      .eq("id", recordId)
-      .eq("user_id", userId)
-      .single()
-
-    return requireQueryData(
-      data,
-      error,
-      operation
-    ) as unknown as AccountRecordRow
+    return readWithDeadline(READ_DEADLINE_MS.financial, async (signal) => {
+      const userId = await requireAuthenticatedUserId(this.client, operation)
+      if (signal.aborted) throw new Error("Read canceled")
+      const { data, error } = await this.client
+        .from("financial_transactions")
+        .select(accountRecordSelect)
+        .eq("id", recordId)
+        .eq("user_id", userId)
+        .abortSignal(signal)
+        .single()
+      return requireQueryData(data, error, operation) as unknown as AccountRecordRow
+    })
   }
 
   async correctAccountRecord(
@@ -184,10 +183,10 @@ export class AccountRecordsRepository {
   async getExpenseRefundSummary(
     expenseTransactionId: string
   ): Promise<ExpenseRefundSummary> {
-    const { data, error } = await this.client.rpc(
+    const { data, error } = await readWithDeadline(READ_DEADLINE_MS.financial, (signal) => this.client.rpc(
       "get_expense_refund_summary",
       { p_expense_transaction_id: expenseTransactionId }
-    )
+    ).abortSignal(signal))
     const row = requireQueryData(
       data,
       error,

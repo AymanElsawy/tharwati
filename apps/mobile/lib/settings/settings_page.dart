@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../auth/account_exit_coordinator.dart';
+import '../errors/safe_app_error.dart';
 import '../main.dart';
 import '../i18n/app_language.dart';
 import '../i18n/settings_copy.dart';
@@ -40,6 +41,7 @@ class _SettingsPageState extends State<SettingsPage> {
   String? _loadError;
   String? _saveError;
   bool _saved = false;
+  int _loadVersion = 0;
 
   @override
   void initState() {
@@ -50,27 +52,32 @@ class _SettingsPageState extends State<SettingsPage> {
 
   @override
   void dispose() {
+    _loadVersion++;
     _fullName.dispose();
     super.dispose();
   }
 
   Future<void> _loadProfile() async {
+    final version = ++_loadVersion;
     setState(() {
       _loading = true;
       _loadError = null;
     });
     try {
-      _fullName.text = await _profileStore.loadFullName() ?? '';
+      final fullName = await _profileStore.loadFullName();
+      if (!mounted || version != _loadVersion) return;
+      _fullName.text = fullName ?? '';
       if (mounted) {
         setState(() => _loading = false);
       }
-    } catch (_) {
-      if (!mounted) return;
+    } catch (error) {
+      if (!mounted || version != _loadVersion) return;
       setState(() {
         _loading = false;
-        _loadError = SettingsCopy.of(
+        _loadError = safeAppErrorMessage(
+          error,
           AppLanguageScope.of(context).language,
-        ).loadError;
+        );
       });
     }
   }

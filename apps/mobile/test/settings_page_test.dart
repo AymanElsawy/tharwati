@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:tharwati_mobile/core/read_deadline.dart';
 import 'package:tharwati_mobile/i18n/app_language.dart';
 import 'package:tharwati_mobile/settings/account_deletion_controller.dart';
 import 'package:tharwati_mobile/settings/settings_page.dart';
@@ -9,6 +10,29 @@ import 'package:tharwati_mobile/theme/app_theme.dart';
 import 'package:tharwati_mobile/theme/app_theme_controller.dart';
 
 void main() {
+  testWidgets('profile timeout shows safe copy and retry reads only', (
+    tester,
+  ) async {
+    final store = _TimeoutProfileStore();
+    await tester.pumpWidget(
+      _SettingsTestHost(
+        languageController: AppLanguageController(
+          store: _MemoryLanguageStore(),
+        ),
+        themeController: AppThemeController(store: _MemoryThemeStore()),
+        child: SettingsPage(email: 'investor@example.com', profileStore: store),
+      ),
+    );
+    await tester.pump();
+    expect(
+      find.text('The request took too long. Please try again.'),
+      findsOneWidget,
+    );
+    await tester.tap(find.text('Try again'));
+    await tester.pump();
+    expect(store.reads, 2);
+    expect(store.savedName, isNull);
+  });
   testWidgets('loads, saves the canonical name, and shows session email', (
     tester,
   ) async {
@@ -285,6 +309,17 @@ class _FakeProfileStore implements SettingsProfileStore {
     savedName = value;
     fullName = normalizeFullName(value);
     return fullName;
+  }
+}
+
+class _TimeoutProfileStore extends _FakeProfileStore {
+  _TimeoutProfileStore() : super(null);
+  int reads = 0;
+
+  @override
+  Future<String?> loadFullName() async {
+    reads++;
+    throw ReadTimeoutException(const Duration(seconds: 12));
   }
 }
 

@@ -1,10 +1,12 @@
-import { useCallback, useEffect, useMemo, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { Archive, Plus, Target, Undo2, WalletCards } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Progress } from "@/components/ui/progress"
 import { useTranslation } from "@/i18n/useTranslation"
 import { compareDecimals } from "@/lib/financial-calculations/decimal"
 import { formatPortfolioPercent } from "@/features/portfolio/utils/portfolio-formatters"
+import { LatestRequestGuard } from "@/features/portfolio/utils/latest-request"
+import { safeErrorMessage } from "@/lib/errors/app-error"
 import type { GoalStatus } from "@/lib/supabase/types"
 import { goalErrorMessage } from "../components/goal-error-message"
 import { GoalDeleteDialog } from "../components/GoalDeleteDialog"
@@ -44,21 +46,28 @@ export function GoalsPage() {
   } | null>(null)
   const [deleteTarget, setDeleteTarget] = useState<GoalSummary | null>(null)
   const [saving, setSaving] = useState(false)
+  const requestGuard = useRef(new LatestRequestGuard())
   const load = useCallback(async () => {
+    const request = requestGuard.current.begin()
     try {
-      setModel(await loadGoals())
+      const next = await loadGoals()
+      if (!requestGuard.current.isCurrent(request)) return
+      setModel(next)
       setError(null)
-    } catch {
-      setError(t("goals.error.load"))
+    } catch (error) {
+      if (!requestGuard.current.isCurrent(request)) return
+      setError(safeErrorMessage(error, t))
     } finally {
-      setLoading(false)
+      if (requestGuard.current.isCurrent(request)) setLoading(false)
     }
   }, [t])
   useEffect(() => {
+    const guard = requestGuard.current
     async function initialize() {
       await load()
     }
     void initialize()
+    return () => { guard.begin() }
   }, [load])
   const visible = useMemo(
     () =>

@@ -1,4 +1,5 @@
 import '../../dashboard/data/dashboard_repository.dart';
+import '../../core/read_deadline.dart';
 import '../../dashboard/logic/dashboard_aggregate.dart';
 import '../domain/wealth_analysis.dart';
 import '../domain/wealth_target_allocation.dart';
@@ -42,23 +43,25 @@ class WealthAnalysisService implements WealthAnalysisDataSource {
 
   @override
   Future<WealthAnalysisData> load() async {
-    final baseCurrency = await _dashboard.fetchBaseCurrency();
-    if (baseCurrency == null) {
-      throw DashboardException(DashboardErrorKind.noBaseCurrency);
-    }
-    final accounts = await _dashboard.fetchAccounts();
-    final snapshot = await _dashboard.fetchSnapshot();
-    final aggregate = calculateDashboardAggregate(
-      baseCurrencyCode: baseCurrency,
-      accounts: accounts,
-      snapshot: snapshot,
-    ).withSnapshotMeta(snapshot);
-    final targetPlan = await _targets.load();
-    return WealthAnalysisData(
-      aggregate: aggregate,
-      evidence: buildWealthAnalysisEvidence(aggregate),
-      targetPlan: targetPlan,
-    );
+    return readWithDeadline(compositeReadDeadline, (_) async {
+      final baseCurrency = await _dashboard.fetchBaseCurrency();
+      if (baseCurrency == null) {
+        throw DashboardException(DashboardErrorKind.noBaseCurrency);
+      }
+      final accounts = await _dashboard.fetchAccounts();
+      final snapshot = await _dashboard.fetchSnapshot();
+      final aggregate = calculateDashboardAggregate(
+        baseCurrencyCode: baseCurrency,
+        accounts: accounts,
+        snapshot: snapshot,
+      ).withSnapshotMeta(snapshot);
+      final targetPlan = await _targets.load();
+      return WealthAnalysisData(
+        aggregate: aggregate,
+        evidence: buildWealthAnalysisEvidence(aggregate),
+        targetPlan: targetPlan,
+      );
+    });
   }
 
   @override

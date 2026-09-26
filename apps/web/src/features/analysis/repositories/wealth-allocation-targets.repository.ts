@@ -1,5 +1,6 @@
 import type { DashboardAssetGroup } from "@/features/dashboard/services/dashboard-aggregate.service"
 import { supabase } from "@/lib/supabase"
+import { READ_DEADLINE_MS, readWithDeadline } from "@/lib/network/read-deadline"
 import {
   requireAuthenticatedUserId,
   requireQueryData,
@@ -36,19 +37,23 @@ function failure(error: unknown, operation: string) {
 }
 
 export const wealthAllocationTargetsRepository = {
-  async load(): Promise<WealthTargetPlan> {
+  async load(parentSignal?: AbortSignal): Promise<WealthTargetPlan> {
     const operation = "wealthAllocationTargets.load"
+    return readWithDeadline(READ_DEADLINE_MS.simple, async (signal) => {
     const userId = await requireAuthenticatedUserId(supabase, operation)
+    if (signal.aborted) throw new Error("Read canceled")
     const [targetsResult, preferenceResult] = await Promise.all([
       supabase
         .from("wealth_allocation_targets")
         .select("asset_class,target_percentage")
         .eq("user_id", userId)
-        .order("asset_class"),
+        .order("asset_class")
+        .abortSignal(signal),
       supabase
         .from("wealth_allocation_target_preferences")
         .select("tolerance_percentage")
         .eq("user_id", userId)
+        .abortSignal(signal)
         .maybeSingle(),
     ])
     const rows = requireQueryData(
@@ -58,6 +63,7 @@ export const wealthAllocationTargetsRepository = {
     )
     failure(preferenceResult.error, operation)
     return mapStoredWealthTargetPlan(rows, preferenceResult.data)
+    }, parentSignal)
   },
 
   async replace(

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../home_page.dart';
+import '../errors/safe_app_error.dart';
 import '../i18n/app_language.dart';
 import '../main.dart';
 import '../onboarding/onboarding_flow.dart';
@@ -90,6 +91,7 @@ class _AuthGateState extends State<AuthGate> {
               }
               if (snap.hasError) {
                 return _AccountLoadError(
+                  error: snap.error!,
                   onRetry: () {
                     setState(() {
                       _resolvedFor = null;
@@ -146,8 +148,9 @@ class _Loading extends StatelessWidget {
 }
 
 class _AccountLoadError extends StatelessWidget {
-  const _AccountLoadError({required this.onRetry});
+  const _AccountLoadError({required this.error, required this.onRetry});
 
+  final Object error;
   final VoidCallback onRetry;
 
   @override
@@ -167,9 +170,10 @@ class _AccountLoadError extends StatelessWidget {
                 Callout(
                   tone: CalloutTone.danger,
                   title: ar ? 'تعذر تحميل حسابك' : 'Couldn’t load your account',
-                  message: ar
-                      ? 'تحقق من اتصالك وحاول مرة أخرى. لم يتم تغيير أي شيء.'
-                      : 'Check your connection and try again. Nothing was changed.',
+                  message: safeAppErrorMessage(
+                    error,
+                    AppLanguageScope.of(context).language,
+                  ),
                 ),
                 const SizedBox(height: 16),
                 PrimaryButton(

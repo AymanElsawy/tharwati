@@ -1,4 +1,5 @@
 import { supabase } from "@/lib/supabase"
+import { READ_DEADLINE_MS, readWithDeadline } from "@/lib/network/read-deadline"
 import {
   requireAuthenticatedUserId,
   requireQueryData,
@@ -31,7 +32,9 @@ export const goalsRepository = {
     hasAnyGoals: boolean
   }> {
     const operation = "goals.listActiveSummaries"
+    return readWithDeadline(READ_DEADLINE_MS.simple, async (signal) => {
     const userId = await requireAuthenticatedUserId(supabase, operation)
+    if (signal.aborted) throw new Error("Read canceled")
     const [goalsResult, countResult] = await Promise.all([
       supabase
         .from("goals")
@@ -41,11 +44,13 @@ export const goalsRepository = {
         .is("archived_at", null)
         .order("target_date", { ascending: true, nullsFirst: false })
         .order("created_at", { ascending: true })
-        .limit(limit),
+        .limit(limit)
+        .abortSignal(signal),
       supabase
         .from("goals")
         .select("id", { count: "exact", head: true })
-        .eq("user_id", userId),
+        .eq("user_id", userId)
+        .abortSignal(signal),
     ])
     const goals = requireQueryData(
       goalsResult.data,
@@ -65,6 +70,7 @@ export const goalsRepository = {
         goals.map((goal) => goal.id)
       )
       .order("created_at", { ascending: true })
+      .abortSignal(signal)
     return {
       goals,
       entries: requireQueryData(
@@ -74,22 +80,27 @@ export const goalsRepository = {
       ),
       hasAnyGoals: (countResult.count ?? 0) > 0,
     }
+    })
   },
   async list(): Promise<{ goals: GoalRow[]; entries: GoalProgressEntryRow[] }> {
     const operation = "goals.list"
+    return readWithDeadline(READ_DEADLINE_MS.simple, async (signal) => {
     const userId = await requireAuthenticatedUserId(supabase, operation)
+    if (signal.aborted) throw new Error("Read canceled")
     const [goalsResult, entriesResult] = await Promise.all([
       supabase
         .from("goals")
         .select(goalSelect)
         .eq("user_id", userId)
-        .order("created_at", { ascending: false }),
+        .order("created_at", { ascending: false })
+        .abortSignal(signal),
       supabase
         .from("goal_progress_entries")
         .select(entrySelect)
         .eq("user_id", userId)
         .order("effective_on", { ascending: false })
-        .order("created_at", { ascending: false }),
+        .order("created_at", { ascending: false })
+        .abortSignal(signal),
     ])
     return {
       goals: requireQueryData(goalsResult.data, goalsResult.error, operation),
@@ -99,6 +110,7 @@ export const goalsRepository = {
         operation
       ),
     }
+    })
   },
   async create(input: GoalFormInput): Promise<string> {
     const { data, error } = await supabase.rpc("create_goal", {

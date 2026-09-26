@@ -1,4 +1,5 @@
 import { supabase, supabaseUrl, type TypedSupabaseClient } from "@/lib/supabase/client"
+import { READ_DEADLINE_MS, readWithDeadline } from "@/lib/network/read-deadline"
 import {
   USER_DATA_EXPORT_SCHEMA,
   USER_DATA_EXPORT_VERSION,
@@ -52,20 +53,24 @@ export class UserDataExportService {
   }
 
   async requestExport(): Promise<UserDataExportV1> {
-    const { data, error } = await this.client.functions.invoke<unknown>("export-my-data", {
+    const { data, error } = await readWithDeadline(READ_DEADLINE_MS.export, (signal) => this.client.functions.invoke<unknown>("export-my-data", {
       method: "GET",
-    })
+      signal,
+    }))
     if (error) throw new UserDataExportError("unavailable")
     return parseUserDataExport(data)
   }
 
   async downloadExport(): Promise<{ blob: Blob; filename: string }> {
+    return readWithDeadline(READ_DEADLINE_MS.export, async (signal) => {
     const { data: { session } } = await this.client.auth.getSession()
+    if (signal.aborted) throw new Error("Read canceled")
     if (!session?.access_token) throw new UserDataExportError("authentication_required")
     let response: Response
     try {
       response = await fetch(`${supabaseUrl}/functions/v1/export-my-data`, {
         headers: { Authorization: `Bearer ${session.access_token}` },
+        signal,
       })
     } catch {
       throw new UserDataExportError("unavailable")
@@ -81,6 +86,7 @@ export class UserDataExportService {
     const filename = disposition?.match(/filename="?([^";]+)"?/i)?.[1]
       ?? `tharwati-data-export-v1-${new Date().toISOString().slice(0, 10)}.json`
     return { blob: await response.blob(), filename }
+    })
   }
 }
 

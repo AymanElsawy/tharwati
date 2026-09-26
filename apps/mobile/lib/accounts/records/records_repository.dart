@@ -2,6 +2,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../errors/safe_app_error.dart';
 
 import '../../core/local_datetime.dart';
+import '../../core/read_deadline.dart';
 import '../accounts_repository.dart' show AccountsException;
 import 'records_models.dart';
 
@@ -23,25 +24,36 @@ class RecordsRepository {
     int pageSize,
     AccountRecordHistoryFilters f,
   ) async {
-    final rows = await _client.rpc(
-      'get_account_record_history',
-      params: {
-        'p_account_id': accountId,
-        'p_cursor_occurred_at': cursor?.occurredAt,
-        'p_cursor_id': cursor?.id,
-        'p_page_size': pageSize,
-        'p_time_zone': runtimeTimeZone(),
-        'p_search': f.search.trim().isEmpty ? null : f.search.trim(),
-        'p_from_date': f.fromDate.isEmpty ? null : f.fromDate,
-        'p_to_date': f.toDate.isEmpty ? null : f.toDate,
-        'p_record_type': f.recordType?.code,
-        'p_main_category_id': f.mainCategoryId.isEmpty
-            ? null
-            : f.mainCategoryId,
-        'p_subcategory_id': f.subcategoryId.isEmpty ? null : f.subcategoryId,
-        'p_min_amount': f.minAmount.trim().isEmpty ? null : f.minAmount.trim(),
-        'p_max_amount': f.maxAmount.trim().isEmpty ? null : f.maxAmount.trim(),
-      },
+    final rows = await readWithDeadline(
+      financialReadDeadline,
+      (abort) => _client
+          .rpc(
+            'get_account_record_history',
+            params: {
+              'p_account_id': accountId,
+              'p_cursor_occurred_at': cursor?.occurredAt,
+              'p_cursor_id': cursor?.id,
+              'p_page_size': pageSize,
+              'p_time_zone': runtimeTimeZone(),
+              'p_search': f.search.trim().isEmpty ? null : f.search.trim(),
+              'p_from_date': f.fromDate.isEmpty ? null : f.fromDate,
+              'p_to_date': f.toDate.isEmpty ? null : f.toDate,
+              'p_record_type': f.recordType?.code,
+              'p_main_category_id': f.mainCategoryId.isEmpty
+                  ? null
+                  : f.mainCategoryId,
+              'p_subcategory_id': f.subcategoryId.isEmpty
+                  ? null
+                  : f.subcategoryId,
+              'p_min_amount': f.minAmount.trim().isEmpty
+                  ? null
+                  : f.minAmount.trim(),
+              'p_max_amount': f.maxAmount.trim().isEmpty
+                  ? null
+                  : f.maxAmount.trim(),
+            },
+          )
+          .abortSignal(abort),
     );
     return [for (final r in rows as List) (r as Map).cast<String, dynamic>()];
   }
@@ -115,9 +127,14 @@ class RecordsRepository {
 
   Future<ExpenseRefundSummary> refundSummary(String expenseId) async {
     final rows =
-        await _client.rpc(
-              'get_expense_refund_summary',
-              params: {'p_expense_transaction_id': expenseId},
+        await readWithDeadline(
+              financialReadDeadline,
+              (abort) => _client
+                  .rpc(
+                    'get_expense_refund_summary',
+                    params: {'p_expense_transaction_id': expenseId},
+                  )
+                  .abortSignal(abort),
             )
             as List;
     if (rows.isEmpty) throw AccountsException('Refund summary is unavailable.');
@@ -145,8 +162,11 @@ class RecordsRepository {
       if (e.appErrorCode == AppErrorCode.validation &&
           e.originalCause is PostgrestException &&
           (e.originalCause as PostgrestException).code == '22P02') {
-        throw AccountsException('invalid_refund_request',
-          appErrorCode: AppErrorCode.validation, originalCause: e.originalCause);
+        throw AccountsException(
+          'invalid_refund_request',
+          appErrorCode: AppErrorCode.validation,
+          originalCause: e.originalCause,
+        );
       }
       rethrow;
     }
@@ -171,12 +191,16 @@ class RecordsRepository {
 
   Future<EditableAccountRecord> getEditableRecord(String recordId) async {
     try {
-      final row = await _client
-          .from('financial_transactions')
-          .select(_detailSelect)
-          .eq('id', recordId)
-          .eq('user_id', _userId)
-          .single();
+      final row = await readWithDeadline(
+        financialReadDeadline,
+        (abort) => _client
+            .from('financial_transactions')
+            .select(_detailSelect)
+            .eq('id', recordId)
+            .eq('user_id', _userId)
+            .single()
+            .abortSignal(abort),
+      );
       return _mapEditable((row).cast<String, dynamic>());
     } on PostgrestException catch (e) {
       throw _recordError(e);
@@ -245,9 +269,11 @@ class RecordsRepository {
 
   Future<Map<String, String>> getAccountBalances(List<String> ids) async {
     if (ids.isEmpty) return const {};
-    final rows = await _client.rpc(
-      'get_account_balances',
-      params: {'p_account_ids': ids},
+    final rows = await readWithDeadline(
+      financialReadDeadline,
+      (abort) => _client
+          .rpc('get_account_balances', params: {'p_account_ids': ids})
+          .abortSignal(abort),
     );
     return {
       for (final r in rows as List)
@@ -258,12 +284,16 @@ class RecordsRepository {
   // ---- categories --------------------------------------------------
 
   Future<List<RecordCategory>> getCategories() async {
-    final rows = await _client
-        .from('record_categories')
-        .select(
-          'id,user_id,parent_id,system_code,level,name,sort_order,is_archived',
-        )
-        .order('sort_order');
+    final rows = await readWithDeadline(
+      simpleReadDeadline,
+      (abort) => _client
+          .from('record_categories')
+          .select(
+            'id,user_id,parent_id,system_code,level,name,sort_order,is_archived',
+          )
+          .order('sort_order')
+          .abortSignal(abort),
+    );
     return [
       for (final r in rows as List)
         RecordCategory.fromRow((r as Map).cast<String, dynamic>()),
@@ -271,9 +301,13 @@ class RecordsRepository {
   }
 
   Future<List<RecordCategoryOverride>> getOverrides() async {
-    final rows = await _client
-        .from('record_category_overrides')
-        .select('category_id,name,is_hidden');
+    final rows = await readWithDeadline(
+      simpleReadDeadline,
+      (abort) => _client
+          .from('record_category_overrides')
+          .select('category_id,name,is_hidden')
+          .abortSignal(abort),
+    );
     return [
       for (final r in rows as List)
         RecordCategoryOverride.fromRow((r as Map).cast<String, dynamic>()),

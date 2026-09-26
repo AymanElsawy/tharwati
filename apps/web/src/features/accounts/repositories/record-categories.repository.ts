@@ -1,4 +1,5 @@
 import { supabase, type TypedSupabaseClient } from "@/lib/supabase/client"
+import { READ_DEADLINE_MS, readWithDeadline } from "@/lib/network/read-deadline"
 import {
   requireAuthenticatedUserId,
   requireQueryData,
@@ -33,13 +34,15 @@ export class RecordCategoriesRepository {
 
   async getCategories(): Promise<RecordCategory[]> {
     const operation = "recordCategories.getCategories"
-    const { data, error } = await this.client.from("record_categories").select(categorySelect).order("sort_order")
+    const { data, error } = await readWithDeadline(READ_DEADLINE_MS.simple, (signal) =>
+      this.client.from("record_categories").select(categorySelect).order("sort_order").abortSignal(signal))
     return requireQueryData(data, error, operation).map((row) => mapCategory(row as Record<string, unknown>))
   }
 
   async getOverrides(): Promise<RecordCategoryOverride[]> {
     const operation = "recordCategories.getOverrides"
-    const { data, error } = await this.client.from("record_category_overrides").select(overrideSelect)
+    const { data, error } = await readWithDeadline(READ_DEADLINE_MS.simple, (signal) =>
+      this.client.from("record_category_overrides").select(overrideSelect).abortSignal(signal))
     return requireQueryData(data, error, operation).map((row) => ({ categoryId: row.category_id, name: row.name, isHidden: row.is_hidden }))
   }
 

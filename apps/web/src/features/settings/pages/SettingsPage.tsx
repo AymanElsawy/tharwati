@@ -3,6 +3,7 @@ import { Download, FileText, ShieldAlert } from "lucide-react"
 import { useCurrentUser } from "@/features/profile/hooks/useCurrentUser"
 import { updateCurrentUserFullName } from "@/features/profile/repositories/profile.repository"
 import { UserDataExportError, userDataExportService } from "@/features/privacy/services/user-data-export.service"
+import { classifyAppError } from "@/lib/errors/app-error"
 import { useTranslation } from "@/i18n/useTranslation"
 import { DeleteAccountDialog } from "../components/DeleteAccountDialog"
 
@@ -22,7 +23,7 @@ export function SettingsPage() {
   const user = useCurrentUser()
   const [editedFullName, setEditedFullName] = useState<string | null>(null)
   const [profileStatus, setProfileStatus] = useState<"idle" | "saving" | "saved" | "error">("idle")
-  const [exportStatus, setExportStatus] = useState<"idle" | "loading" | "success" | UserDataExportError["code"]>("idle")
+  const [exportStatus, setExportStatus] = useState<"idle" | "loading" | "success" | "timeout" | UserDataExportError["code"]>("idle")
 
   const fullName = editedFullName ?? user.fullName ?? ""
 
@@ -47,12 +48,13 @@ export function SettingsPage() {
       triggerDownload(blob, filename)
       setExportStatus("success")
     } catch (error) {
-      setExportStatus(error instanceof UserDataExportError ? error.code : "unavailable")
+      setExportStatus(error instanceof UserDataExportError ? error.code : classifyAppError(error).code === "timeout" ? "timeout" : "unavailable")
     }
   }
 
   const exportMessage = exportStatus === "success" ? t("settings.export.success")
-    : exportStatus === "rate_limited" ? t("settings.export.rateLimited")
+    : exportStatus === "timeout" ? t("errors.timeout")
+      : exportStatus === "rate_limited" ? t("settings.export.rateLimited")
       : exportStatus === "too_large" ? t("settings.export.tooLarge")
         : exportStatus === "authentication_required" ? t("settings.export.authExpired")
           : exportStatus === "unavailable" ? t("settings.export.error") : null

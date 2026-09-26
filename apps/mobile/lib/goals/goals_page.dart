@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../dashboard/data/dashboard_repository.dart';
+import '../errors/safe_app_error.dart';
 import '../i18n/app_language.dart';
 import '../i18n/goals_copy.dart';
 import '../theme/tokens.dart';
@@ -126,7 +127,12 @@ class _GoalsPageState extends State<GoalsPage> {
             Callout(
               tone: CalloutTone.danger,
               title: copy.loadError,
-              message: copy.safeRecords,
+              message: _controller.loadError == null
+                  ? copy.safeRecords
+                  : safeAppErrorMessage(
+                      _controller.loadError!,
+                      AppLanguageScope.of(context).language,
+                    ),
               action: OutlinedButton(
                 onPressed: _controller.load,
                 child: Text(copy.retry),

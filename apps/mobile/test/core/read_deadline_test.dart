@@ -28,6 +28,12 @@ void main() {
       safeAppErrorCodeMessage(AppErrorCode.timeout, AppLanguage.ar),
       isNot(contains('provider')),
     );
+    expect(
+      safeAppErrorCodeMessage(AppErrorCode.timeout, AppLanguage.ar),
+      isNotEmpty,
+    );
+    expect(AppErrorCode.timeout, isNot(AppErrorCode.fxUnavailable));
+    expect(AppErrorCode.timeout, isNot(AppErrorCode.marketPriceUnavailable));
   });
 
   test('parent abort is not a timeout', () async {

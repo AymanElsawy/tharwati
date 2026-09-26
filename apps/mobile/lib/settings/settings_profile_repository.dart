@@ -1,4 +1,5 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
+import '../core/read_deadline.dart';
 
 abstract interface class SettingsProfileStore {
   Future<String?> loadFullName();
@@ -15,11 +16,15 @@ class SettingsProfileRepository implements SettingsProfileStore {
 
   @override
   Future<String?> loadFullName() async {
-    final row = await _client
-        .from('profiles')
-        .select('full_name')
-        .eq('id', _currentUserId)
-        .single();
+    final row = await readWithDeadline(
+      simpleReadDeadline,
+      (abort) => _client
+          .from('profiles')
+          .select('full_name')
+          .eq('id', _currentUserId)
+          .single()
+          .abortSignal(abort),
+    );
     return normalizeFullName(row['full_name'] as String?);
   }
 

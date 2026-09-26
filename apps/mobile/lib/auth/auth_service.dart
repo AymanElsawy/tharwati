@@ -1,6 +1,7 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../env.dart';
+import '../core/read_deadline.dart';
 import 'auth_recovery_coordinator.dart';
 
 /// Thin wrapper over `supabase.auth`, mirroring the web app's auth.service.ts
@@ -88,17 +89,15 @@ class AuthService implements RecoveryAuthClient {
   /// created by the `handle_new_user` trigger; RLS scopes it to the caller.
   /// Throws on transport/RLS failure so the gate can show a retry screen.
   Future<bool> getOnboardingCompletion() async {
-    final row = await _client
-        .from('profiles')
-        .select('onboarding_completed')
-        .eq('id', currentUser!.id)
-        .single()
-        .timeout(
-          const Duration(seconds: 15),
-          onTimeout: () => throw Exception(
-            'Timed out reaching the server. Check your connection.',
-          ),
-        );
+    final row = await readWithDeadline(
+      const Duration(seconds: 15),
+      (abort) => _client
+          .from('profiles')
+          .select('onboarding_completed')
+          .eq('id', currentUser!.id)
+          .single()
+          .abortSignal(abort),
+    );
     return row['onboarding_completed'] as bool? ?? false;
   }
 }

@@ -1,15 +1,43 @@
-import { describe, expect, it, vi } from "vitest"
+import { afterEach, describe, expect, it, vi } from "vitest"
 
 import type { TypedSupabaseClient } from "@/lib/supabase/client"
 import { localDateTimeInputToIso } from "@/lib/formatting/local-date-time"
 import { AccountRecordsRepository } from "./account-records.repository"
+import { ReadTimeoutError } from "@/lib/network/read-deadline"
 import type { AccountRecordFormValues, AccountRecordHistoryFilters } from "../types/account-record"
 
 function createRepository() {
-  const rpc = vi.fn().mockResolvedValue({ error: null })
+  const rpc = vi.fn((name: string) => name.startsWith("get_")
+    ? { abortSignal: () => Promise.resolve({ data: [], error: null }) }
+    : Promise.resolve({ error: null }))
   const client = { rpc } as unknown as TypedSupabaseClient
   return { repository: new AccountRecordsRepository(client), rpc }
 }
+
+afterEach(() => vi.useRealTimers())
+
+describe("account record read deadlines", () => {
+  it.each([
+    ["get_account_record_history", (repository: AccountRecordsRepository) => repository.getAccountRecordHistory("account-1", null)],
+    ["get_expense_refund_summary", (repository: AccountRecordsRepository) => repository.getExpenseRefundSummary("expense-1")],
+  ])("bounds %s, aborts transport, and read retry invokes no mutation", async (name, read) => {
+    vi.useFakeTimers()
+    const signals: AbortSignal[] = []
+    const rpc = vi.fn((called: string) => {
+      expect(called).toBe(name)
+      return { abortSignal: (signal: AbortSignal) => { signals.push(signal); return new Promise<never>(() => {}) } }
+    })
+    const repository = new AccountRecordsRepository({ rpc } as unknown as TypedSupabaseClient)
+    const first = expect(read(repository)).rejects.toBeInstanceOf(ReadTimeoutError)
+    await vi.advanceTimersByTimeAsync(20_000)
+    await first
+    expect(signals[0].aborted).toBe(true)
+    const retry = expect(read(repository)).rejects.toBeInstanceOf(ReadTimeoutError)
+    await vi.advanceTimersByTimeAsync(20_000)
+    await retry
+    expect(rpc).toHaveBeenCalledTimes(2)
+  })
+})
 
 describe("AccountRecordsRepository.addAccountRecord", () => {
   const baseValues: AccountRecordFormValues = {
@@ -114,7 +142,6 @@ describe("AccountRecordsRepository.addAccountRecord", () => {
 
   it("requests history through the server-filtered paginated effective-history RPC", async () => {
     const { repository, rpc } = createRepository()
-    rpc.mockResolvedValue({ data: [], error: null })
 
     await repository.getAccountRecordHistory("cash-account", { occurredAt: "2026-08-20T12:00:00Z", id: "cursor-id" }, 50, "Asia/Riyadh")
 
@@ -137,7 +164,6 @@ describe("AccountRecordsRepository.addAccountRecord", () => {
 
   it("passes combined search, local-date, type, category, and native-amount filters to the RPC", async () => {
     const { repository, rpc } = createRepository()
-    rpc.mockResolvedValue({ data: [], error: null })
     const filters: AccountRecordHistoryFilters = {
       search: "  gym  ",
       fromDate: "2026-08-18",

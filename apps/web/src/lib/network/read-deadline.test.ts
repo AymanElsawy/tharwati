@@ -1,6 +1,8 @@
 import { afterEach, describe, expect, it, vi } from "vitest"
 
-import { classifyAppError } from "@/lib/errors/app-error"
+import { classifyAppError, safeErrorMessage } from "@/lib/errors/app-error"
+import { en } from "@/i18n/en/translations"
+import { ar } from "@/i18n/ar/translations"
 import { AccountsRepository } from "@/features/accounts/repositories/accounts.repository"
 import type { TypedSupabaseClient } from "@/lib/supabase/client"
 import { MarketDataService } from "@/services/market-data/service"
@@ -9,6 +11,15 @@ import { ReadAbortedError, ReadTimeoutError, readWithDeadline } from "./read-dea
 afterEach(() => vi.useRealTimers())
 
 describe("readWithDeadline", () => {
+  it("keeps timeout copy safe in English and Arabic, distinct from unavailable values", () => {
+    const timeout = new ReadTimeoutError(new Error("RPC financial_transactions failed"))
+    expect(classifyAppError(timeout).code).toBe("timeout")
+    expect(safeErrorMessage(timeout, (key) => en[key])).toBe(en["errors.timeout"])
+    expect(safeErrorMessage(timeout, (key) => ar[key])).toBe(ar["errors.timeout"])
+    expect(safeErrorMessage(timeout, (key) => en[key])).not.toContain("financial_transactions")
+    expect(classifyAppError(timeout).code).not.toBe("fx_unavailable")
+    expect(classifyAppError(timeout).code).not.toBe("market_price_unavailable")
+  })
   it("aborts the transport and classifies deadline expiry as timeout", async () => {
     vi.useFakeTimers()
     let signal: AbortSignal | undefined

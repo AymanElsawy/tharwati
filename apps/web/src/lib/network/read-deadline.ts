@@ -4,6 +4,7 @@ export const READ_DEADLINE_MS = {
   market: 20_000,
   dashboard: 30_000,
   composite: 45_000,
+  export: 90_000,
 } as const
 
 export class ReadTimeoutError extends Error {

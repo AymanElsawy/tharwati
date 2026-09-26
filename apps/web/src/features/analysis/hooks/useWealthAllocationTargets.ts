@@ -1,7 +1,8 @@
-import { useCallback, useEffect, useState } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
 
 import type { WealthTarget } from "../domain/wealth-target-allocation"
 import { wealthAllocationTargetsRepository } from "../repositories/wealth-allocation-targets.repository"
+import { LatestRequestGuard } from "@/features/portfolio/utils/latest-request"
 
 export function useWealthAllocationTargets() {
   const [targets, setTargets] = useState<WealthTarget[]>([])
@@ -10,26 +11,40 @@ export function useWealthAllocationTargets() {
   const [isSaving, setIsSaving] = useState(false)
   const [loadError, setLoadError] = useState(false)
   const [saveError, setSaveError] = useState(false)
+  const requestGuard = useRef(new LatestRequestGuard())
+  const activeRead = useRef<AbortController | null>(null)
 
   const load = useCallback(async () => {
+    activeRead.current?.abort()
+    const controller = new AbortController()
+    activeRead.current = controller
+    const request = requestGuard.current.begin()
     setIsLoading(true)
     setLoadError(false)
     try {
-      const plan = await wealthAllocationTargetsRepository.load()
+      const plan = await wealthAllocationTargetsRepository.load(controller.signal)
+      if (!requestGuard.current.isCurrent(request)) return
       setTargets(plan.targets)
       setTolerancePercentage(plan.tolerancePercentage ?? "0")
     } catch {
+      if (!requestGuard.current.isCurrent(request)) return
       setLoadError(true)
     } finally {
-      setIsLoading(false)
+      if (activeRead.current === controller) activeRead.current = null
+      if (requestGuard.current.isCurrent(request)) setIsLoading(false)
     }
   }, [])
 
   useEffect(() => {
+    const guard = requestGuard.current
     async function initialize() {
       await load()
     }
     void initialize()
+    return () => {
+      activeRead.current?.abort()
+      guard.begin()
+    }
   }, [load])
 
   const save = useCallback(

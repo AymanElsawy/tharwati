@@ -1,4 +1,5 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
+import '../core/read_deadline.dart';
 
 import 'goal_math.dart';
 import 'goal_models.dart';
@@ -36,87 +37,96 @@ class GoalsRepository {
   /// Every goal (any status, archived or not) plus every progress entry, newest
   /// effective date first — port of the web `goalsRepository.list`.
   Future<({List<Goal> goals, List<GoalProgressEntry> entries})> list() async {
-    final goalRows = await _client
-        .from('goals')
-        .select(_goalSelect)
-        .eq('user_id', _userId)
-        .order('created_at', ascending: false);
+    return readWithDeadline(simpleReadDeadline, (abort) async {
+      final goalRows = await _client
+          .from('goals')
+          .select(_goalSelect)
+          .eq('user_id', _userId)
+          .order('created_at', ascending: false)
+          .abortSignal(abort);
 
-    final entryRows = await _client
-        .from('goal_progress_entries')
-        .select(_entrySelect)
-        .eq('user_id', _userId)
-        .order('effective_on', ascending: false)
-        .order('created_at', ascending: false);
+      final entryRows = await _client
+          .from('goal_progress_entries')
+          .select(_entrySelect)
+          .eq('user_id', _userId)
+          .order('effective_on', ascending: false)
+          .order('created_at', ascending: false)
+          .abortSignal(abort);
 
-    return (
-      goals: (goalRows as List)
-          .map((r) => Goal.fromRow((r as Map).cast<String, dynamic>()))
-          .toList(),
-      entries: (entryRows as List)
-          .map(
-            (r) =>
-                GoalProgressEntry.fromRow((r as Map).cast<String, dynamic>()),
-          )
-          .toList(),
-    );
+      return (
+        goals: (goalRows as List)
+            .map((r) => Goal.fromRow((r as Map).cast<String, dynamic>()))
+            .toList(),
+        entries: (entryRows as List)
+            .map(
+              (r) =>
+                  GoalProgressEntry.fromRow((r as Map).cast<String, dynamic>()),
+            )
+            .toList(),
+      );
+    });
   }
 
   /// Dashboard "Goals" card model — port of `listActiveSummaries`: at most
   /// [limit] active, unarchived goals ordered by target date (undated last),
   /// oldest creation time as the tie-break, plus a `hasAnyGoals` count.
   Future<DashboardGoalsModel> listActiveGoalSummaries({int limit = 3}) async {
-    final goalRows = await _client
-        .from('goals')
-        .select(_goalSelect)
-        .eq('user_id', _userId)
-        .eq('status', 'active')
-        .isFilter('archived_at', null)
-        .order('target_date', ascending: true, nullsFirst: false)
-        .order('created_at', ascending: true)
-        .limit(limit);
+    return readWithDeadline(simpleReadDeadline, (abort) async {
+      final goalRows = await _client
+          .from('goals')
+          .select(_goalSelect)
+          .eq('user_id', _userId)
+          .eq('status', 'active')
+          .isFilter('archived_at', null)
+          .order('target_date', ascending: true, nullsFirst: false)
+          .order('created_at', ascending: true)
+          .limit(limit)
+          .abortSignal(abort);
 
-    final countResult = await _client
-        .from('goals')
-        .select('id')
-        .eq('user_id', _userId)
-        .count(CountOption.exact);
-    final hasAnyGoals = countResult.count > 0;
+      final countResult = await _client
+          .from('goals')
+          .select('id')
+          .eq('user_id', _userId)
+          .count(CountOption.exact)
+          .abortSignal(abort);
+      final hasAnyGoals = countResult.count > 0;
 
-    final goals = (goalRows as List)
-        .map((r) => Goal.fromRow((r as Map).cast<String, dynamic>()))
-        .toList();
-    if (goals.isEmpty) {
-      return DashboardGoalsModel(goals: const [], hasAnyGoals: hasAnyGoals);
-    }
-
-    final entryRows = await _client
-        .from('goal_progress_entries')
-        .select(_entrySelect)
-        .eq('user_id', _userId)
-        .inFilter('goal_id', goals.map((g) => g.id).toList())
-        .order('created_at', ascending: true);
-
-    final entriesByGoal = <String, List<GoalProgressEntry>>{};
-    for (final row in entryRows as List) {
-      final entry = GoalProgressEntry.fromRow(
-        (row as Map).cast<String, dynamic>(),
-      );
-      (entriesByGoal[entry.goalId] ??= []).add(entry);
-    }
-
-    final summaries = <GoalSummary>[];
-    for (final goal in goals) {
-      final summary = toGoalSummary(goal, entriesByGoal[goal.id] ?? const []);
-      if (summary == null) {
-        throw StateError(
-          'Goal progress is unavailable — stored decimal data is invalid.',
-        );
+      final goals = (goalRows as List)
+          .map((r) => Goal.fromRow((r as Map).cast<String, dynamic>()))
+          .toList();
+      if (goals.isEmpty) {
+        return DashboardGoalsModel(goals: const [], hasAnyGoals: hasAnyGoals);
       }
-      summaries.add(summary);
-    }
 
-    return DashboardGoalsModel(goals: summaries, hasAnyGoals: hasAnyGoals);
+      final entryRows = await _client
+          .from('goal_progress_entries')
+          .select(_entrySelect)
+          .eq('user_id', _userId)
+          .inFilter('goal_id', goals.map((g) => g.id).toList())
+          .order('created_at', ascending: true)
+          .abortSignal(abort);
+
+      final entriesByGoal = <String, List<GoalProgressEntry>>{};
+      for (final row in entryRows as List) {
+        final entry = GoalProgressEntry.fromRow(
+          (row as Map).cast<String, dynamic>(),
+        );
+        (entriesByGoal[entry.goalId] ??= []).add(entry);
+      }
+
+      final summaries = <GoalSummary>[];
+      for (final goal in goals) {
+        final summary = toGoalSummary(goal, entriesByGoal[goal.id] ?? const []);
+        if (summary == null) {
+          throw StateError(
+            'Goal progress is unavailable — stored decimal data is invalid.',
+          );
+        }
+        summaries.add(summary);
+      }
+
+      return DashboardGoalsModel(goals: summaries, hasAnyGoals: hasAnyGoals);
+    });
   }
 
   // ---- writes (RPCs) ---------------------------------------------------

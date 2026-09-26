@@ -24,6 +24,16 @@ class GoalsController extends ChangeNotifier {
   bool showArchived = false;
   bool busy = false;
   String? actionError;
+  Object? loadError;
+  int _loadVersion = 0;
+  bool _disposed = false;
+
+  @override
+  void dispose() {
+    _disposed = true;
+    _loadVersion++;
+    super.dispose();
+  }
 
   String get today => goalToday();
 
@@ -53,13 +63,20 @@ class GoalsController extends ChangeNotifier {
       model?.entriesByGoal[goalId] ?? const [];
 
   Future<void> load() async {
+    if (_disposed) return;
+    final version = ++_loadVersion;
     status = GoalsStatus.loading;
     notifyListeners();
     try {
-      model = await _service.loadGoals();
+      final next = await _service.loadGoals();
+      if (_disposed || version != _loadVersion) return;
+      model = next;
+      loadError = null;
       status = GoalsStatus.ready;
-    } catch (_) {
+    } catch (error) {
+      if (_disposed || version != _loadVersion) return;
       model = null;
+      loadError = error;
       status = GoalsStatus.error;
     }
     notifyListeners();

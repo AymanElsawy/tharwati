@@ -1,6 +1,7 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../core/decimals.dart';
+import '../../core/read_deadline.dart';
 import '../../dashboard/logic/dashboard_aggregate.dart';
 import '../domain/wealth_target_allocation.dart';
 
@@ -87,23 +88,27 @@ class WealthAllocationTargetsRepository
 
   @override
   Future<WealthTargetPlan> load() async {
-    final userId = _userId;
-    final rawTargets = await _client
-        .from('wealth_allocation_targets')
-        .select('asset_class,target_percentage')
-        .eq('user_id', userId)
-        .order('asset_class');
-    final rawPreference = await _client
-        .from('wealth_allocation_target_preferences')
-        .select('tolerance_percentage')
-        .eq('user_id', userId)
-        .maybeSingle();
-    return mapStoredWealthTargetPlan(
-      (rawTargets as List)
-          .map((row) => (row as Map).cast<String, dynamic>())
-          .toList(growable: false),
-      (rawPreference as Map?)?.cast<String, dynamic>(),
-    );
+    return readWithDeadline(simpleReadDeadline, (abort) async {
+      final userId = _userId;
+      final rawTargets = await _client
+          .from('wealth_allocation_targets')
+          .select('asset_class,target_percentage')
+          .eq('user_id', userId)
+          .order('asset_class')
+          .abortSignal(abort);
+      final rawPreference = await _client
+          .from('wealth_allocation_target_preferences')
+          .select('tolerance_percentage')
+          .eq('user_id', userId)
+          .maybeSingle()
+          .abortSignal(abort);
+      return mapStoredWealthTargetPlan(
+        (rawTargets as List)
+            .map((row) => (row as Map).cast<String, dynamic>())
+            .toList(growable: false),
+        (rawPreference as Map?)?.cast<String, dynamic>(),
+      );
+    });
   }
 
   @override

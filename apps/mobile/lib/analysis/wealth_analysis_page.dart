@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 
 import '../core/decimals.dart';
 import '../core/money_format.dart';
+import '../errors/safe_app_error.dart';
 import '../dashboard/data/dashboard_snapshot.dart';
 import '../dashboard/logic/dashboard_aggregate.dart';
 import '../i18n/app_language.dart';
@@ -75,7 +76,11 @@ class _WealthAnalysisPageState extends State<WealthAnalysisPage> {
             }
             if (_controller.status == WealthAnalysisStatus.error ||
                 _controller.data == null) {
-              return _ErrorState(copy: copy, onRetry: _controller.load);
+              return _ErrorState(
+                copy: copy,
+                error: _controller.loadError,
+                onRetry: _controller.load,
+              );
             }
             return _ReadyBody(
               data: _controller.data!,
@@ -108,8 +113,13 @@ class _LoadingState extends StatelessWidget {
 }
 
 class _ErrorState extends StatelessWidget {
-  const _ErrorState({required this.copy, required this.onRetry});
+  const _ErrorState({
+    required this.copy,
+    required this.error,
+    required this.onRetry,
+  });
   final WealthAnalysisCopy copy;
+  final Object? error;
   final Future<void> Function() onRetry;
 
   @override
@@ -120,7 +130,12 @@ class _ErrorState extends StatelessWidget {
       Callout(
         tone: CalloutTone.danger,
         title: copy.loadError,
-        message: copy.loadErrorBody,
+        message: error == null
+            ? copy.loadErrorBody
+            : safeAppErrorMessage(
+                error!,
+                AppLanguageScope.of(context).language,
+              ),
         action: OutlinedButton(onPressed: onRetry, child: Text(copy.retry)),
       ),
     ],
@@ -201,7 +216,10 @@ class _ReadyBody extends StatelessWidget {
             Callout(
               tone: CalloutTone.warning,
               title: copy.refreshError,
-              message: copy.refreshErrorBody,
+              message: safeAppErrorMessage(
+                controller.loadError!,
+                AppLanguageScope.of(context).language,
+              ),
               action: TextButton(
                 onPressed: controller.load,
                 child: Text(copy.retry),

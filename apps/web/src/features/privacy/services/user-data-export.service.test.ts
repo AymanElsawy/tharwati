@@ -1,4 +1,5 @@
-import { describe, expect, it, vi } from "vitest"
+import { afterEach, describe, expect, it, vi } from "vitest"
+import { ReadTimeoutError } from "@/lib/network/read-deadline"
 import {
   parseUserDataExport,
   UserDataExportError,
@@ -19,12 +20,41 @@ const document = {
   },
 }
 
+afterEach(() => vi.useRealTimers())
+
 describe("UserDataExportService", () => {
+  it("bounds the whole download and lets a later manual attempt start", async () => {
+    vi.useFakeTimers()
+    const getSession = vi.fn(() => new Promise<never>(() => {}))
+    const service = new UserDataExportService({ auth: { getSession } } as never)
+    const first = expect(service.downloadExport()).rejects.toBeInstanceOf(ReadTimeoutError)
+    await vi.advanceTimersByTimeAsync(90_000)
+    await first
+    const retry = expect(service.downloadExport()).rejects.toBeInstanceOf(ReadTimeoutError)
+    await vi.advanceTimersByTimeAsync(90_000)
+    await retry
+    expect(getSession).toHaveBeenCalledTimes(2)
+  })
+
+  it("aborts the export download transport at the overall deadline", async () => {
+    vi.useFakeTimers()
+    let signal: AbortSignal | undefined
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockImplementation((_, options) => {
+      signal = options?.signal as AbortSignal
+      return new Promise<Response>(() => {})
+    })
+    const service = new UserDataExportService({ auth: { getSession: vi.fn().mockResolvedValue({ data: { session: { access_token: "token" } } }) } } as never)
+    const failure = expect(service.downloadExport()).rejects.toBeInstanceOf(ReadTimeoutError)
+    await vi.advanceTimersByTimeAsync(90_000)
+    await failure
+    expect(signal?.aborted).toBe(true)
+    fetchMock.mockRestore()
+  })
   it("requests and validates the versioned Edge Function export", async () => {
     const invoke = vi.fn().mockResolvedValue({ data: document, error: null })
     const service = new UserDataExportService({ functions: { invoke } } as never)
     await expect(service.requestExport()).resolves.toEqual(document)
-    expect(invoke).toHaveBeenCalledWith("export-my-data", { method: "GET" })
+    expect(invoke).toHaveBeenCalledWith("export-my-data", { method: "GET", signal: expect.any(AbortSignal) })
   })
 
   it("rejects an incomplete or unknown export contract", () => {

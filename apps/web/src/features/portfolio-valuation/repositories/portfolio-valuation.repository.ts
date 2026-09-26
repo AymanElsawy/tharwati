@@ -12,6 +12,7 @@ import {
   requireQueryData,
 } from "@/lib/supabase/repository"
 import { RepositoryError } from "@/lib/supabase/types"
+import { READ_DEADLINE_MS, readWithDeadline } from "@/lib/network/read-deadline"
 
 interface OpenHoldingsReader {
   getHoldings(): PortfolioValuationSource["holdings"] | Promise<
@@ -35,17 +36,16 @@ export class PortfolioValuationRepository
 
   async getSource(): Promise<PortfolioValuationSource> {
     const operation = "portfolioValuation.getSource"
-    const userId = await requireAuthenticatedUserId(
-      this.client,
-      operation,
-    )
+    const userId = await readWithDeadline(READ_DEADLINE_MS.simple,
+      () => requireAuthenticatedUserId(this.client, operation))
     const [holdings, profileResult] = await Promise.all([
       this.holdings.getHoldings(),
-      this.client
+      readWithDeadline(READ_DEADLINE_MS.simple, (signal) => this.client
         .from("profiles")
         .select("base_currency_code")
         .eq("id", userId)
-        .single(),
+        .abortSignal(signal)
+        .single()),
     ])
     const profile = requireQueryData(
       profileResult.data,

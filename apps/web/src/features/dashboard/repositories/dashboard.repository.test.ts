@@ -9,11 +9,13 @@ describe("DashboardRepository", () => {
       select: vi.fn(),
       eq: vi.fn(),
       order: vi.fn(),
-      limit: vi.fn().mockResolvedValue({ data: [], error: null }),
+      limit: vi.fn(),
+      abortSignal: vi.fn().mockResolvedValue({ data: [], error: null }),
     }
     chain.select.mockReturnValue(chain)
     chain.eq.mockReturnValue(chain)
     chain.order.mockReturnValue(chain)
+    chain.limit.mockReturnValue(chain)
     const client = {
       auth: {
         getUser: vi.fn().mockResolvedValue({

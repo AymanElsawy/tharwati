@@ -1,4 +1,5 @@
 import { supabase, type TypedSupabaseClient } from "@/lib/supabase/client"
+import { READ_DEADLINE_MS, readWithDeadline } from "@/lib/network/read-deadline"
 import {
   requireAuthenticatedUserId,
   requireQueryData,
@@ -50,8 +51,8 @@ export class DashboardRepository implements DashboardRepositoryContract {
 
   async getRecentPostedTransactions(limit = 8) {
     const operation = "dashboard.getRecentPostedTransactions"
-    const userId = await requireAuthenticatedUserId(this.client, operation)
-    const { data, error } = await this.client
+    const userId = await readWithDeadline(READ_DEADLINE_MS.simple, () => requireAuthenticatedUserId(this.client, operation))
+    const { data, error } = await readWithDeadline(READ_DEADLINE_MS.financial, (signal) => this.client
       .from("financial_transactions")
       .select(
         "*, transaction_entries(id, account_id, asset_id, entry_side, transaction_amount::text, account_amount::text, quantity_delta::text, memo)"
@@ -61,6 +62,7 @@ export class DashboardRepository implements DashboardRepositoryContract {
       .order("occurred_at", { ascending: false })
       .order("id", { ascending: false })
       .limit(limit)
+      .abortSignal(signal))
     const rows = requireQueryData(data, error, operation)
     return rows.map((transaction) => ({
       ...transaction,

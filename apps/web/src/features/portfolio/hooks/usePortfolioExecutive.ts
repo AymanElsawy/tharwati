@@ -8,6 +8,7 @@ import type {
 } from "@/features/portfolio/types/portfolio-analysis"
 import type { PortfolioExecutiveViewModel } from "@/features/portfolio/types/portfolio-executive"
 import { LatestRequestGuard } from "@/features/portfolio/utils/latest-request"
+import { READ_DEADLINE_MS, readWithDeadline } from "@/lib/network/read-deadline"
 import { portfolioEvidenceService } from "@/features/portfolio/services/portfolio-evidence.service"
 import type {
   PortfolioHoldingSort,
@@ -37,17 +38,21 @@ export function usePortfolioExecutive() {
   const [holdingDetailId, setHoldingDetailId] = useState<string | null>(null)
   const [transactionDetailId, setTransactionDetailId] = useState<string | null>(null)
   const requestGuard = useRef(new LatestRequestGuard())
+  const activeRead = useRef<AbortController | null>(null)
   const hasStarted = useRef(false)
 
   const load = useCallback(
     async (scopeId: string | null, initial = false) => {
+      activeRead.current?.abort()
+      const controller = new AbortController()
+      activeRead.current = controller
       const currentRequest = requestGuard.current.begin()
       if (initial) setIsLoading(true)
       else setIsUpdating(true)
 
       try {
         const nextPortfolio =
-          await portfolioExecutiveService.load(scopeId)
+          await readWithDeadline(READ_DEADLINE_MS.composite, () => portfolioExecutiveService.load(scopeId), controller.signal)
         if (!requestGuard.current.isCurrent(currentRequest)) return
         setPortfolio(nextPortfolio)
         setError(null)
@@ -59,6 +64,7 @@ export function usePortfolioExecutive() {
             : new Error("Portfolio data is unavailable"),
         )
       } finally {
+        if (activeRead.current === controller) activeRead.current = null
         if (requestGuard.current.isCurrent(currentRequest)) {
           setIsLoading(false)
           setIsUpdating(false)
@@ -69,9 +75,14 @@ export function usePortfolioExecutive() {
   )
 
   useEffect(() => {
+    const guard = requestGuard.current
     const initial = !hasStarted.current
     hasStarted.current = true
     void load(activeScopeId, initial)
+    return () => {
+      activeRead.current?.abort()
+      guard.begin()
+    }
   }, [activeScopeId, load])
 
   useEffect(() => {

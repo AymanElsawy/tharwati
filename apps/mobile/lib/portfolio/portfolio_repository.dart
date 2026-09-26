@@ -26,73 +26,75 @@ class PortfolioRepository implements PortfolioLoader {
 
   @override
   Future<PortfolioSource> load() async {
-    final results = await Future.wait([
-      _source.loadBaseCurrency(),
-      _source.loadAccounts(),
-    ]);
-    final base = results[0] as String?;
-    if (base == null || base.isEmpty) {
-      throw StateError('Portfolio requires a base currency');
-    }
-    final accounts = (results[1] as List<Account>)
-        .where(
-          (account) =>
-              account.isActive && account.type == AccountType.brokerage,
-        )
-        .toList();
-    final ids = accounts.map((account) => account.id).toList();
-    if (ids.isEmpty) {
+    return readWithDeadline(compositeReadDeadline, (_) async {
+      final results = await Future.wait([
+        _source.loadBaseCurrency(),
+        _source.loadAccounts(),
+      ]);
+      final base = results[0] as String?;
+      if (base == null || base.isEmpty) {
+        throw StateError('Portfolio requires a base currency');
+      }
+      final accounts = (results[1] as List<Account>)
+          .where(
+            (account) =>
+                account.isActive && account.type == AccountType.brokerage,
+          )
+          .toList();
+      final ids = accounts.map((account) => account.id).toList();
+      if (ids.isEmpty) {
+        return PortfolioSource(
+          baseCurrencyCode: base,
+          accounts: const [],
+          holdings: const [],
+          availableCashByAccountId: const {},
+          pricesByAssetId: const {},
+          fxRatesByPair: const {},
+        );
+      }
+      final loaded = await Future.wait([
+        _source.loadHoldings(ids),
+        _source.loadAvailableCash(ids),
+      ]);
+      final idSet = ids.toSet();
+      final holdings = (loaded[0] as List<Holding>)
+          .where(
+            (holding) =>
+                idSet.contains(holding.accountId) &&
+                D.isPositive(holding.quantity),
+          )
+          .toList();
+      final cash = loaded[1] as Map<String, String>;
+      final prices = await _source.loadPrices(
+        holdings.map((holding) => holding.assetId).toSet().toList(),
+      );
+      final currencies = <String>{
+        for (final account in accounts) account.currencyCode,
+        for (final holding in holdings) holding.costCurrencyCode,
+        for (final holding in holdings)
+          if (prices[holding.assetId] != null)
+            prices[holding.assetId]!.currencyCode,
+      }..remove(base);
+      final fx = await Future.wait(
+        currencies.map((currency) => _source.loadFxRate(currency, base)),
+      );
+      final fxByPair = <String, PortfolioFxRate>{};
+      for (final rate in fx) {
+        if (rate != null) fxByPair[rate.pair] = rate;
+      }
       return PortfolioSource(
         baseCurrencyCode: base,
-        accounts: const [],
-        holdings: const [],
-        availableCashByAccountId: const {},
-        pricesByAssetId: const {},
-        fxRatesByPair: const {},
+        accounts: accounts,
+        holdings: holdings,
+        availableCashByAccountId: {
+          for (final entry in cash.entries)
+            if (idSet.contains(entry.key) && D.normalize(entry.value) != null)
+              entry.key: D.normalize(entry.value)!,
+        },
+        pricesByAssetId: prices,
+        fxRatesByPair: fxByPair,
       );
-    }
-    final loaded = await Future.wait([
-      _source.loadHoldings(ids),
-      _source.loadAvailableCash(ids),
-    ]);
-    final idSet = ids.toSet();
-    final holdings = (loaded[0] as List<Holding>)
-        .where(
-          (holding) =>
-              idSet.contains(holding.accountId) &&
-              D.isPositive(holding.quantity),
-        )
-        .toList();
-    final cash = loaded[1] as Map<String, String>;
-    final prices = await _source.loadPrices(
-      holdings.map((holding) => holding.assetId).toSet().toList(),
-    );
-    final currencies = <String>{
-      for (final account in accounts) account.currencyCode,
-      for (final holding in holdings) holding.costCurrencyCode,
-      for (final holding in holdings)
-        if (prices[holding.assetId] != null)
-          prices[holding.assetId]!.currencyCode,
-    }..remove(base);
-    final fx = await Future.wait(
-      currencies.map((currency) => _source.loadFxRate(currency, base)),
-    );
-    final fxByPair = <String, PortfolioFxRate>{};
-    for (final rate in fx) {
-      if (rate != null) fxByPair[rate.pair] = rate;
-    }
-    return PortfolioSource(
-      baseCurrencyCode: base,
-      accounts: accounts,
-      holdings: holdings,
-      availableCashByAccountId: {
-        for (final entry in cash.entries)
-          if (idSet.contains(entry.key) && D.normalize(entry.value) != null)
-            entry.key: D.normalize(entry.value)!,
-      },
-      pricesByAssetId: prices,
-      fxRatesByPair: fxByPair,
-    );
+    });
   }
 }
 
@@ -112,21 +114,29 @@ class SupabasePortfolioDataSource implements PortfolioDataSource {
   Future<String?> loadBaseCurrency() async {
     final user = _client.auth.currentUser;
     if (user == null) return null;
-    final row = await _client
-        .from('profiles')
-        .select('base_currency_code')
-        .eq('id', user.id)
-        .single();
+    final row = await readWithDeadline(
+      simpleReadDeadline,
+      (abort) => _client
+          .from('profiles')
+          .select('base_currency_code')
+          .eq('id', user.id)
+          .single()
+          .abortSignal(abort),
+    );
     final code = '${row['base_currency_code'] ?? ''}'.trim().toUpperCase();
     return code.isEmpty ? null : code;
   }
 
   @override
   Future<List<Account>> loadAccounts() async {
-    final rows = await _client
-        .from('financial_accounts')
-        .select()
-        .eq('is_active', true);
+    final rows = await readWithDeadline(
+      simpleReadDeadline,
+      (abort) => _client
+          .from('financial_accounts')
+          .select()
+          .eq('is_active', true)
+          .abortSignal(abort),
+    );
     return [
       for (final row in rows as List)
         Account.fromRow((row as Map).cast<String, dynamic>()),
@@ -136,11 +146,15 @@ class SupabasePortfolioDataSource implements PortfolioDataSource {
   @override
   Future<List<Holding>> loadHoldings(List<String> accountIds) async {
     if (accountIds.isEmpty) return const [];
-    final rows = await _client
-        .from('holdings')
-        .select(_holdingSelect)
-        .inFilter('account_id', accountIds)
-        .gt('quantity', 0);
+    final rows = await readWithDeadline(
+      financialReadDeadline,
+      (abort) => _client
+          .from('holdings')
+          .select(_holdingSelect)
+          .inFilter('account_id', accountIds)
+          .gt('quantity', 0)
+          .abortSignal(abort),
+    );
     return [
       for (final row in rows as List)
         Holding.fromRow((row as Map).cast<String, dynamic>()),
@@ -150,9 +164,11 @@ class SupabasePortfolioDataSource implements PortfolioDataSource {
   @override
   Future<Map<String, String>> loadAvailableCash(List<String> accountIds) async {
     if (accountIds.isEmpty) return const {};
-    final rows = await _client.rpc(
-      'get_account_balances',
-      params: {'p_account_ids': accountIds},
+    final rows = await readWithDeadline(
+      financialReadDeadline,
+      (abort) => _client
+          .rpc('get_account_balances', params: {'p_account_ids': accountIds})
+          .abortSignal(abort),
     );
     return {
       for (final row in rows as List)

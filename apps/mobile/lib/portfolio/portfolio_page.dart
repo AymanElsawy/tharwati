@@ -9,6 +9,7 @@ import '../core/decimals.dart';
 import '../core/money_format.dart';
 import '../core/quantity_format.dart';
 import '../core/securities_allocation.dart';
+import '../errors/safe_app_error.dart';
 import '../i18n/app_language.dart';
 import '../i18n/portfolio_copy.dart';
 import '../theme/tokens.dart';
@@ -90,7 +91,11 @@ class _PortfolioPageState extends State<PortfolioPage> {
             }
             if (_controller.status == PortfolioLoadStatus.error ||
                 _controller.data == null) {
-              return _ErrorState(copy: copy, onRetry: _controller.load);
+              return _ErrorState(
+                copy: copy,
+                error: _controller.error,
+                onRetry: _controller.load,
+              );
             }
             return _ReadyBody(
               data: _controller.data!,
@@ -134,7 +139,13 @@ class _ReadyBody extends StatelessWidget {
         _Header(data: data, controller: controller, copy: copy),
         if (controller.refreshError != null) ...[
           const SizedBox(height: 12),
-          Callout(tone: CalloutTone.warning, message: copy.refreshFailed),
+          Callout(
+            tone: CalloutTone.warning,
+            message: safeAppErrorMessage(
+              controller.refreshError!,
+              AppLanguageScope.of(context).language,
+            ),
+          ),
         ],
         const SizedBox(height: 18),
         if (data.coverage == PortfolioCoverage.noBrokerageAccounts)
@@ -920,8 +931,13 @@ class _LoadingState extends StatelessWidget {
 }
 
 class _ErrorState extends StatelessWidget {
-  const _ErrorState({required this.copy, required this.onRetry});
+  const _ErrorState({
+    required this.copy,
+    required this.error,
+    required this.onRetry,
+  });
   final PortfolioCopy copy;
+  final Object? error;
   final Future<void> Function() onRetry;
   @override
   Widget build(BuildContext context) => ListView(
@@ -931,7 +947,12 @@ class _ErrorState extends StatelessWidget {
       Callout(
         tone: CalloutTone.danger,
         title: copy.loadFailed,
-        message: copy.loadFailedBody,
+        message: error == null
+            ? copy.loadFailedBody
+            : safeAppErrorMessage(
+                error!,
+                AppLanguageScope.of(context).language,
+              ),
         action: TextButton(onPressed: onRetry, child: Text(copy.retry)),
       ),
     ],
@@ -956,9 +977,8 @@ class _BrokerageAccountRoute extends StatefulWidget {
 
 class _BrokerageAccountRouteState extends State<_BrokerageAccountRoute> {
   late final AccountsController controller = AccountsController(
-    language: () => mounted
-        ? AppLanguageScope.of(context).language
-        : AppLanguage.en,
+    language: () =>
+        mounted ? AppLanguageScope.of(context).language : AppLanguage.en,
   );
   @override
   void dispose() {
