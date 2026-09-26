@@ -1,4 +1,4 @@
-import { useState, type InputHTMLAttributes } from "react"
+import { forwardRef, useState, type InputHTMLAttributes } from "react"
 import { formatMoneyInput, normalizeMoneyInput } from "@/lib/formatting/money-input"
 
 type Props = Omit<InputHTMLAttributes<HTMLInputElement>, "value" | "onChange"> & {
@@ -8,11 +8,15 @@ type Props = Omit<InputHTMLAttributes<HTMLInputElement>, "value" | "onChange"> &
 }
 
 /** Keeps a user's in-progress text intact while exposing canonical values upstream. */
-export function MoneyInput({ value, onValueChange, maxDecimals = 2, onFocus, onBlur, ...props }: Props) {
+export const MoneyInput = forwardRef<HTMLInputElement, Props>(function MoneyInput(
+  { value, onValueChange, maxDecimals = 2, onFocus, onBlur, ...props },
+  ref,
+) {
   const [draft, setDraft] = useState<string | null>(null)
   return (
     <input
       {...props}
+      ref={ref}
       inputMode="decimal"
       value={draft ?? formatMoneyInput(value, maxDecimals)}
       onFocus={(event) => {
@@ -30,4 +34,4 @@ export function MoneyInput({ value, onValueChange, maxDecimals = 2, onFocus, onB
       }}
     />
   )
-}
+})

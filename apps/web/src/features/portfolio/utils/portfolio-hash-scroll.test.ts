@@ -4,7 +4,7 @@ import { scrollPortfolioHashWhenReady } from "./portfolio-hash-scroll"
 
 function targetDocument() {
   const scrollIntoView = vi.fn()
-  const getElementById = vi.fn(() => ({ scrollIntoView }))
+  const getElementById = vi.fn((): { scrollIntoView: typeof scrollIntoView } | null => ({ scrollIntoView }))
   return {
     root: { getElementById } as unknown as Pick<Document, "getElementById">,
     getElementById,
