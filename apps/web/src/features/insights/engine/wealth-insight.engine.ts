@@ -72,7 +72,7 @@ const concentrationRule: InsightRule = (snapshot) => {
     explanation: `One holding represents ${formatPercent(concentration.holdingPercent)} of your equity portfolio.`,
     severity: "warning",
     priority: 100,
-    action: { label: "Review Concentration", href: "/holdings" },
+    action: { label: "Review Concentration", href: "/portfolio#portfolio-concentration" },
   }
 }
 
@@ -95,7 +95,7 @@ const diversificationRule: InsightRule = (snapshot) => {
     explanation: `${diversification.sectorName} represents ${formatPercent(diversification.equityPercent)} of your equity portfolio.`,
     severity: "info",
     priority: 72,
-    action: { label: "See Holdings", href: "/holdings" },
+    action: { label: "See Holdings", href: "/portfolio#portfolio-holdings-title" },
   }
 }
 

@@ -1,4 +1,5 @@
 import { renderToStaticMarkup } from "react-dom/server"
+import { MemoryRouter } from "react-router-dom"
 import { describe, expect, it, vi } from "vitest"
 
 import { LanguageContext } from "@/i18n/context"
@@ -81,7 +82,9 @@ describe("PortfolioPage read-only boundary", () => {
           t: (key) => key === "investment.primaryAction" ? "Add Investment" : key,
         }}
       >
-        <PortfolioPage />
+        <MemoryRouter initialEntries={["/portfolio#portfolio-holdings-title"]}>
+          <PortfolioPage />
+        </MemoryRouter>
       </LanguageContext.Provider>,
     )
 

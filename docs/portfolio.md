@@ -281,6 +281,13 @@ Dashboard Portfolio Allocation opens that route. Any top-level web analysis
 navigation should identify Wealth Analysis as the primary destination rather
 than treating Portfolio as the cross-asset analysis page.
 
+In the current web Portfolio composition, the read-only insight actions
+"Review Concentration" and "See Holdings" link to
+`/portfolio#portfolio-concentration` and
+`/portfolio#portfolio-holdings-title`, respectively. The page scrolls to the
+existing section after its asynchronous data load completes. There is no
+top-level `/holdings` route.
+
 - Account group/header → existing Brokerage account detail.
 - Holding row → existing Brokerage holding detail for that account and asset.
 - Empty no-account action → Accounts tab.

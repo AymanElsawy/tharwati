@@ -1,3 +1,5 @@
+import { useEffect } from "react"
+import { useLocation } from "react-router-dom"
 import { AlertTriangle } from "lucide-react"
 
 import { PortfolioAttentionSummary } from "@/features/portfolio/components/PortfolioAttentionSummary"
@@ -16,9 +18,11 @@ import { PortfolioHoldingDetail } from "@/features/portfolio/components/Portfoli
 import { PortfolioCustodyBreakdown } from "@/features/portfolio/components/PortfolioCustodyBreakdown"
 import { PortfolioActivity } from "@/features/portfolio/components/PortfolioActivity"
 import { usePortfolioExecutive } from "@/features/portfolio/hooks/usePortfolioExecutive"
+import { scrollPortfolioHashWhenReady } from "@/features/portfolio/utils/portfolio-hash-scroll"
 import { useTranslation } from "@/i18n/useTranslation"
 
 export function PortfolioPage() {
+  const location = useLocation()
   const {
     portfolio,
     error,
@@ -30,6 +34,11 @@ export function PortfolioPage() {
     evidence,
   } = usePortfolioExecutive()
   const { t } = useTranslation()
+  const portfolioReady = portfolio !== null
+
+  useEffect(() => {
+    scrollPortfolioHashWhenReady(location.hash, portfolioReady)
+  }, [location.hash, location.key, portfolioReady])
 
   if (isLoading && portfolio === null) {
     return <PortfolioExecutiveSkeleton />
