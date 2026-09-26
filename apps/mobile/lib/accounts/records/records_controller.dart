@@ -34,6 +34,7 @@ class RecordsController extends ChangeNotifier {
   RecordsStatus status = RecordsStatus.loading;
   List<AccountRecord> records = const [];
   List<VisibleRecordMainCategory> categories = const [];
+  bool categoriesResolved = false;
   AccountRecordHistoryFilters filters = AccountRecordHistoryFilters();
 
   AccountRecordHistoryCursor? _cursor;
@@ -100,9 +101,13 @@ class RecordsController extends ChangeNotifier {
         final overrides = await _repo.getOverrides();
         if (version == _requestVersion) {
           categories = buildVisibleRecordCategoryTree(cats, overrides);
+          categoriesResolved = true;
         }
       } catch (_) {
-        if (version == _requestVersion) categories = const [];
+        if (version == _requestVersion) {
+          categories = const [];
+          categoriesResolved = true;
+        }
       }
     } catch (_) {
       if (version != _requestVersion) return false;
@@ -257,6 +262,7 @@ class RecordsController extends ChangeNotifier {
       final cats = await _repo.getCategories();
       final overrides = await _repo.getOverrides();
       categories = buildVisibleRecordCategoryTree(cats, overrides);
+      categoriesResolved = true;
       notifyListeners();
     } catch (_) {}
   }

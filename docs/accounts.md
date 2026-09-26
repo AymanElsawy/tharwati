@@ -593,6 +593,8 @@ form/valuation logic 1:1.
 
 ### UI
 
+Mobile Refund history keeps its positive amount and localized Refund status visible while category names and overrides load. A Refund with a category ID shows a neutral title placeholder until that lookup settles. If no matching category is available, the title uses the Expense label embedded in the Refund description without its `Refund: Expense:` prefix. Refunds without a category ID use that description label immediately. Ordinary Income, Expense, and Transfer titles are unchanged.
+
 `accounts_page.dart` (screen 11 — header + count, search, type/currency/Closed
 filter chips, type-grouped sections with per-section totals, empty/error) →
 `account_detail_page.dart` (screen 12 — gold hero: weight, purity,

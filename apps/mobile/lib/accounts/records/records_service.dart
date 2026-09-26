@@ -28,15 +28,27 @@ List<AccountRecordDateGroup> groupAccountRecordsByLocalDate(
 /// Category label for a ledger row (web `getAccountRecordCategoryLabel`).
 String? accountRecordCategoryLabel(
   AccountRecord record,
-  List<VisibleRecordMainCategory> categories,
-) {
+  List<VisibleRecordMainCategory> categories, {
+  bool categoriesResolved = true,
+}) {
   if (record.type == 'transfer') return null;
+  if (record.type == 'refund' &&
+      record.subcategoryId != null &&
+      !categoriesResolved) {
+    return '—';
+  }
   for (final main in categories) {
     for (final sub in main.subcategories) {
       if (sub.id == record.subcategoryId) return sub.name;
     }
   }
-  final stripped = record.description.replaceFirst(
+  final description = record.type == 'refund'
+      ? record.description.replaceFirst(
+          RegExp(r'^Refund:\s*', caseSensitive: false),
+          '',
+        )
+      : record.description;
+  final stripped = description.replaceFirst(
     RegExp(r'^(Income|Expense):\s*', caseSensitive: false),
     '',
   );

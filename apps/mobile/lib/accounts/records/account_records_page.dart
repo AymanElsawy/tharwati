@@ -266,6 +266,7 @@ class _AccountRecordsPageState extends State<AccountRecordsPage> {
                 _DayGroup(
                   group: group,
                   categories: _controller.categories,
+                  categoriesResolved: _controller.categoriesResolved,
                   onTapRecord: _edit,
                   copy: copy,
                 ),
@@ -479,11 +480,13 @@ class _DayGroup extends StatelessWidget {
   const _DayGroup({
     required this.group,
     required this.categories,
+    required this.categoriesResolved,
     required this.onTapRecord,
     required this.copy,
   });
   final AccountRecordDateGroup group;
   final List<VisibleRecordMainCategory> categories;
+  final bool categoriesResolved;
   final ValueChanged<AccountRecord> onTapRecord;
   final AccountsCopy copy;
 
@@ -525,7 +528,11 @@ class _DayGroup extends StatelessWidget {
             record: record,
             category: record.type == 'transfer'
                 ? copy.recordTypeValue('transfer')
-                : accountRecordCategoryLabel(record, categories),
+                : accountRecordCategoryLabel(
+                    record,
+                    categories,
+                    categoriesResolved: categoriesResolved,
+                  ),
             fallbackCategory: copy.recordTypeValue(record.type),
             onTap: () => onTapRecord(record),
           ),
