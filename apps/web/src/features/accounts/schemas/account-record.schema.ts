@@ -1,6 +1,8 @@
 import { z } from "zod"
 import type { Translate } from "@/i18n/context"
 import type { AccountRecordFormValues } from "../types/account-record"
+import { isPositiveMoneyInput } from "@/lib/formatting/money-input"
+import { isValidTransferSentAmount } from "../utils/transfer-fx-preview"
 
 const positiveAmount = /^\d{1,18}(?:\.\d{1,2})?$/
 
@@ -11,10 +13,11 @@ export function createAccountRecordSchema(
     type: z.enum(["expense", "income", "transfer"]),
     accountId: z.string().min(1, t("accounts.records.validation.account")),
     toAccountId: z.string(),
-    amount: z.string().refine(
-      (value) => positiveAmount.test(value) && Number(value) > 0,
-      t("accounts.records.validation.amount")
-    ),
+    amount: z.string().superRefine((value, context) => {
+      if (!value) context.addIssue({ code: "custom", message: t("accounts.records.validation.amountRequired") })
+      else if (!positiveAmount.test(value) || !isPositiveMoneyInput(value))
+        context.addIssue({ code: "custom", message: t("accounts.records.validation.amount") })
+    }),
     receivedAmount: z.string(),
     mainCategoryId: z.string(),
     subcategoryId: z.string(),
@@ -24,7 +27,10 @@ export function createAccountRecordSchema(
     if (values.type === "transfer") {
       if (!values.toAccountId) context.addIssue({ code: "custom", path: ["toAccountId"], message: t("accounts.records.validation.account") })
       if (values.accountId && values.toAccountId && values.accountId === values.toAccountId) context.addIssue({ code: "custom", path: ["toAccountId"], message: t("accounts.records.validation.differentAccounts") })
-      if (!positiveAmount.test(values.receivedAmount) || Number(values.receivedAmount) <= 0) context.addIssue({ code: "custom", path: ["receivedAmount"], message: t("accounts.records.validation.amount") })
+      if (isValidTransferSentAmount(values.amount)) {
+        if (!values.receivedAmount) context.addIssue({ code: "custom", path: ["receivedAmount"], message: t("accounts.records.validation.amountRequired") })
+        else if (!positiveAmount.test(values.receivedAmount) || !isPositiveMoneyInput(values.receivedAmount)) context.addIssue({ code: "custom", path: ["receivedAmount"], message: t("accounts.records.validation.amount") })
+      }
     } else if (!values.mainCategoryId || !values.subcategoryId) {
       context.addIssue({ code: "custom", path: ["subcategoryId"], message: t("accounts.records.validation.category") })
     }

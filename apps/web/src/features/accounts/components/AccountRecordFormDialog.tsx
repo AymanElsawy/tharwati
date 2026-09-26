@@ -2,8 +2,10 @@ import { zodResolver } from "@hookform/resolvers/zod"
 import { Dialog } from "@base-ui/react/dialog"
 import { X } from "lucide-react"
 import { useEffect, useMemo, useRef, useState } from "react"
-import { useForm, useWatch } from "react-hook-form"
+import { Controller, useForm, useWatch, type Control, type UseFormClearErrors, type UseFormTrigger } from "react-hook-form"
 import { Button } from "@/components/ui/button"
+import { MoneyInput } from "@/components/MoneyInput"
+import { visibleMoneyInputError } from "@/lib/formatting/money-input"
 import { useTranslation } from "@/i18n/useTranslation"
 import { getAccountPickerOptions } from "@/features/accounts/utils/account-display-label"
 import { formatLocalDateTimeInput } from "@/lib/formatting/local-date-time"
@@ -12,6 +14,7 @@ import { createAccountRecordSchema } from "../schemas/account-record.schema"
 import { estimateTransferReceived } from "../services/account-records.service"
 import { isAccountRecordFormDirty } from "../utils/account-record-form-dirty"
 import { normalizeTransferValues } from "../utils/transfer-form-values"
+import { createTransferFxRequestGate, invalidateTransferFxPreview, isValidTransferSentAmount, requestTransferFxPreview } from "../utils/transfer-fx-preview"
 import {
   emptyAccountRecordFormValues,
   type AccountRecordFormValues,
@@ -77,8 +80,10 @@ export function AccountRecordFormDialog({
     register,
     reset,
     setValue,
+    clearErrors,
+    trigger,
     handleSubmit,
-    formState: { errors, isSubmitting, isDirty },
+    formState: { errors, isSubmitting, isDirty, submitCount },
   } = useForm<AccountRecordFormValues>({
     resolver: zodResolver(schema),
     defaultValues: emptyAccountRecordFormValues,
@@ -93,6 +98,8 @@ export function AccountRecordFormDialog({
   const [failedEstimateKey, setFailedEstimateKey] = useState<string | null>(
     null
   )
+  const fxRequestGate = useRef(createTransferFxRequestGate())
+  const previewEditedRef = useRef(false)
   const scrollRegionRef = useRef<HTMLFormElement>(null)
   const [visibleViewport, setVisibleViewport] = useState<{
     height: number
@@ -110,8 +117,19 @@ export function AccountRecordFormDialog({
     : null
   const estimateError =
     estimateKey !== null && failedEstimateKey === estimateKey
+  const validSentAmount = isValidTransferSentAmount(values.amount ?? "")
+  const invalidateFxPreview = () => {
+    previewEditedRef.current = true
+    invalidateTransferFxPreview(fxRequestGate.current, () => {
+      setValue("receivedAmount", "")
+      clearErrors("receivedAmount")
+    })
+    setFailedEstimateKey(null)
+  }
   useEffect(() => {
-    if (open)
+    if (open) {
+      fxRequestGate.current.invalidate()
+      previewEditedRef.current = false
       reset(
         normalizeTransferValues(
           initialValues ?? {
@@ -121,6 +139,7 @@ export function AccountRecordFormDialog({
           }
         )
       )
+    }
   }, [initialAccount, initialValues, open, reset])
   useEffect(() => {
     if (recordType === "transfer") {
@@ -129,20 +148,20 @@ export function AccountRecordFormDialog({
     }
   }, [recordType, setValue])
   useEffect(() => {
-    let active = true
     const isInitialCrossCurrencyValue =
       initialValues &&
+      !previewEditedRef.current &&
       open &&
       recordType === initialValues.type &&
       fromAccountId === initialValues.accountId &&
       toAccountId === initialValues.toAccountId &&
-      values.amount === initialValues.amount &&
-      values.receivedAmount === initialValues.receivedAmount
+      values.amount === initialValues.amount
     if (
       !crossCurrency ||
       !from ||
       !to ||
       !values.amount ||
+      !validSentAmount ||
       isInitialCrossCurrencyValue
     ) {
       if (
@@ -154,19 +173,16 @@ export function AccountRecordFormDialog({
         setValue("receivedAmount", values.amount ?? "")
       return
     }
-    void estimateTransferReceived(values.amount, from, to)
-      .then((amount) => {
-        if (active) {
-          setValue("receivedAmount", amount)
-          setFailedEstimateKey(null)
-        }
-      })
-      .catch(() => {
-        if (active) setFailedEstimateKey(estimateKey)
-      })
-    return () => {
-      active = false
-    }
+    return requestTransferFxPreview({
+      amount: values.amount,
+      gate: fxRequestGate.current,
+      estimate: (amount) => estimateTransferReceived(amount, from, to),
+      onReceived: (amount) => {
+        setValue("receivedAmount", amount, { shouldValidate: true })
+        setFailedEstimateKey(null)
+      },
+      onUnavailable: () => setFailedEstimateKey(estimateKey),
+    })
   }, [
     crossCurrency,
     estimateKey,
@@ -177,7 +193,7 @@ export function AccountRecordFormDialog({
     to,
     fromAccountId,
     values.amount,
-    values.receivedAmount,
+    validSentAmount,
     toAccountId,
     recordType,
   ])
@@ -304,6 +320,7 @@ export function AccountRecordFormDialog({
                       type="button"
                       aria-pressed={selected}
                       onClick={() => {
+                        if (option.value !== recordType) invalidateFxPreview()
                         if (
                           option.value === "transfer" &&
                           recordType !== "transfer"
@@ -329,6 +346,7 @@ export function AccountRecordFormDialog({
                     fromError={errors.accountId?.message}
                     toError={errors.toAccountId?.message}
                     onFromAccountChange={(accountId) => {
+                      invalidateFxPreview()
                       setValue("accountId", accountId, {
                         shouldDirty: true,
                         shouldValidate: true,
@@ -340,6 +358,7 @@ export function AccountRecordFormDialog({
                         })
                     }}
                     onToAccountChange={(accountId) => {
+                      invalidateFxPreview()
                       setValue("toAccountId", accountId, {
                         shouldDirty: true,
                         shouldValidate: true,
@@ -354,7 +373,11 @@ export function AccountRecordFormDialog({
                   <AmountField
                     label={t("accounts.records.amountSent")}
                     currency={from?.currency_code}
-                    register={register}
+                    control={control}
+                    clearErrors={clearErrors}
+                    trigger={trigger}
+                    submitCount={submitCount}
+                    onAmountChange={invalidateFxPreview}
                     error={errors.amount?.message}
                   />
                   <DateTimeField
@@ -366,11 +389,15 @@ export function AccountRecordFormDialog({
                   <AmountField
                     label={t("accounts.records.amountReceived")}
                     currency={to?.currency_code}
-                    register={register}
+                    control={control}
+                    clearErrors={clearErrors}
+                    trigger={trigger}
+                    submitCount={submitCount}
+                    disabled={!validSentAmount}
                     error={
                       estimateError
                         ? t("accounts.records.fxError")
-                        : errors.receivedAmount?.message
+                        : validSentAmount ? errors.receivedAmount?.message : undefined
                     }
                     name="receivedAmount"
                   />
@@ -389,7 +416,10 @@ export function AccountRecordFormDialog({
                 <AmountField
                   label={t("accounts.records.amount")}
                   currency={from?.currency_code}
-                  register={register}
+                  control={control}
+                  clearErrors={clearErrors}
+                  trigger={trigger}
+                  submitCount={submitCount}
                   error={errors.amount?.message}
                 />
                 <DateTimeField
@@ -445,7 +475,8 @@ export function AccountRecordFormDialog({
                 form="account-record-form"
                 type="submit"
                 disabled={
-                  disabled || estimateError || transferSelectionIncomplete
+                  disabled || estimateError || transferSelectionIncomplete ||
+                  (recordType === "transfer" && !validSentAmount)
                 }
               >
                 {t("accounts.records.save")}
@@ -491,26 +522,60 @@ function AccountSelect({
 function AmountField({
   label,
   currency,
-  register,
+  control,
+  clearErrors,
+  trigger,
+  submitCount,
+  disabled,
+  onAmountChange,
   error,
   name = "amount",
 }: {
   label: string
   currency?: string
-  register: ReturnType<typeof useForm<AccountRecordFormValues>>["register"]
+  control: Control<AccountRecordFormValues>
+  clearErrors: UseFormClearErrors<AccountRecordFormValues>
+  trigger: UseFormTrigger<AccountRecordFormValues>
+  submitCount: number
+  disabled?: boolean
+  onAmountChange?: () => void
   error?: string
   name?: "amount" | "receivedAmount"
 }) {
+  const value = useWatch({ control, name }) ?? ""
+  const [suppressedAtSubmitCount, setSuppressedAtSubmitCount] = useState<number | null>(null)
+  const visibleError = visibleMoneyInputError(
+    value,
+    error,
+    suppressedAtSubmitCount !== null && submitCount <= suppressedAtSubmitCount
+  )
   return (
     <div>
       <label className="text-sm font-semibold">{label}</label>
       <div className="relative" dir="ltr">
-        <input
-          className={`${field} pe-16`}
-          inputMode="decimal"
-          dir="ltr"
-          {...register(name)}
-        />
+        <Controller name={name} control={control} render={({ field: amountField }) => (
+          <MoneyInput
+            className={`${field} pe-16`}
+            dir="ltr"
+            name={amountField.name}
+            ref={amountField.ref}
+            disabled={disabled}
+            value={amountField.value}
+            onValueChange={(value) => {
+              onAmountChange?.()
+              amountField.onChange(value)
+              setSuppressedAtSubmitCount(value === "" ? submitCount : null)
+              clearErrors(name)
+              if (value !== "") void trigger(name)
+            }}
+            onBlur={() => {
+              setSuppressedAtSubmitCount(null)
+              amountField.onBlur()
+              clearErrors(name)
+              void trigger(name)
+            }}
+          />
+        )} />
         <span
           className="pointer-events-none absolute inset-y-0 end-3 flex items-center text-xs text-muted-foreground"
           dir="ltr"
@@ -518,7 +583,7 @@ function AmountField({
           {currency}
         </span>
       </div>
-      {error && <p className="mt-1 text-sm text-red-600">{error}</p>}
+      {visibleError && <p className="mt-1 text-sm text-red-600">{visibleError}</p>}
     </div>
   )
 }

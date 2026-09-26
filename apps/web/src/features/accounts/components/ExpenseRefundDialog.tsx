@@ -1,6 +1,8 @@
 import { useState } from "react"
 import { Dialog } from "@base-ui/react/dialog"
 import { Button } from "@/components/ui/button"
+import { MoneyInput } from "@/components/MoneyInput"
+import { normalizeMoneyInput } from "@/lib/formatting/money-input"
 import { formatPortfolioAmount } from "@/features/portfolio/utils/portfolio-formatters"
 import {
   compareDecimals,
@@ -51,7 +53,8 @@ export function ExpenseRefundDialog({
   const [occurredAt, setOccurredAt] = useState(() => formatLocalDateTimeInput())
   const [notes, setNotes] = useState("")
   if (!open || !summary) return null
-  const normalizedAmount = normalizeDecimal(amount)
+  const canonicalAmount = normalizeMoneyInput(amount)
+  const normalizedAmount = canonicalAmount === null ? null : normalizeDecimal(canonicalAmount)
   const remainingAfterRefund = normalizedAmount
     ? subtractDecimals(summary.remainingRefundableAmount, normalizedAmount)
     : null
@@ -95,13 +98,11 @@ export function ExpenseRefundDialog({
             </p>
             <label>
               {t("accounts.records.refundAmount")}
-              <input
+              <MoneyInput
                 className="mt-1 w-full rounded-xl border p-2"
                 dir="ltr"
-                inputMode="decimal"
                 value={amount}
-                onBlur={() => normalizedAmount && setAmount(normalizedAmount)}
-                onChange={(e) => setAmount(e.target.value)}
+                onValueChange={setAmount}
               />
             </label>
             <div className="rounded-xl bg-[var(--color-surface-muted)] p-3 text-sm">

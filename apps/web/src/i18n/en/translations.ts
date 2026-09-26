@@ -795,6 +795,7 @@ export const en = {
   "accounts.records.validation.account": "Select an account.",
   "accounts.records.validation.amount":
     "Enter a positive amount with up to 2 decimal places.",
+  "accounts.records.validation.amountRequired": "Amount is required.",
   "accounts.records.validation.date": "Date and time are required.",
   "accounts.records.validation.category": "Category is required.",
   "accounts.records.validation.differentAccounts":

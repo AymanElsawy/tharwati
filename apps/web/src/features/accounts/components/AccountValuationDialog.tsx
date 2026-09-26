@@ -6,6 +6,8 @@ import { X } from "lucide-react"
 import { useRef, useState } from "react"
 
 import { Button } from "@/components/ui/button"
+import { MoneyInput } from "@/components/MoneyInput"
+import { normalizeMoneyInput } from "@/lib/formatting/money-input"
 import { addAccountValuation } from "@/features/accounts/services/account-valuations.service"
 import {
   toStoredValuationMethod,
@@ -54,6 +56,11 @@ export function AccountValuationDialog({
     : []
 
   const save = async () => {
+    const valuationAmount = normalizeMoneyInput(amount.trim())
+    if (valuationAmount === null) {
+      setError(t("accounts.validation.balanceInvalid"))
+      return
+    }
     if (!valuedOn) {
       setError(t("accounts.validation.valuationDateRequired"))
       return
@@ -71,7 +78,7 @@ export function AccountValuationDialog({
     setIsSaving(true)
     try {
       const input = {
-        valuationAmount: amount.trim(),
+        valuationAmount,
         valuedOn,
         valuationMethod: valuationAccountType
           ? toStoredValuationMethod(
@@ -139,10 +146,12 @@ export function AccountValuationDialog({
           <div className="mt-5 space-y-4">
             <label className="block text-sm font-semibold">
               {t("accounts.form.currentValue")}
-              <input
+              <MoneyInput
                 value={amount}
-                onChange={(event) => setAmount(event.target.value)}
-                inputMode="decimal"
+                onValueChange={(value) => {
+                  setAmount(value)
+                  setError(null)
+                }}
                 dir="ltr"
                 className={fieldClassName}
               />

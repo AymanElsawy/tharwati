@@ -20,6 +20,13 @@ describe("AccountForm ownership percentage direction", () => {
     expect(form).not.toContain("sectionClassName")
   })
 
+  it("clears stale MoneyInput errors while an account amount is emptied", () => {
+    expect(form).toContain("visibleMoneyInputError(")
+    expect(form).toContain('value === "" ? submitCount : null')
+    expect(form).toContain('showMoneyError("openingBalance")')
+    expect(form).toContain('showMoneyError("creditCardLimit")')
+  })
+
   it("keeps the Business hierarchy and adds the Real Estate hierarchy", () => {
     expect(form).toContain('title={t("accounts.form.businessDetails")}')
     expect(form).toContain('accent="business"')

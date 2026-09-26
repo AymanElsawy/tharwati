@@ -1,7 +1,9 @@
 import { zodResolver } from "@hookform/resolvers/zod"
 import { Landmark, UserRound } from "lucide-react"
-import { useEffect, useMemo } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { Controller, useForm, useWatch } from "react-hook-form"
+import { MoneyInput } from "@/components/MoneyInput"
+import { visibleMoneyInputError } from "@/lib/formatting/money-input"
 
 import { useTranslation } from "../../../i18n/useTranslation"
 import { createAccountSchema } from "../schemas/account.schema"
@@ -100,26 +102,49 @@ export function AccountForm({
   const { t } = useTranslation()
   const accountSchema = useMemo(() => createAccountSchema(t, mode), [mode, t])
   const {
-    formState: { errors, isSubmitting, isSubmitted },
+    formState: { errors, isSubmitting, isSubmitted, submitCount },
     handleSubmit,
     register,
     reset,
     control,
     setValue,
+    clearErrors,
+    trigger,
   } = useForm<AccountFormValues>({
     resolver: zodResolver(accountSchema),
     defaultValues,
   })
+  const values = useWatch({ control, defaultValue: defaultValues })
 
   const showError = (field: keyof AccountFormValues) =>
     Boolean(errors[field]) && isSubmitted
+  const [suppressedMoneyErrors, setSuppressedMoneyErrors] = useState<Partial<Record<"openingBalance" | "creditCardLimit", number | null>>>({})
+  const showMoneyError = (name: "openingBalance" | "creditCardLimit") =>
+    showError(name) && Boolean(visibleMoneyInputError(
+      values[name] ?? "",
+      errors[name]?.message,
+      suppressedMoneyErrors[name] !== null &&
+        suppressedMoneyErrors[name] !== undefined &&
+        submitCount <= suppressedMoneyErrors[name]
+    ))
+  const updateMoneyValue = (name: "openingBalance" | "creditCardLimit", value: string, onChange: (value: string) => void) => {
+    onChange(value)
+    setSuppressedMoneyErrors((current) => ({ ...current, [name]: value === "" ? submitCount : null }))
+    clearErrors(name)
+    if (value !== "") void trigger(name)
+  }
+  const blurMoneyValue = (name: "openingBalance" | "creditCardLimit", onBlur: () => void) => {
+    setSuppressedMoneyErrors((current) => ({ ...current, [name]: null }))
+    onBlur()
+    clearErrors(name)
+    void trigger(name)
+  }
 
   useEffect(() => {
     reset(defaultValues)
     onDirtyChange(false)
   }, [defaultValues, onDirtyChange, reset])
 
-  const values = useWatch({ control, defaultValue: defaultValues })
   useEffect(() => {
     onDirtyChange(
       hasMeaningfulAccountChanges(
@@ -264,18 +289,21 @@ export function AccountForm({
             >
               {t("accounts.form.creditCardLimit")}
             </label>
-            <input
-              id={`${formId}-credit-card-limit`}
-              className={fieldClassName}
-              disabled={
-                isDisabled || (mode === "edit" && isOpeningBalanceLocked)
-              }
-              inputMode="decimal"
-              dir="ltr"
-              placeholder="0.00"
-              {...register("creditCardLimit")}
-            />
-            {showError("creditCardLimit") ? (
+            <Controller name="creditCardLimit" control={control} render={({ field }) => (
+              <MoneyInput
+                id={`${formId}-credit-card-limit`}
+                className={fieldClassName}
+                disabled={isDisabled || (mode === "edit" && isOpeningBalanceLocked)}
+                dir="ltr"
+                placeholder="0.00"
+                name={field.name}
+                ref={field.ref}
+                value={field.value}
+                onValueChange={(value) => updateMoneyValue("creditCardLimit", value, field.onChange)}
+                onBlur={() => blurMoneyValue("creditCardLimit", field.onBlur)}
+              />
+            )} />
+            {showMoneyError("creditCardLimit") ? (
               <p className={errorClassName}>
                 {errors.creditCardLimit?.message}
               </p>
@@ -560,17 +588,22 @@ export function AccountForm({
               </p>
             </>
           ) : (
-            <input
-              id={`${formId}-opening-balance`}
-              className={fieldClassName}
-              disabled={isDisabled}
-              inputMode="decimal"
-              dir="ltr"
-              placeholder="0.00"
-              {...register("openingBalance")}
-            />
+            <Controller name="openingBalance" control={control} render={({ field }) => (
+              <MoneyInput
+                id={`${formId}-opening-balance`}
+                className={fieldClassName}
+                disabled={isDisabled}
+                dir="ltr"
+                placeholder="0.00"
+                name={field.name}
+                ref={field.ref}
+                value={field.value}
+                onValueChange={(value) => updateMoneyValue("openingBalance", value, field.onChange)}
+                onBlur={() => blurMoneyValue("openingBalance", field.onBlur)}
+              />
+            )} />
           )}
-          {showError("openingBalance") ? (
+          {showMoneyError("openingBalance") ? (
             <p className={errorClassName}>{errors.openingBalance?.message}</p>
           ) : null}
         </div>
@@ -594,16 +627,21 @@ export function AccountForm({
             >
               {t(getBalanceLabelKey(accountTypeCode))}
             </label>
-            <input
-              id={`${formId}-valuation-amount`}
-              className={fieldClassName}
-              disabled={isDisabled}
-              inputMode="decimal"
-              dir="ltr"
-              placeholder="0.00"
-              {...register("openingBalance")}
-            />
-            {showError("openingBalance") ? (
+            <Controller name="openingBalance" control={control} render={({ field }) => (
+              <MoneyInput
+                id={`${formId}-valuation-amount`}
+                className={fieldClassName}
+                disabled={isDisabled}
+                dir="ltr"
+                placeholder="0.00"
+                name={field.name}
+                ref={field.ref}
+                value={field.value}
+                onValueChange={(value) => updateMoneyValue("openingBalance", value, field.onChange)}
+                onBlur={() => blurMoneyValue("openingBalance", field.onBlur)}
+              />
+            )} />
+            {showMoneyError("openingBalance") ? (
               <p className={errorClassName}>{errors.openingBalance?.message}</p>
             ) : null}
           </div>

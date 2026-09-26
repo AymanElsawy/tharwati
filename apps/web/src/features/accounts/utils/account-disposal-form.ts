@@ -4,6 +4,7 @@ import {
 } from "@/lib/financial-calculations/decimal"
 import type { AccountSummary } from "@/lib/supabase/types"
 import type { AccountDisposalInput } from "../types/account-disposal"
+import { normalizeMoneyInput } from "@/lib/formatting/money-input"
 
 export type AccountDisposalFormState = {
   amount: string
@@ -29,7 +30,8 @@ export function createAccountDisposalFormState(
 }
 
 export function normalizeSaleAmount(value: string): string | null {
-  const normalized = normalizeDecimal(value.trim())
+  const canonical = normalizeMoneyInput(value.trim())
+  const normalized = canonical === null ? null : normalizeDecimal(canonical)
   return normalized !== null && compareDecimals(normalized, "0") !== -1
     ? normalized
     : null

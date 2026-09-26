@@ -766,6 +766,7 @@ export const ar: Record<TranslationKey, string> = {
   "accounts.records.validation.account": "اختر حسابًا.",
   "accounts.records.validation.amount":
     "أدخل مبلغًا موجبًا بمنزلتين عشريتين كحد أقصى.",
+  "accounts.records.validation.amountRequired": "المبلغ مطلوب.",
   "accounts.records.validation.date": "التاريخ والوقت مطلوبان.",
   "accounts.records.validation.category": "الفئة مطلوبة.",
   "accounts.records.validation.differentAccounts":

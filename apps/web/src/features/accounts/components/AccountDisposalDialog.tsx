@@ -3,6 +3,7 @@ import { X } from "lucide-react"
 import { useRef, useState } from "react"
 
 import { Button } from "@/components/ui/button"
+import { MoneyInput } from "@/components/MoneyInput"
 import {
   addAccountDisposal,
   getEligibleDisposalDestinationAccounts,
@@ -161,20 +162,20 @@ function AccountDisposalDialogContent({
           <div className="mt-5 max-h-[min(65dvh,34rem)] space-y-4 overflow-y-auto pe-1">
             <label className="block text-sm font-semibold">
               {t("accounts.disposal.saleAmount")}
-              <input
+              <MoneyInput
                 value={form.amount}
-                onChange={(event) =>
+                onValueChange={(value) => {
+                  setError(null)
                   setForm((current) => ({
                     ...current,
-                    amount: event.target.value,
+                    amount: value,
                     destinationAccountId: isPositiveSaleAmount(
-                      event.target.value
+                      value
                     )
                       ? current.destinationAccountId
                       : "",
                   }))
-                }
-                inputMode="decimal"
+                }}
                 dir="ltr"
                 className={fieldClass}
               />
