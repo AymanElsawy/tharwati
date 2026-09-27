@@ -31,6 +31,22 @@ class AccountsCopy {
       ? '${ltr('$count')} ${count == 1 ? 'حساب' : 'حسابات'}'
       : '$count ${count == 1 ? 'account' : 'accounts'}';
   String get sort => _ar ? 'فرز' : 'Sort';
+  String get sortCustom => _ar ? 'مخصص' : 'Custom';
+  String get clearFiltersToReorder => _ar
+      ? 'امسح عوامل التصفية لإعادة ترتيب الحسابات.'
+      : 'Clear filters to reorder accounts.';
+  String get orderSaving => _ar ? 'جارٍ حفظ الترتيب…' : 'Saving order…';
+  String get orderConflict => _ar
+      ? 'تغيّر ترتيب الحسابات على جهاز آخر. تم تحديث الترتيب.'
+      : 'Account order changed on another device and has been refreshed.';
+  String get orderFailure => _ar
+      ? 'تعذر حفظ ترتيب الحسابات. تم استعادة الترتيب المحفوظ.'
+      : 'Could not save account order. The saved order has been restored.';
+  String get orderRefreshFailure => _ar
+      ? 'تعذر التحقق من ترتيب الحسابات. حدّث الصفحة قبل إعادة الترتيب.'
+      : 'Could not verify account order. Refresh before reordering.';
+  String reorderAccount(String name) =>
+      _ar ? 'اسحب لإعادة ترتيب $name' : 'Drag to reorder $name';
   String get sortAccountName => _ar ? 'اسم الحساب' : 'Account name';
   String get sortType => _ar ? 'النوع' : 'Type';
   String get sortCurrentValue => _ar ? 'القيمة الحالية' : 'Current Value';

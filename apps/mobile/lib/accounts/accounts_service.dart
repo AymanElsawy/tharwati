@@ -23,8 +23,9 @@ class AccountItem {
 }
 
 class AccountsListModel {
-  const AccountsListModel({required this.items});
+  const AccountsListModel({required this.items, this.canonicalIds = const []});
   final List<AccountItem> items;
+  final List<String> canonicalIds;
 
   bool get isEmpty => items.isEmpty;
 }
@@ -76,6 +77,7 @@ class AccountsService {
 
   Future<AccountsListModel> loadAccounts() async {
     final accounts = await _accounts.getAccounts();
+    final canonicalIds = await _accounts.getAccountCustomOrder();
 
     final ledgerIds = [
       for (final a in accounts)
@@ -139,8 +141,13 @@ class AccountsService {
         )
         .toList();
 
-    return AccountsListModel(items: items);
+    return AccountsListModel(items: items, canonicalIds: canonicalIds);
   }
+
+  Future<List<String>> reorderAccounts(
+    List<String> expectedIds,
+    List<String> orderedIds,
+  ) => _accounts.reorderAccounts(expectedIds, orderedIds);
 
   Future<GoldAccountDetail> loadGoldDetail(String accountId) async {
     return readWithDeadline(compositeReadDeadline, (_) async {

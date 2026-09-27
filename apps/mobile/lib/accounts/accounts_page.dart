@@ -134,97 +134,202 @@ class _AccountsPageState extends State<AccountsPage> {
         final sold = _controller.soldItems;
         final empty = active.isEmpty && closed.isEmpty && sold.isEmpty;
 
-        return ListView(
-          padding: const EdgeInsets.fromLTRB(20, 4, 20, 32),
-          children: [
-            if (_controller.refreshStale) ...[
-              Callout(
-                tone: CalloutTone.warning,
-                message: copy.savedRefreshFailed,
-              ),
-              TextButton(
-                onPressed: _controller.retryRefresh,
-                child: Text(copy.refreshData),
-              ),
-            ],
-            if (_controller.actionError != null) ...[
-              Callout(
-                tone: CalloutTone.danger,
-                message: _controller.actionError!,
-              ),
-              const SizedBox(height: 12),
-            ],
-            if (empty)
-              Container(
-                padding: const EdgeInsets.all(28),
-                decoration: BoxDecoration(
-                  border: Border.all(color: c.line, style: BorderStyle.solid),
-                  borderRadius: BorderRadius.circular(20),
-                ),
+        return CustomScrollView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          slivers: [
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(20, 4, 20, 8),
                 child: Column(
-                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    Text(
-                      (_controller.model?.isEmpty ?? true)
-                          ? copy.addFirstAccount
-                          : copy.noFilteredAccounts,
-                      style: TextStyle(
-                        color: c.ink,
-                        fontSize: 15,
-                        fontWeight: FontWeight.w700,
+                    if (_controller.refreshStale) ...[
+                      Callout(
+                        tone: CalloutTone.warning,
+                        message: copy.savedRefreshFailed,
                       ),
-                    ),
-                    const SizedBox(height: 6),
-                    Text(
-                      copy.emptyDescription,
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        color: c.inkMuted,
-                        fontSize: 13,
-                        height: 1.5,
+                      TextButton(
+                        onPressed: _controller.retryRefresh,
+                        child: Text(copy.refreshData),
                       ),
-                    ),
+                    ],
+                    if (_controller.actionError != null) ...[
+                      Callout(
+                        tone: CalloutTone.danger,
+                        message: _controller.actionError!,
+                      ),
+                      const SizedBox(height: 12),
+                    ],
+                    if (_controller.sort == AccountSort.custom &&
+                        _controller.isSubsetFiltered)
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 8),
+                        child: Text(
+                          copy.clearFiltersToReorder,
+                          style: TextStyle(color: c.inkMuted, fontSize: 12),
+                        ),
+                      ),
+                    if (_controller.sort == AccountSort.custom &&
+                        !_controller.hasCompleteOrder) ...[
+                      Text(
+                        copy.orderRefreshFailure,
+                        style: TextStyle(color: c.inkMuted, fontSize: 12),
+                      ),
+                      TextButton(
+                        onPressed: _controller.retryRefresh,
+                        child: Text(copy.refreshData),
+                      ),
+                    ],
+                    if (_controller.isReordering)
+                      Text(
+                        copy.orderSaving,
+                        style: TextStyle(color: c.inkMuted, fontSize: 12),
+                      ),
+                    if (_controller.orderNotice != null)
+                      Callout(
+                        tone: CalloutTone.warning,
+                        message: switch (_controller.orderNotice!) {
+                          AccountOrderNotice.conflict => copy.orderConflict,
+                          AccountOrderNotice.failure => copy.orderFailure,
+                          AccountOrderNotice.refreshFailure =>
+                            copy.orderRefreshFailure,
+                        },
+                      ),
                   ],
+                ),
+              ),
+            ),
+            if (empty)
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  child: Container(
+                    padding: const EdgeInsets.all(28),
+                    decoration: BoxDecoration(
+                      border: Border.all(color: c.line),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          (_controller.model?.isEmpty ?? true)
+                              ? copy.addFirstAccount
+                              : copy.noFilteredAccounts,
+                          style: TextStyle(
+                            color: c.ink,
+                            fontSize: 15,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          copy.emptyDescription,
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            color: c.inkMuted,
+                            fontSize: 13,
+                            height: 1.5,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
                 ),
               )
             else ...[
-              for (final item in active) ...[
-                AccountRowCard(
-                  item: item,
-                  onTap: () => _openDetail(item.account.id),
-                ),
-                const SizedBox(height: 8),
-              ],
+              if (active.isNotEmpty) _accountSliver(active),
               if (closed.isNotEmpty) ...[
-                const SizedBox(height: 8),
-                _SectionTitle(copy.closedArchived),
-                const SizedBox(height: 8),
-                for (final item in closed) ...[
-                  AccountRowCard(
-                    item: item,
-                    deEmphasized: true,
-                    onTap: () => _openDetail(item.account.id),
-                  ),
-                  const SizedBox(height: 8),
-                ],
+                _sectionHeading(copy.closedArchived),
+                _accountSliver(closed, deEmphasized: true),
               ],
               if (sold.isNotEmpty) ...[
-                const SizedBox(height: 8),
-                _SectionTitle(copy.sold),
-                const SizedBox(height: 8),
-                for (final item in sold) ...[
-                  AccountRowCard(
-                    item: item,
-                    deEmphasized: true,
-                    onTap: () => _openDetail(item.account.id),
-                  ),
-                  const SizedBox(height: 8),
-                ],
+                _sectionHeading(copy.sold),
+                _accountSliver(sold, deEmphasized: true),
               ],
             ],
+            const SliverToBoxAdapter(child: SizedBox(height: 32)),
           ],
         );
     }
+  }
+
+  Widget _sectionHeading(String title) => SliverToBoxAdapter(
+    child: Padding(
+      padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
+      child: _SectionTitle(title),
+    ),
+  );
+
+  Widget _accountSliver(List<AccountItem> items, {bool deEmphasized = false}) {
+    final custom = _controller.sort == AccountSort.custom;
+    final reorderable =
+        custom && !_controller.isSubsetFiltered && _controller.hasCompleteOrder;
+    final copy = AccountsCopy.of(AppLanguageScope.of(context).language);
+    Widget card(int index) {
+      final item = items[index];
+      return Padding(
+        key: ValueKey(item.account.id),
+        padding: const EdgeInsets.only(bottom: 8),
+        child: AccountRowCard(
+          item: item,
+          deEmphasized: deEmphasized,
+          onTap: () => _openDetail(item.account.id),
+          reorderHandle: custom
+              ? ReorderableDragStartListener(
+                  index: index,
+                  enabled: reorderable && _controller.canReorder,
+                  child: Semantics(
+                    label: copy.reorderAccount(item.account.name),
+                    button: true,
+                    child: GestureDetector(
+                      behavior: HitTestBehavior.opaque,
+                      onTap: () {},
+                      child: SizedBox(
+                        width: 32,
+                        height: 40,
+                        child: Icon(
+                          Icons.drag_handle,
+                          size: 22,
+                          color: context.colors.inkMuted,
+                        ),
+                      ),
+                    ),
+                  ),
+                )
+              : null,
+        ),
+      );
+    }
+
+    return SliverPadding(
+      padding: const EdgeInsets.symmetric(horizontal: 20),
+      sliver: reorderable
+          ? SliverReorderableList(
+              itemCount: items.length,
+              itemBuilder: (context, index) => card(index),
+              onReorderItem: (oldIndex, newIndex) {
+                final sectionIds = [for (final item in items) item.account.id];
+                _controller.reorderSection(sectionIds, oldIndex, newIndex);
+              },
+              proxyDecorator: (child, index, animation) => AnimatedBuilder(
+                animation: animation,
+                builder: (context, _) => Transform.scale(
+                  scale: 1 + 0.02 * animation.value,
+                  child: Material(
+                    color: context.colors.surface,
+                    borderRadius: BorderRadius.circular(16),
+                    elevation: 5 * animation.value,
+                    child: child,
+                  ),
+                ),
+              ),
+            )
+          : SliverList.builder(
+              itemCount: items.length,
+              itemBuilder: (context, index) => card(index),
+            ),
+    );
   }
 }
 
@@ -394,29 +499,41 @@ class _SortRow extends StatelessWidget {
     final copy = AccountsCopy.of(AppLanguageScope.of(context).language);
     Widget chip(String label, AccountSort key) {
       final active = controller.sort == key;
-      return Padding(
-        padding: const EdgeInsets.only(right: 7),
+      final flex = switch (key) {
+        AccountSort.custom => 4,
+        AccountSort.name => 8,
+        AccountSort.type => 5,
+        AccountSort.balance => 8,
+      };
+      return Expanded(
+        flex: flex,
         child: GestureDetector(
           onTap: () => controller.toggleSort(key),
           child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 6),
+            constraints: const BoxConstraints(minHeight: 48),
+            padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 6),
             decoration: BoxDecoration(
               color: active ? c.accentSoft : c.surface,
               border: Border.all(color: active ? c.accent : c.line),
               borderRadius: BorderRadius.circular(AppRadius.chip),
             ),
             child: Row(
-              mainAxisSize: MainAxisSize.min,
+              mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Text(
-                  label,
-                  style: TextStyle(
-                    color: active ? c.accent : c.inkMuted,
-                    fontSize: 12,
-                    fontWeight: active ? FontWeight.w700 : FontWeight.w600,
+                Flexible(
+                  child: Text(
+                    label,
+                    textAlign: TextAlign.center,
+                    maxLines: 1,
+                    softWrap: false,
+                    style: TextStyle(
+                      color: active ? c.accent : c.inkMuted,
+                      fontSize: 12,
+                      fontWeight: active ? FontWeight.w700 : FontWeight.w600,
+                    ),
                   ),
                 ),
-                if (active) ...[
+                if (active && key != AccountSort.custom) ...[
                   const SizedBox(width: 3),
                   Icon(
                     controller.ascending
@@ -434,26 +551,32 @@ class _SortRow extends StatelessWidget {
     }
 
     return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 2, 20, 8),
-      child: SingleChildScrollView(
-        scrollDirection: Axis.horizontal,
-        child: Row(
-          children: [
-            Text(
-              copy.sort,
-              style: TextStyle(
-                color: c.inkMuted,
-                fontSize: 11,
-                fontWeight: FontWeight.w700,
-                letterSpacing: 1,
-              ),
+      padding: const EdgeInsets.fromLTRB(10, 2, 10, 8),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            copy.sort,
+            style: TextStyle(
+              color: c.inkMuted,
+              fontSize: 11,
+              fontWeight: FontWeight.w700,
+              letterSpacing: 1,
             ),
-            const SizedBox(width: 10),
-            chip(copy.sortAccountName, AccountSort.name),
-            chip(copy.sortType, AccountSort.type),
-            chip(copy.sortCurrentValue, AccountSort.balance),
-          ],
-        ),
+          ),
+          const SizedBox(height: 6),
+          Row(
+            children: [
+              chip(copy.sortCustom, AccountSort.custom),
+              const SizedBox(width: 4),
+              chip(copy.sortAccountName, AccountSort.name),
+              const SizedBox(width: 4),
+              chip(copy.sortType, AccountSort.type),
+              const SizedBox(width: 4),
+              chip(copy.sortCurrentValue, AccountSort.balance),
+            ],
+          ),
+        ],
       ),
     );
   }

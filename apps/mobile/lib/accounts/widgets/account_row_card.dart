@@ -18,11 +18,13 @@ class AccountRowCard extends StatelessWidget {
     required this.item,
     required this.onTap,
     this.deEmphasized = false,
+    this.reorderHandle,
   });
 
   final AccountItem item;
   final VoidCallback onTap;
   final bool deEmphasized;
+  final Widget? reorderHandle;
 
   @override
   Widget build(BuildContext context) {
@@ -49,6 +51,10 @@ class AccountRowCard extends StatelessWidget {
           ),
           child: Row(
             children: [
+              if (reorderHandle != null) ...[
+                reorderHandle!,
+                const SizedBox(width: 6),
+              ],
               AccountTypeIcon(type: a.type),
               const SizedBox(width: 12),
               Expanded(

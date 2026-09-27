@@ -6,13 +6,16 @@ import '../errors/safe_app_error.dart';
 import '../i18n/app_language.dart';
 
 import 'account_models.dart';
+import 'account_custom_order.dart';
 import 'accounts_repository.dart';
 import 'accounts_service.dart';
 
 enum AccountsStatus { loading, error, ready }
 
 /// The web inventory sort keys (`AccountInventorySort`).
-enum AccountSort { name, type, balance }
+enum AccountSort { custom, name, type, balance }
+
+enum AccountOrderNotice { conflict, failure, refreshFailure }
 
 /// Drives the Accounts tab (Flow 3). Owns the loaded list, the client-side
 /// filter bar (search / type / currency / show-closed), and a `busy`/`error`
@@ -35,6 +38,9 @@ class AccountsController extends ChangeNotifier {
   bool busy = false;
   bool refreshStale = false;
   String? actionError;
+  AccountOrderNotice? orderNotice;
+  bool isReordering = false;
+  List<String> canonicalIds = [];
   int _loadVersion = 0;
   AppErrorCode? readErrorCode;
 
@@ -43,11 +49,17 @@ class AccountsController extends ChangeNotifier {
   String? currencyFilter;
   bool showClosed = false;
 
-  AccountSort sort = AccountSort.name;
+  AccountSort sort = AccountSort.custom;
   bool ascending = true;
 
   /// Web `toggleSort`: same key flips direction, a new key resets to ascending.
   void toggleSort(AccountSort next) {
+    if (next == AccountSort.custom) {
+      sort = next;
+      ascending = true;
+      notifyListeners();
+      return;
+    }
     if (sort == next) {
       ascending = !ascending;
     } else {
@@ -60,6 +72,12 @@ class AccountsController extends ChangeNotifier {
   int _compare(AccountItem a, AccountItem b) {
     int result;
     switch (sort) {
+      case AccountSort.custom:
+        final aIndex = canonicalIds.indexOf(a.account.id);
+        final bIndex = canonicalIds.indexOf(b.account.id);
+        result = (aIndex < 0 ? canonicalIds.length : aIndex).compareTo(
+          bIndex < 0 ? canonicalIds.length : bIndex,
+        );
       case AccountSort.name:
         result = a.account.name.toLowerCase().compareTo(
           b.account.name.toLowerCase(),
@@ -71,7 +89,7 @@ class AccountsController extends ChangeNotifier {
         final y = double.tryParse(b.value.amount ?? '0') ?? 0;
         result = x.compareTo(y);
     }
-    return ascending ? result : -result;
+    return sort == AccountSort.custom || ascending ? result : -result;
   }
 
   /// All items passing the filter bar (search / type / currency), before the
@@ -90,6 +108,83 @@ class AccountsController extends ChangeNotifier {
 
   List<AccountItem> get soldItems =>
       (_filtered.where((i) => i.account.isSold).toList())..sort(_compare);
+
+  bool get isSubsetFiltered =>
+      search.trim().isNotEmpty || typeFilter != null || currencyFilter != null;
+
+  bool get hasCompleteOrder => hasCompleteAccountOrder([
+    for (final item in model?.items ?? const <AccountItem>[]) item.account.id,
+  ], canonicalIds);
+
+  bool get canReorder =>
+      status == AccountsStatus.ready &&
+      sort == AccountSort.custom &&
+      !isSubsetFiltered &&
+      !busy &&
+      !isReordering &&
+      !refreshStale &&
+      hasCompleteOrder;
+
+  Future<bool> reorderSection(
+    List<String> sectionIds,
+    int oldIndex,
+    int newIndex,
+  ) async {
+    if (!canReorder || sectionIds.isEmpty) return false;
+    final accountsById = {
+      for (final item in model!.items) item.account.id: item.account,
+    };
+    final source = accountsById[sectionIds.first];
+    if (source == null) return false;
+    int section(Account account) => account.isSold
+        ? 2
+        : account.isClosed
+        ? 1
+        : 0;
+    final sectionMembers = {
+      for (final account in accountsById.values)
+        if (section(account) == section(source)) account.id,
+    };
+    if (sectionIds.toSet().length != sectionMembers.length ||
+        !sectionIds.every(sectionMembers.contains)) {
+      return false;
+    }
+    final expectedIds = [...canonicalIds];
+    final orderedIds = reorderAccountSection(
+      expectedIds,
+      sectionIds,
+      oldIndex,
+      newIndex,
+    );
+    if (orderedIds == null) return false;
+    isReordering = true;
+    orderNotice = null;
+    canonicalIds = orderedIds;
+    notifyListeners();
+    try {
+      final committed = await _service.reorderAccounts(expectedIds, orderedIds);
+      if (!hasCompleteAccountOrder([
+        for (final item in model?.items ?? const <AccountItem>[])
+          item.account.id,
+      ], committed)) {
+        throw StateError('Incomplete committed account order');
+      }
+      canonicalIds = committed;
+      return true;
+    } catch (error) {
+      canonicalIds = expectedIds;
+      final refreshed = await load(preserveOnError: true);
+      orderNotice = !refreshed
+          ? AccountOrderNotice.refreshFailure
+          : error is AccountOrderConflict
+          ? AccountOrderNotice.conflict
+          : AccountOrderNotice.failure;
+      return false;
+    } finally {
+      isReordering = false;
+      notifyListeners();
+    }
+  }
 
   /// Currencies actually present (for the currency filter chip menu).
   List<String> get availableCurrencies {
@@ -112,6 +207,8 @@ class AccountsController extends ChangeNotifier {
       );
       if (version != _loadVersion) return false;
       model = next;
+      canonicalIds = [...next.canonicalIds];
+      orderNotice = null;
       readErrorCode = null;
       status = AccountsStatus.ready;
       refreshStale = false;
@@ -121,7 +218,10 @@ class AccountsController extends ChangeNotifier {
       if (version != _loadVersion) return false;
       readErrorCode = classifyAppError(error).code;
       if (preserveOnError) refreshStale = true;
-      if (!preserveOnError) model = null;
+      if (!preserveOnError) {
+        model = null;
+        canonicalIds = [];
+      }
       status = preserveOnError ? AccountsStatus.ready : AccountsStatus.error;
       notifyListeners();
       return false;
