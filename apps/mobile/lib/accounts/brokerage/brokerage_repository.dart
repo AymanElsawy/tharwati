@@ -190,17 +190,10 @@ class BrokerageRepository {
     String accountId,
     TradeFormValues v,
     String idempotencyKey,
-  ) => _rpc('add_brokerage_buy_v2', {
-    'p_account_id': accountId,
-    'p_asset_id': v.assetId,
-    'p_quantity': v.quantity.trim(),
-    'p_unit_price': v.unitPrice.trim(),
-    'p_occurred_at': _utc(v.occurredAt),
-    'p_notes': v.notes.trim().isEmpty ? null : v.notes.trim(),
-    'p_fees': v.fees.trim().isEmpty ? '0' : v.fees.trim(),
-    'p_account_fx_rate': _rate(v.accountFxRate),
-    'p_idempotency_key': idempotencyKey,
-  });
+  ) => _rpc(
+    'add_brokerage_buy_v2',
+    brokerageBuyRpcParams(accountId, v, idempotencyKey),
+  );
 
   Future<void> addSell(
     String accountId,
@@ -417,6 +410,23 @@ class BrokerageRepository {
 }
 
 const existingHoldingRpcName = 'add_existing_holding_v2';
+
+/// The exact decimal-string payload sent for a Brokerage Buy.
+Map<String, dynamic> brokerageBuyRpcParams(
+  String accountId,
+  TradeFormValues v,
+  String idempotencyKey,
+) => {
+  'p_account_id': accountId,
+  'p_asset_id': v.assetId,
+  'p_quantity': v.quantity.trim(),
+  'p_unit_price': v.unitPrice.trim(),
+  'p_occurred_at': BrokerageRepository._utc(v.occurredAt),
+  'p_notes': v.notes.trim().isEmpty ? null : v.notes.trim(),
+  'p_fees': v.fees.trim().isEmpty ? '0' : v.fees.trim(),
+  'p_account_fx_rate': BrokerageRepository._rate(v.accountFxRate),
+  'p_idempotency_key': idempotencyKey,
+};
 
 /// Kept pure so the exact destructive financial boundary is directly testable:
 /// this payload has no cash amount and targets only `add_existing_holding`.

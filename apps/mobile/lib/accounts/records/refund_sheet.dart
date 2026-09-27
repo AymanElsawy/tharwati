@@ -79,19 +79,20 @@ class _RefundSheetState extends State<RefundSheet> {
     final amount = normalizedAmount;
     final notes = _notes.text.trim();
     final payload = [widget.expenseId, amount, _account, _date, notes].join('\u0000');
-    final ok = await widget.controller.addRefund(
+    bool current() => mounted && ModalRoute.of(context)?.isCurrent != false &&
+        [widget.expenseId, D.normalize(_amount.text), _account, _date,
+          _notes.text.trim()].join('\u0000') == payload;
+    await widget.controller.addRefund(
       expenseId: widget.expenseId,
       amount: amount,
       accountId: _account,
       occurredAt: _date,
       notes: notes,
       idempotencyKey: _submissionKey.forPayload(payload),
+      isCurrent: current,
+      onCommitted: () { if (current()) Navigator.of(context).pop(true); },
     );
     if (!mounted) return;
-    if (ok) {
-      Navigator.of(context).pop(true);
-      return;
-    }
     setState(() => _submitting = false);
   }
 

@@ -454,7 +454,7 @@ class _HistoryRow extends StatelessWidget {
                       [
                         if (entry.quantityDelta != null)
                           copy.activityUnits(
-                            absoluteDecimal(entry.quantityDelta!),
+                            formatHoldingHistoryQuantity(entry.quantityDelta!),
                           ),
                         if (entry.unitPrice != null)
                           copy.ltr(
@@ -516,6 +516,10 @@ class _HistoryRow extends StatelessWidget {
     ),
   );
 }
+
+/// Formats a ledger quantity for history without rounding stored precision.
+String formatHoldingHistoryQuantity(String value) =>
+    D.normalize(absoluteDecimal(value)) ?? '—';
 
 /// Corrects a hand-entered opening position (`correct_existing_holding`).
 class _CorrectExistingHoldingSheet extends StatefulWidget {

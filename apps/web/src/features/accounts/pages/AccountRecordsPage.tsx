@@ -63,10 +63,9 @@ import {
 import type { VisibleRecordMainCategory } from "../types/record-category"
 import type { Decimal } from "@/lib/supabase/types"
 import { runMutationThenRefresh } from "@/lib/mutations/mutation-refresh"
+import { RetainedMutations, MutationViewOwner, isCommitted, type MutationOutcome } from "@/lib/mutations/retained-mutation"
 import {
   refundSubmissionFingerprint,
-  resolveSubmissionAttempt,
-  type SubmissionAttempt,
 } from "../utils/refund-submission"
 import { accountRecordSubmissionFingerprint } from "../utils/account-record-submission"
 
@@ -198,9 +197,16 @@ export function AccountRecordsPage({
   const [observerGeneration, setObserverGeneration] = useState(0)
   const isPageRequestInFlight = useRef(false)
   const historyRequestVersion = useRef(0)
-  const refundAttempt = useRef<SubmissionAttempt | null>(null)
-  const cancellationAttempt = useRef<SubmissionAttempt | null>(null)
-  const recordCreationAttempt = useRef<SubmissionAttempt | null>(null)
+  const mutations = useRef(new RetainedMutations())
+  const mutationView = useRef(new MutationViewOwner())
+  const mutationLifetime = useRef(new MutationViewOwner())
+  const mutationDispatch = useRef(0)
+  const [hasUncertainMutation, setHasUncertainMutation] = useState(false)
+  const invalidateMutationView = useCallback(() => { mutationView.current.invalidate() }, [])
+  useEffect(() => () => {
+    mutationView.current.invalidate(); mutationLifetime.current.invalidate()
+    mutationDispatch.current += 1; historyRequestVersion.current += 1
+  }, [accountId])
   const locale = language === "ar" ? "ar-SA" : "en-US"
   const deferredFilters = useDeferredValue(filters)
   const account =
@@ -341,6 +347,9 @@ export function AccountRecordsPage({
     [accountId, deferredFilters]
   )
 
+  const refreshRecords = useRef(loadInitialRecords)
+  useEffect(() => { refreshRecords.current = loadInitialRecords }, [loadInitialRecords])
+
   const loadNextPage = useCallback(
     async (isRetry = false) => {
       if (
@@ -424,6 +433,7 @@ export function AccountRecordsPage({
   ])
 
   const closeForm = useCallback(() => {
+    mutationView.current.invalidate()
     setIsFormOpen(false)
     setEditingRecord(null)
     setFormError(null)
@@ -431,8 +441,49 @@ export function AccountRecordsPage({
     setDeleteError(null)
   }, [])
 
+  const runLedgerMutation = useCallback(async (
+    scope: string,
+    fingerprint: string,
+    dispatch: (key: string) => Promise<void>,
+    onCommitted: () => void,
+    onError: (message: string) => void,
+  ) => {
+    const isCurrent = mutationView.current.capture()
+    const isAlive = mutationLifetime.current.capture()
+    const submission = ++mutationDispatch.current
+    const owner = mutations.current
+    const attempt = owner.prepare(`${accountId}:${scope}`, fingerprint, dispatch)
+    setIsSaving(true)
+    const apply = (outcome: MutationOutcome) => {
+      if (!isAlive()) return
+      setHasUncertainMutation(owner.hasUncertain)
+      if (submission === mutationDispatch.current) {
+        setIsSaving(false)
+        if (isCurrent()) {
+          if (isCommitted(outcome)) {
+            owner.acknowledge(attempt)
+            onCommitted()
+          } else if (outcome.status === "uncertain") {
+            onError(t("accounts.records.mutationUncertain"))
+          } else if (outcome.status === "rejected") {
+            onError(errorMessage(outcome.error, t))
+          }
+        }
+      }
+      if (isCommitted(outcome)) window.dispatchEvent(new Event("tharwati:data-changed"))
+    }
+    apply(await owner.run(attempt, {
+      refresh: () => {
+        if (!isAlive()) return Promise.reject(new Error("Mutation owner released"))
+        return refreshRecords.current(true)
+      },
+      onLateOutcome: apply,
+    }))
+  }, [accountId, t])
+
   const openRecordEditor = useCallback(
     async (recordId: string) => {
+      mutationView.current.invalidate()
       const record = records.find((item) => item.id === recordId)
       if (record?.type === "refund") {
         setRefundCancellationError(null)
@@ -452,48 +503,27 @@ export function AccountRecordsPage({
 
   const confirmRefundCancellation = useCallback(async () => {
     if (!refundToCancel) return
-    setIsSaving(true)
     setRefundCancellationError(null)
-    const attempt = resolveSubmissionAttempt(
-      cancellationAttempt.current,
-      refundToCancel.id
-    )
-    cancellationAttempt.current = attempt
-    const outcome = await runMutationThenRefresh({
-      mutate: () =>
-        cancelExpenseRefund(refundToCancel.id, attempt.idempotencyKey),
-      onCommitted: () => {
-        cancellationAttempt.current = null
-        setRefundToCancel(null)
-        window.dispatchEvent(new Event("tharwati:data-changed"))
-      },
-      refresh: () => loadInitialRecords(true),
-    })
-    if (outcome.mutation === "rejected")
-      setRefundCancellationError(
-        errorMessage(outcome.error, t)
-      )
-    setIsSaving(false)
-  }, [loadInitialRecords, refundToCancel, t])
+    const id = refundToCancel.id
+    await runLedgerMutation("refund.cancel", id,
+      (key) => cancelExpenseRefund(id, key),
+      () => setRefundToCancel(null), setRefundCancellationError)
+  }, [refundToCancel, runLedgerMutation])
 
   const submitRecord = useCallback(
     async (values: AccountRecordFormValues) => {
-      setIsSaving(true)
       setFormError(null)
-      const attempt = editingRecord
-        ? null
-        : resolveSubmissionAttempt(
-            recordCreationAttempt.current,
-            accountRecordSubmissionFingerprint(values)
-          )
-      if (attempt) recordCreationAttempt.current = attempt
+      if (!editingRecord) {
+        const payload = Object.freeze({ ...values })
+        await runLedgerMutation("record.create", accountRecordSubmissionFingerprint(payload),
+          (key) => addAccountRecord(payload, key), closeForm, setFormError)
+        return
+      }
+      mutationDispatch.current += 1
+      setIsSaving(true)
       const outcome = await runMutationThenRefresh({
-        mutate: () =>
-          editingRecord
-            ? correctAccountRecord(editingRecord.id, values)
-            : addAccountRecord(values, attempt!.idempotencyKey),
+        mutate: () => correctAccountRecord(editingRecord.id, values),
         onCommitted: () => {
-          if (!editingRecord) recordCreationAttempt.current = null
           closeForm()
           window.dispatchEvent(new Event("tharwati:data-changed"))
         },
@@ -503,11 +533,12 @@ export function AccountRecordsPage({
         setFormError(errorMessage(outcome.error, t))
       setIsSaving(false)
     },
-    [closeForm, editingRecord, loadInitialRecords, t]
+    [closeForm, editingRecord, loadInitialRecords, runLedgerMutation, t]
   )
 
   const deleteRecord = useCallback(async () => {
     if (!editingRecord) return
+    mutationDispatch.current += 1
     setIsSaving(true)
     setDeleteError(null)
     const outcome = await runMutationThenRefresh({
@@ -524,6 +555,7 @@ export function AccountRecordsPage({
   }, [closeForm, editingRecord, loadInitialRecords, t])
 
   const openRefund = useCallback(async () => {
+    mutationView.current.invalidate()
     if (!editingRecord || editingRecord.values.type !== "expense") return
     try {
       const summary = await getExpenseRefundSummary(editingRecord.id)
@@ -543,37 +575,20 @@ export function AccountRecordsPage({
       notes: string
     }) => {
       if (!refundExpense) return
-      setIsSaving(true)
       setFormError(null)
-      const input = {
+      const input = Object.freeze({
         expenseTransactionId: refundExpense.id,
         ...values,
-      }
-      const attempt = resolveSubmissionAttempt(
-        refundAttempt.current,
-        refundSubmissionFingerprint(input)
-      )
-      refundAttempt.current = attempt
-      const outcome = await runMutationThenRefresh({
-        mutate: () =>
-          addExpenseRefund({
-            ...input,
-            idempotencyKey: attempt.idempotencyKey,
-          }),
-        onCommitted: () => {
-          refundAttempt.current = null
+      })
+      await runLedgerMutation("refund.create", refundSubmissionFingerprint(input),
+        (key) => addExpenseRefund({ ...input, idempotencyKey: key }),
+        () => {
           setRefundExpense(null)
           setRefundSummary(null)
           closeForm()
-          window.dispatchEvent(new Event("tharwati:data-changed"))
-        },
-        refresh: () => loadInitialRecords(true),
-      })
-      if (outcome.mutation === "rejected")
-        setFormError(errorMessage(outcome.error, t))
-      setIsSaving(false)
+        }, setFormError)
     },
-    [closeForm, loadInitialRecords, refundExpense, t]
+    [closeForm, refundExpense, runLedgerMutation]
   )
 
   const filterControls = (
@@ -771,6 +786,9 @@ export function AccountRecordsPage({
         <p role="alert" className="mt-4 text-sm text-red-600">
           {formError}
         </p>
+      )}
+      {hasUncertainMutation && (
+        <p role="status" className="mb-3 text-sm">{t("accounts.records.mutationUncertain")}</p>
       )}
       {refreshStale && (
         <div
@@ -1176,6 +1194,7 @@ export function AccountRecordsPage({
         error={formError}
         onClose={closeForm}
         onSubmit={submitRecord}
+        onPayloadChange={invalidateMutationView}
         onDelete={
           editingRecord
             ? () => {
@@ -1224,11 +1243,13 @@ export function AccountRecordsPage({
         error={formError}
         onClose={() => {
           if (!isSaving) {
+            invalidateMutationView()
             setRefundExpense(null)
             setRefundSummary(null)
           }
         }}
         onSubmit={submitRefund}
+        onPayloadChange={invalidateMutationView}
       />
       <CancelExpenseRefundDialog
         open={refundToCancel !== null}
@@ -1239,6 +1260,7 @@ export function AccountRecordsPage({
         error={refundCancellationError}
         onCancel={() => {
           if (!isSaving) {
+            invalidateMutationView()
             setRefundToCancel(null)
             setRefundCancellationError(null)
           }

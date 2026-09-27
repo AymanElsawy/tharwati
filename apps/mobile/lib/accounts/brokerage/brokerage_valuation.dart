@@ -3,14 +3,12 @@
 // `calculateHoldingPerformance`) plus the account-level rollup the web
 // `BrokerageAccountDetailsPage` computes inline.
 //
-// The web throws a `FinancialCalculationError` on a missing price, a currency
-// mismatch, or a zero cost basis. Mobile returns null for those instead: on a
-// phone one unpriced asset must not blank the whole screen, so an unavailable
-// figure is rendered as "—" and the account total is marked incomplete. That is
-// the same information the web surfaces through `missingPriceHoldings` /
-// `completenessStatus`, just carried differently.
+// Missing prices and missing account-currency FX leave account totals
+// unavailable. A valid asset-currency quote still gives a native holding
+// price and value; it is never summed into a different account currency.
 
 import '../../core/decimals.dart';
+import '../../portfolio/portfolio_models.dart';
 import 'brokerage_models.dart';
 
 /// One holding valued at the current market price.
@@ -19,20 +17,25 @@ class HoldingValuation {
     required this.holding,
     required this.marketPrice,
     required this.marketValue,
+    required this.accountMarketValue,
+    required this.currentFxRate,
     required this.unrealizedGainLoss,
     required this.unrealizedReturnPercent,
   });
 
   final Holding holding;
 
-  /// Null when no usable price came back, or when the price is quoted in a
-  /// currency other than the holding's cost currency.
+  /// Null when no usable price in the asset's currency came back.
   final MarketPrice? marketPrice;
 
-  /// `quantity × price`, in the holding's cost currency. Null = unavailable.
+  /// `quantity × price`, in the asset's currency. Null = unavailable.
   final String? marketValue;
 
-  /// `marketValue − totalCostBasis`. Null = unavailable.
+  /// Account-currency value; unavailable when conversion would require FX.
+  final String? accountMarketValue;
+  final PortfolioFxRate? currentFxRate;
+
+  /// `accountMarketValue − totalCostBasis`. Null = unavailable.
   final String? unrealizedGainLoss;
 
   /// `unrealizedGainLoss ÷ totalCostBasis × 100`. Null when unavailable or when
@@ -40,16 +43,22 @@ class HoldingValuation {
   final String? unrealizedReturnPercent;
 
   bool get isPriced => marketValue != null;
+  bool get needsFx => marketValue != null && accountMarketValue == null;
+  bool get fxStale => currentFxRate?.stale ?? false;
 }
 
 /// Values one holding. Returns an entry with null figures rather than throwing,
 /// so a single unpriced asset degrades to "—" instead of failing the page.
-HoldingValuation valueHolding(Holding holding, MarketPrice? price) {
-  // The web raises `currency_mismatch` here. Converting would need an FX rate
-  // the account page does not load, so a mismatch reads as unavailable.
+HoldingValuation valueHolding(
+  Holding holding,
+  MarketPrice? price, {
+  PortfolioFxRate? fxRate,
+}) {
+  // A quote is usable in its native asset currency. Account valuation needs
+  // an FX rate when the asset and account currencies differ; none is loaded.
   final usable =
       price != null &&
-          price.currencyCode == holding.costCurrencyCode.toUpperCase()
+          price.currencyCode == holding.asset.currencyCode.toUpperCase()
       ? price
       : null;
   if (usable == null) {
@@ -57,15 +66,27 @@ HoldingValuation valueHolding(Holding holding, MarketPrice? price) {
       holding: holding,
       marketPrice: null,
       marketValue: null,
+      accountMarketValue: null,
+      currentFxRate: null,
       unrealizedGainLoss: null,
       unrealizedReturnPercent: null,
     );
   }
 
   final marketValue = D.multiply(holding.quantity, usable.price);
-  final gain = marketValue == null
+  final validFx = fxRate != null &&
+          fxRate.fromCurrencyCode == usable.currencyCode &&
+          fxRate.toCurrencyCode == holding.costCurrencyCode.toUpperCase() &&
+          D.isPositive(fxRate.rate)
+      ? fxRate
+      : null;
+  final accountMarketValue =
+      usable.currencyCode == holding.costCurrencyCode.toUpperCase()
+      ? marketValue
+      : validFx == null ? null : D.multiply(marketValue, validFx.rate);
+  final gain = accountMarketValue == null
       ? null
-      : D.subtract(marketValue, holding.totalCostBasis);
+      : D.subtract(accountMarketValue, holding.totalCostBasis);
   final zeroCost = (D.compare(holding.totalCostBasis, '0') ?? 0) == 0;
   final ratio = gain == null || zeroCost
       ? null
@@ -75,6 +96,8 @@ HoldingValuation valueHolding(Holding holding, MarketPrice? price) {
     holding: holding,
     marketPrice: usable,
     marketValue: marketValue,
+    accountMarketValue: accountMarketValue,
+    currentFxRate: validFx,
     unrealizedGainLoss: gain,
     unrealizedReturnPercent: ratio == null ? null : D.multiply(ratio, '100'),
   );
@@ -91,6 +114,9 @@ class BrokerageValuation {
     required this.totalUnrealizedReturnPercent,
     required this.currentValue,
     required this.unpricedCount,
+    required this.missingPriceCount,
+    required this.missingFxCount,
+    required this.hasStaleFx,
   });
 
   final List<HoldingValuation> holdings;
@@ -101,8 +127,8 @@ class BrokerageValuation {
   /// Cost basis of every open holding. Always known (it is stored, not priced).
   final String totalCostBasis;
 
-  /// Null when any holding is unpriced — a partial sum would understate the
-  /// portfolio and read as a loss.
+  /// Null when any holding lacks an account-currency value — a partial sum
+  /// would understate the portfolio and read as a loss.
   final String? totalMarketValue;
   final String? totalUnrealizedGainLoss;
   final String? totalUnrealizedReturnPercent;
@@ -110,7 +136,11 @@ class BrokerageValuation {
   /// `cash + holdings market value`. Null when the market value is.
   final String? currentValue;
 
+  /// Holdings lacking an account-currency value (missing price or FX).
   final int unpricedCount;
+  final int missingPriceCount;
+  final int missingFxCount;
+  final bool hasStaleFx;
 
   bool get isComplete => unpricedCount == 0;
   bool get isEmpty => holdings.isEmpty;
@@ -118,30 +148,42 @@ class BrokerageValuation {
 
 /// Values a whole brokerage account.
 ///
-/// The totals go null the moment any holding is unpriced. That is deliberate:
-/// summing only the priced ones would silently report a smaller portfolio, and
-/// against a full cost basis that looks like a loss the user does not have.
-/// [BrokerageValuation.unpricedCount] says how many are missing so the UI can
-/// explain the gap instead of showing a wrong number.
+/// The totals go null if any holding lacks a price or required FX. Summing
+/// only converted holdings would understate the portfolio against full cost.
 BrokerageValuation valueBrokerageAccount({
   required List<Holding> holdings,
   required Map<String, MarketPrice> pricesByAssetId,
+  Map<String, PortfolioFxRate> fxRatesByPair = const {},
   required String cashBalance,
 }) {
   final valued = [
     for (final holding in holdings)
-      valueHolding(holding, pricesByAssetId[holding.assetId]),
+      valueHolding(
+        holding,
+        pricesByAssetId[holding.assetId],
+        fxRate: fxRatesByPair[
+          '${holding.asset.currencyCode}/${holding.costCurrencyCode}'
+        ],
+      ),
   ];
 
   var totalCost = '0';
   var marketValue = '0';
   var unpriced = 0;
+  var missingPrice = 0;
+  var missingFx = 0;
   for (final entry in valued) {
     totalCost = D.add(totalCost, entry.holding.totalCostBasis) ?? totalCost;
-    if (entry.marketValue == null) {
+    if (entry.accountMarketValue == null) {
       unpriced += 1;
+      if (entry.needsFx) {
+        missingFx += 1;
+      } else {
+        missingPrice += 1;
+      }
     } else {
-      marketValue = D.add(marketValue, entry.marketValue!) ?? marketValue;
+      marketValue =
+          D.add(marketValue, entry.accountMarketValue!) ?? marketValue;
     }
   }
 
@@ -167,6 +209,9 @@ BrokerageValuation valueBrokerageAccount({
         ? null
         : D.add(cashBalance, totalMarketValue),
     unpricedCount: unpriced,
+    missingPriceCount: missingPrice,
+    missingFxCount: missingFx,
+    hasStaleFx: valued.any((entry) => entry.fxStale),
   );
 }
 

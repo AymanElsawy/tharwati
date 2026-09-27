@@ -1,6 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:tharwati_mobile/accounts/brokerage/brokerage_activity.dart';
 import 'package:tharwati_mobile/accounts/brokerage/brokerage_valuation.dart';
+import 'package:tharwati_mobile/accounts/brokerage/holding_detail_page.dart';
 import 'package:tharwati_mobile/core/decimals.dart';
 import 'package:tharwati_mobile/i18n/accounts_copy.dart';
 import 'package:tharwati_mobile/i18n/app_language.dart';
@@ -237,6 +238,15 @@ void main() {
         expect(formatActivityQuantity('1.234567891'), '1.23456789');
       },
     );
+  });
+
+  test('holding history trims only insignificant zeros, without rounding', () {
+    expect(formatHoldingHistoryQuantity('1.0000000000'), '1');
+    expect(formatHoldingHistoryQuantity('1.5000000000'), '1.5');
+    expect(formatHoldingHistoryQuantity('1.2345000000'), '1.2345');
+    expect(formatHoldingHistoryQuantity('0.0000000100'), '0.00000001');
+    expect(formatHoldingHistoryQuantity('1.0000000001'), '1.0000000001');
+    expect(formatHoldingHistoryQuantity('-1.2345000000'), '1.2345');
   });
 
   test('sumEntries totals only matching memos, null when none match', () {

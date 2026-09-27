@@ -43,6 +43,9 @@ class AccountsCopy {
       ? 'سجلاتك آمنة. اسحب للتحديث أو حاول مجددًا.'
       : 'Your records are safe. Pull to refresh or try again.';
   String get tryAgain => _ar ? 'حاول مجددًا' : 'Try again';
+  String get mutationUncertain => _ar
+      ? 'تعذر التأكد مما إذا تم الحفظ. تحقق من سجلاتك قبل المحاولة مرة أخرى.'
+      : "We couldn't confirm whether this was saved. Check your records before trying again.";
   String get savedRefreshFailed => _ar
       ? 'تم الحفظ بنجاح، ولكن تعذر تحميل أحدث البيانات. تظل بياناتك السابقة ظاهرة.'
       : 'Saved successfully, but the latest data could not be loaded. Your previous data remains visible.';
@@ -440,6 +443,18 @@ class AccountsCopy {
   String get amountReceived => _ar
       ? 'المبلغ المتوقع / المستلم فعليًا'
       : 'Expected / actual amount received';
+  String get transferFxLoading => _ar
+      ? 'جارٍ تقدير المبلغ بسعر الصرف الحالي. يمكنك إدخال المبلغ الفعلي.'
+      : 'Estimating with the current FX rate. You can enter the actual amount.';
+  String get transferFxEstimated => _ar
+      ? 'هذا تقدير بسعر الصرف الحالي؛ يمكنك تعديله إلى المبلغ المستلم فعليًا.'
+      : 'Current FX estimate; edit it to the actual amount received.';
+  String get transferFxManual => _ar
+      ? 'أدخل المبلغ المستلم فعليًا إذا كان مختلفًا عن التقدير.'
+      : 'Enter the actual amount received if it differs from the estimate.';
+  String get transferFxUnavailable => _ar
+      ? 'تقدير سعر الصرف التلقائي غير متاح. أدخل المبلغ المستلم فعليًا.'
+      : 'Automatic FX estimate unavailable. Enter the actual amount received.';
   String get dateTime => _ar ? 'التاريخ والوقت' : 'Date & time';
   String get notes => _ar ? 'ملاحظات' : 'Notes';
   String get saveRecord => _ar ? 'حفظ السجل' : 'Save record';
@@ -674,6 +689,9 @@ class AccountsCopy {
   String incompleteHoldings(int count) => _ar
       ? '${ltr('$count')} ${count == 1 ? 'ممتلكة لا تملك' : 'ممتلكات لا تملك'} سعرًا حاليًا، لذا لا يمكن إكمال الإجماليات أعلاه. تبقى أرقام التكلفة دقيقة.'
       : '$count ${count == 1 ? 'holding has' : 'holdings have'} no current price, so the totals above can’t be completed. Cost figures are still exact.';
+  String incompleteHoldingFx(int count) => _ar
+      ? 'يتوفر سعر حالي لـ ${ltr('$count')} ${count == 1 ? 'ممتلكة' : 'ممتلكات'}، لكن سعر الصرف المطلوب غير متاح؛ لذلك لا يمكن إكمال الإجماليات بعملة الحساب. تبقى أرقام التكلفة دقيقة.'
+      : '$count ${count == 1 ? 'holding has' : 'holdings have'} a current price, but the required FX rate is unavailable, so account-currency totals can’t be completed. Cost figures are still exact.';
   String get quantity => _ar ? 'الكمية' : 'Quantity';
   String get price => _ar ? 'السعر' : 'Price';
   String get marketValue => _ar ? 'القيمة السوقية' : 'Market value';
@@ -681,6 +699,15 @@ class AccountsCopy {
   String get currentPrice => _ar ? 'السعر الحالي' : 'Current price';
   String get noCurrentPrice =>
       _ar ? 'لا يتوفر سعر حالي' : 'No current price available';
+  String get currentFxLoading => _ar
+      ? 'جارٍ تحويل القيمة بسعر الصرف الحالي.'
+      : 'Converting with the current exchange rate.';
+  String get currentFxUnavailable => _ar
+      ? 'سعر الصرف الحالي غير متاح؛ القيمة بعملة الحساب غير متاحة.'
+      : 'Current FX unavailable; account-currency value is unavailable.';
+  String get currentFxStale => _ar
+      ? 'سعر الصرف المستخدم قديم؛ قد لا تعكس القيمة الحالية سعر الصرف الأحدث.'
+      : 'The exchange rate is stale; this value may not reflect the latest rate.';
   String get holding => _ar ? 'ممتلكة' : 'Holding';
   String get positionNoLongerOpen =>
       _ar ? 'لم تعد هذه الممتلكة مفتوحة.' : 'This position is no longer open.';

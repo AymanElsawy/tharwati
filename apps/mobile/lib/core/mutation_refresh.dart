@@ -6,6 +6,14 @@ class MutationCommitted extends MutationOutcome {
   const MutationCommitted();
 }
 
+class MutationCommittedRefreshFailed extends MutationOutcome {
+  const MutationCommittedRefreshFailed();
+}
+
+class MutationUncertain extends MutationOutcome {
+  const MutationUncertain();
+}
+
 class MutationRejected extends MutationOutcome {
   const MutationRejected(this.message);
   final String message;

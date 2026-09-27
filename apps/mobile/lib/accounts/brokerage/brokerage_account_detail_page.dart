@@ -197,7 +197,11 @@ class _BrokerageAccountDetailPageState
               ),
               const SizedBox(height: 12),
             ],
-            _Header(valuation: v, currency: currency),
+            _Header(
+              valuation: v,
+              currency: currency,
+              fxLoading: _controller.fxLoading,
+            ),
             const SizedBox(height: 14),
             Row(
               children: [
@@ -286,6 +290,7 @@ class _BrokerageAccountDetailPageState
                 _HoldingRow(
                   entry: entry,
                   accountCurrency: currency,
+                  fxLoading: _controller.fxLoading,
                   onTap: () => _openHolding(entry.holding.assetId),
                   onSell: active && !_controller.busy
                       ? () => _trade(
@@ -509,10 +514,15 @@ class _ActivityRow extends StatelessWidget {
 }
 
 class _Header extends StatelessWidget {
-  const _Header({required this.valuation, required this.currency});
+  const _Header({
+    required this.valuation,
+    required this.currency,
+    required this.fxLoading,
+  });
 
   final BrokerageValuation valuation;
   final String currency;
+  final bool fxLoading;
 
   @override
   Widget build(BuildContext context) {
@@ -575,11 +585,29 @@ class _Header extends StatelessWidget {
             copy.holdingsCost,
             MoneyFormat.money(valuation.totalCostBasis, currency),
           ),
-          if (!valuation.isComplete) ...[
+          if (valuation.missingPriceCount > 0) ...[
             const SizedBox(height: 12),
             Callout(
               tone: CalloutTone.warning,
-              message: copy.incompleteHoldings(valuation.unpricedCount),
+              message: copy.incompleteHoldings(valuation.missingPriceCount),
+            ),
+          ],
+          if (valuation.missingFxCount > 0) ...[
+            const SizedBox(height: 12),
+            Callout(
+              tone: fxLoading
+                  ? CalloutTone.info
+                  : CalloutTone.warning,
+              message: fxLoading
+                  ? copy.currentFxLoading
+                  : copy.incompleteHoldingFx(valuation.missingFxCount),
+            ),
+          ],
+          if (valuation.hasStaleFx) ...[
+            const SizedBox(height: 12),
+            Callout(
+              tone: CalloutTone.warning,
+              message: copy.currentFxStale,
             ),
           ],
         ],
@@ -611,6 +639,7 @@ class _HoldingRow extends StatelessWidget {
   const _HoldingRow({
     required this.entry,
     required this.accountCurrency,
+    required this.fxLoading,
     required this.onTap,
     required this.onSell,
     required this.onBuy,
@@ -619,6 +648,7 @@ class _HoldingRow extends StatelessWidget {
 
   final HoldingValuation entry;
   final String accountCurrency;
+  final bool fxLoading;
   final VoidCallback onTap;
   final VoidCallback? onSell;
   final VoidCallback? onBuy;
@@ -631,6 +661,7 @@ class _HoldingRow extends StatelessWidget {
     final h = entry.holding;
     final assetCurrency = h.asset.currencyCode;
     final gain = entry.unrealizedGainLoss;
+    final footer = holdingValuationFooter(entry, copy, fxLoading: fxLoading);
     final negative = gain != null && (D.compare(gain, '0') ?? 0) < 0;
 
     return InkWell(
@@ -734,10 +765,10 @@ class _HoldingRow extends StatelessWidget {
                   fontWeight: FontWeight.w700,
                 ),
               ),
-            ] else ...[
+            ] else if (footer != null) ...[
               const SizedBox(height: 8),
               Text(
-                copy.noCurrentPrice,
+                footer,
                 style: TextStyle(color: c.inkMuted, fontSize: 12),
               ),
             ],
@@ -764,4 +795,17 @@ class _HoldingRow extends StatelessWidget {
       ),
     ],
   );
+}
+
+/// Explains the missing dependency without contradicting a visible quote.
+String? holdingValuationFooter(
+  HoldingValuation entry,
+  AccountsCopy copy, {
+  bool fxLoading = false,
+}) {
+  if (entry.needsFx) {
+    return fxLoading ? copy.currentFxLoading : copy.currentFxUnavailable;
+  }
+  if (entry.marketPrice == null) return copy.noCurrentPrice;
+  return null;
 }

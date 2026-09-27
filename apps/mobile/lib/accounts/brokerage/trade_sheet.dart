@@ -1,7 +1,6 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 
 import '../../core/local_datetime.dart';
 import '../../core/money_format.dart';
@@ -58,7 +57,6 @@ class _TradeSheetState extends State<TradeSheet> {
   /// resolved from search.
   Asset? _asset;
   bool _submitted = false;
-  Map<String, String> _errors = const {};
 
   bool get _isBuy => widget.side == TradeSide.buy;
 
@@ -97,11 +95,11 @@ class _TradeSheetState extends State<TradeSheet> {
 
   void _sync() {
     _v
-      ..quantity = _quantity.text.trim()
-      ..unitPrice = _price.text.trim()
-      ..fees = _fees.text.trim()
+      ..quantity = _quantity.text
+      ..unitPrice = _price.text
+      ..fees = _fees.text
       ..notes = _notes.text
-      ..accountFxRate = _crossCurrency ? _rate.text.trim() : null;
+      ..accountFxRate = _crossCurrency ? _rate.text : null;
   }
 
   Future<void> _pickAsset() async {
@@ -172,15 +170,36 @@ class _TradeSheetState extends State<TradeSheet> {
     );
     setState(() {
       _submitted = true;
-      _errors = errs;
     });
     if (errs.isNotEmpty) return;
     final ok = await widget.controller.submitTrade(_v);
     if (ok && mounted) Navigator.of(context).pop(true);
   }
 
-  String? _err(String field, AccountsCopy copy) =>
-      _submitted ? copy.tradeValidation(_errors[field]) : null;
+  String get _decimalHint =>
+      AppLanguageScope.of(context).language == AppLanguage.ar
+      ? 'استخدم الأرقام ونقطة عشرية (.)، بحد أقصى 18 رقمًا و10 منازل عشرية.'
+      : 'Use digits and a decimal point (.), up to 18 digits and 10 decimals.';
+
+  String? _err(String field, AccountsCopy copy) {
+    final raw = switch (field) {
+      'quantity' => _v.quantity,
+      'unitPrice' => _v.unitPrice,
+      'fees' => _v.fees,
+      'accountFxRate' => _v.accountFxRate ?? '',
+      _ => '',
+    };
+    if (raw.isNotEmpty && !isTradeDecimalLiteral(raw)) return _decimalHint;
+    if (!_submitted && raw.isEmpty) return null;
+    return copy.tradeValidation(
+      validateTrade(
+        _v,
+        sellingFrom: _isBuy
+            ? null
+            : widget.controller.holdingForAsset(_v.assetId),
+      )[field],
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -199,6 +218,10 @@ class _TradeSheetState extends State<TradeSheet> {
           fees: _v.fees,
           accountFxRate: _v.accountFxRate,
         );
+        final accountPreview =
+            _crossCurrency && validateTrade(_v).containsKey('accountFxRate')
+            ? null
+            : preview.accountTotal;
 
         return AppSheet(
           title: _isBuy ? copy.buy : copy.sell,
@@ -267,6 +290,10 @@ class _TradeSheetState extends State<TradeSheet> {
               hint: copy.currencyValue(assetCurrency),
               error: _err('fees', copy),
               child: _num(_fees, '0.00'),
+            ),
+            Text(
+              _decimalHint,
+              style: TextStyle(color: c.inkMuted, fontSize: 12),
             ),
             if (_crossCurrency)
               SheetField(
@@ -344,7 +371,7 @@ class _TradeSheetState extends State<TradeSheet> {
                       c,
                       _isBuy ? copy.cashDebited : copy.cashCredited,
                       MoneyFormat.money(
-                        preview.accountTotal,
+                        accountPreview,
                         widget.account.currencyCode,
                       ),
                       strong: true,
@@ -392,7 +419,6 @@ class _TradeSheetState extends State<TradeSheet> {
     child: TextField(
       controller: controller,
       keyboardType: const TextInputType.numberWithOptions(decimal: true),
-      inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[0-9.]'))],
       textDirection: TextDirection.ltr,
       onChanged: (_) => setState(_sync),
       decoration: InputDecoration(hintText: hint),

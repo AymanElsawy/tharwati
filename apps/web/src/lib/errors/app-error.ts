@@ -6,7 +6,7 @@ export type AppErrorCode =
   | "offline" | "timeout" | "service_unavailable"
   | "market_price_unavailable" | "fx_unavailable" | "fx_stale" | "unknown"
 
-export type AppMutationOutcome = "rejected" | "committed_refresh_failed" | "uncertain"
+export type AppMutationOutcome = "rejected" | "committed" | "committed_refresh_failed" | "uncertain"
 
 export type ClassifiedAppError = { code: AppErrorCode; cause: unknown }
 

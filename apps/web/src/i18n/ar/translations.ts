@@ -685,6 +685,7 @@ export const ar: Record<TranslationKey, string> = {
   "accounts.filters.allStatuses": "جميع الحالات",
   "accounts.filters.results": "{{count}} حسابات",
   "accounts.records.title": "سجلات الحساب",
+  "accounts.records.mutationUncertain": "تعذر التأكد مما إذا تم الحفظ. تحقق من سجلاتك قبل المحاولة مرة أخرى.",
   "accounts.records.empty": "لا توجد سجلات للحساب بعد.",
   "accounts.records.error": "تعذر تحميل سجلات الحساب.",
   "accounts.records.savedRefreshFailed":

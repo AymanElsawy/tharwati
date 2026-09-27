@@ -377,6 +377,45 @@ The Add Metal Record dialog shows purity, date and time, grams, cost per gram, o
 
 ## 4. Business logic (create/update/close/reopen/delete)
 
+### Bounded Account Record and Refund writes (Slice 2B-1A)
+
+Web and Mobile apply the shared mutation outcome contract only to new Income,
+Expense, Transfer, Refund creation, and Refund cancellation. These retain the
+existing idempotent RPCs and financial payloads. Corrections, reversals, and all
+other mutations keep their existing execution paths.
+
+- `rejected`: a definitive server rejection, displayed through safe localized
+  validation/business copy without backend details.
+- `committed`: an authoritative success or same-key replay acknowledgement.
+- `committed_refresh_failed`: the write is confirmed, but its subsequent refresh
+  failed. The existing localized saved/refresh warning and read-only retry remain.
+- `uncertain`: the 45-second write deadline expired, or a transport/service error
+  left commitment unknown. EN/AR copy asks the user to check records before trying
+  again; timeout never means the financial operation failed.
+
+The write deadline starts immediately before dispatch and stops on the write
+response; refresh reads retain their separate deadlines and generation guards.
+There are no automatic write retries. Each retained attempt captures its immutable
+ID, operation/account scope, canonical decimal-string payload fingerprint,
+idempotency UUID, and dispatch payload. An explicit unchanged retry reuses the
+original UUID. A different payload gets a different UUID without discarding the
+unresolved original. Retrying a known committed attempt performs reads only.
+
+Late success can confirm its original attempt, including after timeout. Form
+ownership guards prevent it from closing or changing an edited, dismissed, or
+newer form. Confirmed commitment cannot be downgraded by an older delivery error.
+An unresolved-attempt warning remains on Account Records while its owner retains
+an uncertain attempt, even when the user submits different data.
+
+Recovery is deliberately in memory only: Web owns attempts in the Account Records
+page and Mobile in its Records controller. Dismissing a form does not discard an
+unresolved attempt while that owner survives, but reopening with a different
+default date/time is a different payload. There is no persistent attempt journal,
+automatic verification, or recovery guarantee after leaving/destroying the owner,
+browser reload, or app restart. Users must inspect their records before submitting
+again after losing that ownership. A successful ordinary refresh alone does not
+prove that an uncertain write committed.
+
 ### Account lifecycle (current source of truth)
 
 - New accounts are active; the metadata form does not edit lifecycle state.
@@ -768,10 +807,17 @@ the shared `DataChange` signal.
 `lib/financial-calculations/valuation.ts` raises `FinancialCalculationError` on
 a missing price, a cost/price currency mismatch, or a zero cost basis. On a
 phone one unpriced asset must not blank the screen, so
-`brokerage_valuation.dart` returns null for those and the UI renders "—". The
-account totals go null the moment *any* holding is unpriced rather than summing
-the priced subset: a partial sum against a full cost basis reads as a loss the
-user never took. `unpricedCount` drives a callout explaining the gap. This is
+`brokerage_valuation.dart` renders a valid quote and quantity × price in the
+asset currency even when the account currency differs. Brokerage Account
+Details requests deduplicated current `fx-rates` pairs through the existing
+Mobile Portfolio FX source and converts native holding values with decimal
+strings before account-currency aggregation and unrealized P/L. A failed FX
+read leaves the native quote visible, with account totals unavailable; missing
+FX and missing price have distinct warnings. Stale FX metadata is retained and
+shown as a warning when a stale rate is used. The account
+totals go null the moment *any* holding lacks an account-currency value rather
+than summing the valued subset: a partial sum against a full cost basis reads
+as a loss the user never took. This is
 the same information the web carries in `missingPriceHoldings` /
 `completenessStatus`.
 
@@ -832,8 +878,15 @@ feed must not hide the portfolio (web keeps separate `holdingsError` /
   the live metal price (same reuse decision as Flow 2); if it fails the value
   reads "Unavailable".
 - **Cross-currency transfers** in the record form require a manual "amount
-  received" — mobile has no live FX-rate service, so the web auto-estimate
-  (`estimateTransferReceived` → `exchangeRateService`) is not ported.
+  received" only when the automatic current-FX estimate is unavailable. Mobile
+  requests the existing `fx-rates` current path for a valid cross-currency
+  sent amount, prefills the decimal-safe estimated received amount, and lets
+  the user replace it with the actual amount. Changing either account or the
+  sent amount clears the prior received value and starts a fresh estimate;
+  late responses cannot replace a manual value or a newer context. The final
+  displayed positive received amount is the value submitted. An unavailable
+  FX rate leaves the field blank rather than showing zero. Same-currency
+  transfers mirror the sent amount without an FX request.
 - **Records local time zone** — `get_account_record_history`'s `p_time_zone`
   falls back to `"UTC"` unless the platform reports an IANA name; the ISO
   timestamps still carry the real offset so day bucketing is close.

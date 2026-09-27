@@ -45,6 +45,112 @@ MarketPrice price({
 );
 
 void main() {
+  group('USD VOO market-price path', () {
+    final voo = Holding(
+      id: 'holding-voo',
+      accountId: 'usd-brokerage',
+      assetId: 'asset-voo',
+      quantity: '1.0000000000',
+      averageCost: '450',
+      totalCostBasis: '450',
+      costCurrencyCode: 'USD',
+      asset: const Asset(
+        id: 'asset-voo',
+        name: 'Vanguard S&P 500 ETF',
+        symbol: 'VOO',
+        exchange: 'NYSE',
+        assetTypeCode: 'etf',
+        currencyCode: 'USD',
+        canonicalQuantityUnit: 'shares',
+      ),
+    );
+
+    Map<String, dynamic> quote({
+      Object? value = '500.1234567890',
+      bool available = true,
+      bool stale = false,
+    }) => {
+      'assetId': 'asset-voo',
+      'available': available,
+      'provider': 'twelve_data',
+      'price': value,
+      'currencyCode': 'USD',
+      'effectiveAt': '2026-09-26T12:00:00Z',
+      'priceType': stale ? 'stale' : 'realtime',
+      'stale': stale,
+    };
+
+    test('valid same-currency quote keeps price and exact market value', () {
+      final parsed = MarketPrice.fromRow(quote());
+      expect(parsed?.assetId, voo.assetId);
+      expect(parsed?.price, '500.1234567890');
+      final valued = valueBrokerageAccount(
+        holdings: [voo],
+        pricesByAssetId: {voo.assetId: parsed!},
+        cashBalance: '100',
+      );
+      expect(valued.holdings.single.marketPrice?.price, parsed.price);
+      expect(
+        D.compare(valued.holdings.single.marketValue, '500.1234567890'),
+        0,
+      );
+      expect(D.compare(valued.currentValue, '600.1234567890'), 0);
+    });
+
+    test('missing and invalid quotes stay unavailable rather than zero', () {
+      expect(MarketPrice.fromRow(quote(value: '0')), isNull);
+      expect(MarketPrice.fromRow(quote(value: 'invalid')), isNull);
+      expect(MarketPrice.fromRow(quote(available: false, value: null)), isNull);
+      final valued = valueBrokerageAccount(
+        holdings: [voo],
+        pricesByAssetId: const {},
+        cashBalance: '100',
+      );
+      expect(valued.holdings.single.marketPrice, isNull);
+      expect(valued.holdings.single.marketValue, isNull);
+      expect(valued.totalMarketValue, isNull);
+      expect(valued.currentValue, isNull);
+    });
+
+    test('a valid stale snapshot retains its stale marker', () {
+      final parsed = MarketPrice.fromRow(quote(stale: true));
+      expect(parsed?.stale, isTrue);
+      expect(valueHolding(voo, parsed).marketPrice?.stale, isTrue);
+    });
+
+    test(
+      'USD quote retains native value while SAR account totals need FX',
+      () {
+        final sarHolding = Holding(
+          id: voo.id,
+          accountId: 'sar-brokerage',
+          assetId: voo.assetId,
+          quantity: voo.quantity,
+          averageCost: voo.averageCost,
+          totalCostBasis: voo.totalCostBasis,
+          costCurrencyCode: 'SAR',
+          asset: voo.asset,
+        );
+        final valued = valueHolding(sarHolding, MarketPrice.fromRow(quote()));
+        expect(valued.marketPrice?.price, '500.1234567890');
+        expect(D.compare(valued.marketValue, '500.1234567890'), 0);
+        expect(valued.accountMarketValue, isNull);
+        expect(valued.needsFx, isTrue);
+        expect(valued.unrealizedGainLoss, isNull);
+        final account = valueBrokerageAccount(
+          holdings: [sarHolding],
+          pricesByAssetId: {voo.assetId: MarketPrice.fromRow(quote())!},
+          cashBalance: '100',
+        );
+        expect(account.totalMarketValue, isNull);
+        expect(account.currentValue, isNull);
+        expect(account.totalUnrealizedGainLoss, isNull);
+        expect(account.missingFxCount, 1);
+        expect(account.missingPriceCount, 0);
+      },
+    );
+  });
+
   group('valueHolding', () {
     test('market value, gain and return percent', () {
       final v = valueHolding(holding(), price());
@@ -64,6 +170,13 @@ void main() {
       expect(v.marketValue, isNull);
       expect(v.unrealizedGainLoss, isNull);
       expect(v.isPriced, isFalse);
+      final account = valueBrokerageAccount(
+        holdings: [holding()],
+        pricesByAssetId: const {},
+        cashBalance: '10',
+      );
+      expect(account.missingPriceCount, 1);
+      expect(account.missingFxCount, 0);
     });
 
     // The web raises `currency_mismatch` rather than valuing across currencies;

@@ -227,8 +227,8 @@ export function getRecordAccounts(accounts: readonly AccountSummary[]) {
 
 export async function estimateTransferReceived(
   amount: Decimal,
-  from: AccountSummary,
-  to: AccountSummary
+  from: Pick<AccountSummary, "currency_code">,
+  to: Pick<AccountSummary, "currency_code">
 ): Promise<Decimal> {
   if (from.currency_code === to.currency_code) return amount
   const resolved = await exchangeRateService.resolveCurrentRate({

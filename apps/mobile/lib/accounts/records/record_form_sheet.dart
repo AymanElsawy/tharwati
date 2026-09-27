@@ -5,19 +5,22 @@ import '../../core/local_datetime.dart';
 import '../../core/decimals.dart';
 import '../../i18n/accounts_copy.dart';
 import '../../i18n/app_language.dart';
+import '../../portfolio/portfolio_models.dart';
+import '../../portfolio/portfolio_repository.dart';
 import '../../theme/tokens.dart';
 import '../../widgets/app_sheet.dart';
 import '../../widgets/primary_button.dart';
 import '../account_models.dart';
 import 'record_category_picker.dart';
 import 'record_schema.dart';
+import 'record_submission.dart';
 import 'records_controller.dart';
 import 'records_models.dart';
 import 'refund_sheet.dart';
 
 /// Add / edit an account record — port of the web `AccountRecordFormDialog`.
 /// Income / expense take a category; transfer takes a destination account and,
-/// when the currencies differ, a manual "amount received".
+/// when the currencies differ, an editable current-FX estimate.
 class RecordFormSheet extends StatefulWidget {
   const RecordFormSheet({
     super.key,
@@ -25,12 +28,14 @@ class RecordFormSheet extends StatefulWidget {
     required this.recordAccounts,
     this.initialAccount,
     this.editing,
+    this.fxRateLoader,
   });
 
   final RecordsController controller;
   final List<Account> recordAccounts;
   final Account? initialAccount;
   final EditableAccountRecord? editing;
+  final Future<PortfolioFxRate?> Function(String from, String to)? fxRateLoader;
 
   @override
   State<RecordFormSheet> createState() => _RecordFormSheetState();
@@ -106,6 +111,11 @@ class _RecordFormSheetState extends State<RecordFormSheet> {
   final _notes = TextEditingController();
   bool _submitted = false;
   Map<String, String> _errors = const {};
+  int _fxRequestVersion = 0;
+  bool _receivedIsManual = false;
+  bool _fxUnavailable = false;
+  bool _fxLoading = false;
+  bool _hasEstimate = false;
 
   bool get _isEditing => widget.editing != null;
   bool get _isDirty {
@@ -133,10 +143,15 @@ class _RecordFormSheetState extends State<RecordFormSheet> {
     _amount.text = D.normalize(_v.amount) ?? _v.amount;
     _received.text = _v.receivedAmount;
     _notes.text = _v.notes;
+    _receivedIsManual = _received.text.isNotEmpty;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted && !_receivedIsManual) _requestFxEstimate();
+    });
   }
 
   @override
   void dispose() {
+    _fxRequestVersion++;
     _amount.dispose();
     _received.dispose();
     _notes.dispose();
@@ -157,6 +172,93 @@ class _RecordFormSheetState extends State<RecordFormSheet> {
     return from != null && to != null && from.currencyCode != to.currencyCode;
   }
 
+  ({String from, String to, String amount})? get _fxContext {
+    if (!_crossCurrency) return null;
+    final amount = _amount.text.trim();
+    if (!RegExp(r'^\d{1,18}(?:\.\d{1,2})?$').hasMatch(amount) ||
+        !D.isPositive(amount)) {
+      return null;
+    }
+    return (
+      from: _acc(_v.accountId)!.currencyCode,
+      to: _acc(_v.toAccountId)!.currencyCode,
+      amount: amount,
+    );
+  }
+
+  void _financialInputChanged() {
+    setState(() {
+      _fxRequestVersion++;
+      _received.clear();
+      _receivedIsManual = false;
+      _fxUnavailable = false;
+      _fxLoading = false;
+      _hasEstimate = false;
+    });
+    _requestFxEstimate();
+  }
+
+  void _refreshReceivedError() {
+    if (!_submitted) return;
+    _sync();
+    final error = validateAccountRecordForm(_v)['receivedAmount'];
+    _errors = {..._errors};
+    if (error == null) {
+      _errors.remove('receivedAmount');
+    } else {
+      _errors['receivedAmount'] = error;
+    }
+  }
+
+  Future<void> _requestFxEstimate() async {
+    final context = _fxContext;
+    if (context == null) return;
+    final version = ++_fxRequestVersion;
+    setState(() {
+      _fxLoading = true;
+      _fxUnavailable = false;
+    });
+    try {
+      final rate = await (widget.fxRateLoader ??
+          SupabasePortfolioDataSource().loadFxRate)(context.from, context.to);
+      if (!mounted ||
+          version != _fxRequestVersion ||
+          _fxContext != context ||
+          _receivedIsManual) {
+        return;
+      }
+      final multiplied = rate == null || rate.stale ||
+              rate.fromCurrencyCode != context.from ||
+              rate.toCurrencyCode != context.to || !D.isPositive(rate.rate)
+          ? null
+          : D.multiply(context.amount, rate.rate);
+      final estimate = multiplied == null
+          ? null
+          : D.divide(multiplied, '1', scale: 2);
+      setState(() {
+        _fxLoading = false;
+        if (D.isPositive(estimate)) {
+          _received.text = estimate!;
+          _hasEstimate = true;
+          _refreshReceivedError();
+        } else {
+          _fxUnavailable = true;
+        }
+      });
+    } catch (_) {
+      if (!mounted ||
+          version != _fxRequestVersion ||
+          _fxContext != context ||
+          _receivedIsManual) {
+        return;
+      }
+      setState(() {
+        _fxLoading = false;
+        _fxUnavailable = true;
+      });
+    }
+  }
+
   void _sync() {
     _v
       ..amount = _amount.text.trim()
@@ -175,11 +277,19 @@ class _RecordFormSheetState extends State<RecordFormSheet> {
       _errors = errs;
     });
     if (errs.isNotEmpty) return;
+    final fingerprint = accountRecordSubmissionFingerprint(_v);
+    bool current() {
+      if (!mounted || ModalRoute.of(context)?.isCurrent == false) return false;
+      _sync();
+      return accountRecordSubmissionFingerprint(_v) == fingerprint;
+    }
     final ok = await widget.controller.submit(
       _v,
       editingId: widget.editing?.id,
+      isCurrent: current,
+      onCommitted: () { if (current()) Navigator.of(context).pop(true); },
     );
-    if (ok && mounted) Navigator.of(context).pop(true);
+    if (_isEditing && ok && mounted) Navigator.of(context).pop(true);
   }
 
   Future<void> _confirmDelete() async {
@@ -216,6 +326,7 @@ class _RecordFormSheetState extends State<RecordFormSheet> {
     final main = widget.controller.categories.where((item) => item.id == _v.mainCategoryId).firstOrNull;
     final sub = main?.subcategories.where((item) => item.id == _v.subcategoryId).firstOrNull;
     final category = sub == null ? (main?.name ?? '') : '${main!.name} → ${sub.name}';
+    widget.controller.clearActionError();
     final refundCreated = await showAppSheet<bool>(
       context,
       builder: (_) => RefundSheet(
@@ -251,17 +362,20 @@ class _RecordFormSheetState extends State<RecordFormSheet> {
           children: [
             _TypeToggle(
               value: _v.type,
-              onChanged: (t) => setState(() {
-                final previousType = _v.type;
-                _v.type = t;
-                if (t == AccountRecordType.transfer) {
-                  if (previousType != AccountRecordType.transfer) {
-                    _v.toAccountId = '';
+              onChanged: (t) {
+                setState(() {
+                  final previousType = _v.type;
+                  _v.type = t;
+                  if (t == AccountRecordType.transfer) {
+                    if (previousType != AccountRecordType.transfer) {
+                      _v.toAccountId = '';
+                    }
+                    _v.mainCategoryId = '';
+                    _v.subcategoryId = '';
                   }
-                  _v.mainCategoryId = '';
-                  _v.subcategoryId = '';
-                }
-              }),
+                });
+                _financialInputChanged();
+              },
             ),
             const SizedBox(height: 14),
 
@@ -275,10 +389,13 @@ class _RecordFormSheetState extends State<RecordFormSheet> {
                     )
                   : widget.recordAccounts,
               error: _err(context, 'accountId'),
-              onChanged: (v) => setState(() {
-                _v.accountId = v;
-                if (isTransfer && v == _v.toAccountId) _v.toAccountId = '';
-              }),
+              onChanged: (v) {
+                setState(() {
+                  _v.accountId = v;
+                  if (isTransfer && v == _v.toAccountId) _v.toAccountId = '';
+                });
+                if (isTransfer) _financialInputChanged();
+              },
             ),
 
             if (isTransfer)
@@ -290,10 +407,13 @@ class _RecordFormSheetState extends State<RecordFormSheet> {
                   oppositeAccountId: _v.accountId,
                 ),
                 error: _err(context, 'toAccountId'),
-                onChanged: (v) => setState(() {
-                  _v.toAccountId = v;
-                  if (v == _v.accountId) _v.accountId = '';
-                }),
+                onChanged: (v) {
+                  setState(() {
+                    _v.toAccountId = v;
+                    if (v == _v.accountId) _v.accountId = '';
+                  });
+                  _financialInputChanged();
+                },
               )
             else
               RecordCategoryField(
@@ -317,16 +437,33 @@ class _RecordFormSheetState extends State<RecordFormSheet> {
             SheetField(
               label: isTransfer ? copy.amountSent : copy.amount,
               error: _err(context, 'amount'),
-              child: _amountField(_amount, from?.currencyCode),
+              child: _amountField(
+                _amount,
+                from?.currencyCode,
+                onChanged: isTransfer ? _financialInputChanged : null,
+              ),
             ),
 
             if (isTransfer && _crossCurrency)
               SheetField(
                 label: copy.amountReceived,
+                hint: _fxUnavailable
+                    ? copy.transferFxUnavailable
+                    : _fxLoading
+                    ? copy.transferFxLoading
+                    : _hasEstimate && !_receivedIsManual
+                    ? copy.transferFxEstimated
+                    : copy.transferFxManual,
                 error: _err(context, 'receivedAmount'),
                 child: _amountField(
                   _received,
                   _acc(_v.toAccountId)?.currencyCode,
+                  hintText: '—',
+                  onChanged: () => setState(() {
+                    _receivedIsManual = true;
+                    _hasEstimate = false;
+                    _refreshReceivedError();
+                  }),
                 ),
               ),
 
@@ -475,7 +612,12 @@ class _RecordFormSheetState extends State<RecordFormSheet> {
     );
   }
 
-  Widget _amountField(TextEditingController ctl, String? currency) {
+  Widget _amountField(
+    TextEditingController ctl,
+    String? currency, {
+    String hintText = '0.00',
+    VoidCallback? onChanged,
+  }) {
     final c = context.colors;
     return SheetBox(
       child: Row(
@@ -490,11 +632,17 @@ class _RecordFormSheetState extends State<RecordFormSheet> {
                 FilteringTextInputFormatter.allow(RegExp(r'[0-9.]')),
               ],
               textDirection: TextDirection.ltr,
-              onChanged: (_) => setState(() {}),
-              decoration: const InputDecoration(
+              onChanged: (_) {
+                if (onChanged != null) {
+                  onChanged();
+                } else {
+                  setState(() {});
+                }
+              },
+              decoration: InputDecoration(
                 border: InputBorder.none,
                 isCollapsed: true,
-                hintText: '0.00',
+                hintText: hintText,
               ),
               style: TextStyle(
                 color: c.ink,

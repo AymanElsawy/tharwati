@@ -3,10 +3,13 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 
 import '../../core/data_change.dart';
+import '../../core/decimals.dart';
 import '../../core/idempotency_key.dart';
 import '../../core/mutation_refresh.dart';
 import '../../core/read_deadline.dart';
 import '../../errors/safe_app_error.dart';
+import '../../portfolio/portfolio_models.dart';
+import '../../portfolio/portfolio_repository.dart';
 import '../account_models.dart';
 import '../accounts_repository.dart' show AccountsException;
 import '../accounts_service.dart';
@@ -24,13 +27,18 @@ class BrokerageController extends ChangeNotifier {
   BrokerageController({
     required this.accountId,
     BrokerageRepository? repository,
-  }) : _repo = repository ?? BrokerageRepository();
+    Future<PortfolioFxRate?> Function(String from, String to)? fxRateLoader,
+  }) : _repo = repository ?? BrokerageRepository(),
+       _fxRateLoader = fxRateLoader ??
+           ((from, to) => SupabasePortfolioDataSource().loadFxRate(from, to));
 
   final String accountId;
   final BrokerageRepository _repo;
+  final Future<PortfolioFxRate?> Function(String from, String to) _fxRateLoader;
 
   BrokerageStatus status = BrokerageStatus.loading;
   BrokerageValuation? valuation;
+  bool fxLoading = false;
   bool busy = false;
   String? actionError;
 
@@ -54,9 +62,16 @@ class BrokerageController extends ChangeNotifier {
   /// Guards against a slow reload overwriting a newer one.
   int _requestVersion = 0;
 
+  @override
+  void dispose() {
+    _requestVersion++;
+    super.dispose();
+  }
+
   Future<bool> load({bool preserveOnError = false}) async {
     final version = ++_requestVersion;
     if (!preserveOnError) status = BrokerageStatus.loading;
+    fxLoading = false;
     notifyListeners();
     try {
       final (holdings, prices, cash) = await readWithDeadline(
@@ -71,6 +86,20 @@ class BrokerageController extends ChangeNotifier {
         },
       );
       if (version != _requestVersion) return false;
+      final pairs = <String, (String, String)>{};
+      for (final holding in holdings) {
+        final price = prices[holding.assetId];
+        if (!D.isPositive(holding.quantity) ||
+            price == null ||
+            price.currencyCode != holding.asset.currencyCode ||
+            price.currencyCode == holding.costCurrencyCode) {
+          continue;
+        }
+        pairs['${price.currencyCode}/${holding.costCurrencyCode}'] = (
+          price.currencyCode,
+          holding.costCurrencyCode,
+        );
+      }
       valuation = valueBrokerageAccount(
         holdings: holdings,
         pricesByAssetId: prices,
@@ -78,6 +107,36 @@ class BrokerageController extends ChangeNotifier {
       );
       status = BrokerageStatus.ready;
       readErrorCode = null;
+      fxLoading = pairs.isNotEmpty;
+      if (fxLoading) notifyListeners();
+
+      if (pairs.isNotEmpty) {
+        final results = await Future.wait([
+          for (final entry in pairs.entries)
+            () async {
+              try {
+                return MapEntry(
+                  entry.key,
+                  await _fxRateLoader(entry.value.$1, entry.value.$2),
+                );
+              } catch (_) {
+                return MapEntry<String, PortfolioFxRate?>(entry.key, null);
+              }
+            }(),
+        ]);
+        if (version != _requestVersion) return false;
+        valuation = valueBrokerageAccount(
+          holdings: holdings,
+          pricesByAssetId: prices,
+          fxRatesByPair: {
+            for (final result in results)
+              if (result.value != null) result.key: result.value!,
+          },
+          cashBalance: cash,
+        );
+        fxLoading = false;
+        notifyListeners();
+      }
 
       try {
         final rows = await _repo.getActivity(accountId);
@@ -94,6 +153,7 @@ class BrokerageController extends ChangeNotifier {
       }
     } catch (error) {
       if (version != _requestVersion) return false;
+      fxLoading = false;
       readErrorCode = classifyAppError(error).code;
       if (preserveOnError) {
         refreshStale = true;
@@ -333,34 +393,35 @@ Map<String, String> validateExistingHolding(
 }
 
 /// Validation for the buy / sell form — mirrors the web dialogs' `valid` gate.
+final RegExp _tradeDecimalPattern = RegExp(r'^\d{1,18}(?:\.\d{1,10})?$');
+
+/// Trade inputs use ASCII digits and a dot; other separators are never removed.
+bool isTradeDecimalLiteral(String value) =>
+    _tradeDecimalPattern.hasMatch(value);
+
 Map<String, String> validateTrade(TradeFormValues v, {Holding? sellingFrom}) {
   final errors = <String, String>{};
-  final positive = RegExp(r'^\d{1,18}(?:\.\d{1,10})?$');
-  final money = RegExp(r'^\d{1,18}(?:\.\d{1,10})?$');
 
   if (v.assetId.trim().isEmpty) {
     errors['assetId'] = 'Choose an instrument.';
   }
-  final qty = v.quantity.trim();
-  if (!positive.hasMatch(qty) ||
-      double.tryParse(qty) == null ||
-      double.parse(qty) <= 0) {
+  final qty = v.quantity;
+  if (!isTradeDecimalLiteral(qty) || (D.compare(qty, '0') ?? 0) <= 0) {
     errors['quantity'] = 'Enter a quantity greater than zero.';
   } else if (v.side == TradeSide.sell && sellingFrom != null) {
-    final held = double.tryParse(sellingFrom.quantity) ?? 0;
-    if (double.parse(qty) > held) {
-      errors['quantity'] = 'You only hold ${sellingFrom.quantity}.';
+    final comparison = D.compare(qty, sellingFrom.quantity);
+    if (comparison == null || comparison > 0) {
+      errors['quantity'] =
+          'You only hold ${D.normalize(sellingFrom.quantity) ?? sellingFrom.quantity}.';
     }
   }
-  final price = v.unitPrice.trim();
-  if (!money.hasMatch(price) ||
-      double.tryParse(price) == null ||
-      double.parse(price) <= 0) {
+  final price = v.unitPrice;
+  if (!isTradeDecimalLiteral(price) || (D.compare(price, '0') ?? 0) <= 0) {
     errors['unitPrice'] = 'Enter a price greater than zero.';
   }
-  final fees = v.fees.trim();
+  final fees = v.fees;
   if (fees.isNotEmpty &&
-      (!money.hasMatch(fees) || (double.tryParse(fees) ?? -1) < 0)) {
+      (!isTradeDecimalLiteral(fees) || (D.compare(fees, '0') ?? -1) < 0)) {
     errors['fees'] = 'Fees must be zero or more.';
   }
   if (DateTime.tryParse(v.occurredAt) == null) {
@@ -368,9 +429,9 @@ Map<String, String> validateTrade(TradeFormValues v, {Holding? sellingFrom}) {
   }
   final rate = v.accountFxRate;
   if (rate != null &&
-      (rate.trim().isEmpty ||
-          !money.hasMatch(rate.trim()) ||
-          (double.tryParse(rate.trim()) ?? 0) <= 0)) {
+      (rate.isEmpty ||
+          !isTradeDecimalLiteral(rate) ||
+          (D.compare(rate, '0') ?? 0) <= 0)) {
     errors['accountFxRate'] = 'Enter the exchange rate for this trade.';
   }
   return errors;

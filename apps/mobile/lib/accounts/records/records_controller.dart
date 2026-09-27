@@ -1,11 +1,15 @@
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
 import '../../errors/safe_app_error.dart';
 import '../../i18n/app_language.dart';
 
 import '../../core/data_change.dart';
-import '../../core/idempotency_key.dart';
+import '../../core/retained_mutation.dart';
+import '../../core/decimals.dart';
+import '../../core/local_datetime.dart';
+import '../../i18n/accounts_copy.dart';
 import 'record_submission.dart';
 import '../../core/mutation_refresh.dart';
 import '../account_models.dart';
@@ -23,6 +27,7 @@ enum RecordsStatus { loading, error, ready }
 /// mutations, and the visible category tree used for labels and the picker.
 class RecordsController extends ChangeNotifier {
   RecordsController({required this.accountId, RecordsRepository? repository,
+    this.writeDeadline = ledgerWriteDeadline,
     AppLanguage Function()? language})
     : _repo = repository ?? RecordsRepository(),
       _language = language ?? (() => AppLanguage.en);
@@ -30,6 +35,7 @@ class RecordsController extends ChangeNotifier {
   final String accountId;
   final RecordsRepository _repo;
   final AppLanguage Function() _language;
+  final Duration writeDeadline;
 
   RecordsStatus status = RecordsStatus.loading;
   List<AccountRecord> records = const [];
@@ -46,9 +52,20 @@ class RecordsController extends ChangeNotifier {
   String? accountBalance;
   bool hasAuthoritativeBalance = false;
   bool refreshStale = false;
-  final PayloadIdempotencyKey _refundCancellationAttempt =
-      PayloadIdempotencyKey();
-  final PayloadIdempotencyKey _recordCreationAttempt = PayloadIdempotencyKey();
+  final _mutations = RetainedMutations();
+  MutationOutcome? mutationOutcome;
+  bool get hasUncertainMutation => _mutations.hasUncertain;
+  int _mutationVersion = 0;
+  int _mutationViewVersion = 0;
+  bool _disposed = false;
+
+  @override
+  void dispose() {
+    _disposed = true;
+    _requestVersion++;
+    _mutationVersion++;
+    super.dispose();
+  }
 
   int _requestVersion = 0;
 
@@ -159,6 +176,7 @@ class RecordsController extends ChangeNotifier {
   void clearFilters() => setFilters(AccountRecordHistoryFilters());
 
   void clearActionError() {
+    _mutationViewVersion++;
     if (actionError == null) return;
     actionError = null;
     notifyListeners();
@@ -177,26 +195,25 @@ class RecordsController extends ChangeNotifier {
   Future<bool> submit(
     AccountRecordFormValues values, {
     String? editingId,
+    bool Function()? isCurrent,
+    VoidCallback? onCommitted,
   }) async {
     if (editingId != null) {
       return _run(() => _repo.correctRecord(editingId, values));
     }
-    final key = _recordCreationAttempt.forPayload(
-      accountRecordSubmissionFingerprint(values),
-    );
-    final committed = await _run(() => _repo.addRecord(values, key));
-    if (committed) _recordCreationAttempt.clear();
-    return committed;
+    final payload = values.copy();
+    return _runLedger(_mutations.prepare('$accountId:record.create',
+      accountRecordSubmissionFingerprint(payload),
+      (key) => _repo.addRecord(payload, key)),
+      isCurrent: isCurrent, onCommitted: onCommitted);
   }
 
   Future<bool> reverse(String recordId) =>
       _run(() => _repo.reverseRecord(recordId));
 
   Future<bool> cancelRefund(String recordId) async {
-    final key = _refundCancellationAttempt.forPayload(recordId);
-    final committed = await _run(() => _repo.cancelRefund(recordId, key));
-    if (committed) _refundCancellationAttempt.clear();
-    return committed;
+    return _runLedger(_mutations.prepare('$accountId:refund.cancel', recordId,
+      (key) => _repo.cancelRefund(recordId, key)));
   }
 
   Future<ExpenseRefundSummary?> refundSummary(String expenseId) async {
@@ -216,18 +233,78 @@ class RecordsController extends ChangeNotifier {
     required String occurredAt,
     required String notes,
     required String idempotencyKey,
-  }) => _run(
-    () => _repo.addRefund(
+    bool Function()? isCurrent,
+    VoidCallback? onCommitted,
+  }) => _runLedger(_mutations.prepare('${this.accountId}:refund.create',
+    jsonEncode([expenseId, D.normalize(amount), accountId,
+      localDateTimeInputToIso(occurredAt), notes.trim()]),
+    (key) => _repo.addRefund(
       expenseId: expenseId,
       amount: amount,
       accountId: accountId,
       occurredAt: occurredAt,
       notes: notes,
-      idempotencyKey: idempotencyKey,
-    ),
+      idempotencyKey: key,
+    ), key: idempotencyKey),
+    isCurrent: isCurrent, onCommitted: onCommitted,
   );
 
+  Future<bool> _runLedger(RetainedMutationAttempt attempt, {
+    bool Function()? isCurrent,
+    VoidCallback? onCommitted,
+  }) async {
+    if (busy || _disposed) return false;
+    final version = ++_mutationVersion;
+    final view = _mutationViewVersion;
+    busy = true;
+    actionError = null;
+    notifyListeners();
+    var notifiedUncertain = _mutations.hasUncertain;
+    void apply(MutationOutcome outcome) {
+      if (_disposed) return;
+      final hasUncertain = _mutations.hasUncertain;
+      if (version != _mutationVersion) {
+        if (hasUncertain != notifiedUncertain) notifyListeners();
+        notifiedUncertain = hasUncertain;
+        return;
+      }
+      notifiedUncertain = hasUncertain;
+      busy = false;
+      mutationOutcome = outcome;
+      if (view == _mutationViewVersion && (isCurrent?.call() ?? true)) {
+        actionError = outcome is MutationUncertain
+            ? AccountsCopy.of(_language()).mutationUncertain
+            : outcome is MutationRejected ? outcome.message : null;
+        if (isMutationCommitted(outcome)) {
+          if (onCommitted != null) {
+            _mutations.acknowledge(attempt);
+            onCommitted();
+          }
+        }
+      }
+      notifyListeners();
+    }
+    final outcome = await _mutations.run(attempt,
+      deadline: writeDeadline,
+      errorMessage: (error) => error is AccountsException &&
+          error.message == 'invalid_refund_request'
+          ? AccountsCopy.of(_language()).invalidRefundRequest
+          : safeAppErrorMessage(error, _language()),
+      refresh: () async {
+        if (_disposed) throw StateError('Owner disposed');
+        DataChange.instance.ping();
+        if (!await load(preserveOnError: true) || refreshStale) {
+          throw StateError('Refresh unavailable');
+        }
+      },
+      onLateOutcome: apply,
+    );
+    apply(outcome);
+    return isMutationCommitted(outcome);
+  }
+
   Future<bool> _run(Future<void> Function() action) async {
+    _mutationVersion++;
     busy = true;
     actionError = null;
     notifyListeners();
@@ -255,6 +332,10 @@ class RecordsController extends ChangeNotifier {
 
   Future<void> retryRefresh() async {
     await load(preserveOnError: true);
+    if (isMutationCommitted(mutationOutcome)) {
+      mutationOutcome = refreshStale
+          ? const MutationCommittedRefreshFailed() : const MutationCommitted();
+    }
   }
 
   Future<void> reloadCategories() async {

@@ -61,6 +61,7 @@ export function AccountRecordFormDialog({
   onSubmit,
   onDelete,
   onRecordRefund,
+  onPayloadChange,
 }: {
   open: boolean
   initialAccount: AccountSummary | null
@@ -72,6 +73,7 @@ export function AccountRecordFormDialog({
   onSubmit: (values: AccountRecordFormValues) => Promise<void>
   onDelete?: () => void
   onRecordRefund?: () => void
+  onPayloadChange?: () => void
 }) {
   const { t } = useTranslation()
   const schema = useMemo(() => createAccountRecordSchema(t), [t])
@@ -93,6 +95,8 @@ export function AccountRecordFormDialog({
     defaultValue: emptyAccountRecordFormValues,
   })
   const recordType = values.type ?? "expense"
+  const payloadVersion = JSON.stringify(values)
+  useEffect(() => { onPayloadChange?.() }, [payloadVersion, onPayloadChange])
   const fromAccountId = values.accountId ?? ""
   const toAccountId = values.toAccountId ?? ""
   const [failedEstimateKey, setFailedEstimateKey] = useState<string | null>(
@@ -107,6 +111,8 @@ export function AccountRecordFormDialog({
   } | null>(null)
   const from = accounts.find((account) => account.id === fromAccountId) ?? null
   const to = accounts.find((account) => account.id === toAccountId) ?? null
+  const fromCurrency = from?.currency_code
+  const toCurrency = to?.currency_code
   const crossCurrency =
     recordType === "transfer" &&
     from &&
@@ -118,6 +124,7 @@ export function AccountRecordFormDialog({
   const estimateError =
     estimateKey !== null && failedEstimateKey === estimateKey
   const validSentAmount = isValidTransferSentAmount(values.amount ?? "")
+  const initialAccountId = initialAccount?.id
   const invalidateFxPreview = () => {
     previewEditedRef.current = true
     invalidateTransferFxPreview(fxRequestGate.current, () => {
@@ -134,13 +141,13 @@ export function AccountRecordFormDialog({
         normalizeTransferValues(
           initialValues ?? {
             ...emptyAccountRecordFormValues,
-            accountId: initialAccount?.id ?? "",
+            accountId: initialAccountId ?? "",
             occurredAt: formatLocalDateTimeInput(),
           }
         )
       )
     }
-  }, [initialAccount, initialValues, open, reset])
+  }, [initialAccountId, initialValues, open, reset])
   useEffect(() => {
     if (recordType === "transfer") {
       setValue("mainCategoryId", "")
@@ -158,17 +165,17 @@ export function AccountRecordFormDialog({
       values.amount === initialValues.amount
     if (
       !crossCurrency ||
-      !from ||
-      !to ||
+      !fromCurrency ||
+      !toCurrency ||
       !values.amount ||
       !validSentAmount ||
       isInitialCrossCurrencyValue
     ) {
       if (
         recordType === "transfer" &&
-        from &&
-        to &&
-        from.currency_code === to.currency_code
+        fromCurrency &&
+        toCurrency &&
+        fromCurrency === toCurrency
       )
         setValue("receivedAmount", values.amount ?? "")
       return
@@ -176,7 +183,8 @@ export function AccountRecordFormDialog({
     return requestTransferFxPreview({
       amount: values.amount,
       gate: fxRequestGate.current,
-      estimate: (amount) => estimateTransferReceived(amount, from, to),
+      estimate: (amount) => estimateTransferReceived(amount,
+        { currency_code: fromCurrency }, { currency_code: toCurrency }),
       onReceived: (amount) => {
         setValue("receivedAmount", amount, { shouldValidate: true })
         setFailedEstimateKey(null)
@@ -186,11 +194,11 @@ export function AccountRecordFormDialog({
   }, [
     crossCurrency,
     estimateKey,
-    from,
+    fromCurrency,
     initialValues,
     open,
     setValue,
-    to,
+    toCurrency,
     fromAccountId,
     values.amount,
     validSentAmount,

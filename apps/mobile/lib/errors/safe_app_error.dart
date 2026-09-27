@@ -19,7 +19,7 @@ enum AppErrorCode {
   unknown,
 }
 
-enum AppMutationOutcome { rejected, committedRefreshFailed, uncertain }
+enum AppMutationOutcome { rejected, committed, committedRefreshFailed, uncertain }
 
 abstract interface class AppErrorCarrier {
   AppErrorCode get appErrorCode;

@@ -177,6 +177,12 @@ class _AccountRecordsPageState extends State<AccountRecordsPage> {
                 onAdd: a.isActive ? () => _openForm() : null,
               ),
               if (_controller.busy) const LinearProgressIndicator(),
+              if (_controller.hasUncertainMutation)
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 8, 20, 0),
+                  child: Callout(tone: CalloutTone.warning,
+                    message: copy.mutationUncertain),
+                ),
               if (_controller.refreshStale)
                 Padding(
                   padding: const EdgeInsets.fromLTRB(20, 8, 20, 0),

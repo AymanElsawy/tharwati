@@ -2,6 +2,7 @@
 // `createAccountRecordSchema` (account-record.schema.ts). Messages match the
 // web i18n `accounts.records.validation.*` strings verbatim.
 
+import '../../core/decimals.dart';
 import 'records_models.dart';
 
 final _positiveAmount = RegExp(r'^\d{1,18}(?:\.\d{1,2})?$');
@@ -15,7 +16,7 @@ const _msg = {
 };
 
 bool _isPositive(String v) =>
-    _positiveAmount.hasMatch(v) && (double.tryParse(v) ?? 0) > 0;
+    _positiveAmount.hasMatch(v) && D.isPositive(v);
 
 Map<String, String> validateAccountRecordForm(AccountRecordFormValues v) {
   final errors = <String, String>{};

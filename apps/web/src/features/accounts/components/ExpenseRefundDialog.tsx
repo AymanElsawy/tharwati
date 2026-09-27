@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { Dialog } from "@base-ui/react/dialog"
 import { Button } from "@/components/ui/button"
 import { MoneyInput } from "@/components/MoneyInput"
@@ -24,6 +24,7 @@ export function ExpenseRefundDialog({
   error,
   onClose,
   onSubmit,
+  onPayloadChange,
 }: {
   open: boolean
   summary: ExpenseRefundSummary | null
@@ -33,6 +34,7 @@ export function ExpenseRefundDialog({
   saving: boolean
   error: string | null
   onClose: () => void
+  onPayloadChange?: () => void
   onSubmit: (values: {
     amount: string
     destinationAccountId: string
@@ -52,6 +54,7 @@ export function ExpenseRefundDialog({
     useState(originalAccountId)
   const [occurredAt, setOccurredAt] = useState(() => formatLocalDateTimeInput())
   const [notes, setNotes] = useState("")
+  useEffect(() => { onPayloadChange?.() }, [amount, destinationAccountId, occurredAt, notes, onPayloadChange])
   if (!open || !summary) return null
   const canonicalAmount = normalizeMoneyInput(amount)
   const normalizedAmount = canonicalAmount === null ? null : normalizeDecimal(canonicalAmount)

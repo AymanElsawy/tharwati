@@ -712,6 +712,7 @@ export const en = {
   "accounts.filters.allStatuses": "All statuses",
   "accounts.filters.results": "{{count}} accounts",
   "accounts.records.title": "Account records",
+  "accounts.records.mutationUncertain": "We couldn't confirm whether this was saved. Check your records before trying again.",
   "accounts.records.empty": "No account records yet.",
   "accounts.records.error": "We couldn't load account records.",
   "accounts.records.savedRefreshFailed":
