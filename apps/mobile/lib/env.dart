@@ -8,6 +8,7 @@ class Env {
 
   static const supabasePublishableKey = String.fromEnvironment(
     'SUPABASE_PUBLISHABLE_KEY',
+    defaultValue: 'sb_publishable_vF5o5tRIILZUpRCkXmK84w_1nq3jUZC',
   );
 
   /// Custom-scheme deep link the Supabase auth emails return to, so the app —
