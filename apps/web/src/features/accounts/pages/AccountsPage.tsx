@@ -1,5 +1,5 @@
 import { AlertTriangle, Plus } from "lucide-react"
-import { useMemo, useState } from "react"
+import { useMemo, useRef, useState } from "react"
 import { useNavigate, useSearchParams } from "react-router-dom"
 
 import { Button } from "@/components/ui/button"
@@ -35,11 +35,13 @@ import { useTranslation } from "@/i18n/useTranslation"
 import { useCurrentUser } from "@/features/profile/hooks/useCurrentUser"
 import { getProfileCurrencyDefault } from "@/features/profile/domain/currency-default"
 import type { AccountSummary } from "@/lib/supabase/types"
-
-function compareValues(left: string, right: string, direction: "asc" | "desc") {
-  const result = left.localeCompare(right)
-  return direction === "asc" ? result : -result
-}
+import {
+  defaultAccountSort,
+  hasCompleteAccountOrder,
+  isAccountSubsetFiltered,
+  saveAccountSectionOrder,
+  sortAccountItems,
+} from "@/features/accounts/utils/account-custom-order"
 
 function AccountsPageSkeleton({ label }: { label: string }) {
   const pulse =
@@ -91,8 +93,11 @@ export function AccountsPage() {
     currency: null,
     showArchived: false,
   })
-  const [sort, setSort] = useState<AccountInventorySort>("name")
+  const [sort, setSort] = useState<AccountInventorySort>(defaultAccountSort)
   const [direction, setDirection] = useState<"asc" | "desc">("asc")
+  const [orderNotice, setOrderNotice] = useState<"conflict" | "failure" | "refreshFailure" | null>(null)
+  const [isReordering, setIsReordering] = useState(false)
+  const reorderInFlight = useRef(false)
   const unsaved = useUnsavedChanges(formDirty)
 
   const accountCurrentValues = useAccountCurrentValues(accounts.accounts)
@@ -163,33 +168,10 @@ export function AccountsPage() {
       }
     })
 
-    return withBalance.sort((left, right) => {
-      switch (sort) {
-        case "name":
-          return compareValues(left.account.name, right.account.name, direction)
-        case "type":
-          return compareValues(
-            left.account.account_type_code,
-            right.account.account_type_code,
-            direction
-          )
-        case "balance": {
-          const leftValue = Number(
-            left.currentBalance ?? left.metalCurrentValue ?? 0
-          )
-          const rightValue = Number(
-            right.currentBalance ?? right.metalCurrentValue ?? 0
-          )
-          return direction === "asc"
-            ? leftValue - rightValue
-            : rightValue - leftValue
-        }
-        default:
-          return 0
-      }
-    })
+    return sortAccountItems(withBalance, sort, direction, accounts.customOrder)
   }, [
     accounts.accounts,
+    accounts.customOrder,
     direction,
     filters,
     metalFilter,
@@ -206,11 +188,40 @@ export function AccountsPage() {
   )
 
   const toggleSort = (nextSort: AccountInventorySort) => {
+    if (nextSort === "custom") {
+      setSort("custom")
+      return
+    }
     if (nextSort === sort) {
       setDirection((current) => (current === "asc" ? "desc" : "asc"))
     } else {
       setSort(nextSort)
       setDirection("asc")
+    }
+  }
+
+  const canReorder = sort === "custom" && !accounts.isSaving && !accounts.error &&
+    hasCompleteAccountOrder(accounts.accounts, accounts.customOrder) &&
+    !isAccountSubsetFiltered(filters, metalFilter)
+
+  const reorderSection = async (sourceId: string, targetId: string) => {
+    if (!canReorder || reorderInFlight.current) return
+    reorderInFlight.current = true
+    setIsReordering(true)
+    setOrderNotice(null)
+    try {
+      const result = await saveAccountSectionOrder({
+        accounts: accounts.accounts,
+        canonicalIds: accounts.customOrder,
+        sourceId,
+        targetId,
+        reorder: accounts.reorderAccounts,
+        refresh: accounts.refreshAccounts,
+      })
+      if (result === "conflict" || result === "failure" || result === "refreshFailure") setOrderNotice(result)
+    } finally {
+      reorderInFlight.current = false
+      setIsReordering(false)
     }
   }
 
@@ -288,6 +299,35 @@ export function AccountsPage() {
         }
       />
 
+      <div className="mt-4 flex flex-wrap items-center justify-between gap-2">
+        <label className="flex items-center gap-2 text-sm font-medium text-[var(--color-text-secondary)]">
+          <span>{t("accounts.order.sortBy")}</span>
+          <select
+            aria-label={t("accounts.order.sortBy")}
+            value={sort}
+            onChange={(event) => toggleSort(event.target.value as AccountInventorySort)}
+            className="min-h-10 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface-elevated)] px-3 text-[var(--color-text-primary)] focus-visible:ring-2 focus-visible:ring-[var(--color-primary)]"
+          >
+            <option value="custom">{t("accounts.order.custom")}</option>
+            <option value="name">{t("accounts.table.name")}</option>
+            <option value="type">{t("accounts.table.type")}</option>
+            <option value="balance">{t("accounts.table.balance")}</option>
+          </select>
+        </label>
+        {sort === "custom" && isAccountSubsetFiltered(filters, metalFilter) ? (
+          <p className="text-xs text-[var(--color-text-secondary)]">{t("accounts.order.clearFilters")}</p>
+        ) : null}
+        {sort === "custom" && isReordering ? (
+          <p role="status" className="text-xs text-[var(--color-text-secondary)]">{t("accounts.order.saving")}</p>
+        ) : null}
+      </div>
+      {orderNotice ? (
+        <p role="alert" className="mt-3 text-sm text-amber-800 dark:text-amber-300">
+          {t(orderNotice === "conflict" ? "accounts.order.conflict" :
+            orderNotice === "refreshFailure" ? "accounts.order.refreshFailure" : "accounts.order.failure")}
+        </p>
+      ) : null}
+
       {items.length === 0 ? (
         <div className="mt-10 flex flex-col items-center gap-2 rounded-2xl border border-dashed border-[var(--border-subtle)] py-16 text-center">
           <p className="font-semibold text-[var(--color-text-primary)]">
@@ -301,6 +341,7 @@ export function AccountsPage() {
         <>
           {activeItems.length ? (
             <AccountInventory
+              sectionKey="active"
               items={activeItems}
               sort={sort}
               direction={direction}
@@ -316,10 +357,13 @@ export function AccountsPage() {
               onAddMetalPurchase={setMetalPurchaseAccount}
               onOpenAccount={(account) => navigate(`/accounts/${account.id}`)}
               canDelete={accounts.canDeleteAccount}
+              canReorder={canReorder}
+              onReorder={reorderSection}
             />
           ) : null}
           {closedItems.length ? (
             <AccountInventory
+              sectionKey="closed"
               sectionTitle={t("accounts.closedSection.title")}
               items={closedItems}
               sort={sort}
@@ -331,10 +375,13 @@ export function AccountsPage() {
               onAddMetalPurchase={setMetalPurchaseAccount}
               onOpenAccount={(account) => navigate(`/accounts/${account.id}`)}
               canDelete={accounts.canDeleteAccount}
+              canReorder={canReorder}
+              onReorder={reorderSection}
             />
           ) : null}
           {soldItems.length ? (
             <AccountInventory
+              sectionKey="sold"
               sectionTitle={t("accounts.soldSection.title")}
               items={soldItems}
               sort={sort}
@@ -346,6 +393,8 @@ export function AccountsPage() {
               onAddMetalPurchase={setMetalPurchaseAccount}
               onOpenAccount={(account) => navigate(`/accounts/${account.id}`)}
               canDelete={accounts.canDeleteAccount}
+              canReorder={canReorder}
+              onReorder={reorderSection}
             />
           ) : null}
         </>

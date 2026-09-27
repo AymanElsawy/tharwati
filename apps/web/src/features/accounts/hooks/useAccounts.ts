@@ -20,13 +20,15 @@ import { toStoredValuationMethod } from "../types/valuation-method"
 
 type UseAccountsResult = {
   accounts: AccountSummary[]
+  customOrder: string[]
   error: RepositoryError | null
   isLoading: boolean
   isSaving: boolean
   canDeleteAccount: (accountId: string) => boolean
   closeBlockReason: (accountId: string) => string | null
   hasFinancialHistory: (accountId: string) => boolean
-  refreshAccounts: () => Promise<void>
+  refreshAccounts: () => Promise<boolean>
+  reorderAccounts: (expectedIds: string[], orderedIds: string[]) => Promise<string[]>
   createAccount: (values: AccountFormValues) => Promise<AccountSummary>
   updateAccount: (
     accountId: string,
@@ -63,6 +65,7 @@ function nullableText(value: string): string | null {
 export function useAccounts(): UseAccountsResult {
   const { t } = useTranslation()
   const [accounts, setAccounts] = useState<AccountSummary[]>([])
+  const [customOrder, setCustomOrder] = useState<string[]>([])
   const [error, setError] = useState<RepositoryError | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [isSaving, setIsSaving] = useState(false)
@@ -91,20 +94,24 @@ export function useAccounts(): UseAccountsResult {
       }
 
       try {
-        const { nextAccounts, deletionEligibility } = await readWithDeadline(
+        const { nextAccounts, nextOrder, deletionEligibility } = await readWithDeadline(
           READ_DEADLINE_MS.composite,
           async (signal) => {
-            const nextAccounts = await accountsRepository.getAccounts(signal)
+            const [nextAccounts, nextOrder] = await Promise.all([
+              accountsRepository.getAccounts(signal),
+              accountsRepository.getAccountCustomOrder(signal),
+            ])
             const deletionEligibility = await accountsRepository.getAccountLifecycleEligibility(
               nextAccounts.map((account) => account.id), signal
             )
-            return { nextAccounts, deletionEligibility }
+            return { nextAccounts, nextOrder, deletionEligibility }
           },
           controller.signal,
         )
-        if (version !== loadVersion.current) return
+        if (version !== loadVersion.current) return false
 
         setAccounts(nextAccounts)
+        setCustomOrder(nextOrder)
         setDeletableAccountIds(
           new Set(
             deletionEligibility
@@ -124,8 +131,9 @@ export function useAccounts(): UseAccountsResult {
           item.closeBlockReason,
         ])))
         setError(null)
+        return true
       } catch (loadError) {
-        if (version !== loadVersion.current) return
+        if (version !== loadVersion.current) return false
         setError(
           normalizeError(
             loadError,
@@ -133,6 +141,7 @@ export function useAccounts(): UseAccountsResult {
             t("accounts.error.unexpected")
           )
         )
+        return false
       } finally {
         if (loadAbort.current === controller) loadAbort.current = null
         if (showLoading && version === loadVersion.current) {
@@ -162,9 +171,25 @@ export function useAccounts(): UseAccountsResult {
   }, [loadAccounts])
 
   useEffect(() => {
-    const refresh = () => void loadAccounts(false)
+    const refresh = () => {
+      if (!mutationInFlight.current) void loadAccounts(false)
+    }
     window.addEventListener("tharwati:data-changed", refresh)
     return () => window.removeEventListener("tharwati:data-changed", refresh)
+  }, [loadAccounts])
+
+  useEffect(() => {
+    const refresh = () => {
+      if (!mutationInFlight.current && document.visibilityState === "visible") void loadAccounts(false)
+    }
+    window.addEventListener("focus", refresh)
+    document.addEventListener("visibilitychange", refresh)
+    const interval = window.setInterval(refresh, 60_000)
+    return () => {
+      window.removeEventListener("focus", refresh)
+      document.removeEventListener("visibilitychange", refresh)
+      window.clearInterval(interval)
+    }
   }, [loadAccounts])
 
   const runMutation = useCallback(
@@ -295,8 +320,31 @@ export function useAccounts(): UseAccountsResult {
     [runMutation]
   )
 
+  const reorderAccounts = useCallback(async (expectedIds: string[], orderedIds: string[]) => {
+    if (mutationInFlight.current) {
+      throw new RepositoryError({
+        code: "conflict",
+        message: t("accounts.error.mutationInProgress"),
+        operation: "accounts.reorderAccounts",
+      })
+    }
+    mutationInFlight.current = true
+    loadVersion.current += 1
+    loadAbort.current?.abort()
+    setIsSaving(true)
+    try {
+      const committed = await accountsRepository.reorderAccounts(expectedIds, orderedIds)
+      setCustomOrder(committed)
+      return committed
+    } finally {
+      mutationInFlight.current = false
+      setIsSaving(false)
+    }
+  }, [t])
+
   return {
     accounts,
+    customOrder,
     error,
     isLoading,
     isSaving,
@@ -304,6 +352,7 @@ export function useAccounts(): UseAccountsResult {
     closeBlockReason: (accountId) => closeEligibility.get(accountId) ?? null,
     hasFinancialHistory: (accountId) => accountIdsWithHistory.has(accountId),
     refreshAccounts,
+    reorderAccounts,
     createAccount,
     updateAccount,
     closeAccount,
