@@ -86,6 +86,16 @@ Triggers (immutability guards once financial history exists):
 `account_types` reference table (seed data only, not queried dynamically by the client — types are hardcoded client-side):
 `cash, bank, brokerage, gold, real_estate, business, other`.
 
+### Account Custom order (backend foundation)
+
+`account_display_order` stores presentation order separately from financial data: `account_id` is the primary key, `(account_id, user_id)` references the matching `financial_accounts` pair with `ON DELETE CASCADE`, and `(user_id, position)` is unique and DEFERRABLE. Positions are positive integers. A supporting unique `(id, user_id)` constraint on `financial_accounts` makes mismatched account/user pairs impossible. The migration backfills existing accounts per user by case-folded name, then account ID; it does not use value, activity, or `updated_at`.
+
+`get_account_custom_order()` returns all of the signed-in user's account IDs, including Closed and Sold: saved positions first in ascending order, followed by accounts without order rows sorted by creation time and ID. New accounts have no order row until a later explicit reorder; this puts them after every saved account without an account-create trigger. Clients retain Active, Closed, and Sold sections and can preserve this canonical relative order within each section.
+
+`reorder_accounts(p_expected_ids uuid[], p_ordered_ids uuid[])` derives identity from `auth.uid()` and returns the committed UUID array. It locks the authenticated user's row and owned account rows, rejects any desired list that does not contain every current owned account exactly once (`22023`), and accepts an already-current desired order as an idempotent replay. Otherwise the expected list must exactly match the current canonical order; a stale request raises `PT409` (HTTP 409). One transaction updates existing positions and inserts missing order rows with the unique position constraint deferred, so invalid or conflicting requests save nothing. The RPC never reads or updates financial values, lifecycle fields, or `financial_accounts.updated_at`.
+
+RLS exposes only the user's own `account_display_order` rows. Authenticated clients have SELECT only; direct INSERT, UPDATE, and DELETE are revoked. Only authenticated callers may execute the order RPCs, and the write RPC accepts no user ID. Web and Flutter repositories expose `getAccountCustomOrder()` and `reorderAccounts(expectedIds, orderedIds)`; Web maps `PT409` to `RepositoryError(code: "conflict")`, while Flutter throws `AccountOrderConflict`. Close, Sold, and Reopen leave saved positions intact; deleting a pristine account cascades its order row. This is a backend/domain foundation only: Web and Flutter still default to Name sort, with no drag controls yet. Temporary Name, Type, and Current Value sorts do not call the reorder RPC or overwrite Custom order.
+
 ### Create submission receipts (Phase 2 Slice 3)
 
 Web and Mobile create through `add_metal_purchase_v2`, `add_existing_holding_v2`,
@@ -436,6 +446,8 @@ prove that an uncertain write committed.
 ```ts
 class AccountsRepository {
   getAccounts(): Promise<AccountSummary[]> // all accounts for user, order by created_at desc
+  getAccountCustomOrder(): Promise<string[]> // canonical IDs, including inactive accounts
+  reorderAccounts(expectedIds, orderedIds): Promise<string[]> // PT409 maps to conflict
   getAccount(id): Promise<AccountSummary>
   createAccount(input: CreateAccountInput): Promise<AccountSummary>
   updateAccount(id, input: UpdateAccountInput): Promise<AccountSummary>

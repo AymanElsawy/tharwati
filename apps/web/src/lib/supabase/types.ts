@@ -199,6 +199,12 @@ type FinancialAccountRow = {
   updated_at: string
 }
 
+export type AccountDisplayOrderRow = {
+  account_id: string
+  user_id: string
+  position: number
+}
+
 type MetalPurchaseRow = {
   id: string
   user_id: string
@@ -556,6 +562,10 @@ export type Database = {
           created_at?: string
           updated_at?: string
         }
+      >
+      account_display_order: TableDefinition<
+        AccountDisplayOrderRow,
+        { account_id: string; user_id: string; position: number }
       >
       metal_purchases: TableDefinition<
         MetalPurchaseRow,
@@ -928,6 +938,11 @@ export type Database = {
           delete_block_reason: string | null
           has_financial_history: boolean
         }>
+      }
+      get_account_custom_order: { Args: Record<string, never>; Returns: string[] }
+      reorder_accounts: {
+        Args: { p_expected_ids: string[]; p_ordered_ids: string[] }
+        Returns: string[]
       }
       close_financial_account: { Args: { p_account_id: string }; Returns: string }
       reopen_financial_account: { Args: { p_account_id: string }; Returns: string }
@@ -1364,6 +1379,7 @@ export function toRepositoryError(
   const codeByDatabaseCode: Record<string, RepositoryErrorCode> = {
     "23503": "constraint_violation",
     "23505": "conflict",
+    PT409: "conflict",
     "23514": "constraint_violation",
     "42501": "forbidden",
     PGRST116: "not_found",

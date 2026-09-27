@@ -41,6 +41,9 @@ class AccountsException implements Exception, AppErrorCarrier {
   String toString() => message;
 }
 
+/// Another device saved a different Custom order. Reload before retrying.
+class AccountOrderConflict implements Exception {}
+
 /// Every `financial_accounts` numeric column is `::text` cast so exact decimal
 /// precision survives the wire (docs/accounts.md §2.4).
 const _accountSelect =
@@ -73,6 +76,34 @@ class AccountsRepository {
     return (rows as List)
         .map((r) => Account.fromRow((r as Map).cast<String, dynamic>()))
         .toList();
+  }
+
+  /// Includes active, closed, and sold accounts in canonical Custom order.
+  Future<List<String>> getAccountCustomOrder() async {
+    final ids = await readWithDeadline(
+      simpleReadDeadline,
+      (abort) => _client.rpc('get_account_custom_order').abortSignal(abort),
+    );
+    return (ids as List).cast<String>();
+  }
+
+  Future<List<String>> reorderAccounts(
+    List<String> expectedIds,
+    List<String> orderedIds,
+  ) async {
+    try {
+      final ids = await _client.rpc(
+        'reorder_accounts',
+        params: {
+          'p_expected_ids': expectedIds,
+          'p_ordered_ids': orderedIds,
+        },
+      );
+      return (ids as List).cast<String>();
+    } on PostgrestException catch (e) {
+      if (e.code == 'PT409') throw AccountOrderConflict();
+      throw AccountsException.fromPostgrest(e, _friendly(e));
+    }
   }
 
   Future<Account> getAccount(String id) async {

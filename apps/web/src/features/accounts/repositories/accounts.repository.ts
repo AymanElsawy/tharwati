@@ -258,6 +258,25 @@ export class AccountsRepository {
     }, parentSignal)
   }
 
+  /** Canonical order includes active, closed, and sold accounts. */
+  async getAccountCustomOrder(parentSignal?: AbortSignal): Promise<string[]> {
+    const operation = "accounts.getAccountCustomOrder"
+    const { data, error } = await readWithDeadline(READ_DEADLINE_MS.simple,
+      (signal) => this.client.rpc("get_account_custom_order").abortSignal(signal),
+      parentSignal)
+    return requireQueryData(data, error, operation)
+  }
+
+  /** A stale expected order raises RepositoryError(code: "conflict"). */
+  async reorderAccounts(expectedIds: string[], orderedIds: string[]): Promise<string[]> {
+    const operation = "accounts.reorderAccounts"
+    const { data, error } = await this.client.rpc("reorder_accounts", {
+      p_expected_ids: expectedIds,
+      p_ordered_ids: orderedIds,
+    })
+    return requireQueryData(data, error, operation)
+  }
+
   async getAccount(id: string): Promise<AccountSummary> {
     const operation = "accounts.getAccount"
     return readWithDeadline(READ_DEADLINE_MS.simple, async (signal) => {
