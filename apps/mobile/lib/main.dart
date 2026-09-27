@@ -16,6 +16,7 @@ import 'i18n/app_language.dart';
 import 'splash/splash_screen.dart';
 import 'theme/app_theme.dart';
 import 'theme/app_theme_controller.dart';
+import 'widgets/keyboard_dismiss_boundary.dart';
 
 late AuthService authService;
 
@@ -145,7 +146,9 @@ class _TharwatiAppState extends State<TharwatiApp> {
                 controller: _languageController,
                 child: Directionality(
                   textDirection: _languageController.language.direction,
-                  child: child ?? const SizedBox.shrink(),
+                  child: AppKeyboardDismissBoundary(
+                    child: child ?? const SizedBox.shrink(),
+                  ),
                 ),
               ),
             ),

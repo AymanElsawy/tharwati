@@ -50,6 +50,7 @@ class AppSheet extends StatelessWidget {
           maxHeight: MediaQuery.of(context).size.height * 0.92,
         ),
         child: SingleChildScrollView(
+          keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
           padding: const EdgeInsets.fromLTRB(20, 10, 20, 24),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
