@@ -14,6 +14,7 @@ import 'account_valuation.dart';
 import 'accounts_controller.dart';
 import 'accounts_service.dart';
 import 'brokerage/brokerage_account_detail_page.dart';
+import 'metal/metal_gain_style.dart';
 import 'metal/metal_purity.dart';
 import 'metal/metal_purity_detail_page.dart';
 import 'metal_purchase_sheet.dart';
@@ -441,7 +442,9 @@ class _GoldHero extends StatelessWidget {
     final gainPct = (gain != null && (D.compare(totalCost, '0') ?? 0) > 0)
         ? D.multiply(D.divide(gain, totalCost, scale: 6), '100')
         : null;
-    final gainPositive = gain != null && (D.compare(gain, '0') ?? 0) >= 0;
+    final gainSign = gain == null ? null : D.compare(gain, '0');
+    final gainPositive = gainSign != null && gainSign > 0;
+    final gainNegative = gainSign != null && gainSign < 0;
 
     Widget cell(String label, String value, {TextDirection? textDirection}) =>
         Container(
@@ -548,7 +551,7 @@ class _GoldHero extends StatelessWidget {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Text(
-                    gainPositive ? copy.unrealizedGain : copy.unrealizedLoss,
+                    gainNegative ? copy.unrealizedLoss : copy.unrealizedGain,
                     style: TextStyle(
                       color: c.inkMuted,
                       fontSize: 13,
@@ -559,11 +562,7 @@ class _GoldHero extends StatelessWidget {
                     '${gainPositive ? "+" : ""}${MoneyFormat.money(gain, a.currencyCode)}'
                     '${gainPct != null ? " · ${MoneyFormat.percent(gainPct)}" : ""}',
                     textDirection: TextDirection.ltr,
-                    style: TextStyle(
-                      color: gainPositive ? c.accent : c.negative,
-                      fontSize: 14,
-                      fontWeight: FontWeight.w700,
-                    ),
+                    style: metalGainTextStyle(c, gain, fontSize: 14),
                   ),
                 ],
               ),

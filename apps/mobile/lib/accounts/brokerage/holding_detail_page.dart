@@ -250,7 +250,9 @@ class _HoldingDetailPageState extends State<HoldingDetailPage> {
                   '${MoneyFormat.percent(entry.unrealizedReturnPercent)}',
                   textDirection: TextDirection.ltr,
                   style: TextStyle(
-                    color: negative ? c.negative : c.accent,
+                    color: D.compare(gain, '0') == 0
+                        ? c.inkMuted
+                        : (negative ? c.negative : c.positive),
                     fontSize: 13,
                     fontWeight: FontWeight.w700,
                   ),

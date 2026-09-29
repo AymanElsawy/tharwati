@@ -51,6 +51,7 @@ import {
   getRuntimeTimeZone,
 } from "@/lib/formatting/local-date-time"
 import { observeAccountRecordsHistoryEnd } from "./account-records-infinite-scroll"
+import { netColor, recordColor } from "./account-record-colors"
 import type { AccountRecordHistoryCursor } from "../repositories/account-records.repository"
 import {
   emptyAccountRecordHistoryFilters,
@@ -71,20 +72,6 @@ import { accountRecordSubmissionFingerprint } from "../utils/account-record-subm
 
 const historyPageSize = 50
 
-function recordColor(type: string) {
-  return type === "income"
-    ? "text-emerald-700 dark:text-emerald-400"
-    : type === "expense"
-      ? "text-red-700 dark:text-red-400"
-      : ""
-}
-function netColor(amount: string) {
-  return amount.startsWith("-")
-    ? "text-red-700 dark:text-red-400"
-    : amount === "0"
-      ? "text-muted-foreground"
-      : "text-emerald-700 dark:text-emerald-400"
-}
 function errorMessage(error: unknown, t: Translate) {
   return safeErrorMessage(error, t)
 }
@@ -783,7 +770,7 @@ export function AccountRecordsPage({
         </Button>
       </header>
       {formError && !editingRecord && (
-        <p role="alert" className="mt-4 text-sm text-red-600">
+        <p role="alert" className="mt-4 text-sm text-[var(--color-danger)]">
           {formError}
         </p>
       )}
@@ -831,7 +818,7 @@ export function AccountRecordsPage({
                     updateFilters({ search: event.target.value })
                   }
                   placeholder={t("accounts.records.search")}
-                  className="h-10 w-full rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] ps-9 pe-3 text-sm transition-colors outline-none focus:border-emerald-600 focus:ring-2 focus:ring-emerald-600/20"
+                  className="h-10 w-full rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] ps-9 pe-3 text-sm transition-colors outline-none focus:border-[var(--color-primary)] focus:ring-2 focus:ring-[var(--color-primary)]/20"
                 />
               </label>
               <Button
@@ -997,7 +984,7 @@ export function AccountRecordsPage({
                 {t("common.loading")}
               </p>
             ) : isError ? (
-              <p className="py-12 text-center text-sm text-red-600">
+              <p className="py-12 text-center text-sm text-[var(--color-danger)]">
                 {t("accounts.records.error")}
               </p>
             ) : records.length === 0 ? (
@@ -1157,7 +1144,7 @@ export function AccountRecordsPage({
               </div>
             )}
             {!isLoading && !isError && pageError && (
-              <div className="flex items-center justify-center gap-2 px-4 py-3 text-sm text-red-600">
+              <div className="flex items-center justify-center gap-2 px-4 py-3 text-sm text-[var(--color-danger)]">
                 <span>{pageError}</span>
                 <Button
                   size="sm"

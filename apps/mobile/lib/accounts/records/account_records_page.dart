@@ -19,6 +19,22 @@ import 'records_controller.dart';
 import 'records_models.dart';
 import 'records_service.dart';
 
+Color accountRecordAmountColor(AppColors colors, String type) =>
+    type == 'income' || type == 'refund'
+    ? colors.positive
+    : type == 'expense'
+    ? colors.negative
+    : colors.ink;
+
+Color accountRecordNetColor(AppColors colors, String amount) {
+  final sign = D.compare(amount, '0');
+  return sign == null || sign == 0
+      ? colors.inkMuted
+      : sign < 0
+      ? colors.negative
+      : colors.positive;
+}
+
 /// The Cash / Bank account detail — an infinite-scrolling, filterable ledger of
 /// records grouped by local day, with add / edit / delete. Port of the web
 /// `AccountRecordsPage` (which is what `/accounts/:id` renders for cash & bank).
@@ -43,9 +59,8 @@ class AccountRecordsPage extends StatefulWidget {
 class _AccountRecordsPageState extends State<AccountRecordsPage> {
   late final RecordsController _controller = RecordsController(
     accountId: widget.account.id,
-    language: () => mounted
-        ? AppLanguageScope.of(context).language
-        : AppLanguage.en,
+    language: () =>
+        mounted ? AppLanguageScope.of(context).language : AppLanguage.en,
   )..load();
   final _search = TextEditingController();
   final _scroll = ScrollController();
@@ -180,8 +195,10 @@ class _AccountRecordsPageState extends State<AccountRecordsPage> {
               if (_controller.hasUncertainMutation)
                 Padding(
                   padding: const EdgeInsets.fromLTRB(20, 8, 20, 0),
-                  child: Callout(tone: CalloutTone.warning,
-                    message: copy.mutationUncertain),
+                  child: Callout(
+                    tone: CalloutTone.warning,
+                    message: copy.mutationUncertain,
+                  ),
                 ),
               if (_controller.refreshStale)
                 Padding(
@@ -500,8 +517,6 @@ class _DayGroup extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = context.colors;
     final net = group.dailyNet;
-    final netNegative = net.startsWith('-');
-    final netZero = D.compare(net, '0') == 0;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -519,9 +534,7 @@ class _DayGroup extends StatelessWidget {
                 MoneyFormat.money(net, group.currencyCode),
                 textDirection: TextDirection.ltr,
                 style: TextStyle(
-                  color: netZero
-                      ? c.inkMuted
-                      : (netNegative ? c.negative : c.accent),
+                  color: accountRecordNetColor(c, net),
                   fontSize: 12,
                   fontWeight: FontWeight.w700,
                 ),
@@ -563,11 +576,7 @@ class _RecordRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
-    final amountColor = record.type == 'income'
-        ? c.accent
-        : record.type == 'expense'
-        ? c.negative
-        : c.ink;
+    final amountColor = accountRecordAmountColor(c, record.type);
     final time = formatLocalDateTime(record.occurredAt).time;
     return InkWell(
       onTap: record.isEditable || record.type == 'refund' ? onTap : null,

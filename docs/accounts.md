@@ -494,6 +494,8 @@ Error handling: Postgres errors are normalized into a `RepositoryError { code, o
 
 ### 6.1 Page states
 
+Account Records use semantic foregrounds in every available appearance mode: Income and explicitly labeled Refund are positive, Expense is negative, and Transfer remains neutral primary text on both account sides. Positive and negative Daily Net use the same semantic foregrounds; zero uses muted text. Web resolves these through its Light, Dark, and Colorful success/danger theme tokens, with Dark utilities bound to the selected app theme. Mobile uses a dedicated green positive token in Light and Dark; its gold accent remains reserved for brand, controls, and metal identity. Signed Brokerage and metal gains use the positive token, losses use the existing negative token, and zero results are muted. Record type selection follows these semantic colors in the active theme.
+
 1. **Loading** — an `aria-busy` skeleton that mirrors the real layout: header (eyebrow, title, description, Add CTA), filter bar, and a stack of account-row placeholders. Honours `prefers-reduced-motion`.
 2. **Hard error** (error + zero accounts) — icon + message + "Try again".
 3. **Normal** — header with "Add account" CTA, optional non-blocking inline error banner if accounts exist despite an error, filter bar, then either an **empty state** (no accounts at all, or none match filters — same copy either way) or the account list/table. The clean workspace surface uses shared spacing, theme tokens, subtle borders/shadows, a search icon, aligned 44 px desktop filter controls, and compact responsive touch targets; it introduces no Dashboard hero, metrics, tabs, or behavior. On mobile, header/filter spacing is tighter, controls are 44 px, Type and Currency sit side-by-side when responsive space allows, and Show Closed plus result count share one row; desktop spacing and grid placement remain unchanged.
@@ -647,6 +649,8 @@ form/valuation logic 1:1.
 | load orchestration + client-side filter bar | `accounts_controller.dart` (`loading`/`error`/`ready`; search / type / currency / show-closed; active-by-type then Closed then Sold sections) |
 
 ### UI
+
+Mobile Gold and Silver account heroes and their purity-detail summaries share one financial-gain text style: positive unrealized gain is the green `positive` token, loss is `negative`, and zero is muted. The gain text keeps full opacity and weight 700; the account hero retains its 14px size and the purity summary retains its 13px size. Gold icons and purity badges continue to use the separate metal palette.
 
 Mobile Refund history keeps its positive amount and localized Refund status visible while category names and overrides load. A Refund with a category ID shows a neutral title placeholder until that lookup settles. If no matching category is available, the title uses the Expense label embedded in the Refund description without its `Refund: Expense:` prefix. Refunds without a category ID use that description label immediately. Ordinary Income, Expense, and Transfer titles are unchanged.
 

@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 
-import '../../core/decimals.dart';
 import '../../core/local_datetime.dart';
 import '../../core/money_format.dart';
 import '../../i18n/accounts_copy.dart';
@@ -13,6 +12,7 @@ import '../account_models.dart';
 import '../accounts_controller.dart';
 import '../accounts_service.dart';
 import '../metal_purchase_sheet.dart';
+import 'metal_gain_style.dart';
 import 'metal_purity.dart';
 
 /// One purity's slice of a gold/silver account — port of the web
@@ -226,7 +226,6 @@ class _Summary extends StatelessWidget {
     final c = context.colors;
     final copy = AccountsCopy.of(AppLanguageScope.of(context).language);
     final gain = aggregate.unrealizedGain;
-    final gainNegative = gain != null && (D.compare(gain, '0') ?? 0) < 0;
     return Container(
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
@@ -256,11 +255,7 @@ class _Summary extends StatelessWidget {
             const SizedBox(height: 4),
             Text(
               copy.gainVsCost(MoneyFormat.signedMoney(gain, currency)),
-              style: TextStyle(
-                color: gainNegative ? c.negative : c.accent,
-                fontSize: 13,
-                fontWeight: FontWeight.w700,
-              ),
+              style: metalGainTextStyle(c, gain, fontSize: 13),
             ),
           ],
           const SizedBox(height: 14),

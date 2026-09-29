@@ -34,7 +34,7 @@ class Callout extends StatelessWidget {
       CalloutTone.success => (
         bg: c.successSoft,
         border: c.successBorder,
-        fg: c.accent,
+        fg: c.positive,
         icon: Icons.mark_email_read_outlined,
       ),
       CalloutTone.warning => (

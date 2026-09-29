@@ -135,10 +135,10 @@ class _RecordFormSheetState extends State<RecordFormSheet> {
     super.initState();
     _v = normalizeTransferValues(
       widget.editing?.values ??
-        AccountRecordFormValues(
-          accountId: widget.initialAccount?.id ?? '',
-          occurredAt: formatLocalDateTimeInput(),
-        ),
+          AccountRecordFormValues(
+            accountId: widget.initialAccount?.id ?? '',
+            occurredAt: formatLocalDateTimeInput(),
+          ),
     );
     _amount.text = D.normalize(_v.amount) ?? _v.amount;
     _received.text = _v.receivedAmount;
@@ -219,17 +219,24 @@ class _RecordFormSheetState extends State<RecordFormSheet> {
       _fxUnavailable = false;
     });
     try {
-      final rate = await (widget.fxRateLoader ??
-          SupabasePortfolioDataSource().loadFxRate)(context.from, context.to);
+      final rate =
+          await (widget.fxRateLoader ??
+              SupabasePortfolioDataSource().loadFxRate)(
+            context.from,
+            context.to,
+          );
       if (!mounted ||
           version != _fxRequestVersion ||
           _fxContext != context ||
           _receivedIsManual) {
         return;
       }
-      final multiplied = rate == null || rate.stale ||
+      final multiplied =
+          rate == null ||
+              rate.stale ||
               rate.fromCurrencyCode != context.from ||
-              rate.toCurrencyCode != context.to || !D.isPositive(rate.rate)
+              rate.toCurrencyCode != context.to ||
+              !D.isPositive(rate.rate)
           ? null
           : D.multiply(context.amount, rate.rate);
       final estimate = multiplied == null
@@ -283,11 +290,14 @@ class _RecordFormSheetState extends State<RecordFormSheet> {
       _sync();
       return accountRecordSubmissionFingerprint(_v) == fingerprint;
     }
+
     final ok = await widget.controller.submit(
       _v,
       editingId: widget.editing?.id,
       isCurrent: current,
-      onCommitted: () { if (current()) Navigator.of(context).pop(true); },
+      onCommitted: () {
+        if (current()) Navigator.of(context).pop(true);
+      },
     );
     if (_isEditing && ok && mounted) Navigator.of(context).pop(true);
   }
@@ -318,14 +328,29 @@ class _RecordFormSheetState extends State<RecordFormSheet> {
   }
 
   Future<void> _refund() async {
-    if (widget.editing == null || _v.type != AccountRecordType.expense || _isDirty) return;
+    if (widget.editing == null ||
+        _v.type != AccountRecordType.expense ||
+        _isDirty) {
+      return;
+    }
     final summary = await widget.controller.refundSummary(widget.editing!.id);
-    if (summary == null || !D.isPositive(summary.remainingAmount) || !mounted) return;
-    final from = _acc(_v.accountId); if (from == null) return;
-    final eligible = widget.recordAccounts.where((a) => a.currencyCode == summary.currencyCode).toList();
-    final main = widget.controller.categories.where((item) => item.id == _v.mainCategoryId).firstOrNull;
-    final sub = main?.subcategories.where((item) => item.id == _v.subcategoryId).firstOrNull;
-    final category = sub == null ? (main?.name ?? '') : '${main!.name} → ${sub.name}';
+    if (summary == null || !D.isPositive(summary.remainingAmount) || !mounted) {
+      return;
+    }
+    final from = _acc(_v.accountId);
+    if (from == null) return;
+    final eligible = widget.recordAccounts
+        .where((a) => a.currencyCode == summary.currencyCode)
+        .toList();
+    final main = widget.controller.categories
+        .where((item) => item.id == _v.mainCategoryId)
+        .firstOrNull;
+    final sub = main?.subcategories
+        .where((item) => item.id == _v.subcategoryId)
+        .firstOrNull;
+    final category = sub == null
+        ? (main?.name ?? '')
+        : '${main!.name} → ${sub.name}';
     widget.controller.clearActionError();
     final refundCreated = await showAppSheet<bool>(
       context,
@@ -516,7 +541,15 @@ class _RecordFormSheetState extends State<RecordFormSheet> {
             ],
 
             if (_isEditing && _v.type == AccountRecordType.expense) ...[
-              SizedBox(width: double.infinity, child: OutlinedButton(onPressed: widget.controller.busy || _isDirty ? null : _refund, child: Text(copy.recordRefund))),
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton(
+                  onPressed: widget.controller.busy || _isDirty
+                      ? null
+                      : _refund,
+                  child: Text(copy.recordRefund),
+                ),
+              ),
               const SizedBox(height: 10),
             ],
             Row(
@@ -687,6 +720,14 @@ class _RecordFormSheetState extends State<RecordFormSheet> {
   }
 }
 
+Color recordTypeSelectionColor(AppColors colors, AccountRecordType type) =>
+    switch (type) {
+      AccountRecordType.income => colors.positive,
+      AccountRecordType.expense => colors.negative,
+      AccountRecordType.transfer => colors.ink,
+      AccountRecordType.refund => colors.positive,
+    };
+
 class _TypeToggle extends StatelessWidget {
   const _TypeToggle({required this.value, required this.onChanged});
   final AccountRecordType value;
@@ -700,17 +741,17 @@ class _TypeToggle extends StatelessWidget {
       (
         AccountRecordType.income,
         copy.recordTypeValue('income'),
-        const Color(0xFF059669),
+        recordTypeSelectionColor(c, AccountRecordType.income),
       ),
       (
         AccountRecordType.expense,
         copy.recordTypeValue('expense'),
-        const Color(0xFFDC2626),
+        recordTypeSelectionColor(c, AccountRecordType.expense),
       ),
       (
         AccountRecordType.transfer,
         copy.recordTypeValue('transfer'),
-        const Color(0xFF475569),
+        recordTypeSelectionColor(c, AccountRecordType.transfer),
       ),
     ];
     return Row(
@@ -730,7 +771,9 @@ class _TypeToggle extends StatelessWidget {
                 child: Text(
                   label,
                   style: TextStyle(
-                    color: value == type ? Colors.white : c.inkMuted,
+                    color: value == type
+                        ? (c.isDark ? c.canvas : c.surface)
+                        : c.inkMuted,
                     fontSize: 13,
                     fontWeight: FontWeight.w700,
                   ),

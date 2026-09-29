@@ -36,17 +36,17 @@ const recordTypeOptions: Array<{
   {
     value: "income",
     labelKey: "accounts.records.income",
-    activeClassName: "border-emerald-600 bg-emerald-600 text-white",
+    activeClassName: "border-[var(--color-success)] bg-[var(--color-success)] text-[var(--color-text-on-primary)]",
   },
   {
     value: "expense",
     labelKey: "accounts.records.expense",
-    activeClassName: "border-red-600 bg-red-600 text-white",
+    activeClassName: "border-[var(--color-danger)] bg-[var(--color-danger)] text-[var(--color-text-on-primary)]",
   },
   {
     value: "transfer",
     labelKey: "accounts.records.transfer",
-    activeClassName: "border-slate-600 bg-slate-600 text-white",
+    activeClassName: "border-[var(--color-text-primary)] bg-[var(--color-text-primary)] text-[var(--color-surface)]",
   },
 ]
 
@@ -443,7 +443,7 @@ export function AccountRecordFormDialog({
               <textarea className={field} rows={3} {...register("notes")} />
             </div>
             {error && (
-              <p role="alert" className="text-sm text-red-600">
+              <p role="alert" className="text-sm text-[var(--color-danger)]">
                 {error}
               </p>
             )}
@@ -522,7 +522,7 @@ function AccountSelect({
           </option>
         ))}
       </select>
-      {error && <p className="mt-1 text-sm text-red-600">{error}</p>}
+      {error && <p className="mt-1 text-sm text-[var(--color-danger)]">{error}</p>}
     </div>
   )
 }
@@ -591,7 +591,7 @@ function AmountField({
           {currency}
         </span>
       </div>
-      {visibleError && <p className="mt-1 text-sm text-red-600">{visibleError}</p>}
+      {visibleError && <p className="mt-1 text-sm text-[var(--color-danger)]">{visibleError}</p>}
     </div>
   )
 }
@@ -613,7 +613,7 @@ function DateTimeField({
         className={field}
         {...register("occurredAt")}
       />
-      {error && <p className="mt-1 text-sm text-red-600">{error}</p>}
+      {error && <p className="mt-1 text-sm text-[var(--color-danger)]">{error}</p>}
     </div>
   )
 }

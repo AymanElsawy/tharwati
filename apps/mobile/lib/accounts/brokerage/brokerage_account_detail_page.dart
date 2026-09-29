@@ -563,7 +563,9 @@ class _Header extends StatelessWidget {
                 MoneyFormat.percent(valuation.totalUnrealizedReturnPercent),
               ),
               style: TextStyle(
-                color: negative ? c.negative : c.accent,
+                color: D.compare(gain, '0') == 0
+                    ? c.inkMuted
+                    : (negative ? c.negative : c.positive),
                 fontSize: 13,
                 fontWeight: FontWeight.w700,
               ),
@@ -595,9 +597,7 @@ class _Header extends StatelessWidget {
           if (valuation.missingFxCount > 0) ...[
             const SizedBox(height: 12),
             Callout(
-              tone: fxLoading
-                  ? CalloutTone.info
-                  : CalloutTone.warning,
+              tone: fxLoading ? CalloutTone.info : CalloutTone.warning,
               message: fxLoading
                   ? copy.currentFxLoading
                   : copy.incompleteHoldingFx(valuation.missingFxCount),
@@ -605,10 +605,7 @@ class _Header extends StatelessWidget {
           ],
           if (valuation.hasStaleFx) ...[
             const SizedBox(height: 12),
-            Callout(
-              tone: CalloutTone.warning,
-              message: copy.currentFxStale,
-            ),
+            Callout(tone: CalloutTone.warning, message: copy.currentFxStale),
           ],
         ],
       ),
@@ -760,17 +757,16 @@ class _HoldingRow extends StatelessWidget {
                   MoneyFormat.percent(entry.unrealizedReturnPercent),
                 ),
                 style: TextStyle(
-                  color: negative ? c.negative : c.accent,
+                  color: D.compare(gain, '0') == 0
+                      ? c.inkMuted
+                      : (negative ? c.negative : c.positive),
                   fontSize: 13,
                   fontWeight: FontWeight.w700,
                 ),
               ),
             ] else if (footer != null) ...[
               const SizedBox(height: 8),
-              Text(
-                footer,
-                style: TextStyle(color: c.inkMuted, fontSize: 12),
-              ),
+              Text(footer, style: TextStyle(color: c.inkMuted, fontSize: 12)),
             ],
           ],
         ),

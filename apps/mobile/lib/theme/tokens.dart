@@ -12,6 +12,7 @@ class AppColors extends ThemeExtension<AppColors> {
     required this.surface,
     required this.ink,
     required this.inkMuted,
+    required this.positive,
     required this.negative,
     required this.negativeSoft,
     required this.metal,
@@ -38,6 +39,7 @@ class AppColors extends ThemeExtension<AppColors> {
   final Color surface;
   final Color ink;
   final Color inkMuted;
+  final Color positive;
   final Color negative;
   final Color negativeSoft;
   final Color metal;
@@ -75,6 +77,7 @@ class AppColors extends ThemeExtension<AppColors> {
     surface: Color(0xFFFFFEFA),
     ink: Color(0xFF0B2A22),
     inkMuted: Color(0xFF59655E),
+    positive: Color(0xFF128247),
     negative: Color(0xFF8B3025),
     negativeSoft: Color(0xFFF1E1D7),
     metal: Color(0xFF9A753A),
@@ -102,6 +105,7 @@ class AppColors extends ThemeExtension<AppColors> {
     surface: Color(0xFF102E26),
     ink: Color(0xFFF8F6ED),
     inkMuted: Color(0xFFB8C7BE),
+    positive: Color(0xFF4ADE80),
     negative: Color(0xFFF2A49B),
     negativeSoft: Color(0xFF301E1C),
     metal: Color(0xFFC9A96B),
