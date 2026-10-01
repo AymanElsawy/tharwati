@@ -122,6 +122,118 @@ flutter run -d emulator-5554 `
 Use the emulator ID shown by `flutter devices` if different. This command
 explicitly uses a development HTTPS project. Android signing is unchanged.
 
+### Android production release signing (Security Slice S3-A)
+
+The applicationId and namespace remain `com.tharwati.tharwati_mobile`. The
+applicationId still has a template TODO in Gradle: its final production identity
+requires owner confirmation before publication. Signing does not require a
+package rename. No upload keystore or production signing configuration is present
+in the repository. S3 remains **BLOCKED** pending identity confirmation, manual
+key provisioning, and a signed release build/certificate verification.
+
+`android/app/build.gradle.kts` uses a separate `release` signing configuration;
+debug/emulator builds retain Android's normal debug signing. A resolved task graph
+containing an app Release task fails before execution when signing configuration
+is absent, unreadable, incomplete, or points to a missing keystore. Invalid
+passwords/aliases/keystores fail in Android's signing validation. There is no debug
+fallback. The `verifySigningArchitecture` Gradle task checks config separation
+without needing credentials. The graph guard requires Gradle's normal task graph
+mode; do not enable configuration cache for these checks/builds.
+
+Use Play App Signing: the local **upload key** signs the AAB sent to Google;
+Google's separate **app-signing key** signs APKs delivered to users. The Flutter
+AAB project and current syntactically valid package support this architecture.
+Repository inspection cannot establish package availability, ownership, prior
+publication, or Console enrollment. Confirm those manually and reuse the existing
+registered upload key if one exists. No Play Console changes are made here.
+See [Flutter Android deployment](https://docs.flutter.dev/deployment/android) and
+[Play App Signing](https://support.google.com/googleplay/android-developer/answer/9842756).
+
+After review, run this **once** in Windows PowerShell (JDK `keytool` on PATH).
+Do not run it if the intended upload key already exists. Passwords are prompted;
+never add password arguments or use the debug keystore/passwords:
+
+```powershell
+New-Item -ItemType Directory -Force "$env:USERPROFILE\.tharwati\signing"
+keytool -genkeypair -v -keystore "$env:USERPROFILE\.tharwati\signing\upload-keystore.jks" -storetype JKS -keyalg RSA -keysize 2048 -validity 10000 -alias upload
+```
+
+Keep the keystore outside the checkout at the path above. Create the ignored
+`apps/mobile/android/key.properties` locally with this format (replace placeholders;
+forward slashes avoid Java-properties backslash escaping; paths resolve relative
+to `android` when not absolute):
+
+```properties
+storeFile=C:/Users/<WINDOWS_USER>/.tharwati/signing/upload-keystore.jks
+keyAlias=upload
+storePassword=<STORE_PASSWORD>
+keyPassword=<KEY_PASSWORD>
+```
+
+Prefer omitting the two password lines and injecting
+`THARWATI_UPLOAD_STORE_PASSWORD` and `THARWATI_UPLOAD_KEY_PASSWORD` from a password
+manager or protected CI secret store into the build process environment. The
+corresponding path/alias overrides are `THARWATI_UPLOAD_STORE_FILE` and
+`THARWATI_UPLOAD_KEY_ALIAS`; nonblank environment values take precedence over
+local properties. Do not put passwords in command arguments, shell history,
+logs, Dart defines, or tracked files. If passwords are stored in local properties,
+restrict that file's Windows ACL to the builder account and required administrators.
+Restrict the keystore ACL too; clear injected environment secrets after building.
+Root and Android `.gitignore` rules exclude `key.properties`, `*.jks`, and
+`*.keystore`. Never commit the upload key, private keys, signing passwords, or
+other signing secret files; ignore rules do not protect already tracked files.
+
+From `apps/mobile`, with the existing production public build configuration in
+the environment and a new increasing build number:
+
+```powershell
+flutter build appbundle --release --build-number="$env:THARWATI_BUILD_NUMBER" `
+  --dart-define=THARWATI_ENVIRONMENT=production `
+  "--dart-define=SUPABASE_URL=$env:THARWATI_PROD_SUPABASE_URL" `
+  "--dart-define=SUPABASE_PUBLISHABLE_KEY=$env:THARWATI_PROD_SUPABASE_PUBLISHABLE_KEY"
+```
+
+Verify the AAB's JAR signature, then compare its certificate SHA-256 fingerprint
+against the expected upload certificate (a self-signed certificate warning is
+normal; any unsigned entries or signature failure must be investigated):
+
+```powershell
+jarsigner -verify -verbose -certs build/app/outputs/bundle/release/app-release.aab
+keytool -printcert -jarfile build/app/outputs/bundle/release/app-release.aab
+keytool -list -v -keystore "$env:USERPROFILE\.tharwati\signing\upload-keystore.jks" -alias upload
+```
+
+For a locally generated release APK, run the installed SDK's `apksigner` (replace
+the build-tools version), and compare its signer SHA-256 to the upload certificate:
+
+```powershell
+& "$env:LOCALAPPDATA\Android\sdk\build-tools\<VERSION>\apksigner.bat" verify --verbose --print-certs build/app/outputs/flutter-apk/app-release.apk
+```
+
+An APK downloaded from Play must instead match the **app-signing** certificate
+shown in Play Console. Maintain an encrypted offline backup of the upload
+keystore, with passwords stored separately in the approved password manager;
+limit access, record the alias and public SHA-256 fingerprint, and test restoration.
+Loss of an upload key may require Play's upload-key reset process; never assume
+a newly generated key can replace an already registered key automatically.
+
+Focused checks from `apps/mobile/android`:
+`./gradlew.bat :app:verifySigningArchitecture --offline --console=plain` and,
+with signing configuration absent,
+`./gradlew.bat :app:bundleRelease --dry-run --offline --console=plain`
+(must fail with the explicit production-signing message). Debug task planning
+can be checked with `:app:assembleDebug --dry-run`. A signed AAB and fingerprint
+comparison remain manual until the protected upload key is provisioned.
+
+Validation on 2026-10-01: signing architecture task passed; debug assemble
+dry-run passed without upload credentials; combined release bundle/APK dry-run
+failed with the intended production-signing message. Ignore probes passed for
+local properties and both keystore extensions, and no tracked keystores/signing
+properties or private-key/password literals were found by focused static checks.
+`git diff --check` passed. No Dart files were touched, so Flutter analysis was
+not run. These checks do not constitute a complete debug build or signed release
+build. Existing Gradle/Kotlin deprecation warnings remain outside S3-A scope.
+
 ### iOS production / TestFlight (Mac shell)
 
 Set `THARWATI_PROD_SUPABASE_URL` and `THARWATI_PROD_SUPABASE_PUBLISHABLE_KEY`

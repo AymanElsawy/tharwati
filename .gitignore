@@ -18,6 +18,10 @@ dist-ssr
 .agents
 
 # Flutter / Dart (apps/mobile)
+# Local Android upload keys and signing configuration (never commit).
+*.jks
+*.keystore
+key.properties
 apps/mobile/build/
 apps/mobile/.dart_tool/
 apps/mobile/.flutter-plugins
