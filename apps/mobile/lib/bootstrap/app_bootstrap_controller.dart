@@ -29,19 +29,14 @@ abstract interface class AppBootstrapPlatform {
 }
 
 class DefaultAppBootstrapPlatform implements AppBootstrapPlatform {
-  DefaultAppBootstrapPlatform() : _links = AppLinks();
+  DefaultAppBootstrapPlatform({this.configuration = Env.configuration});
 
-  final AppLinks _links;
+  final MobileEnvironmentConfig configuration;
+  late final AppLinks _links = AppLinks();
 
   @override
   void validateConfiguration() {
-    final uri = Uri.tryParse(Env.supabaseUrl);
-    if (uri == null ||
-        uri.scheme != 'https' ||
-        uri.host.isEmpty ||
-        !Env.supabasePublishableKey.startsWith('sb_publishable_')) {
-      throw const FormatException('invalid application configuration');
-    }
+    configuration.validate();
   }
 
   @override
@@ -58,9 +53,11 @@ class DefaultAppBootstrapPlatform implements AppBootstrapPlatform {
 
   @override
   Future<void> initializeSupabase() async {
+    // Also guard direct initialization callers, before the SDK restores sessions.
+    configuration.validate();
     await Supabase.initialize(
-      url: Env.supabaseUrl,
-      publishableKey: Env.supabasePublishableKey,
+      url: configuration.supabaseUrl,
+      publishableKey: configuration.supabasePublishableKey,
       authOptions: const FlutterAuthClientOptions(detectSessionInUri: false),
     ).timeout(const Duration(seconds: 20));
   }

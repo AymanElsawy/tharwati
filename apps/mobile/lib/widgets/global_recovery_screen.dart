@@ -24,7 +24,7 @@ class GlobalRecoveryScreen extends StatelessWidget {
       AppBootstrapStatus.starting =>
         ar ? 'جارٍ بدء ثروتي' : 'Starting Tharwati',
       AppBootstrapStatus.failedConfiguration =>
-        ar ? 'تعذر بدء التطبيق' : 'Startup unavailable',
+        ar ? 'إعداد التطبيق مطلوب' : 'App configuration required',
       AppBootstrapStatus.failedStartup =>
         ar ? 'الاتصال غير متاح' : 'Connection unavailable',
       AppBootstrapStatus.fatalRuntime =>
@@ -32,9 +32,13 @@ class GlobalRecoveryScreen extends StatelessWidget {
       AppBootstrapStatus.ready =>
         ar ? 'الحساب غير متاح' : 'Account unavailable',
     };
-    final message = ar
-        ? 'بياناتك وجلستك محفوظتان. يرجى المحاولة مرة أخرى.'
-        : 'Your data and session are safe. Please try again.';
+    final message = status == AppBootstrapStatus.failedConfiguration
+        ? (ar
+              ? 'إعدادات البيئة في هذا الإصدار مفقودة أو غير صالحة. أعد بناء التطبيق بالإعدادات المطلوبة.'
+              : 'This build has missing or invalid environment settings. Rebuild the app with the required configuration.')
+        : (ar
+              ? 'بياناتك وجلستك محفوظتان. يرجى المحاولة مرة أخرى.'
+              : 'Your data and session are safe. Please try again.');
 
     return Directionality(
       textDirection: language.direction,

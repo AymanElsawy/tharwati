@@ -5,10 +5,14 @@ Flutter (iOS + Android) client. **Auth only** for now — email + password via S
 ## Setup
 
 - `flutter pub get`
-- `flutter run` (device or simulator)
-- The Supabase URL defaults to the linked project. Supply its public publishable
-  key at build or run time with `--dart-define=SUPABASE_PUBLISHABLE_KEY=...`;
-  `--dart-define=SUPABASE_URL=...` can select another project. Never use a secret key.
+- Every run/build requires `THARWATI_ENVIRONMENT=development|production`,
+  `SUPABASE_URL` (production: non-local HTTPS; development: HTTPS or explicit local HTTP), and `SUPABASE_PUBLISHABLE_KEY`
+  (`sb_publishable_*`) through `--dart-define`.
+- Follow the exact [Android development and Mac TestFlight commands](../../docs/mobile.md#required-build-environment-configuration).
+  Use local Supabase or a separate hosted development project. Never use a secret/service-role key.
+- There is no hosted or localhost fallback. Missing/invalid configuration shows
+  **App configuration required** without connecting to Supabase; rebuild with
+  correct defines. Plain `flutter run` intentionally shows this screen.
 
 ## Required Supabase dashboard config
 

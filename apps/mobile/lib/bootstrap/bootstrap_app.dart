@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 
 import '../errors/global_failure_controller.dart';
 import '../main.dart' show TharwatiApp, authService;
-import '../theme/app_theme.dart';
 import '../widgets/global_recovery_screen.dart';
 import 'app_bootstrap_controller.dart';
 
@@ -65,8 +64,9 @@ class _BootstrapAppState extends State<BootstrapApp> {
         title: 'Tharwati',
         debugShowCheckedModeBanner: false,
         locale: widget.controller.languageController.language.locale,
-        theme: AppTheme.light(),
-        darkTheme: AppTheme.dark(),
+        // Startup/configuration recovery must render without remote font fetches.
+        theme: ThemeData(useMaterial3: true, brightness: Brightness.light),
+        darkTheme: ThemeData(useMaterial3: true, brightness: Brightness.dark),
         themeMode: widget.controller.themeController.themeMode,
         home: GlobalRecoveryScreen(
           status: widget.controller.status,

@@ -6,6 +6,9 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:tharwati_mobile/auth/auth_recovery_coordinator.dart';
 import 'package:tharwati_mobile/auth/auth_service.dart';
 import 'package:tharwati_mobile/bootstrap/app_bootstrap_controller.dart';
+import 'package:tharwati_mobile/bootstrap/bootstrap_app.dart';
+import 'package:tharwati_mobile/env.dart';
+import 'package:tharwati_mobile/errors/global_failure_controller.dart';
 import 'package:tharwati_mobile/i18n/app_language.dart';
 import 'package:tharwati_mobile/theme/app_theme_controller.dart';
 
@@ -34,6 +37,9 @@ class _RecoveryCoordinator extends AuthRecoveryCoordinator {
 }
 
 class _Platform implements AppBootstrapPlatform {
+  _Platform({this.configuration});
+
+  final MobileEnvironmentConfig? configuration;
   bool configurationValid = true;
   bool failInitialize = false;
   int validations = 0;
@@ -48,6 +54,11 @@ class _Platform implements AppBootstrapPlatform {
   @override
   void validateConfiguration() {
     validations++;
+    if (configuration != null) {
+      DefaultAppBootstrapPlatform(
+        configuration: configuration!,
+      ).validateConfiguration();
+    }
     if (!configurationValid) throw const FormatException('private key detail');
   }
 
@@ -111,6 +122,97 @@ AppBootstrapController _controller(_Platform platform) =>
     );
 
 void main() {
+  for (final config in [
+    const MobileEnvironmentConfig(
+      environmentName: 'staging',
+      supabaseUrl: 'https://production.example.supabase.co',
+      supabasePublishableKey: 'sb_publishable_production_test',
+    ),
+    const MobileEnvironmentConfig(
+      environmentName: 'production',
+      supabaseUrl: 'not-a-url',
+      supabasePublishableKey: 'sb_publishable_production_test',
+    ),
+    const MobileEnvironmentConfig(
+      environmentName: 'production',
+      supabaseUrl: 'https://production.example.supabase.co',
+      supabasePublishableKey: 'sb_secret_invalid_fixture',
+    ),
+  ]) {
+    test('invalid configuration stops before backend initialization', () async {
+      final platform = _Platform(configuration: config);
+      final controller = _controller(platform);
+      await controller.start();
+      await controller.retry();
+      expect(controller.status, AppBootstrapStatus.failedConfiguration);
+      expect(platform.initialUriReads, 0);
+      expect(platform.initializations, 0);
+      expect(platform.recovery.starts, 0);
+      expect(controller.authService, isNull);
+      controller.dispose();
+    });
+  }
+
+  for (final missing in ['environment', 'url', 'key', 'all']) {
+    test(
+      'missing $missing stops before any backend or callback work',
+      () async {
+        final config = MobileEnvironmentConfig(
+          environmentName: missing == 'environment' || missing == 'all'
+              ? ''
+              : 'production',
+          supabaseUrl: missing == 'url' || missing == 'all'
+              ? ''
+              : 'https://production.example.supabase.co',
+          supabasePublishableKey: missing == 'key' || missing == 'all'
+              ? ''
+              : 'sb_publishable_production_test',
+        );
+        final platform = _Platform(configuration: config);
+        final controller = _controller(platform);
+        await controller.start();
+        await controller.retry();
+        expect(controller.status, AppBootstrapStatus.failedConfiguration);
+        expect(platform.initialUriReads, 0);
+        expect(platform.initializations, 0);
+        expect(platform.recovery.starts, 0);
+        expect(controller.authService, isNull);
+        expect(controller.canSignOut, isFalse);
+        controller.dispose();
+      },
+    );
+  }
+
+  testWidgets('unconfigured build renders controlled UI without backend work', (
+    tester,
+  ) async {
+    // These are the actual compiled defaults, not a mocked validation failure.
+    expect(Env.environmentName, isEmpty);
+    expect(Env.supabaseUrl, isEmpty);
+    expect(Env.supabasePublishableKey, isEmpty);
+    final platform = _Platform(configuration: Env.configuration);
+    await tester.pumpWidget(
+      BootstrapApp(
+        controller: _controller(platform),
+        failureController: GlobalFailureController(),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('App configuration required'), findsOneWidget);
+    expect(find.textContaining('Rebuild the app'), findsOneWidget);
+    expect(find.text('Sign out'), findsNothing);
+    expect(find.textContaining('supabase.co'), findsNothing);
+    expect(find.textContaining('sb_publishable_'), findsNothing);
+    expect(tester.takeException(), isNull);
+    await tester.tap(find.text('Retry'));
+    await tester.pumpAndSettle();
+    expect(find.text('App configuration required'), findsOneWidget);
+    expect(platform.initialUriReads, 0);
+    expect(platform.initializations, 0);
+    expect(platform.recovery.starts, 0);
+    await tester.pumpWidget(const SizedBox.shrink());
+  });
+
   test('invalid configuration becomes recoverable after runApp', () async {
     final platform = _Platform()..configurationValid = false;
     final controller = _controller(platform);

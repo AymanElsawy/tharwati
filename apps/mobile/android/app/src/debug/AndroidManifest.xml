@@ -4,4 +4,6 @@
          to allow setting breakpoints, to provide hot reload, etc.
     -->
     <uses-permission android:name="android.permission.INTERNET"/>
+    <!-- Local Supabase HTTP is allowed only for these debug destinations. -->
+    <application android:networkSecurityConfig="@xml/development_network_security"/>
 </manifest>

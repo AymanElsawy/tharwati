@@ -43,6 +43,13 @@ npm run mobile:build:apk
 npm run mobile:build:ios
 ```
 
+Mobile run/build wrappers do not set environment configuration. Supply all three
+required Dart defines (`THARWATI_ENVIRONMENT`, `SUPABASE_URL`, and
+`SUPABASE_PUBLISHABLE_KEY`); see the exact [Android development and Mac TestFlight
+commands](docs/mobile.md#required-build-environment-configuration). There is no
+hosted fallback. Missing/invalid values show a controlled configuration screen
+without connecting to the backend.
+
 ## Deployment
 
 The web app deploys on **Cloudflare Pages**:

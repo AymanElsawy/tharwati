@@ -8,6 +8,23 @@ import 'package:tharwati_mobile/i18n/app_language.dart';
 import 'package:tharwati_mobile/widgets/global_recovery_screen.dart';
 
 void main() {
+  testWidgets('configuration error has safe Arabic rebuild guidance', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: GlobalRecoveryScreen(
+          status: AppBootstrapStatus.failedConfiguration,
+          language: AppLanguage.ar,
+        ),
+      ),
+    );
+    expect(find.text('إعداد التطبيق مطلوب'), findsOneWidget);
+    expect(find.textContaining('أعد بناء التطبيق'), findsOneWidget);
+    expect(find.textContaining('SUPABASE_'), findsNothing);
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('fatal runtime shows safe English recovery without raw details', (
     tester,
   ) async {

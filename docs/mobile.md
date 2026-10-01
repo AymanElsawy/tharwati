@@ -12,16 +12,18 @@ code currently under `apps/mobile/lib/`.
 
 ## Architecture and startup
 
-`lib/main.dart` initializes `Supabase` with `Env.supabaseUrl` / `Env.supabasePublishableKey`,
-constructs the global `AuthService`, restores the device-local Light/Dark
-appearance preference, and runs `TharwatiApp`. `MaterialApp` uses
+`lib/main.dart` runs `BootstrapApp`. Its controller validates the required
+`Env.configuration` before reading auth links or initializing Supabase. Invalid
+configuration renders a controlled error screen without backend initialization.
+Valid configuration initializes Supabase, constructs the global `AuthService`,
+restores device-local preferences, and runs `TharwatiApp`. `MaterialApp` uses
 `AppTheme.light()`/`dark()` with the persisted `ThemeMode`, no named route table, and
 starts with the presentation-only `SplashScreen`. Its 1000ms logo fade/scale/
 settle
 then mounts the unchanged `AuthGate` as the normal home flow. While a signed-in
 user's onboarding completion is resolving, its presentation-only loading state
 continues the same deep-green surface with a centered approved mark and a
-subordinate gold spinner. `main()` captures the cold-start URI before initializing
+subordinate gold spinner. The bootstrap controller captures the cold-start URI before initializing
 Supabase, disables the SDK's automatic URI detection, then starts
 `AuthRecoveryCoordinator`. The coordinator subscribes to Auth events before it
 exchanges that initial URI and owns subsequent warm-link exchange. Its one-shot
@@ -46,6 +48,104 @@ Feature state is local `State` plus `ChangeNotifier` controllers and
 `ListenableBuilder`; there is no provider, router, cache/query library, or
 offline store. Repositories accept optional `SupabaseClient`s, which makes their
 logic testable, but instances are normally created by widgets/controllers.
+
+## Required build environment configuration
+
+Every debug, profile, and release build requires these compile-time Dart defines.
+Flutter does not read a runtime `.env` file. There are no hosted-project or
+localhost defaults.
+
+| Define | Required value |
+| --- | --- |
+| `THARWATI_ENVIRONMENT` | Exactly `development` or `production`. Other identities, including staging, are rejected until explicitly supported. |
+| `SUPABASE_URL` | Project base URL with a valid DNS/IP host; no credentials, API path, query, or fragment. A trailing slash is allowed. Production requires non-local HTTPS. Development allows HTTPS or explicit local HTTP. |
+| `SUPABASE_PUBLISHABLE_KEY` | Public `sb_publishable_*` key for that project. Secret/service-role keys and legacy JWT keys are rejected. |
+
+The identity labels the build; it does not select or infer a project. Builders
+must supply the matching project URL/key and use local Supabase or a separate
+hosted development project. Production rejects localhost names, single-label/local
+development hostnames, loopback, private, link-local, unspecified, and shared
+address-space IP endpoints even with HTTPS. Development HTTP is limited to those
+local endpoints; arbitrary hosted HTTP is rejected. No identity is inferred from
+the URL. Classification is local and does not resolve DNS; builders must ensure
+production hostnames actually route to the intended hosted project.
+Offline validation checks syntax, not whether the supplied key belongs to the
+project. These public values are embedded in the app; never supply privileged
+credentials.
+
+Missing or malformed values show **App configuration required** with rebuild
+instructions (localized in Arabic). The app does not initialize Supabase,
+restore/refresh a backend session, exchange auth links, or mount backend-dependent
+screens. Startup recovery uses local Material fonts, avoiding remote font fetches.
+Retry revalidates the same build values; correct the defines and rebuild/reinstall
+the app. Hot reload cannot supply missing compile-time values.
+
+### Android emulator local development (PowerShell)
+
+With an intentionally provisioned local Supabase stack running on the Windows
+host, obtain its public `sb_publishable_*` key from `supabase status` (never its
+secret/service-role key). From `apps/mobile`, replace the key placeholder:
+
+```powershell
+$env:THARWATI_LOCAL_SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_<local-public-key>'
+flutter run --debug -d emulator-5554 `
+  --dart-define=THARWATI_ENVIRONMENT=development `
+  --dart-define=SUPABASE_URL=http://10.0.2.2:54321 `
+  "--dart-define=SUPABASE_PUBLISHABLE_KEY=$env:THARWATI_LOCAL_SUPABASE_PUBLISHABLE_KEY"
+```
+
+`10.0.2.2` maps to the host from the standard Android emulator; use the local
+API port if different. `localhost` inside the emulator refers to the emulator,
+not the Windows host. The debug-only Android network policy permits HTTP to
+`10.0.2.2`, `127.0.0.1`, and `localhost`; other local destinations may need their
+own platform transport setup. Release/profile transport settings and iOS ATS
+are unchanged; use HTTPS there. A local stack exposing only legacy anon JWT
+keys does not meet this publishable-key contract. Do not use its service-role
+key as a substitute. No stack is started or reset by the Mobile command.
+
+### Android emulator hosted development (PowerShell)
+
+From `apps/mobile`, set these values from your separate HTTPS development project
+(replace the placeholders), then run:
+
+```powershell
+$env:THARWATI_DEV_SUPABASE_URL = 'https://<development-project-ref>.supabase.co'
+$env:THARWATI_DEV_SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_<development-public-key>'
+flutter pub get
+flutter devices
+flutter run -d emulator-5554 `
+  --dart-define=THARWATI_ENVIRONMENT=development `
+  "--dart-define=SUPABASE_URL=$env:THARWATI_DEV_SUPABASE_URL" `
+  "--dart-define=SUPABASE_PUBLISHABLE_KEY=$env:THARWATI_DEV_SUPABASE_PUBLISHABLE_KEY"
+```
+
+Use the emulator ID shown by `flutter devices` if different. This command
+explicitly uses a development HTTPS project. Android signing is unchanged.
+
+### iOS production / TestFlight (Mac shell)
+
+Set `THARWATI_PROD_SUPABASE_URL` and `THARWATI_PROD_SUPABASE_PUBLISHABLE_KEY`
+to the existing production project's HTTPS URL and public publishable key, and
+`THARWATI_BUILD_NUMBER` to an unused increasing TestFlight build number. From the
+repository root:
+
+```bash
+cd apps/mobile
+flutter pub get
+flutter build ipa --release \
+  --build-number="${THARWATI_BUILD_NUMBER:?Set a new TestFlight build number}" \
+  --dart-define=THARWATI_ENVIRONMENT=production \
+  --dart-define=SUPABASE_URL="${THARWATI_PROD_SUPABASE_URL:?Set the production HTTPS project URL}" \
+  --dart-define=SUPABASE_PUBLISHABLE_KEY="${THARWATI_PROD_SUPABASE_PUBLISHABLE_KEY:?Set the production publishable key}"
+```
+
+Upload the resulting `build/ios/ipa` artifact using the existing TestFlight
+workflow and Apple signing setup. Flutter generates the Xcode Dart defines;
+the existing Release configuration includes `Generated.xcconfig`. Do not rely
+on an old Xcode archive or cached generated configuration: regenerate with the
+explicit production command. Correctly supplied configuration preserves the
+existing auth, recovery, and session behavior. No hosted setting changes are
+required by this slice.
 
 ## Auth, session, and onboarding
 
@@ -84,10 +184,9 @@ registered in `android/app/src/main/AndroidManifest.xml` and
 password recovery (`redirectTo`) currently use it; the Supabase dashboard must
 allow it. Host/domain-dependent HTTPS handoff and verified App/Universal Links
 remain deferred. Android has Internet permission; the iOS deployment target is
-13.0. The public publishable credential is supplied with
-`--dart-define=SUPABASE_PUBLISHABLE_KEY`;
-`--dart-define=SUPABASE_URL` optionally selects another project. Missing or
-non-publishable keys fail at startup; no secret key is embedded in the app.
+13.0. Environment identity, URL, and public publishable credential are all
+required Dart defines as described above. Missing or invalid configuration
+shows the startup configuration screen; no secret key is embedded in the app.
 
 Implemented auth screens:
 
