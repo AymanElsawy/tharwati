@@ -8,7 +8,12 @@ param(
   [Parameter(Mandatory = $true)]
   [switch] $ConfirmDisposable,
 
-  [switch] $AllowDefaultLocalRecovery
+  [switch] $AllowDefaultLocalRecovery,
+
+  [ValidateSet('History', 'BootstrapCheckpoint', 'BootstrapCurrent')]
+  [string] $VerificationStage = 'History',
+
+  [string] $LocalContainer
 )
 
 $ErrorActionPreference = 'Stop'
@@ -46,7 +51,9 @@ function Invoke-DatabaseScalar {
   param([string] $Sql)
 
   $targetUri = [Uri] $DbUrl
-  if ($AllowDefaultLocalRecovery -and $targetUri.Port -eq 54322 -and $targetUri.AbsolutePath.Trim('/') -eq 'postgres') {
+  if ($LocalContainer) {
+    $result = & docker exec $LocalContainer psql -U postgres -d postgres -X --set=ON_ERROR_STOP=1 --tuples-only --no-align --command $Sql
+  } elseif ($AllowDefaultLocalRecovery -and $targetUri.Port -eq 54322 -and $targetUri.AbsolutePath.Trim('/') -eq 'postgres') {
     $result = & docker exec supabase_db_Tharwati psql -U postgres -d postgres -X --set=ON_ERROR_STOP=1 --tuples-only --no-align --command $Sql
   } else {
     $psql = Get-Command psql -ErrorAction SilentlyContinue
@@ -78,6 +85,16 @@ function Assert-DatabaseValue {
 }
 
 Assert-DisposableDatabaseUrl $DbUrl
+if ($LocalContainer) {
+  if ($LocalContainer -notmatch '^supabase_db_[A-Za-z0-9_-]+$') { throw 'Invalid local Supabase container name.' }
+  $inspection = & docker inspect $LocalContainer
+  if ($LASTEXITCODE -ne 0) { throw 'Local Supabase container inspection failed.' }
+  $details = @($inspection | ConvertFrom-Json)[0]
+  if (-not $details.State.Running -or ([Uri] $DbUrl).AbsolutePath -ne '/postgres' -or
+    -not (@($details.NetworkSettings.Ports.'5432/tcp') | Where-Object { $_.HostPort -eq [string] ([Uri] $DbUrl).Port })) {
+    throw 'Verification URL must match the running local Supabase database container.'
+  }
+}
 
 $manifestFile = (Resolve-Path $ManifestPath).Path
 $manifest = Get-Content -LiteralPath $manifestFile -Raw | ConvertFrom-Json
@@ -99,7 +116,7 @@ $secretPatterns = @(
   'SUPABASE_(?:DB_PASSWORD|SERVICE_ROLE_KEY|ANON_KEY)\s*='
 )
 foreach ($artifact in $manifest.artifacts.PSObject.Properties) {
-  $content = Get-Content -LiteralPath (Join-Path $baselineRoot $artifact.Value.file) -Raw
+  $content = Get-Content -LiteralPath (Join-Path $baselineRoot $artifact.Value.file) -Raw -Encoding UTF8
   foreach ($pattern in $secretPatterns) {
     if ($content -match $pattern) {
       throw "Potential credential or secret found in $($artifact.Value.file)."
@@ -108,6 +125,7 @@ foreach ($artifact in $manifest.artifacts.PSObject.Properties) {
 }
 Write-Host 'PASS no credentials or project secrets in baseline artifacts'
 
+if ($VerificationStage -eq 'History') {
 Assert-DatabaseValue 'checkpoint migration history' @"
 select case when count(*) = $($manifest.representedMigrationVersions.Count)
   and max(version) = '$($manifest.checkpoint)' then 'ok' else 'mismatch' end
@@ -117,6 +135,11 @@ where version = any(array[$(($manifest.representedMigrationVersions | ForEach-Ob
 
 $databaseHead = Invoke-DatabaseScalar 'select max(version) from supabase_migrations.schema_migrations;'
 $isCheckpointState = $databaseHead -eq $manifest.checkpoint
+} else {
+  # Direct baseline bootstrap deliberately does not record historical migrations.
+  $databaseHead = 'direct SQL bootstrap (history untouched)'
+  $isCheckpointState = $VerificationStage -eq 'BootstrapCheckpoint'
+}
 if ($isCheckpointState) {
   Assert-DatabaseValue 'public table count' "select count(*) from pg_class c join pg_namespace n on n.oid=c.relnamespace where n.nspname='public' and c.relkind in ('r','p');" ([string] $manifest.expectedObjects.tables)
   Assert-DatabaseValue 'public function count' "select count(*) from pg_proc p join pg_namespace n on n.oid=p.pronamespace where n.nspname='public';" ([string] $manifest.expectedObjects.functions)
@@ -158,9 +181,16 @@ $privateTables = @(
   'record_category_overrides','user_data_export_rate_limits',
   'wealth_allocation_targets','wealth_allocation_target_preferences'
 )
+if ((Invoke-DatabaseScalar "select (to_regclass('public.account_display_order') is not null)::text;") -eq 'true') {
+  $privateTables += 'account_display_order'
+}
 $privateUnion = ($privateTables | ForEach-Object { "select '$_' as table_name, count(*)::bigint as row_count from public.$_" }) -join ' union all '
 Assert-DatabaseValue 'no user/private rows' "select coalesce(sum(row_count),0) from ($privateUnion) rows;" '0'
 Assert-DatabaseValue 'no Auth users' "select count(*) from auth.users;" '0'
+if ($VerificationStage -eq 'BootstrapCurrent') {
+  # Forward idempotency migrations add private receipts, excluded from the baseline.
+  Assert-DatabaseValue 'no private mutation receipts' 'select count(*) from private.account_record_mutation_receipts;' '0'
+}
 
 $storageObjectsExists = Invoke-DatabaseScalar "select (to_regclass('storage.objects') is not null)::text;"
 if ($storageObjectsExists -eq 'true') {
