@@ -82,26 +82,45 @@ the app. Hot reload cannot supply missing compile-time values.
 
 ### Android emulator local development (PowerShell)
 
-With an intentionally provisioned local Supabase stack running on the Windows
-host, obtain its public `sb_publishable_*` key from `supabase status` (never its
-secret/service-role key). From `apps/mobile`, replace the key placeholder:
+Use the dedicated current `TharwatiMobileDevelopment` environment, not the stale
+default `Tharwati` stack. From the repository root:
 
 ```powershell
-$env:THARWATI_LOCAL_SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_<local-public-key>'
+./scripts/database/start-local-development.ps1
+# Separate terminal: keep the function server running.
+./scripts/database/start-local-development.ps1 -ServeFunctions
+# Once functions are serving:
+python ./scripts/database/probe-local-development.py
+```
+
+First start uses only the approved fresh bootstrap; later starts preserve local
+test data and refuse changed bootstrap inputs. No historical reset or hosted
+Supabase is used. See [the supported workflow](database-bootstrap.md#supported-mobile-local-development)
+for service topology, provider limits, probes, and restart boundaries.
+From repository root, load only the local public key and launch Mobile:
+
+```powershell
+$localStatus = Get-Content ./mobile-development.local/status.json -Raw | ConvertFrom-Json
+$env:THARWATI_LOCAL_SUPABASE_PUBLISHABLE_KEY = $localStatus.PUBLISHABLE_KEY
+Set-Location apps/mobile
 flutter run --debug -d emulator-5554 `
   --dart-define=THARWATI_ENVIRONMENT=development `
-  --dart-define=SUPABASE_URL=http://10.0.2.2:54321 `
+  --dart-define=SUPABASE_URL=http://10.0.2.2:58321 `
   "--dart-define=SUPABASE_PUBLISHABLE_KEY=$env:THARWATI_LOCAL_SUPABASE_PUBLISHABLE_KEY"
 ```
 
-`10.0.2.2` maps to the host from the standard Android emulator; use the local
-API port if different. `localhost` inside the emulator refers to the emulator,
+`10.0.2.2` maps to the host from the standard Android emulator; the dedicated
+API port is `58321`. `localhost` inside the emulator refers to the emulator,
 not the Windows host. The debug-only Android network policy permits HTTP to
 `10.0.2.2`, `127.0.0.1`, and `localhost`; other local destinations may need their
 own platform transport setup. Release/profile transport settings and iOS ATS
 are unchanged; use HTTPS there. A local stack exposing only legacy anon JWT
 keys does not meet this publishable-key contract. Do not use its service-role
-key as a substitute. No stack is started or reset by the Mobile command.
+key as a substitute. No stack is started or reset by the Mobile command. Sign in
+with the synthetic user in ignored `mobile-development.local/smoke-user.json`
+(read it locally; never commit credentials). The probe completes onboarding with
+SAR base currency and creates a SAR cash account and a Goal with saved progress.
+No production users/data, provider quotes, or FX rates are copied or fabricated.
 
 ### Android emulator hosted development (PowerShell)
 
