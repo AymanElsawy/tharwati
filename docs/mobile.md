@@ -26,9 +26,10 @@ continues the same deep-green surface with a centered approved mark and a
 subordinate gold spinner. The bootstrap controller captures the cold-start URI before initializing
 Supabase, disables the SDK's automatic URI detection, then starts
 `AuthRecoveryCoordinator`. The coordinator subscribes to Auth events before it
-exchanges that initial URI and owns subsequent warm-link exchange. Its one-shot
-recovery state renders `ResetPasswordPage` above the normal gate, so a cold-start
-recovery session cannot enter `AuthGate` as an ordinary authenticated session.
+exchanges that initial URI and owns subsequent warm-link exchange. Its persisted
+recovery state renders a separate recovery Navigator above normal routing, so a
+cold-start or restored recovery session cannot enter `AuthGate` as an ordinary
+authenticated session.
 
 Top-level structure:
 
@@ -299,15 +300,33 @@ briefly restore authenticated content. Only a later fresh `SIGNED_IN` event
 releases that state.
 
 `AuthRecoveryCoordinator` accepts only the exact `tharwati://auth-callback`
-scheme/host. PKCE query callbacks must contain exactly one URL-safe authorization
-code; the legacy token/error payload handling remains for signup confirmation.
-It activates only after
-Supabase successfully emits `passwordRecovery`; ordinary `initialSession`,
-`signedIn`, refresh, and user-update events leave normal routing untouched.
-Expired, malformed, reused, and non-auth links stay outside reset UI. URI handling
-is serialized and process-local duplicate callbacks are ignored. Completion and
-cancellation explicitly clear recovery; cancellation first performs best-effort
-local sign-out.
+scheme/host. Strict path, port, user-info, and one-code PKCE validation remains.
+Legacy token/error payloads still pass through the SDK; token issuers must match
+the selected project's Auth URL. Callback exchange never switches environments.
+
+Android disables Flutter's built-in deep-link routing with
+`flutter_deeplinking_enabled=false`; `app_links` alone delivers Auth callbacks.
+This prevents a competing named-route push from triggering the global error screen.
+
+The production marker store persists only `checking`, `active`, or `ended`, keyed
+by explicit environment identity and project origin. Bootstrap reads it before
+mounting normal app routing. Active restored sessions require `getUser()` validation;
+interrupted or invalid recovery shows explicit feedback. A recovery-origin `amr`
+claim can reconstruct a missing older marker but cannot authorize a session.
+
+`RecoveryGate` lives above the ordinary Navigator in MaterialApp.builder and
+replaces it with a separately keyed recovery Navigator, disposing pushed Forgot
+Password routes on warm callback and supplying the Overlay required by password
+fields. Invalid and transport states have English/Arabic error copy, a request-new-
+link action, cancellation, and an in-memory retry when the URI is available.
+Callback URIs are deduplicated only after successful exchange; temporary failures
+can retry the same URI. URI/code/password/token retry data is never persisted.
+
+Completion/cancellation writes `ended` before best-effort local-scope sign-out.
+Password update success returns to Login automatically; cleanup errors do not
+become update failures. The ended phase suppresses a leftover/restored SDK session
+until an explicit successful password login/signup releases it. Ordinary login and
+onboarding routing remain unchanged outside the recovery gate.
 
 The configured custom link is `tharwati://auth-callback` (`lib/env.dart`),
 registered in `android/app/src/main/AndroidManifest.xml` and
@@ -331,13 +350,11 @@ Implemented auth screens:
 - `ForgotPasswordPage`: required nonblank email and neutral success copy to
   avoid account enumeration; transport failure is generic. Its English and Arabic
   request copy states the hosted 60-minute recovery-link expiry.
-- `ResetPasswordPage`: reached on `PASSWORD_RECOVERY`; validates the same
-  password rule and confirmation, maps missing recovery session to expired-link
-  copy, then updates the password and performs best-effort sign-out. A successful
-  password update remains a success even if remote sign-out reports a failure;
-  Supabase clears the local session before remote revocation. The screen has
-  explicit completion and cancellation paths, and it renders only from the
-  coordinator's validated recovery state.
+- `ResetPasswordPage`: reached only from validated active recovery, validates
+  the same password rule and confirmation, and delegates immediate completion/
+  cancellation to the coordinator. Missing/expired sessions become invalid-link
+  feedback with a request-new-link path. Successful update clears entered password
+  fields and returns to Login without treating cleanup failure as update failure.
 
 `OnboardingFlow` is complete for its implemented profile-preference scope:
 Welcome, searchable country, base currency, multi-select goals, Ready. Country

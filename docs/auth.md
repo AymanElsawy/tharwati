@@ -25,27 +25,24 @@ RLS exposes `select` and `update` of the caller's own row only; there is **no**
 `insert` policy — the row is created exclusively by the `handle_new_user` trigger,
 which also backfills any pre-existing `auth.users` row.
 
-Session tokens: `jwt_expiry = 3600`s, refresh-token rotation enabled,
-`refresh_token_reuse_interval = 10`s. The browser client uses supabase-js defaults —
-session persisted in `localStorage`, `autoRefreshToken` on, `detectSessionInUrl` on.
+Session policy is configured in hosted Supabase. Local configuration and historical
+policy assertions are not production evidence. The Web SDK owns session persistence
+and refresh; S4-B adds only a project-scoped recovery-phase marker in localStorage.
 
 ## Session lifecycle
 
-`src/app/App.tsx` owns session state:
+`apps/web/src/app/App.tsx` owns normal session/onboarding routing. The
+`RecoveryLifecycle` instance is constructed before the Supabase client, writes
+incoming recovery isolation before URL processing, and subscribes to Auth before
+React mounts. It renders recovery outside the router whenever the phase is
+checking, valid, or invalid. It also suppresses restored sessions in the ended
+phase, so completion/cancellation cannot fall back to Dashboard if cleanup fails.
 
-- On mount it reads `supabase.auth.getSession()`, then subscribes to
-  `supabase.auth.onAuthStateChange`.
-- `resolveSession(session)` stores the session, then (if signed in) reads
-  `profiles.onboarding_completed` via `getOnboardingCompletion()`. A failure here
-  shows a generic "We couldn't load your account" retry screen; the underlying error
-  is logged to the console, never rendered.
-- `canPreserveAuthenticatedTree(currentUserId, nextSession)`
-  (`auth-session-lifecycle.ts`) returns `true` when a state change is just a token
-  refresh for the **same** user id, so the mounted authenticated tree is kept
-  instead of being torn down and rebuilt.
-- `PASSWORD_RECOVERY` events, and any initial load whose URL hash contains
-  `type=recovery`, flip an `isPasswordRecovery` flag that renders the reset screen
-  over the entire router (see below).
+Normal sessions still read `profiles.onboarding_completed`, preserve the mounted
+authenticated tree on same-user refresh, and show generic startup/account failures.
+A recovery-origin `amr` claim can reconstruct a missing older marker; decoding
+only restricts routing. Supabase `getUser()` against the selected project validates
+a restored session before it can enable password reset.
 
 ## Sign up / sign in / sign out
 
@@ -55,7 +52,7 @@ session persisted in `localStorage`, `autoRefreshToken` on, `detectSessionInUrl`
 |---|---|---|
 | `signUp(email, password)` | `auth.signUp` | Returns `{ user, session }`. |
 | `signIn(email, password)` | `auth.signInWithPassword` | On success the login page navigates to `/dashboard`. |
-| `signOut()` | `auth.signOut` | Global scope (default). Called from the dashboard header logout and, internally, at the end of a password recovery. |
+| `signOut()` | `auth.signOut` | Global scope (default) for ordinary logout. Recovery exit separately uses local scope. |
 | `requestPasswordReset(email)` | `auth.resetPasswordForEmail` | `redirectTo: ${window.location.origin}/reset-password`. |
 | `updatePassword(newPassword)` | `auth.updateUser({ password })` | Only meaningful while a recovery session is active. |
 
@@ -69,35 +66,33 @@ true })`; a failure is logged, not surfaced.
 
 ## Password reset (recovery flow)
 
-1. **Request** — `/forgot-password` (`ForgotPasswordPage`). One email field →
-   `requestPasswordReset(email)`. The screen always shows the same neutral "If an
-   account exists for … a reset link is on its way" message regardless of whether the
-   address is registered (no account enumeration). A transport failure shows a
-   generic retry message; the real error is logged.
-2. **Email link** — Supabase sends the recovery email; the link returns the user to
-   `${origin}/reset-password#…type=recovery…`.
-3. **Recovery gate** — `App.tsx` detects the `/reset-password` path synchronously on
-   first render, but keeps the reset form hidden while Supabase
-   processes the link. Only a `PASSWORD_RECOVERY` event carrying a session marks
-   the recovery session valid and enables the form. If startup finishes without
-   that confirmation, the page shows an invalid/expired-link state with an action
-   to request a new link. The recovery screen remains outside the router, so its
-   session cannot enter the authenticated app.
-4. **Set new password** — `ResetPasswordPage`: `New password` + `Confirm password`.
-   Client rules: minimum 12 characters, with at least one lowercase letter, one
-   uppercase letter, and one number; both fields must match. The same complete
-   requirement appears before submission on Signup and Reset Password. On submit →
-   `updatePassword(newPassword)`, then `signOut()` (best-effort) to drop the recovery
-   session, then a success state whose button sends the user to `/login` to sign in
-   with the new password. `weak_password` is mapped to friendly localized copy rather
-   than rendered backend text; `AuthSessionMissingError` asks for a new reset link;
-   other failures show a generic retry message.
+1. **Request** - `/forgot-password` submits a trimmed email through the Supabase
+   SDK, using `${window.location.origin}/reset-password`. Success copy remains
+   neutral; failures show a generic retry message.
+2. **Incoming callback** - a non-secret `checking` phase is persisted before the
+   client can process an incoming recovery link. A validated `PASSWORD_RECOVERY`
+   event records `active`; startup events cannot release the recovery gate.
+   Wrong-project legacy token issuers are rejected before URL detection; the SDK
+   still authenticates the callback. The existing SDK flow type is preserved.
+3. **Reload/navigation** - the marker is keyed by project origin and survives
+   changing paths or restarting the browser. An `active` marker plus a session
+   validated by `getUser()` reopens the reset form, including at `/`. Interrupted,
+   missing, expired, or invalid sessions show an explicit EN/AR invalid-link state
+   with request-new-link and cancellation actions. A new erroneous callback does
+   not reuse a previous valid recovery state.
+4. **Update** - Signup and Reset retain the same 12-character, lowercase,
+   uppercase, and digit rules. Password update success invokes recovery exit
+   immediately and returns to Login. Cleanup failure is not a password failure.
+5. **Exit** - completion, cancellation, and request-new-link persist `ended`
+   before best-effort local-scope sign-out. The ended marker continues to suppress
+   any leftover SDK session across navigation/restart until an explicit successful
+   password sign-in or signup replaces it. The new-link action opens the normal
+   forgot-password route only after recovery cleanup.
 
-A plain or expired `/reset-password` route receives no recovery confirmation and
-shows the invalid/expired-link state.
-
-`/login`, `/signup`, and `/forgot-password` all redirect an already-authenticated
-user to their post-auth destination (`/dashboard` or `/onboarding`).
+Persistence stores only `checking`, `active`, or `ended`; no password, token,
+callback URI, or code is added to persistence. Marker storage failure fails closed.
+The marker is a client routing safeguard, not an extra server authorization model:
+Supabase remains the only Auth system and RLS remains the data boundary.
 
 ## Validation
 
@@ -105,7 +100,7 @@ user to their post-auth destination (`/dashboard` or `/onboarding`).
 - Signup and Reset Password both require at least 12 characters, at least one
   lowercase letter, at least one uppercase letter, and at least one number. They
   share the same client predicate, visible localized helper, and localized
-  weak-password error treatment. These rules match the confirmed hosted policy.
+  weak-password error treatment. Hosted password enforcement remains a separate verification requirement.
 - Server-side password strength (`password_requirements`), leaked-password
   protection, email confirmation, and CAPTCHA are Supabase-dashboard settings, not
   code. The client does not expose raw backend policy text.
@@ -202,30 +197,27 @@ screens are new.
   a 4-segment strength meter, and a required Terms checkbox (name is sent as
   `full_name` user metadata); Forgot password and Reset password use the design
   copy, success/expired `Callout`s, and a live "Password rules" card.
-- **Email deep link** — `signUp` passes `emailRedirectTo: Env.authDeepLink`
-  (`tharwati://auth-callback`, the same scheme the recovery email uses), so the
-  signup-confirmation link opens the app rather than the web Site URL. Mobile
-  disables `supabase_flutter`'s automatic URI detection and instead
-  captures the cold-start URI before Supabase initialization. After initialization,
-  `AuthRecoveryCoordinator` subscribes to Auth events before exchanging that URI,
-  then owns the same exchange path for warm links. A `signedIn` event leaves
-  recovery idle and `AuthGate` routes normally; only a successfully exchanged
-  `passwordRecovery` event activates `ResetPasswordPage` above the normal gate.
-  Expired, malformed, reused, bare, and non-auth callback links never activate
-  the reset UI. The custom-scheme URL must be allow-listed in **Auth → URL
-  Configuration → Redirect URLs**. Signup is a no-op when "Confirm email" is off
-  because it returns a session directly. `SignUpPage`'s
-  non-`weak_password` errors are now mapped per `AuthException.code` (e.g.
-  `user_already_exists`), with the raw backend message surfaced in debug builds.
-- **Mobile recovery completion** — the recovery state is one-shot and is cleared
-  only by explicit completion or cancellation. Password update and sign-out are
-  separate outcomes: after a successful password update, best-effort sign-out
-  failure cannot turn the result into a false password-update failure. The Dart
-  client clears its local session before attempting remote revocation, and the
-  success screen remains the explicit final state until the user returns to sign
-  in. A missing/expired session offers an explicit return path instead of leaving
-  recovery active indefinitely. Recovery-email copy reflects the hosted 60-minute
-  expiry in both English and Arabic.
+- **Email deep link** - signup confirmation and recovery use the existing
+  `tharwati://auth-callback`. Automatic SDK URI detection is disabled. Bootstrap
+  validates the explicit environment first, captures the cold URI, initializes
+  the selected Supabase client, and starts `AuthRecoveryCoordinator` before
+  mounting the app. Strict scheme/host/path/port/user-info and PKCE code-shape
+  validation is preserved. Legacy token issuers must match the configured project;
+  PKCE exchange always uses that project's SDK and local verifier.
+- **Mobile recovery lifecycle** - SharedPreferencesAsync stores only the phase,
+  under an environment-and-project-origin key. `checking` is written before
+  exchange; only successful exchanges are deduplicated. Transport failures allow
+  an in-memory retry of the same URI. Restart restores active recovery only after
+  project-side session validation, or shows explicit invalid-link feedback. A
+  recovery-origin claim can reconstruct an older missing marker.
+- **Mobile recovery UI/exit** - `RecoveryGate` is installed in MaterialApp.builder,
+  above the ordinary Navigator. It replaces the conflicting route stack with a
+  separate recovery Navigator/Overlay, so warm recovery is visible over Forgot
+  Password and password editing works. Invalid and transport states provide EN/AR
+  feedback, retry where available, request-new-link, and cancellation. Successful
+  password update ends recovery automatically and returns to Login. Completion or
+  cancellation records `ended` before best-effort local sign-out; only an explicit
+  successful password login/signup releases the leftover-session guard.
 - **Onboarding** — `lib/onboarding/`: `OnboardingFlow` runs the same 5 steps as
   the web (`Welcome → Country → Currency → Goals → Ready`). The name is captured
   at signup, not here. `steps/country_step.dart` is a searchable list over

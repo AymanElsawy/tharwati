@@ -1,4 +1,10 @@
-import { useCallback, useEffect, useRef, useState } from "react"
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  useSyncExternalStore,
+} from "react"
 import type { Session } from "@supabase/supabase-js"
 import {
   BrowserRouter,
@@ -8,7 +14,7 @@ import {
   Routes,
 } from "react-router-dom"
 
-import { supabase } from "../lib/supabase"
+import { supabase, recoveryLifecycle } from "../lib/supabase"
 import { LoginPage } from "../features/auth/LoginPage"
 import { SignUpPage } from "../features/auth/SignUpPage"
 import { ForgotPasswordPage } from "../features/auth/ForgotPasswordPage"
@@ -47,19 +53,15 @@ export default function App() {
   >(null)
   const [startupStage, setStartupStage] =
     useState<StartupStage>("reading-session")
-  // Recognise the recovery link synchronously so the router never gets a chance
-  // to route the freshly-created session into the authenticated app.
-  const [isPasswordRecovery, setIsPasswordRecovery] = useState(
-    () =>
-      typeof window !== "undefined" &&
-      window.location.pathname === "/reset-password",
+  const recoveryStatus = useSyncExternalStore(
+    recoveryLifecycle.subscribe,
+    recoveryLifecycle.getSnapshot
   )
-  const [recoveryStatus, setRecoveryStatus] = useState<
-    "checking" | "valid" | "invalid"
-  >("checking")
   const authenticatedUserId = useRef<string | null>(null)
 
   const resolveAccount = useCallback(async (currentSession: Session | null) => {
+    recoveryLifecycle.observeSession(currentSession?.access_token)
+    if (recoveryLifecycle.isolatesSession) currentSession = null
     setSession(currentSession)
     authenticatedUserId.current = currentSession?.user.id ?? null
 
@@ -72,7 +74,7 @@ export default function App() {
     setStartupStage("reading-account")
     try {
       setOnboardingCompleted(
-        await withStartupTimeout(getOnboardingCompletion()),
+        await withStartupTimeout(getOnboardingCompletion())
       )
       setStartupStage("ready")
     } catch {
@@ -84,15 +86,25 @@ export default function App() {
     setStartupStage("reading-session")
     try {
       const { data, error } = await withStartupTimeout(
-        supabase.auth.getSession(),
+        supabase.auth.getSession()
       )
       if (error) throw error
+      recoveryLifecycle.observeSession(data.session?.access_token)
+      if (recoveryLifecycle.isolatesSession) {
+        await recoveryLifecycle.restore(Boolean(data.session), async () => {
+          const { data: user, error } = await withStartupTimeout(
+            supabase.auth.getUser()
+          )
+          return !error && Boolean(user.user)
+        })
+        setSession(null)
+        authenticatedUserId.current = null
+        setStartupStage("ready")
+        return
+      }
       await resolveAccount(data.session)
-      setRecoveryStatus((current) =>
-        current === "valid" ? current : "invalid",
-      )
     } catch {
-      setRecoveryStatus("invalid")
+      recoveryLifecycle.invalidate()
       setStartupStage("failed-session")
     }
   }, [resolveAccount])
@@ -106,13 +118,9 @@ export default function App() {
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((event, currentSession) => {
-      if (event === "PASSWORD_RECOVERY") {
-        // The recovery link creates a session; hold the app on the reset form
-        // instead of routing the user into the authenticated app.
-        setIsPasswordRecovery(true)
-        setRecoveryStatus(currentSession ? "valid" : "invalid")
-        setSession(currentSession)
-        authenticatedUserId.current = currentSession?.user.id ?? null
+      if (recoveryLifecycle.isolatesSession || event === "PASSWORD_RECOVERY") {
+        setSession(null)
+        authenticatedUserId.current = null
         setStartupStage("ready")
         return
       }
@@ -128,23 +136,36 @@ export default function App() {
       void resolveAccount(currentSession)
     })
 
+    const unsubscribeRecovery = recoveryLifecycle.subscribe(() => {
+      queueMicrotask(() => {
+        if (active) void loadSession()
+      })
+    })
+
     return () => {
+      unsubscribeRecovery()
       active = false
       subscription.unsubscribe()
     }
   }, [loadSession, resolveAccount])
 
-  if (isPasswordRecovery) {
+  async function leaveRecovery(destination: string) {
+    setSession(null)
+    authenticatedUserId.current = null
+    await recoveryLifecycle.finish(() =>
+      withStartupTimeout(supabase.auth.signOut({ scope: "local" }))
+    )
+    window.location.replace(destination)
+  }
+
+  if (recoveryStatus !== "idle" && recoveryStatus !== "ended") {
     return (
       <ResetPasswordPage
         recoveryStatus={recoveryStatus}
-        onComplete={() => {
-          setIsPasswordRecovery(false)
-          setSession(null)
-          authenticatedUserId.current = null
-          window.location.assign("/login")
-        }}
-        onRequestNewLink={() => window.location.assign("/forgot-password")}
+        onComplete={() => leaveRecovery("/login")}
+        onCancel={() => leaveRecovery("/login")}
+        onInvalid={() => recoveryLifecycle.invalidate()}
+        onRequestNewLink={() => leaveRecovery("/forgot-password")}
       />
     )
   }
@@ -160,16 +181,17 @@ export default function App() {
     )
   }
 
-  if (
-    startupStage === "failed-session" ||
-    startupStage === "failed-account"
-  ) {
+  if (startupStage === "failed-session" || startupStage === "failed-account") {
     const failedSession = startupStage === "failed-session"
     return (
       <main className="flex min-h-screen items-center justify-center bg-[var(--color-background)] px-4">
         <div className="tharwati-card max-w-md p-8 text-center">
           <h1 className="text-xl font-semibold text-[var(--color-text)]">
-            {t(failedSession ? "startup.connection.title" : "startup.account.title")}
+            {t(
+              failedSession
+                ? "startup.connection.title"
+                : "startup.account.title"
+            )}
           </h1>
           <p className="mt-3 text-sm text-[var(--color-text-secondary)]">
             {t("startup.safeMessage")}
@@ -268,7 +290,10 @@ export default function App() {
           element={
             <ProtectedRoute session={session}>
               {onboardingCompleted ? (
-                <CurrentUserProvider key={session!.user.id} user={session!.user}>
+                <CurrentUserProvider
+                  key={session!.user.id}
+                  user={session!.user}
+                >
                   <DashboardLayout />
                 </CurrentUserProvider>
               ) : (

@@ -7,7 +7,6 @@ import {
   meetsPasswordRequirements,
   PASSWORD_MIN_LENGTH,
   PASSWORD_UPDATE_SESSION_ERROR,
-  signOut,
   updatePassword,
 } from "./auth.service"
 import { useTranslation } from "@/i18n/useTranslation"
@@ -15,13 +14,17 @@ import { useTranslation } from "@/i18n/useTranslation"
 type ResetPasswordPageProps = {
   recoveryStatus: "checking" | "valid" | "invalid"
   /** Called after the password is changed and the recovery session is cleared. */
-  onComplete: () => void
-  onRequestNewLink: () => void
+  onComplete: () => Promise<void> | void
+  onCancel: () => Promise<void> | void
+  onInvalid: () => void
+  onRequestNewLink: () => Promise<void> | void
 }
 
 export function ResetPasswordPage({
   recoveryStatus,
   onComplete,
+  onCancel,
+  onInvalid,
   onRequestNewLink,
 }: ResetPasswordPageProps) {
   const { t } = useTranslation()
@@ -31,7 +34,6 @@ export function ResetPasswordPage({
   const [password, setPassword] = useState("")
   const [confirm, setConfirm] = useState("")
   const [errorMessage, setErrorMessage] = useState("")
-  const [done, setDone] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
@@ -50,15 +52,24 @@ export function ResetPasswordPage({
       setIsLoading(true)
       setErrorMessage("")
       await updatePassword(password)
-      // Drop the recovery session so the user signs in fresh with the new password.
-      await signOut().catch(() => undefined)
-      setDone(true)
+      // Completion/cleanup is a separate outcome from changing the password.
+      try {
+        await onComplete()
+      } catch {
+        /* cleanup cannot turn success into failure */
+      }
     } catch (error) {
-      console.error("password update failed", error)
+      if (
+        getPasswordUpdateErrorMessage(error) === PASSWORD_UPDATE_SESSION_ERROR
+      )
+        onInvalid()
       setErrorMessage(
         isWeakPasswordError(error)
           ? t("auth.password.weak")
-          : getPasswordUpdateErrorMessage(error)
+          : getPasswordUpdateErrorMessage(error) ===
+              PASSWORD_UPDATE_SESSION_ERROR
+            ? t("auth.recovery.invalid")
+            : t("auth.recovery.updateError")
       )
     } finally {
       setIsLoading(false)
@@ -75,16 +86,14 @@ export function ResetPasswordPage({
       <section className="tharwati-card relative w-full max-w-sm space-y-5 px-6 py-8 sm:px-8">
         <div>
           <h1 className="text-2xl font-bold tracking-tight text-[var(--color-text-primary)]">
-            Choose a new password
+            {t("auth.recovery.title")}
           </h1>
           <p className="mt-1.5 text-sm text-[var(--color-text-secondary)]">
             {recoveryStatus === "checking"
-              ? "Checking your reset link..."
+              ? t("auth.recovery.checking")
               : recoveryStatus === "invalid"
-                ? PASSWORD_UPDATE_SESSION_ERROR
-                : done
-                  ? "Your password has been updated."
-                  : "Set a new password for your account."}
+                ? t("auth.recovery.invalid")
+                : t("auth.recovery.description")}
           </p>
         </div>
 
@@ -93,7 +102,7 @@ export function ResetPasswordPage({
             role="status"
             className="text-sm text-[var(--color-text-secondary)]"
           >
-            Please wait.
+            {t("auth.recovery.checking")}
           </p>
         ) : recoveryStatus === "invalid" ? (
           <Button
@@ -102,16 +111,7 @@ export function ResetPasswordPage({
             className="h-11 w-full rounded-xl"
             onClick={onRequestNewLink}
           >
-            Request a new reset link
-          </Button>
-        ) : done ? (
-          <Button
-            type="button"
-            size="lg"
-            className="h-11 w-full rounded-xl"
-            onClick={onComplete}
-          >
-            Go to login
+            {t("auth.recovery.newLink")}
           </Button>
         ) : (
           <form onSubmit={handleSubmit} className="space-y-5">
@@ -131,7 +131,7 @@ export function ResetPasswordPage({
                   })}
                   value={password}
                   onChange={(event) => setPassword(event.target.value)}
-                  className="h-11 w-full rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] px-3.5 text-sm text-[var(--color-text-primary)] outline-none transition focus:border-[var(--color-primary)] focus:ring-2 focus:ring-[var(--color-primary-soft)]"
+                  className="h-11 w-full rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] px-3.5 text-sm text-[var(--color-text-primary)] transition outline-none focus:border-[var(--color-primary)] focus:ring-2 focus:ring-[var(--color-primary-soft)]"
                   required
                   minLength={PASSWORD_MIN_LENGTH}
                 />
@@ -155,7 +155,7 @@ export function ResetPasswordPage({
                   placeholder="Re-enter your new password"
                   value={confirm}
                   onChange={(event) => setConfirm(event.target.value)}
-                  className="h-11 w-full rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] px-3.5 text-sm text-[var(--color-text-primary)] outline-none transition focus:border-[var(--color-primary)] focus:ring-2 focus:ring-[var(--color-primary-soft)]"
+                  className="h-11 w-full rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] px-3.5 text-sm text-[var(--color-text-primary)] transition outline-none focus:border-[var(--color-primary)] focus:ring-2 focus:ring-[var(--color-primary-soft)]"
                   required
                   minLength={PASSWORD_MIN_LENGTH}
                 />
@@ -173,6 +173,13 @@ export function ResetPasswordPage({
           </form>
         )}
 
+        <Button
+          type="button"
+          disabled={isLoading || recoveryStatus === "checking"}
+          onClick={() => void onCancel()}
+        >
+          {t("auth.recovery.cancel")}
+        </Button>
         {errorMessage ? (
           <p
             role="alert"

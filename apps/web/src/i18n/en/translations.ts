@@ -1,4 +1,11 @@
 export const en = {
+  "auth.recovery.title": "Choose a new password",
+  "auth.recovery.checking": "Checking your reset link…",
+  "auth.recovery.invalid": "This reset link is invalid or has expired. Request a new reset link.",
+  "auth.recovery.description": "Set a new password for your account.",
+  "auth.recovery.newLink": "Request a new reset link",
+  "auth.recovery.cancel": "Cancel recovery",
+  "auth.recovery.updateError": "Could not update your password. Please try again.",
   "accounts.metalPrice.stale": "Last-known metal spot price · Stale",
   "accounts.metalPrice.staleFx": "Valuation uses a stale FX rate",
   "errors.validation": "Check the information and try again.",

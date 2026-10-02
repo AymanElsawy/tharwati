@@ -1,7 +1,11 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../main.dart';
+import '../i18n/app_language.dart';
+import '../i18n/recovery_copy.dart';
 import '../theme/tokens.dart';
 import '../widgets/callout.dart';
 import '../widgets/primary_button.dart';
@@ -17,12 +21,14 @@ class ResetPasswordPage extends StatefulWidget {
     required this.onRecoveryCancelled,
     this.updatePassword,
     this.signOut,
+    this.onInvalid,
   });
 
-  final VoidCallback onRecoveryFinished;
-  final VoidCallback onRecoveryCancelled;
+  final FutureOr<void> Function() onRecoveryFinished;
+  final FutureOr<void> Function() onRecoveryCancelled;
   final Future<void> Function(String password)? updatePassword;
   final Future<void> Function()? signOut;
+  final VoidCallback? onInvalid;
 
   @override
   State<ResetPasswordPage> createState() => _ResetPasswordPageState();
@@ -41,7 +47,17 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
       widget.updatePassword?.call(password) ??
       authService.updatePassword(password);
 
-  Future<void> _signOut() => widget.signOut?.call() ?? authService.signOut();
+  Future<void> _signOut() async {
+    await widget.signOut?.call();
+  }
+
+  RecoveryCopy get _copy => RecoveryCopy.of(
+    context
+            .dependOnInheritedWidgetOfExactType<AppLanguageScope>()
+            ?.notifier
+            ?.language ??
+        AppLanguage.en,
+  );
 
   @override
   void dispose() {
@@ -59,7 +75,10 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
     });
     try {
       await _updatePassword(_password.text);
+      _password.clear();
+      _confirm.clear();
       try {
+        await widget.onRecoveryFinished();
         // Supabase clears the local session before attempting server revocation.
         // A revocation/network failure must not misreport the password update.
         await _signOut();
@@ -68,17 +87,29 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
         setState(() => _done = true);
       }
     } on AuthException catch (e) {
+      if (!mounted) return;
+      if (e is AuthSessionMissingException ||
+          const {
+            'session_not_found',
+            'bad_jwt',
+            'jwt_expired',
+            'refresh_token_not_found',
+          }.contains(e.code)) {
+        widget.onInvalid?.call();
+        setState(() => _expired = true);
+        return;
+      }
       setState(() {
         if (e is AuthSessionMissingException) {
           _expired = true;
         } else if (e.code == 'weak_password') {
           _error = PasswordPolicy.helperText;
         } else {
-          _error = 'Something went wrong. Please try again.';
+          _error = _copy.updateError;
         }
       });
     } catch (_) {
-      setState(() => _error = 'Something went wrong. Please try again.');
+      if (mounted) setState(() => _error = _copy.updateError);
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -92,7 +123,7 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
       // Supabase has already cleared its local session before remote sign-out.
     } finally {
       if (mounted) {
-        widget.onRecoveryCancelled();
+        await widget.onRecoveryCancelled();
       }
     }
   }
@@ -118,8 +149,8 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
     }
 
     return AuthScaffold(
-      title: 'Choose a new password',
-      subtitle: 'Signed in on this device only. Other sessions stay active.',
+      title: _copy.title,
+
       error: _error,
       children: [
         Form(
@@ -153,11 +184,7 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
         _PasswordRulesCard(password: _password.text),
         const SizedBox(height: 16),
         if (_expired) ...[
-          const Callout(
-            tone: CalloutTone.warning,
-            message:
-                'This link has expired. Request a new reset email to continue.',
-          ),
+          Callout(tone: CalloutTone.warning, message: _copy.invalidLink),
           const SizedBox(height: 16),
         ],
         if (_expired)
@@ -173,11 +200,7 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
             onPressed: _submit,
           ),
           const SizedBox(height: 8),
-          SecondaryButton(
-            label: 'Cancel recovery',
-            busy: _busy,
-            onPressed: _cancel,
-          ),
+          SecondaryButton(label: _copy.cancel, busy: _busy, onPressed: _cancel),
         ],
       ],
     );

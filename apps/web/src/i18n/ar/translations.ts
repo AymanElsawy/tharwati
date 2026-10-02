@@ -1,6 +1,13 @@
 import type { TranslationKey } from "../en/translations"
 
 export const ar: Record<TranslationKey, string> = {
+  "auth.recovery.title": "اختر كلمة مرور جديدة",
+  "auth.recovery.checking": "جارٍ التحقق من رابط إعادة التعيين…",
+  "auth.recovery.invalid": "رابط إعادة التعيين غير صالح أو انتهت صلاحيته. اطلب رابطًا جديدًا.",
+  "auth.recovery.description": "عيّن كلمة مرور جديدة لحسابك.",
+  "auth.recovery.newLink": "طلب رابط إعادة تعيين جديد",
+  "auth.recovery.cancel": "إلغاء استعادة الحساب",
+  "auth.recovery.updateError": "تعذر تحديث كلمة المرور. حاول مجددًا.",
   "accounts.metalPrice.stale": "آخر سعر فوري معروف للمعدن · قديم",
   "accounts.metalPrice.staleFx": "يستخدم التقييم سعر صرف قديمًا",
   "errors.validation": "تحقق من البيانات ثم حاول مرة أخرى.",

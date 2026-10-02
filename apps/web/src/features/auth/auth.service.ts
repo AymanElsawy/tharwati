@@ -1,4 +1,4 @@
-import { supabase } from "../../lib/supabase"
+import { supabase, recoveryLifecycle } from "../../lib/supabase"
 
 export const PASSWORD_UPDATE_SESSION_ERROR =
   "This reset link is invalid or has expired. Request a new reset link."
@@ -12,8 +12,7 @@ type AuthErrorLike = Error & { code?: string }
 
 export function isWeakPasswordError(error: unknown): boolean {
   return (
-    error instanceof Error &&
-    (error as AuthErrorLike).code === "weak_password"
+    error instanceof Error && (error as AuthErrorLike).code === "weak_password"
   )
 }
 
@@ -32,7 +31,16 @@ export function getPasswordUpdateErrorMessage(error: unknown): string {
     return PASSWORD_UPDATE_WEAK_ERROR
   }
 
-  if (error instanceof Error && error.name === "AuthSessionMissingError") {
+  if (
+    error instanceof Error &&
+    (error.name === "AuthSessionMissingError" ||
+      [
+        "session_not_found",
+        "bad_jwt",
+        "jwt_expired",
+        "refresh_token_not_found",
+      ].includes((error as AuthErrorLike).code ?? ""))
+  ) {
     return PASSWORD_UPDATE_SESSION_ERROR
   }
 
@@ -49,6 +57,7 @@ export async function signUp(email: string, password: string) {
     throw error
   }
 
+  if (data.session) recoveryLifecycle.acceptNormalSession()
   return data
 }
 
@@ -62,6 +71,7 @@ export async function signIn(email: string, password: string) {
     throw error
   }
 
+  recoveryLifecycle.acceptNormalSession()
   return data
 }
 

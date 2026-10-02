@@ -1,1 +1,1 @@
-export { supabase } from "./supabase/client"
+export { supabase, recoveryLifecycle } from "./supabase/client"

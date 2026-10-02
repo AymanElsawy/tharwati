@@ -14,7 +14,15 @@ import 'package:tharwati_mobile/theme/app_theme_controller.dart';
 
 class _RecoveryClient implements RecoveryAuthClient {
   @override
+  bool get hasRecoveryOrigin => false;
+  @override
   Stream<AuthChangeEvent> get authEvents => const Stream.empty();
+
+  @override
+  Future<bool> validateRecoverySession() async => true;
+
+  @override
+  Future<void> clearRecoverySession() async {}
 
   @override
   Future<bool> exchangeAuthCallback(Uri uri) async => false;

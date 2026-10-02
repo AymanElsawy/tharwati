@@ -6,6 +6,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../auth/auth_recovery_coordinator.dart';
 import '../auth/auth_service.dart';
+import '../auth/recovery_marker_store.dart';
 import '../env.dart';
 import '../errors/app_error_reporter.dart';
 import '../i18n/app_language.dart';
@@ -63,11 +64,20 @@ class DefaultAppBootstrapPlatform implements AppBootstrapPlatform {
   }
 
   @override
-  AuthService createAuthService() => AuthService(Supabase.instance.client);
+  AuthService createAuthService() => AuthService(
+    Supabase.instance.client,
+    projectUrl: configuration.supabaseUrl,
+  );
 
   @override
   AuthRecoveryCoordinator createRecoveryCoordinator(AuthService service) =>
-      AuthRecoveryCoordinator(service);
+      AuthRecoveryCoordinator(
+        service,
+        store: SharedPreferencesRecoveryMarkerStore(
+          configuration.environmentName,
+          configuration.supabaseUrl,
+        ),
+      );
 }
 
 class AppBootstrapController extends ChangeNotifier {
@@ -149,9 +159,10 @@ class AppBootstrapController extends ChangeNotifier {
         final service = _authService!;
         final coordinator = _recoveryCoordinator ??= _platform
             .createRecoveryCoordinator(service);
+        service.onNormalSession = coordinator.acceptNormalSession;
         await coordinator
             .start(initialUri: _initialUri, linkStream: _platform.linkStream)
-            .timeout(const Duration(seconds: 15));
+            .timeout(const Duration(seconds: 30));
         _recoveryStarted = true;
       }
     } catch (error, stackTrace) {

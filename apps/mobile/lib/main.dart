@@ -7,7 +7,9 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'auth/auth_gate.dart';
 import 'auth/auth_recovery_coordinator.dart';
 import 'auth/auth_service.dart';
-import 'auth/reset_password_page.dart';
+import 'auth/recovery_gate.dart';
+import 'auth/login_page.dart';
+import 'auth/forgot_password_page.dart';
 import 'bootstrap/app_bootstrap_controller.dart';
 import 'bootstrap/bootstrap_app.dart';
 import 'errors/app_error_reporter.dart';
@@ -83,6 +85,7 @@ class TharwatiApp extends StatefulWidget {
 
 class _TharwatiAppState extends State<TharwatiApp> {
   var _showAuthGate = false;
+  final _navigatorKey = GlobalKey<NavigatorState>();
   late final AppLanguageController _languageController;
   late final bool _ownsLanguageController;
   late final AppThemeController _themeController;
@@ -127,6 +130,7 @@ class _TharwatiAppState extends State<TharwatiApp> {
           listenable: _languageController,
           builder: (context, _) => MaterialApp(
             title: 'Tharwati',
+            navigatorKey: _navigatorKey,
             debugShowCheckedModeBanner: false,
             locale: _languageController.language.locale,
             supportedLocales: AppLanguage.values.map(
@@ -147,16 +151,26 @@ class _TharwatiAppState extends State<TharwatiApp> {
                 child: Directionality(
                   textDirection: _languageController.language.direction,
                   child: AppKeyboardDismissBoundary(
-                    child: child ?? const SizedBox.shrink(),
+                    child: RecoveryGate(
+                      coordinator: widget.recoveryCoordinator,
+                      child: child ?? const SizedBox.shrink(),
+                      onRequestNewLink: () async {
+                        await widget.recoveryCoordinator.cancel();
+                        WidgetsBinding.instance.addPostFrameCallback((_) {
+                          _navigatorKey.currentState?.push(
+                            MaterialPageRoute<void>(
+                              builder: (_) => const ForgotPasswordPage(),
+                            ),
+                          );
+                        });
+                      },
+                    ),
                   ),
                 ),
               ),
             ),
-            home: widget.recoveryCoordinator.isActive
-                ? ResetPasswordPage(
-                    onRecoveryFinished: widget.recoveryCoordinator.complete,
-                    onRecoveryCancelled: widget.recoveryCoordinator.cancel,
-                  )
+            home: widget.recoveryCoordinator.requiresFreshLogin
+                ? const LoginPage()
                 : _showAuthGate
                 ? const AuthGate()
                 : SplashScreen(

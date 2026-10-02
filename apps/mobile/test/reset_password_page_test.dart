@@ -27,7 +27,7 @@ void main() {
     expect(updated, isTrue);
     expect(signedOut, isTrue);
     expect(find.text('Password updated'), findsOneWidget);
-    expect(finished, isFalse);
+    expect(finished, isTrue);
 
     await tester.tap(find.text('Go to sign in'));
     expect(finished, isTrue);
