@@ -71,6 +71,7 @@ it.skipIf(process.env.S2B_LOCAL_PROBES !== "1")(
     const savedGlobal = sql(
       "select coalesce(jsonb_agg(to_jsonb(c)),'[]') from provider_private.global_budgets c;"
     )
+    const savedMetal = sql("select coalesce(jsonb_agg(to_jsonb(c)),'[]') from metal_private.spot_quotes c;")
     function configure(
       bucket: string,
       user: number,
@@ -181,6 +182,7 @@ it.skipIf(process.env.S2B_LOCAL_PROBES !== "1")(
       sql(
         "delete from provider_private.capacity; delete from provider_private.global_budgets;"
       )
+      sql("delete from metal_private.spot_quotes;")
       for (let n = 0; n < 2; n++) {
         const email = `s2b-${randomUUID()}@example.invalid`,
           password = `Local!9${randomUUID()}`
@@ -341,17 +343,24 @@ it.skipIf(process.env.S2B_LOCAL_PROBES !== "1")(
       await configure("gold_api", 2, 3)
       expect((await gold({ symbol: "XAU" })).body).toMatchObject({
         available: true,
-        price: 4340.28,
+        price: "4340.28",
         currency: "USD",
       })
       expect((await gold({ symbol: "XAG" }, users[0].secondToken)).status).toBe(
         200
       )
       expect((await gold({ symbol: "XAU" }, users[0].secondToken)).status).toBe(
-        429
+        200
       )
+      expect(providerCalls).toBe(2) // fresh stored metal reads are free
+      sql("update metal_private.spot_quotes set effective_at=now()-interval '10 days',fetched_at=now()-interval '10 days';")
+      expect((await gold({ symbol: "XAU" }, users[0].secondToken)).body).toMatchObject({
+        available: true, stale: true, refreshError: "provider_refresh_rate_limited",
+      })
       expect((await gold({ symbol: "XAG" }, users[1].token)).status).toBe(200)
-      expect((await gold({ symbol: "XAU" }, users[1].token)).status).toBe(429)
+      expect((await gold({ symbol: "XAU" }, users[1].token)).body).toMatchObject({
+        available: true, stale: true, refreshError: "provider_refresh_rate_limited",
+      })
       expect(providerCalls).toBe(3)
       // The running dedicated Edge endpoint shares the same global ledger.
       const served = await nativeFetch(base + "/functions/v1/gold-price", {
@@ -364,7 +373,8 @@ it.skipIf(process.env.S2B_LOCAL_PROBES !== "1")(
         },
         body: JSON.stringify({ symbol: "XAU" }),
       })
-      expect(served.status).toBe(429)
+      expect(served.status).toBe(200)
+      expect(await served.json()).toMatchObject({ available: true, stale: true, price: "4340.28" })
       expect((await gold({ symbol: "XPT" })).status).toBe(400)
       // Exercise Dashboard's separate Gold caller with a real local purchase.
       await api(
@@ -403,13 +413,15 @@ it.skipIf(process.env.S2B_LOCAL_PROBES !== "1")(
       const dashboard = await load("dashboard-valuation")
       const metalSnapshot = await dashboard({})
       expect(metalSnapshot.status).toBe(200)
-      expect(metalSnapshot.body.currentValues[metalAccount.id]).toBeNull()
-      expect(metalSnapshot.body.freshness).toBe("unavailable")
+      expect(metalSnapshot.body.currentValues[metalAccount.id]).toMatch(/^[0-9]+\.[0-9]+$/)
+      expect(metalSnapshot.body.freshness).toBe("stale")
+      expect(metalSnapshot.body.metalQuotes.XAU).toMatchObject({ price: "4340.28", stale: true })
       expect(providerCalls).toBe(3)
       console.info(
         "PASS S2-B: small configurable limits, upgrade retains accounting, cross-user global cap, 12 concurrent attempts admit 3, second sessions cannot bypass, cache hits free, M1 precise stale/manual and missing/paused fallback, independent Gold cap; zero provider egress"
       )
     } finally {
+      sql(`delete from metal_private.spot_quotes; insert into metal_private.spot_quotes select * from jsonb_populate_recordset(null::metal_private.spot_quotes,'${savedMetal.replaceAll("'", "''")}'::jsonb);`)
       for (const id of fxIds)
         await api(
           `/rest/v1/exchange_rates?id=eq.${id}`,

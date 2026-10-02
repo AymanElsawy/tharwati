@@ -597,8 +597,11 @@ class AccountsCopy {
       ? 'سعر المعدن المباشر غير متاح الآن'
       : 'Live metal price unavailable right now';
   String liveMetalPriceCaption(String? metalType) => _ar
-      ? 'الوزن × سعر ${metalName(metalType)} المباشر'
-      : 'Weight × the live ${metalName(metalType).toLowerCase()} price';
+      ? 'الوزن × السعر الفوري لـ${metalName(metalType)}'
+      : 'Weight × the ${metalName(metalType).toLowerCase()} spot price';
+  String get staleMetalPrice => _ar
+      ? 'آخر سعر فوري معروف للمعدن · قديم'
+      : 'Last-known metal spot price · Stale';
   String get metal => _ar ? 'المعدن' : 'METAL';
   String get totalCostLabel => _ar ? 'إجمالي التكلفة' : 'TOTAL COST';
   String get unrealizedGain => _ar ? 'ربح غير محقق' : 'Unrealized gain';

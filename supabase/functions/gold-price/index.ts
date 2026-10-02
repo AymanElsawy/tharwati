@@ -25,12 +25,11 @@ Deno.serve(async (request) => {
     const { symbol } = await request.json()
     if (symbol !== "XAU" && symbol !== "XAG")
       return json({ error: "invalid_metal_symbol" }, 400)
-    const quote = await getGoldQuote(client, symbol)
+    const writer = () => createClient(Deno.env.get("SUPABASE_URL")!, projectApiKey("secret"))
+    const quote = await getGoldQuote(client, symbol, writer)
     return json({
       available: true,
       ...quote,
-      provider: "gold-api",
-      fetchedAt: new Date().toISOString(),
     })
   } catch (error) {
     if (error instanceof ProviderBudgetError)

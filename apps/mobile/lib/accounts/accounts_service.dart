@@ -1,5 +1,6 @@
 import '../core/data_change.dart';
 import '../dashboard/data/dashboard_repository.dart';
+import '../dashboard/data/dashboard_snapshot.dart';
 import '../core/read_deadline.dart';
 import 'account_form.dart';
 import 'account_models.dart';
@@ -15,11 +16,15 @@ class AccountItem {
     required this.account,
     required this.value,
     required this.lifecycle,
+    this.spotQuote,
   });
 
   final Account account;
   final ResolvedValue value;
   final AccountLifecycle? lifecycle;
+
+  /// Presentation metadata from the same snapshot as the list's metal value.
+  final MetalSpotQuote? spotQuote;
 }
 
 class AccountsListModel {
@@ -37,6 +42,7 @@ class GoldAccountDetail {
     required this.purchases,
     required this.currentValue,
     required this.pricePerGram,
+    this.spotQuote,
   });
 
   final Account account;
@@ -46,6 +52,7 @@ class GoldAccountDetail {
   /// Pure-metal spot price per gram in the account's currency, recovered from
   /// the snapshot total (see `metal/metal_purity.dart`). Null = unavailable.
   final String? pricePerGram;
+  final MetalSpotQuote? spotQuote;
 
   /// The per-purity breakdown, sorted by purity code.
   List<MetalPurityAggregate> get purities =>
@@ -113,10 +120,12 @@ class AccountsService {
     };
 
     Map<String, String?> snapshotValues = const {};
+    Map<String, MetalSpotQuote> metalQuotes = const {};
     if (snapshotIds.isNotEmpty) {
       try {
         final snapshot = await _dashboard.fetchSnapshot();
         snapshotValues = snapshot.currentValues;
+        metalQuotes = snapshot.metalQuotes;
       } on ReadTimeoutException {
         rethrow;
       } on ReadAbortedException {
@@ -130,6 +139,9 @@ class AccountsService {
         .map(
           (a) => AccountItem(
             account: a,
+            spotQuote: a.type == AccountType.gold
+                ? metalQuotes[a.metalType == 'silver' ? 'XAG' : 'XAU']
+                : null,
             value: resolveCurrentValue(
               account: a,
               ledgerBalance: balances[a.id]?.currentBalance,
@@ -154,9 +166,12 @@ class AccountsService {
       final account = await _accounts.getAccount(accountId);
       final purchases = await _metal.getPurchaseHistory([accountId]);
       String? snapshotValue;
+      MetalSpotQuote? spotQuote;
       try {
         final snapshot = await _dashboard.fetchSnapshot();
         snapshotValue = snapshot.currentValues[accountId];
+        spotQuote =
+            snapshot.metalQuotes[account.metalType == 'silver' ? 'XAG' : 'XAU'];
       } on ReadTimeoutException {
         rethrow;
       } on ReadAbortedException {
@@ -170,6 +185,7 @@ class AccountsService {
         account: account,
         purchases: purchases,
         currentValue: currentValue,
+        spotQuote: spotQuote,
         pricePerGram: derivePricePerGram(
           accountCurrentValue: currentValue.amount,
           purchases: purchases,

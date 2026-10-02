@@ -826,6 +826,10 @@ export type Database = {
     }
     Views: Record<never, never>
     Functions: {
+      read_metal_spot_quote: {
+        Args: { p_symbol: string }
+        Returns: Json
+      }
       export_my_data_v1: {
         Args: Record<PropertyKey, never>
         Returns: Json

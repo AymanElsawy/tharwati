@@ -1,6 +1,8 @@
 import type { TranslationKey } from "../en/translations"
 
 export const ar: Record<TranslationKey, string> = {
+  "accounts.metalPrice.stale": "آخر سعر فوري معروف للمعدن · قديم",
+  "accounts.metalPrice.staleFx": "يستخدم التقييم سعر صرف قديمًا",
   "errors.validation": "تحقق من البيانات ثم حاول مرة أخرى.",
   "errors.businessRule": "لا يمكن إجراء هذا التغيير في حالة الحساب الحالية.",
   "errors.unauthorized": "انتهت جلستك. سجّل الدخول مرة أخرى.",

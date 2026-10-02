@@ -14,6 +14,7 @@ import '../accounts_service.dart';
 import '../metal_purchase_sheet.dart';
 import 'metal_gain_style.dart';
 import 'metal_purity.dart';
+import 'metal_price_freshness.dart';
 
 /// One purity's slice of a gold/silver account — port of the web
 /// `MetalPurityDetailsPage`. Shows the purity's totals and every effective
@@ -188,6 +189,7 @@ class _MetalPurityDetailPageState extends State<MetalPurityDetailPage> {
           const SizedBox(height: 12),
         ],
         _Summary(aggregate: aggregate, currency: account.currencyCode),
+        MetalPriceFreshness(quote: _detail?.spotQuote),
         const SizedBox(height: 16),
         Text(
           copy.purchasesCount(purchases.length),

@@ -5,6 +5,8 @@ import type { Translate } from "@/i18n/context"
 import { safeErrorMessage } from "@/lib/errors/app-error"
 
 import { Button } from "@/components/ui/button"
+import { MetalPriceFreshness } from "@/features/accounts/components/MetalPriceFreshness"
+import type { ResolvedMetalPrice } from "@/services/metalPriceService"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -26,7 +28,7 @@ import {
   aggregateValuedMetalPurchasesByPurity,
   correctMetalPurchase,
   getEligibleMetalFundingAccounts,
-  getMetalAccountCurrentPrices,
+  getMetalAccountCurrentQuotes,
   getMetalPurchases,
   reverseMetalPurchase,
   valueMetalPurchases,
@@ -159,6 +161,7 @@ export function MetalPurityDetailsPage() {
   const accountValues = useAccountCurrentValues(accountsToValue)
   const [purchases, setPurchases] = useState<ValuedMetalPurchaseTransaction[]>([])
   const [isLoading, setIsLoading] = useState(true)
+  const [quote, setQuote] = useState<ResolvedMetalPrice | null>(null)
   const [isError, setIsError] = useState(false)
   const [isPurchaseOpen, setIsPurchaseOpen] = useState(false)
   const [editingPurchase, setEditingPurchase] = useState<ValuedMetalPurchaseTransaction | null>(null)
@@ -178,9 +181,11 @@ export function MetalPurityDetailsPage() {
     try {
       const [history, prices] = await Promise.all([
         getMetalPurchases([account.id]),
-        getMetalAccountCurrentPrices([account]),
+        getMetalAccountCurrentQuotes([account]),
       ])
-      setPurchases(valueMetalPurchases(history, prices.get(account.id) ?? null))
+      const resolved = prices.get(account.id) ?? null
+      setQuote(resolved)
+      setPurchases(valueMetalPurchases(history, resolved?.pricePerGram ?? null))
     } catch {
       setIsError(true)
       setPurchases([])
@@ -300,6 +305,7 @@ export function MetalPurityDetailsPage() {
         </div>
       </header>
 
+      <MetalPriceFreshness quote={quote} />
       <section className="mt-6 overflow-hidden rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)]">
         <div className="grid grid-cols-1 divide-y divide-[var(--color-border)] sm:grid-cols-3 sm:divide-x sm:divide-y-0">
           <SummaryValue

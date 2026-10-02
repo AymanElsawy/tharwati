@@ -4,6 +4,8 @@ import { useNavigate, useParams } from "react-router-dom"
 
 import { Button } from "@/components/ui/button"
 import { AccountValue } from "@/features/accounts/components/AccountValue"
+import { MetalPriceFreshness } from "@/features/accounts/components/MetalPriceFreshness"
+import type { ResolvedMetalPrice } from "@/services/metalPriceService"
 import { AccountValuationDialog } from "@/features/accounts/components/AccountValuationDialog"
 import { AccountDisposalDialog } from "@/features/accounts/components/AccountDisposalDialog"
 import { MetalPurchaseHistoryContent } from "@/features/accounts/components/MetalPurchaseHistoryContent"
@@ -32,7 +34,7 @@ import { AccountRecordsPage } from "@/features/accounts/pages/AccountRecordsPage
 import { BrokerageAccountDetailsPage } from "@/features/accounts/pages/BrokerageAccountDetailsPage"
 import {
   aggregateValuedMetalPurchasesByPurity,
-  getMetalAccountCurrentPrices,
+  getMetalAccountCurrentQuotes,
   getMetalPurchases,
   valueMetalPurchases,
 } from "@/features/accounts/services/metal-purchases.service"
@@ -412,6 +414,7 @@ function MetalAccountDetailsPage({
     accounts.accounts.find((item) => item.id === accountId) ?? null
   const [purchases, setPurchases] = useState<MetalPurchaseTransaction[]>([])
   const [price, setPrice] = useState<Decimal | null>(null)
+  const [quote, setQuote] = useState<ResolvedMetalPrice | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [isError, setIsError] = useState(false)
   const [isPurchaseOpen, setIsPurchaseOpen] = useState(false)
@@ -423,10 +426,12 @@ function MetalAccountDetailsPage({
     try {
       const [rows, prices] = await Promise.all([
         getMetalPurchases([account.id]),
-        getMetalAccountCurrentPrices([account]),
+        getMetalAccountCurrentQuotes([account]),
       ])
       setPurchases(rows)
-      setPrice(prices.get(account.id) ?? null)
+      const resolved = prices.get(account.id) ?? null
+      setPrice(resolved?.pricePerGram ?? null)
+      setQuote(resolved)
     } catch {
       setIsError(true)
       setPurchases([])
@@ -481,6 +486,7 @@ function MetalAccountDetailsPage({
           </Button>
         </div>
       </header>
+      <MetalPriceFreshness quote={quote} />
       <section className="mt-8 rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-4 shadow-sm sm:p-6">
         <MetalPurchaseHistoryContent
           account={account}

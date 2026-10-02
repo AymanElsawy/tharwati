@@ -100,15 +100,16 @@ Dashboard and the dedicated authenticated `gold-price` Edge endpoint both use
 `_shared/gold-provider.ts`. Only XAU/XAG are supported, each attempt costs one
 Gold unit, fetch/body is bounded by 2.5 seconds and only positive finite numeric
 USD spot responses are accepted. Web's default transport uses this endpoint
-instead of fetching the public provider directly; its six-hour successful cache,
-in-flight coalescing and ounce-to-gram/purity/FX arithmetic are unchanged. Mobile
+instead of fetching the public provider directly; its six-hour freshness window
+and in-flight coalescing remain. Ounce-to-gram/purity/FX arithmetic is unchanged,
+with decimal-string metal transport and valuation. Mobile
 still derives metal figures from Dashboard snapshots and makes no direct Gold call.
 
-There is **no persisted last-known Gold spot fallback** in the current design.
-Blocked/failed refresh yields unavailable/null when no existing valid Web cache
-or Dashboard snapshot serves the request. No fake spot, zero or securities cache
-is substituted. An expired Web cache is not silently relabeled fresh. S2-B does
-not add a metals fallback redesign or alter valuation architecture.
+The separate [Gold/Silver reliability contract](gold-price-reliability.md) keeps
+one latest valid spot per metal in `metal_private.spot_quotes`. Fresh cached
+quotes and last-known fallback reads reserve no Gold budget. Failed/blocked
+refresh retains valid stored values explicitly stale; missing live/stored spot
+is unavailable. No securities cache, transaction cost/FX or zero is substituted.
 
 ## Safe response/fallback contract
 
@@ -117,8 +118,10 @@ row returns `provider_refresh_paused`; exhaustion returns
 `provider_refresh_rate_limited`; reservation failure returns
 `provider_budget_unavailable`. No raw provider/database errors reach clients.
 
-Search/Gold return safe unavailable bodies with HTTP 429 for exhausted budget or
-503 for unavailable configuration/service. Securities retain HTTP 200 prices
+Search returns safe unavailable bodies with HTTP 429 for exhausted budget or
+503 for unavailable configuration/service. Gold returns HTTP 200 plus truthful
+stale/refresh-error metadata when a usable stored quote exists; without a quote,
+it retains those safe 429/503 unavailable responses. Securities retain HTTP 200 prices
 plus optional `refreshError`/`retryAfterSeconds`. Their fresh → current provider
 → previous close → stale persisted provider → caller manual → unavailable order
 is unchanged. FX retains direct/inverse stored provider then manual fallback,

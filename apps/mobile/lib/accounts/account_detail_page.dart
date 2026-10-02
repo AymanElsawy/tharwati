@@ -15,6 +15,7 @@ import 'accounts_controller.dart';
 import 'accounts_service.dart';
 import 'brokerage/brokerage_account_detail_page.dart';
 import 'metal/metal_gain_style.dart';
+import 'metal/metal_price_freshness.dart';
 import 'metal/metal_purity.dart';
 import 'metal/metal_purity_detail_page.dart';
 import 'metal_purchase_sheet.dart';
@@ -504,14 +505,10 @@ class _GoldHero extends StatelessWidget {
               fontFeatures: const [FontFeature.tabularFigures()],
             ),
           ),
-          Padding(
-            padding: const EdgeInsets.only(top: 4),
-            child: Text(
-              currentValue == null
-                  ? copy.liveMetalPriceUnavailable
-                  : copy.liveMetalPriceCaption(a.metalType),
-              style: TextStyle(color: c.inkMuted, fontSize: 12),
-            ),
+          MetalPriceCaption(
+            quote: detail?.spotQuote ?? item.spotQuote,
+            metalType: a.metalType,
+            available: currentValue != null,
           ),
           const SizedBox(height: 14),
           GridView.count(

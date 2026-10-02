@@ -13,6 +13,7 @@ class DashboardSnapshot {
     required this.rates,
     required this.unavailableSources,
     required this.portfolioAllocation,
+    this.metalQuotes = const {},
   });
 
   final DateTime asOf;
@@ -33,6 +34,7 @@ class DashboardSnapshot {
   final List<String> unavailableSources;
 
   final PortfolioAllocationSnapshot portfolioAllocation;
+  final Map<String, MetalSpotQuote> metalQuotes;
 
   static DashboardSnapshot parse(Object? value) {
     if (value is! Map) {
@@ -78,6 +80,7 @@ class DashboardSnapshot {
       rates: rates,
       unavailableSources: sourcesRaw.cast<String>(),
       portfolioAllocation: allocation,
+      metalQuotes: _metalQuotes(map['metalQuotes']),
     );
   }
 
@@ -87,6 +90,16 @@ class DashboardSnapshot {
     'unavailable' => SnapshotFreshness.unavailable,
     _ => null,
   };
+
+  static Map<String, MetalSpotQuote> _metalQuotes(Object? raw) {
+    final result = <String, MetalSpotQuote>{};
+    if (raw is! Map) return result;
+    for (final entry in raw.entries) {
+      final quote = MetalSpotQuote.parse(entry.value);
+      if (quote != null) result['${entry.key}'] = quote;
+    }
+    return result;
+  }
 
   static Map<String, String?>? _decimalMap(
     Object? raw, {
@@ -110,6 +123,48 @@ class DashboardSnapshot {
 }
 
 enum SnapshotFreshness { fresh, stale, unavailable }
+
+/// Separate metal provenance; never transaction cost or securities pricing.
+class MetalSpotQuote {
+  const MetalSpotQuote({
+    required this.price,
+    required this.effectiveAt,
+    required this.fetchedAt,
+    required this.providerStale,
+  });
+  final String price;
+  final DateTime effectiveAt;
+  final DateTime fetchedAt;
+  final bool providerStale;
+  bool get isStale =>
+      providerStale ||
+      DateTime.now().difference(effectiveAt) >= const Duration(hours: 6) ||
+      DateTime.now().difference(fetchedAt) >= const Duration(hours: 6);
+  static MetalSpotQuote? parse(Object? value) {
+    if (value is! Map) return null;
+    final price = D.normalize('${value['price']}');
+    final effective = DateTime.tryParse('${value['effectiveAt']}');
+    final fetched = DateTime.tryParse('${value['fetchedAt']}');
+    if (price == null ||
+        (D.compare(price, '0') ?? 0) <= 0 ||
+        effective == null ||
+        fetched == null ||
+        effective.isAfter(fetched) ||
+        fetched.isAfter(DateTime.now()) ||
+        value['provider'] != 'gold-api' ||
+        value['currency'] != 'USD' ||
+        !const ['XAU', 'XAG'].contains(value['symbol']) ||
+        !const ['provider', 'observed'].contains(value['timestampBasis'])) {
+      return null;
+    }
+    return MetalSpotQuote(
+      price: price,
+      effectiveAt: effective,
+      fetchedAt: fetched,
+      providerStale: value['stale'] == true,
+    );
+  }
+}
 
 enum PortfolioAllocationStatus { complete, incomplete }
 

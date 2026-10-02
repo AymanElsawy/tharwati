@@ -1,28 +1,23 @@
-import { convertCurrency } from "@/services/exchangeRateService"
+import { getExchangeRate } from "@/services/exchangeRateService"
 import {
-  READ_DEADLINE_MS,
-  ReadTimeoutError,
-  readWithDeadline,
-} from "@/lib/network/read-deadline"
+  divideDecimals,
+  multiplyDecimals,
+} from "@/lib/financial-calculations/decimal"
+import { readWithDeadline } from "@/lib/network/read-deadline"
 import { supabase } from "@/lib/supabase/client"
+import {
+  parseMetalQuote,
+  metalQuoteFreshMs,
+  type MetalQuote,
+  type MetalSymbol,
+} from "../../../../supabase/functions/_shared/metal-quote"
 
-export type MetalSymbol = "XAU" | "XAG"
-
-export type ResolvedMetalPrice = {
-  available: true
-  pricePerGram: number
+export type { MetalSymbol }
+export type ResolvedMetalPrice = MetalQuote & {
+  pricePerGram: string
   currencyCode: string
-  provider: "gold-api"
-  fetchedAt: string
+  fxStale?: boolean
 }
-
-type MetalApiPayload = {
-  price?: unknown
-  currency?: unknown
-}
-
-const gramsPerTroyOunce = 31.1034768
-const cacheDurationMs = 6 * 60 * 60 * 1000
 
 const protectedMetalFetch: typeof fetch = async (input, init) => {
   const symbol = new URL(String(input), "http://edge.invalid").searchParams.get(
@@ -34,33 +29,78 @@ const protectedMetalFetch: typeof fetch = async (input, init) => {
   })
   return new Response(JSON.stringify(data), { status: error ? 503 : 200 })
 }
+async function storedMetalQuote(
+  symbol: MetalSymbol
+): Promise<MetalQuote | null> {
+  try {
+    const { data, error } = await readWithDeadline(2000, () =>
+      supabase.rpc("read_metal_spot_quote", { p_symbol: symbol })
+    )
+    const quote = error ? null : parseMetalQuote(data, symbol)
+    return quote ? { ...quote, stale: true } : null
+  } catch {
+    return null
+  }
+}
 
 export class CurrentMetalPriceClient {
-  private readonly cache = new Map<
-    MetalSymbol,
-    { value: number; expiresAt: number }
-  >()
-  private readonly pending = new Map<MetalSymbol, Promise<number | null>>()
+  private readonly cache = new Map<MetalSymbol, MetalQuote>()
+  private readonly pending = new Map<MetalSymbol, Promise<MetalQuote | null>>()
   private readonly fetcher: typeof fetch
   private readonly now: () => number
-
+  private readonly fallback: typeof storedMetalQuote
   constructor(
     fetcher: typeof fetch = protectedMetalFetch,
-    now: () => number = Date.now
+    now: () => number = Date.now,
+    fallback: typeof storedMetalQuote = storedMetalQuote
   ) {
     this.fetcher = fetcher
     this.now = now
+    this.fallback = fallback
   }
 
-  async getPricePerGramUsd(
+  async getQuote(
     symbol: MetalSymbol,
     retry = false
-  ): Promise<number | null> {
+  ): Promise<MetalQuote | null> {
     const cached = this.cache.get(symbol)
-    if (!retry && cached && cached.expiresAt > this.now()) return cached.value
-    const inFlight = this.pending.get(symbol)
-    if (inFlight) return inFlight
-    const request = this.fetchPricePerGramUsd(symbol)
+    if (
+      !retry &&
+      cached &&
+      !cached.stale &&
+      this.now() - Date.parse(cached.effectiveAt) < metalQuoteFreshMs &&
+      this.now() - Date.parse(cached.fetchedAt) < metalQuoteFreshMs
+    )
+      return cached
+    const pending = this.pending.get(symbol)
+    if (pending) return pending
+    const request = (async () => {
+      try {
+        // Leave room inside the market deadline for direct database recovery.
+        const quote = await readWithDeadline(6000, async (signal) => {
+          const response = await this.fetcher(`gold-price?symbol=${symbol}`, {
+            signal,
+          })
+          return response.ok
+            ? parseMetalQuote(await response.json(), symbol, this.now())
+            : null
+        })
+        if (quote) {
+          this.cache.set(symbol, quote)
+          return quote
+        }
+      } catch {
+        /* Stored recovery below also handles timeout/service failure. */
+      }
+      const stored = await this.fallback(symbol)
+      const recovered =
+        stored && cached
+          ? Date.parse(cached.effectiveAt) > Date.parse(stored.effectiveAt)
+            ? cached
+            : stored
+          : (stored ?? cached)
+      return recovered ? { ...recovered, stale: true } : null
+    })()
     this.pending.set(symbol, request)
     try {
       return await request
@@ -69,58 +109,41 @@ export class CurrentMetalPriceClient {
     }
   }
 
-  private async fetchPricePerGramUsd(
-    symbol: MetalSymbol
+  async getPricePerGramUsd(
+    symbol: MetalSymbol,
+    retry = false
   ): Promise<number | null> {
-    const url = `gold-price?symbol=${symbol}`
-    try {
-      const response = await readWithDeadline(
-        READ_DEADLINE_MS.market,
-        (signal) => this.fetcher(url, { signal })
-      )
-      if (!response.ok) return null
-      const payload = (await response.json()) as MetalApiPayload
-      const failures = [
-        typeof payload.price !== "number" && "price_not_number",
-        typeof payload.price === "number" &&
-          !Number.isFinite(payload.price) &&
-          "price_not_finite",
-        typeof payload.price === "number" &&
-          payload.price <= 0 &&
-          "price_not_positive",
-        payload.currency !== "USD" && "currency_not_usd",
-      ].filter(Boolean)
-      if (failures.length > 0) return null
-      const pricePerGram = (payload.price as number) / gramsPerTroyOunce
-      this.cache.set(symbol, {
-        value: pricePerGram,
-        expiresAt: this.now() + cacheDurationMs,
-      })
-      return pricePerGram
-    } catch (error) {
-      if (error instanceof ReadTimeoutError) throw error
-      console.error("Metal price request failed", {
-        url,
-        message: error instanceof Error ? error.message : String(error),
-      })
-      return null
-    }
+    const quote = await this.getQuote(symbol, retry)
+    const price = quote ? divideDecimals(quote.price, "31.1034768", 12) : null
+    return price === null ? null : Number(price)
   }
 }
 
 const currentMetalPriceClient = new CurrentMetalPriceClient()
-
 export function getMetalPricePerGramUsd(symbol: MetalSymbol) {
   return currentMetalPriceClient.getPricePerGramUsd(symbol)
 }
-
+export async function getResolvedMetalPrice(
+  symbol: MetalSymbol,
+  targetCurrencyCode: string
+): Promise<ResolvedMetalPrice | null> {
+  const quote = await currentMetalPriceClient.getQuote(symbol)
+  if (!quote) return null
+  const usd = divideDecimals(quote.price, "31.1034768", 12)
+  if (usd === null) return null
+  const currencyCode = targetCurrencyCode.toUpperCase()
+  if (currencyCode === "USD")
+    return { ...quote, pricePerGram: usd, currencyCode }
+  const rate = await getExchangeRate("USD", currencyCode)
+  const pricePerGram = rate ? multiplyDecimals(usd, rate.rate) : null
+  return pricePerGram === null
+    ? null
+    : { ...quote, pricePerGram, currencyCode, fxStale: rate!.stale }
+}
 export async function getMetalPricePerGram(
   symbol: MetalSymbol,
   targetCurrencyCode: string
 ): Promise<number | null> {
-  const pricePerGramUsd =
-    await currentMetalPriceClient.getPricePerGramUsd(symbol)
-  if (pricePerGramUsd === null) return null
-  if (targetCurrencyCode.toUpperCase() === "USD") return pricePerGramUsd
-  return convertCurrency(pricePerGramUsd, "USD", targetCurrencyCode)
+  const resolved = await getResolvedMetalPrice(symbol, targetCurrencyCode)
+  return resolved ? Number(resolved.pricePerGram) : null
 }

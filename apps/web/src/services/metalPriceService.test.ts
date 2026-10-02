@@ -4,10 +4,22 @@ import { CurrentMetalPriceClient } from "@/services/metalPriceService"
 import { supabase } from "@/lib/supabase/client"
 
 vi.mock("@/lib/supabase/client", () => ({
-  supabase: { functions: { invoke: vi.fn() } },
+  supabase: {
+    functions: { invoke: vi.fn() },
+    rpc: vi.fn(async () => ({ data: null, error: null })),
+  },
 }))
 
-const goldUsd = { name: "Gold", price: 4340.28, symbol: "XAU", currency: "USD" }
+const goldUsd = {
+  price: "4340.28",
+  symbol: "XAU",
+  currency: "USD",
+  provider: "gold-api",
+  effectiveAt: new Date().toISOString(),
+  fetchedAt: new Date().toISOString(),
+  timestampBasis: "provider",
+  stale: false,
+} as const
 
 describe("CurrentMetalPriceClient", () => {
   it("routes default transport through authenticated Gold Edge and caches successful reads", async () => {
@@ -75,5 +87,51 @@ describe("CurrentMetalPriceClient", () => {
         )
     )
     await expect(client.getPricePerGramUsd("XAU")).resolves.toBeNull()
+  })
+
+  it("Edge outage recovers exact persisted stale price and provenance", async () => {
+    const quote = {
+      ...goldUsd,
+      price: "4340.123456789012345678",
+      effectiveAt: "2026-09-01T00:00:00Z",
+      fetchedAt: "2026-09-01T00:01:00Z",
+      stale: true,
+    } as const
+    const client = new CurrentMetalPriceClient(
+      vi.fn().mockResolvedValue(new Response("", { status: 503 })),
+      Date.now,
+      async () => quote
+    )
+    expect(await client.getQuote("XAU")).toEqual(quote)
+  })
+  it("expired browser cache survives service/database failure marked stale", async () => {
+    let now = Date.now()
+    const fetcher = vi
+      .fn()
+      .mockResolvedValueOnce(new Response(JSON.stringify(goldUsd)))
+      .mockRejectedValueOnce(new Error("service unavailable"))
+    const client = new CurrentMetalPriceClient(
+      fetcher,
+      () => now,
+      async () => null
+    )
+    await client.getQuote("XAU")
+    now += 6 * 60 * 60 * 1000 + 1
+    expect(await client.getQuote("XAU")).toMatchObject({
+      price: goldUsd.price,
+      stale: true,
+      effectiveAt: goldUsd.effectiveAt,
+    })
+  })
+  it("stale transport is never promoted to a six-hour fresh browser quote", async () => {
+    const fetcher = vi
+      .fn()
+      .mockImplementation(
+        async () => new Response(JSON.stringify({ ...goldUsd, stale: true }))
+      )
+    const client = new CurrentMetalPriceClient(fetcher)
+    expect((await client.getQuote("XAU"))?.stale).toBe(true)
+    await client.getQuote("XAU")
+    expect(fetcher).toHaveBeenCalledTimes(2)
   })
 })

@@ -6,7 +6,7 @@ import {
 import type { AccountSummary } from "@/lib/supabase/types"
 import type { Decimal } from "@/lib/supabase/types"
 import { localDateTimeInputToIso } from "@/lib/formatting/local-date-time"
-import { getMetalPricePerGram } from "@/services/metalPriceService"
+import { getResolvedMetalPrice, type ResolvedMetalPrice } from "@/services/metalPriceService"
 import {
   metalPurchasesRepository,
   type MetalPurchaseHistoryRow,
@@ -121,13 +121,20 @@ function multiplyOrThrow(left: string, right: string): string {
 export async function getMetalAccountCurrentPrices(
   accounts: readonly AccountSummary[]
 ): Promise<Map<string, Decimal | null>> {
+  const quotes = await getMetalAccountCurrentQuotes(accounts)
+  return new Map([...quotes].map(([id, quote]) => [id, quote?.pricePerGram ?? null]))
+}
+
+export async function getMetalAccountCurrentQuotes(
+  accounts: readonly AccountSummary[]
+): Promise<Map<string, ResolvedMetalPrice | null>> {
   const prices = await Promise.all(
     accounts
       .filter((account) => account.account_type_code === "gold")
       .map(async (account) => {
         const symbol = account.metal_type === "silver" ? "XAG" : "XAU"
-        const price = await getMetalPricePerGram(symbol, account.currency_code)
-        return [account.id, price === null ? null : String(price)] as const
+        const price = await getResolvedMetalPrice(symbol, account.currency_code)
+        return [account.id, price] as const
       })
   )
   return new Map(prices)

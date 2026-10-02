@@ -1,4 +1,6 @@
 export const en = {
+  "accounts.metalPrice.stale": "Last-known metal spot price · Stale",
+  "accounts.metalPrice.staleFx": "Valuation uses a stale FX rate",
   "errors.validation": "Check the information and try again.",
   "errors.businessRule": "This change is not allowed for the current account state.",
   "errors.unauthorized": "Your session has expired. Sign in again.",

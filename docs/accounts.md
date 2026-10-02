@@ -794,6 +794,20 @@ through repository → service → controller.
 the authenticated `gold-price` Edge endpoint and converts with its own FX service.
 The endpoint and Dashboard share the separate, protected Gold API helper and
 operational Gold capacity; neither uses securities pricing. Mobile
+and Web retain metal quote provenance through the separate
+[Gold/Silver last-known contract](gold-price-reliability.md). The private
+server-owned spot cache preserves exact USD-per-troy-ounce decimals and original
+effective/fetched timestamps. Fresh cache (six hours), successful protected live
+refresh, last-known stale cache, then unavailable is the precedence. Failed or
+budget-denied refresh cannot erase a usable stored quote. Web account/purity
+detail and Mobile metal detail disclose **Last-known metal spot price · Stale**
+with quote time; Dashboard freshness also becomes stale. Brand metal styling and
+financial gain/loss colors remain separate. Mobile
+retains each metal's quote alongside its Accounts-list valuation. The account
+hero displays stale provenance and effective time directly beneath Current Value,
+including while the separate purchase/detail read is pending or fails. Fresh or
+unknown provenance uses neutral **Weight × the gold/silver spot price** copy,
+without asserting a live refresh. Mobile
 derives it instead: the `dashboard-valuation` Edge Function already values a
 gold account as `Σ(gramsᵢ × price × factorᵢ)` — applying purity factors
 server-side — which factors to `price × Σ(gramsᵢ × factorᵢ)`. Every gram and
@@ -910,8 +924,9 @@ feed must not hide the portfolio (web keeps separate `holdingsError` /
 - **No "include in net worth" toggle** (canvas component sheet mentions one); the
   web has no such column — `is_active` (lifecycle) is the only inclusion gate.
 - **Gold current value depends on the `dashboard-valuation` Edge Function** for
-  the live metal price (same reuse decision as Flow 2); if it fails the value
-  reads "Unavailable".
+  protected live/stored metal pricing. Provider outage or budget exhaustion uses
+  last-known stored spot; a complete Dashboard service failure still prevents a
+  new Mobile valuation. The spot cache does not reconstruct an entire snapshot.
 - **Cross-currency transfers** in the record form require a manual "amount
   received" only when the automatic current-FX estimate is unavailable. Mobile
   requests the existing `fx-rates` current path for a valid cross-currency

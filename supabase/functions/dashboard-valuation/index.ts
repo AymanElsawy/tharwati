@@ -4,6 +4,7 @@ import { storedPrices } from "../_shared/stored-prices.ts"
 import { storedFxCandidates } from "../_shared/stored-fx.ts"
 import { projectApiKey } from "../_shared/project-api-keys.ts"
 import { getGoldQuote } from "../_shared/gold-provider.ts"
+import { parseMetalQuote, type MetalQuote } from "../_shared/metal-quote.ts"
 import {
   dashboardValuationReason,
   type DashboardValuationStage,
@@ -45,6 +46,7 @@ type Snapshot = {
   currentValues: Record<string, Decimal | null>
   accountBalances: Record<string, Decimal>
   rates: Record<string, Decimal | null>
+  metalQuotes: Record<string, MetalQuote>
   unavailableSources: string[]
   portfolioAllocation: {
     status: "complete" | "incomplete"
@@ -122,7 +124,16 @@ Deno.serve(async (request) => {
     if (existing?.snapshot) {
       snapshotMode = "hit"
       stage = "response_serialization"
-      return json(existing.snapshot)
+      const snapshot = existing.snapshot as Snapshot
+      // A 15-minute snapshot hit must not extend a metal quote's six-hour age.
+      for (const symbol of ["XAU", "XAG"] as const) {
+        const quote = parseMetalQuote(snapshot.metalQuotes?.[symbol], symbol)
+        if (quote) {
+          snapshot.metalQuotes[symbol] = quote
+          if (quote.stale && snapshot.freshness === "fresh") snapshot.freshness = "stale"
+        }
+      }
+      return json(snapshot)
     }
 
     stage = "accounts_query"
@@ -214,6 +225,8 @@ Deno.serve(async (request) => {
     const assetIds = [...new Set(holdings.map((holding) => holding.asset_id))]
     const prices = new Map<string, Price>()
     const metalUsd = new Map<"XAU" | "XAG", Decimal | null>()
+    const metalQuotes: Record<string, MetalQuote> = {}
+    const metalWriter = () => createClient(url, projectApiKey("secret"))
     const metalSymbols = [...new Set(metalAccounts.map((account) => account.metal_type === "silver" ? "XAG" : "XAU"))] as Array<"XAU" | "XAG">
     timing.setMetalSymbolCount(metalSymbols.length)
     stage = "market_prices_request"
@@ -240,8 +253,10 @@ Deno.serve(async (request) => {
       maxMetalPriceConcurrency,
       async (symbol) => timing.measure("metal_price_request_sum", async () => {
         try {
-          const payload = await getGoldQuote(userClient, symbol)
-          return [symbol, typeof payload.price === "number" && Number.isFinite(payload.price) && payload.price > 0 && payload.currency === "USD" ? divide(String(payload.price), gramsPerTroyOunce, 12) : null] as const
+          const payload = await getGoldQuote(userClient, symbol, metalWriter)
+          metalQuotes[symbol] = payload
+          if (payload.stale) usedStale = true
+          return [symbol, divide(payload.price, gramsPerTroyOunce, 12)] as const
         } catch {
           return [symbol, null] as const
         }
@@ -319,7 +334,7 @@ Deno.serve(async (request) => {
     stage = "fx_conversion"
     for (const account of accounts) await resolveRate(account.currency_code, baseCurrencyCode)
     stage = "build_snapshot_payload"
-    const asOf = new Date(); const snapshot: Snapshot = { asOf: asOf.toISOString(), expiresAt: new Date(asOf.getTime() + snapshotTtlMs).toISOString(), freshness: unavailableSources.length ? "unavailable" : usedStale ? "stale" : "fresh", currentValues, accountBalances: Object.fromEntries(balances), rates: Object.fromEntries(rateCache), unavailableSources, portfolioAllocation: { status: portfolioAllocationIncomplete ? "incomplete" : "complete", holdings: portfolioAllocationHoldings } }
+    const asOf = new Date(); const snapshot: Snapshot = { asOf: asOf.toISOString(), expiresAt: new Date(asOf.getTime() + snapshotTtlMs).toISOString(), freshness: unavailableSources.length ? "unavailable" : usedStale ? "stale" : "fresh", currentValues, accountBalances: Object.fromEntries(balances), rates: Object.fromEntries(rateCache), metalQuotes, unavailableSources, portfolioAllocation: { status: portfolioAllocationIncomplete ? "incomplete" : "complete", holdings: portfolioAllocationHoldings } }
     stage = "snapshot_persistence"
     const { data: stored, error: storeError } = await timing.measure("snapshot_persistence", () => userClient.rpc("store_dashboard_valuation_snapshot" as never, { p_base_currency_code: baseCurrencyCode, p_snapshot: snapshot, p_as_of: snapshot.asOf, p_expires_at: snapshot.expiresAt } as never))
     if (storeError) throw storeError

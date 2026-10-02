@@ -3,7 +3,7 @@ import source from "./index.ts?raw"
 
 describe("dashboard valuation non-market account values", () => {
   it("uses the separate protected Gold helper without a direct provider bypass", () => {
-    expect(source).toContain('getGoldQuote(userClient, symbol)')
+    expect(source).toContain('getGoldQuote(userClient, symbol, metalWriter)')
     expect(source).not.toContain('https://api.gold-api.com')
   })
   it("forwards the caller JWT and the public API key to RLS-scoped reads and child functions", () => {
