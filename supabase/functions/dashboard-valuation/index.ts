@@ -1,4 +1,7 @@
 import { createClient } from "npm:@supabase/supabase-js@2"
+import { bounded, positiveDecimal } from "../_shared/market-reliability.ts"
+import { storedPrices } from "../_shared/stored-prices.ts"
+import { storedFxCandidates } from "../_shared/stored-fx.ts"
 import { projectApiKey } from "../_shared/project-api-keys.ts"
 import {
   dashboardValuationReason,
@@ -34,7 +37,7 @@ type Account = {
   bank_subtype: "debit" | "credit" | null; is_active: boolean; metal_type: "gold" | "silver" | null
 }
 type Balance = { account_id: string; current_balance: Decimal }
-type Price = { assetId: string; available: boolean; price: number | null; currencyCode: string | null; stale: boolean }
+type Price = { assetId: string; available: boolean; price: string | number | null; currencyCode: string | null; stale: boolean }
 type SettledRead<Result> = { value: Result } | { cause: unknown }
 type Snapshot = {
   asOf: string; expiresAt: string; freshness: "fresh" | "stale" | "unavailable"
@@ -178,22 +181,26 @@ Deno.serve(async (request) => {
       timing.addFxPair()
       const request = timing.measure("fx_request_sum", async () => {
         try {
-          const response = await fetch(`${url}/functions/v1/fx-rates`, {
-            method: "POST",
-            headers: { Authorization: authorization, apikey: publishableKey, "Content-Type": "application/json" },
-            body: JSON.stringify({ fromCurrencyCode: from, toCurrencyCode: to, mode: "current" }),
+          const resolved = await bounded(8000, async (signal) => {
+            const response = await fetch(`${url}/functions/v1/fx-rates`, {
+              method: "POST",
+              headers: { Authorization: authorization, apikey: publishableKey, "Content-Type": "application/json" },
+              body: JSON.stringify({ fromCurrencyCode: from, toCurrencyCode: to, mode: "current" }), signal,
+            })
+            const payload = await response.json() as { available?: unknown; rate?: unknown; stale?: unknown }
+            if (!response.ok) throw new Error("FX service unavailable")
+            return payload
           })
-          const resolved = await response.json() as { available?: unknown; rate?: unknown; stale?: unknown }
-          if (response.ok && resolved.available === true && typeof resolved.rate === "number" && Number.isFinite(resolved.rate) && resolved.rate > 0) {
+          if (resolved.available === true && positiveDecimal(resolved.rate) !== null) {
             if (resolved.stale === true) usedStale = true
             const value = String(resolved.rate); rateCache.set(key, value); return value
           }
           throw new Error("FX provider unavailable")
         } catch {
-          const { data: direct } = await userClient.from("exchange_rates").select("rate").eq("base_currency_code", from).eq("quote_currency_code", to).order("effective_at", { ascending: false }).limit(1).maybeSingle()
-          if (direct?.rate) { usedStale = true; const value = String(direct.rate); rateCache.set(key, value); return value }
-          const { data: inverse } = await userClient.from("exchange_rates").select("rate").eq("base_currency_code", to).eq("quote_currency_code", from).order("effective_at", { ascending: false }).limit(1).maybeSingle()
-          const value = inverse?.rate ? divide("1", String(inverse.rate), 18) : null; if (value) usedStale = true; rateCache.set(key, value); return value
+          const fallback = (await storedFxCandidates(userClient, from, to, new Date().toISOString())).find((row) => row !== null)
+          const value = fallback?.rate ?? null
+          if (value) usedStale = true
+          rateCache.set(key, value); return value
         }
       })
       inFlightRates.set(key, request)
@@ -212,8 +219,20 @@ Deno.serve(async (request) => {
     const priceRowsPromise = assetIds.length === 0
       ? Promise.resolve<Price[]>([])
       : timing.measure("market_prices_call", async () => {
-        const response = await fetch(`${url}/functions/v1/market-prices`, { method: "POST", headers: { Authorization: authorization, apikey: publishableKey, "Content-Type": "application/json" }, body: JSON.stringify({ assetIds }) })
-        return response.ok ? ((await response.json()) as { prices?: Price[] }).prices ?? [] : []
+        let rows: Price[] = []
+        try {
+          rows = await bounded(10_000, async (signal) => {
+            const response = await fetch(`${url}/functions/v1/market-prices`, { method: "POST", headers: { Authorization: authorization, apikey: publishableKey, "Content-Type": "application/json" }, body: JSON.stringify({ assetIds }), signal })
+            if (!response.ok) return []
+            const payload = await response.json() as { prices?: Price[] }
+            return Array.isArray(payload.prices) ? payload.prices : []
+          })
+        } catch { /* Recover below through caller-RLS persistence. */ }
+        const resolved = new Map(rows.filter((row) => row?.available && positiveDecimal(row.price)).map((row) => [row.assetId, row]))
+        const assets = holdings.filter((holding) => !resolved.has(holding.asset_id) && holding.asset?.currency_code)
+          .map((holding) => ({ id: holding.asset_id, currency_code: holding.asset!.currency_code }))
+        for (const row of await storedPrices(userClient, [...new Map(assets.map((asset) => [asset.id, asset])).values()])) resolved.set(row.assetId, row)
+        return [...resolved.values()]
       })
     const metalPricesPromise = timing.measure("metal_price_calls", () => mapWithConcurrency(
       metalSymbols,

@@ -550,6 +550,11 @@ control so they remain valid Row children on narrow screens.
 
 ## Relationship to Tharwati domain
 
+Market/FX reads follow [M1 reliability](market-data-reliability.md): 12-second Edge
+deadlines leave room for caller-RLS stored recovery. Provider/manual prices and FX
+retain stale provenance and optional fetched timestamps; unusable sources remain
+unavailable. `test/stored_market_data_test.dart` covers service-outage recovery.
+
 The client is a UI over the existing user-scoped Supabase product. It uses the
 same profile onboarding RPC, supported currency codes, dashboard valuation
 snapshot, financial-account semantics, Goals tables/RPC lifecycle, decimal-string

@@ -1,4 +1,5 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
+import '../core/stored_market_data.dart';
 
 import '../accounts/account_models.dart';
 import '../accounts/brokerage/brokerage_models.dart';
@@ -182,7 +183,7 @@ class SupabasePortfolioDataSource implements PortfolioDataSource {
     if (assetIds.isEmpty) return const {};
     try {
       final response = await readWithDeadline(
-        marketReadDeadline,
+        const Duration(seconds: 12),
         (abort) => _client.functions.invoke(
           'market-prices',
           body: {'assetIds': assetIds},
@@ -190,7 +191,9 @@ class SupabasePortfolioDataSource implements PortfolioDataSource {
         ),
       );
       final data = response.data;
-      if (data is! Map || data['prices'] is! List) return const {};
+      if (data is! Map || data['prices'] is! List) {
+        return await StoredMarketData(_client).prices(assetIds);
+      }
       final result = <String, MarketPrice>{};
       for (final row in data['prices'] as List) {
         if (row is! Map) continue;
@@ -199,21 +202,26 @@ class SupabasePortfolioDataSource implements PortfolioDataSource {
           result[price.assetId] = price;
         }
       }
+      final missing = assetIds.where((id) => !result.containsKey(id)).toList();
+      if (missing.isNotEmpty) {
+        result.addAll(await StoredMarketData(_client).prices(missing));
+      }
       return result;
     } on ReadTimeoutException {
-      rethrow;
+      return StoredMarketData(_client).prices(assetIds);
     } on ReadAbortedException {
       rethrow;
     } catch (_) {
-      return const {};
+      return StoredMarketData(_client).prices(assetIds);
     }
   }
 
   @override
   Future<PortfolioFxRate?> loadFxRate(String from, String to) async {
+    if (from == to) return StoredMarketData(_client).fx(from, to);
     try {
       final response = await readWithDeadline(
-        marketReadDeadline,
+        const Duration(seconds: 12),
         (abort) => _client.functions.invoke(
           'fx-rates',
           body: {
@@ -225,14 +233,16 @@ class SupabasePortfolioDataSource implements PortfolioDataSource {
         ),
       );
       final data = response.data;
-      if (data is! Map || data['available'] != true) return null;
+      if (data is! Map || data['available'] != true) {
+        return await StoredMarketData(_client).fx(from, to);
+      }
       final rate = D.normalize('${data['rate']}');
       final provider = data['provider'];
       final effectiveAt = data['effectiveAt'];
       if (!D.isPositive(rate) ||
           provider is! String ||
           effectiveAt is! String) {
-        return null;
+        return await StoredMarketData(_client).fx(from, to);
       }
       return PortfolioFxRate(
         fromCurrencyCode: from,
@@ -242,13 +252,14 @@ class SupabasePortfolioDataSource implements PortfolioDataSource {
         effectiveAt: effectiveAt,
         stale: data['stale'] == true,
         direction: data['direction'] as String?,
+        fetchedAt: data['fetchedAt'] as String?,
       );
     } on ReadTimeoutException {
-      rethrow;
+      return StoredMarketData(_client).fx(from, to);
     } on ReadAbortedException {
       rethrow;
     } catch (_) {
-      return null;
+      return StoredMarketData(_client).fx(from, to);
     }
   }
 }

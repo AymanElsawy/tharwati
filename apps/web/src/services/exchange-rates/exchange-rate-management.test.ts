@@ -30,6 +30,7 @@ function mutationClient(
     gt: vi.fn(),
     order: vi.fn(),
     limit: vi.fn(),
+    abortSignal: vi.fn(),
     maybeSingle: vi.fn().mockResolvedValue(result),
     single: vi.fn().mockResolvedValue(result),
     then: (resolve: (value: unknown) => void) => resolve(result),
@@ -43,6 +44,7 @@ function mutationClient(
   chain.gt.mockReturnValue(chain)
   chain.order.mockReturnValue(chain)
   chain.limit.mockReturnValue(chain)
+  chain.abortSignal.mockReturnValue(chain)
   return {
     client: {
       auth: {

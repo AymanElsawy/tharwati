@@ -1,6 +1,7 @@
 import { supabase } from "@/lib/supabase/client"
 import type { Decimal } from "@/lib/supabase/types"
-import { READ_DEADLINE_MS, ReadTimeoutError, ReadAbortedError, readWithDeadline } from "@/lib/network/read-deadline"
+import { ReadTimeoutError, ReadAbortedError, readWithDeadline } from "@/lib/network/read-deadline"
+import { bounded, inverseDecimal, positiveDecimal } from "../../../../supabase/functions/_shared/market-reliability"
 
 export type ResolvedFxRate = {
   available: true
@@ -30,6 +31,31 @@ type FxFunctionRequest = {
   mode: "current"
 }
 
+async function storedCurrentFx(from: string, to: string): Promise<ResolvedFxRate | null> {
+  const candidates = await Promise.all([
+    [from, to, "provider", "direct"], [to, from, "provider", "inverse"],
+    [from, to, "manual", "direct"], [to, from, "manual", "inverse"],
+  ].map(async ([base, quote, source, direction]) => {
+    try {
+      let query = supabase.from("exchange_rates").select("rate::text,effective_at,fetched_at,source")
+        .eq("base_currency_code", base).eq("quote_currency_code", quote)
+        .lte("effective_at", new Date().toISOString())
+      query = source === "manual" ? query.is("provider", null)
+        : query.eq("provider", "frankfurter").is("user_id", null)
+      const { data, error } = await bounded(2000, (signal) => query
+        .order("effective_at", { ascending: false }).order("id", { ascending: false })
+        .limit(1).abortSignal(signal).maybeSingle())
+      if (error || !data) return null
+      const decimal = positiveDecimal(data.rate)
+      const rate = decimal && direction === "inverse" ? inverseDecimal(decimal) : decimal
+      return rate ? { available: true as const, rate, provider: data.source ?? (source === "manual" ? "manual" : "frankfurter"),
+        effectiveAt: data.effective_at, fetchedAt: data.fetched_at ?? undefined,
+        stale: true, unavailable: false as const, direction: direction as "direct" | "inverse" } : null
+    } catch { return null }
+  }))
+  return candidates.find((row) => row !== null) ?? null
+}
+
 export type FxFunctionInvoker = (
   request: FxFunctionRequest,
   signal?: AbortSignal,
@@ -37,15 +63,6 @@ export type FxFunctionInvoker = (
 
 function currency(value: string) {
   return value.trim().toUpperCase()
-}
-
-function positiveDecimal(value: unknown): Decimal | null {
-  if (typeof value === "number") {
-    return Number.isFinite(value) && value > 0 ? String(value) : null
-  }
-  if (typeof value !== "string" || !/^\d+(?:\.\d+)?$/.test(value)) return null
-  const numeric = Number(value)
-  return Number.isFinite(numeric) && numeric > 0 ? value : null
 }
 
 function parseResolvedRate(payload: unknown): ResolvedFxRate | null {
@@ -82,22 +99,35 @@ function parseResolvedRate(payload: unknown): ResolvedFxRate | null {
 export class CurrentFxClient {
   private readonly pending = new Map<string, Promise<ResolvedFxRate | null>>()
   private readonly invoke: FxFunctionInvoker
+  private readonly fallback: typeof storedCurrentFx
 
   constructor(invoke: FxFunctionInvoker = async (body, signal) => {
     const { data, error } = await supabase.functions.invoke("fx-rates", { body, signal })
     return { data, error }
-  }) {
+  }, fallback: typeof storedCurrentFx = storedCurrentFx) {
     this.invoke = invoke
+    this.fallback = fallback
   }
 
   async get(fromCurrencyCode: string, toCurrencyCode: string): Promise<ResolvedFxRate | null> {
     const from = currency(fromCurrencyCode)
     const to = currency(toCurrencyCode)
     if (!/^[A-Z]{3}$/.test(from) || !/^[A-Z]{3}$/.test(to)) return null
+    if (from === to) return { available: true, rate: "1", provider: "identity",
+      effectiveAt: new Date().toISOString(), stale: false, unavailable: false, direction: "direct" }
     const key = `${from}/${to}`
     const inFlight = this.pending.get(key)
     if (inFlight) return inFlight
-    const request = readWithDeadline(READ_DEADLINE_MS.market, (signal) => this.invokeRate(from, to, signal))
+    const request = (async () => {
+      // Leave time inside the client's 20s budget for stored recovery.
+      try {
+        const rate = await readWithDeadline(12_000, (signal) => this.invokeRate(from, to, signal))
+        if (rate) return rate
+      } catch (error) {
+        if (error instanceof ReadAbortedError) throw error
+      }
+      return this.fallback(from, to)
+    })()
     this.pending.set(key, request)
     try {
       return await request

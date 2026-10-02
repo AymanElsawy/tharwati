@@ -47,6 +47,7 @@ dependencies:
   shared_preferences: ^2.5.5
 
 dev_dependencies:
+  http: ^1.6.0 # Existing transport package; MockClient for deterministic M1 tests.
   flutter_test:
     sdk: flutter
 

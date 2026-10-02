@@ -49,10 +49,7 @@ function historicalClientReturning(
   rows: unknown[],
 ): TypedSupabaseClient {
   return {
-    rpc: vi.fn().mockResolvedValue({
-      data: rows,
-      error: null,
-    }),
+    rpc: vi.fn().mockReturnValue({ abortSignal: vi.fn().mockResolvedValue({ data: rows, error: null }) }),
   } as unknown as TypedSupabaseClient
 }
 

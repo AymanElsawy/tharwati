@@ -1,5 +1,6 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../core/read_deadline.dart';
+import '../../core/stored_market_data.dart';
 
 import '../accounts_repository.dart' show AccountsException;
 import 'brokerage_activity.dart';
@@ -67,14 +68,14 @@ class BrokerageRepository {
 
   /// Current prices from the `market-prices` Edge Function. Unusable quotes are
   /// dropped (see [MarketPrice.fromRow]), so a missing key means "no price"
-  /// rather than "price of zero". A provider outage yields an empty map — the
-  /// page still renders, with values marked unavailable.
+  /// rather than "price of zero". Edge failures recover caller-visible persisted
+  /// provider/manual values; no usable stored value remains unavailable.
   Future<Map<String, MarketPrice>> getPrices(List<String> assetIds) async {
     final unique = assetIds.toSet().toList();
     if (unique.isEmpty) return const {};
     try {
       final response = await readWithDeadline(
-        marketReadDeadline,
+        const Duration(seconds: 12),
         (abort) => _client.functions.invoke(
           'market-prices',
           body: {'assetIds': unique},
@@ -82,9 +83,13 @@ class BrokerageRepository {
         ),
       );
       final data = response.data;
-      if (data is! Map) return const {};
+      if (data is! Map) {
+        return await StoredMarketData(_client).prices(unique);
+      }
       final prices = data['prices'];
-      if (prices is! List) return const {};
+      if (prices is! List) {
+        return await StoredMarketData(_client).prices(unique);
+      }
       final result = <String, MarketPrice>{};
       for (final row in prices) {
         if (row is! Map) continue;
@@ -93,15 +98,19 @@ class BrokerageRepository {
           result[price.assetId] = price;
         }
       }
+      final missing = unique.where((id) => !result.containsKey(id)).toList();
+      if (missing.isNotEmpty) {
+        result.addAll(await StoredMarketData(_client).prices(missing));
+      }
       return result;
     } on ReadTimeoutException {
-      rethrow;
+      return StoredMarketData(_client).prices(unique);
     } on ReadAbortedException {
       rethrow;
     } catch (_) {
       // A price outage must not fail the page (web swallows
       // `market_price_unavailable` / `provider_error` the same way).
-      return const {};
+      return StoredMarketData(_client).prices(unique);
     }
   }
 

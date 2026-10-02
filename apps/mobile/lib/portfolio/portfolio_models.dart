@@ -13,6 +13,7 @@ class PortfolioFxRate {
     required this.effectiveAt,
     required this.stale,
     this.direction,
+    this.fetchedAt,
   });
   final String fromCurrencyCode;
   final String toCurrencyCode;
@@ -21,6 +22,7 @@ class PortfolioFxRate {
   final String effectiveAt;
   final bool stale;
   final String? direction;
+  final String? fetchedAt;
   String get pair => '$fromCurrencyCode/$toCurrencyCode';
 }
 

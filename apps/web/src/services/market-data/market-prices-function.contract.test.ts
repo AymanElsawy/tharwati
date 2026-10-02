@@ -32,7 +32,7 @@ describe("market-prices generic Twelve Data resolution contract", () => {
     expect(marketPricesFunction).toContain('.eq("scheme", "provider")')
     expect(marketPricesFunction).toContain('.eq("provider", provider)')
     expect(marketPricesFunction).toContain("resolveTwelveDataInstrument(asset, identifiers)")
-    expect(marketPricesFunction).toContain(".in(\"asset_id\", pending.map((asset) => asset.id))")
+    expect(marketPricesFunction).toContain(".in(\"asset_id\", batch.map((asset) => asset.id))")
   })
 
   it("keeps the existing fresh-cache and stale/manual fallback paths", () => {

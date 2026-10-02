@@ -1,3 +1,4 @@
+import { positiveDecimal } from "./market-reliability.ts"
 export type StoredProviderRate = {
   rate: string | number
   effective_at: string
@@ -13,7 +14,7 @@ export function providerCacheState(
   row: StoredProviderRate | null,
   options: { historical: boolean; now: number; freshnessMs: number },
 ) {
-  const rate = positiveRate(row?.rate)
+  const rate = positiveDecimal(row?.rate)
   if (!row || rate === null || Number.isNaN(Date.parse(row.fetched_at))) return null
   return {
     rate,

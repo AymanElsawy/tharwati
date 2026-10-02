@@ -5,7 +5,8 @@ import {
 import { MarketDataError } from "./errors"
 import type { MarketDataProvider } from "./provider"
 import { MarketDataRepository } from "./repository"
-import { READ_DEADLINE_MS, readWithDeadline } from "../../lib/network/read-deadline"
+import { ReadAbortedError, readWithDeadline } from "../../lib/network/read-deadline"
+import { storedMarketPrices } from "./stored-fallback"
 import type {
   CurrentMarketPrice,
   MarketAssetReference,
@@ -135,23 +136,30 @@ export class MarketDataService {
   ): Promise<CurrentMarketPrice[]> {
     const unique = [...new Set(assetIds)]
     if (unique.length === 0) return []
-    const { data, error } = await readWithDeadline(READ_DEADLINE_MS.market, (signal) =>
-      this.client.functions.invoke<{ prices: EdgeMarketPrice[] }>("market-prices", {
-        body: { assetIds: unique }, signal,
-      }),
-    )
-    if (error) {
-      throw new MarketDataError({
-        code: "provider_error",
-        message: "Automatic market-price resolution failed",
-        cause: error,
+    try {
+      const { data, error } = await readWithDeadline(12_000, (signal) =>
+        this.client.functions.invoke<{ prices: EdgeMarketPrice[] }>("market-prices", {
+          body: { assetIds: unique }, signal,
+        }),
+      )
+      if (error) {
+        throw new MarketDataError({
+          code: "provider_error",
+          message: "Automatic market-price resolution failed",
+          cause: error,
+        })
+      }
+      const parsed = parseMarketPricesResponse(data?.prices ?? [], unique)
+      const missing = unique.filter((id) => !parsed.has(id))
+      if (missing.length) for (const [id, price] of await storedMarketPrices(this.client, missing)) parsed.set(id, price)
+      return unique.flatMap((assetId) => {
+        const price = parsed.get(assetId)
+        return price ? [price] : []
       })
+    } catch (error) {
+      if (error instanceof ReadAbortedError) throw error
+      return [...(await storedMarketPrices(this.client, unique)).values()]
     }
-    const parsed = parseMarketPricesResponse(data?.prices ?? [], unique)
-    return unique.flatMap((assetId) => {
-      const price = parsed.get(assetId)
-      return price ? [price] : []
-    })
   }
 
   async refreshAsset(assetId: string): Promise<CurrentMarketPrice> {

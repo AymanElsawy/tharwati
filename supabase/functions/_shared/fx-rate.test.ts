@@ -19,7 +19,7 @@ describe("FX cache contract", () => {
       rate: "3.750000000000",
       effective_at: "2026-09-16T00:00:00Z",
       fetched_at: "2026-09-16T10:00:00Z",
-    }, { historical: false, now, freshnessMs })).toMatchObject({ rate: 3.75, fresh: true })
+    }, { historical: false, now, freshnessMs })).toMatchObject({ rate: "3.750000000000", fresh: true })
   })
 
   it("preserves a stale positive row for provider-failure fallback", () => {
@@ -27,7 +27,7 @@ describe("FX cache contract", () => {
       rate: "3.750000000000",
       effective_at: "2026-09-15T00:00:00Z",
       fetched_at: "2026-09-15T00:00:00Z",
-    }, { historical: false, now, freshnessMs })).toMatchObject({ rate: 3.75, fresh: false })
+    }, { historical: false, now, freshnessMs })).toMatchObject({ rate: "3.750000000000", fresh: false })
   })
 
   it.each([null, undefined, "", "malformed", "0", 0, "-1", -1, "NaN", Infinity])(

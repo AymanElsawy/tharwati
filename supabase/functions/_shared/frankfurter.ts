@@ -1,3 +1,4 @@
+import { bounded } from "./market-reliability.ts"
 const api = "https://api.frankfurter.dev/v2"
 
 export type FrankfurterRate = {
@@ -15,7 +16,7 @@ function validRate(value: unknown, from: string, to: string, requestedDate?: str
     Number.isFinite(rate.rate) && rate.rate > 0
 }
 
-export async function getFrankfurterRate(from: string, to: string, requestedDate?: string): Promise<FrankfurterRate> {
+export async function getFrankfurterRate(from: string, to: string, requestedDate?: string, timeoutMs = 10_000): Promise<FrankfurterRate> {
   const url = new URL(requestedDate ? `${api}/rates` : `${api}/rate/${from}/${to}`)
   if (requestedDate) {
     const start = new Date(`${requestedDate}T00:00:00Z`)
@@ -29,12 +30,12 @@ export async function getFrankfurterRate(from: string, to: string, requestedDate
     url.searchParams.set("to", requestedDate)
   }
   for (let attempt = 0; attempt < 2; attempt += 1) {
-    const controller = new AbortController()
-    const timeout = setTimeout(() => controller.abort(), 10_000)
     try {
-      const response = await fetch(url, { signal: controller.signal })
-      if (!response.ok) throw new Error(`Frankfurter returned ${response.status}`)
-      const payload = await response.json()
+      const payload = await bounded(timeoutMs, async (signal) => {
+        const response = await fetch(url, { signal })
+        if (!response.ok) throw new Error(`Frankfurter returned ${response.status}`)
+        return await response.json()
+      })
       const rate = requestedDate && Array.isArray(payload)
         ? payload.filter((row) => validRate(row, from, to, requestedDate)).sort((left, right) => right.date.localeCompare(left.date))[0]
         : payload
@@ -46,8 +47,6 @@ export async function getFrankfurterRate(from: string, to: string, requestedDate
           error.name === "AbortError" || /^Frankfurter returned 5\d\d$/.test(error.message)
         ))
       if (!retryable || attempt === 1) throw error
-    } finally {
-      clearTimeout(timeout)
     }
   }
   throw new Error("Frankfurter rate request failed")

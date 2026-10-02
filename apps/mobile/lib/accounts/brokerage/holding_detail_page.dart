@@ -189,6 +189,26 @@ class _HoldingDetailPageState extends State<HoldingDetailPage> {
     final gain = entry.unrealizedGainLoss;
     final negative = gain != null && (D.compare(gain, '0') ?? 0) < 0;
     final active = widget.account.isActive && !widget.controller.busy;
+    final price = entry.marketPrice;
+    final manualPrice =
+        price?.provider == 'manual' || price?.priceType == 'manual';
+    final previousClose = price?.priceType == 'previous_close';
+    String? priceProvenance;
+    if (manualPrice) {
+      final effectiveAt = price!.effectiveAt;
+      if (DateTime.tryParse(effectiveAt) != null) {
+        final local = formatLocalDateTime(effectiveAt);
+        priceProvenance = copy.manualPriceEffectiveAt(
+          '${local.date} ${local.time}',
+        );
+      } else {
+        priceProvenance = copy.manualPrice;
+      }
+    } else if (previousClose) {
+      priceProvenance = copy.previousCloseWarning;
+    } else if (price?.stale == true) {
+      priceProvenance = copy.stalePrice;
+    }
 
     return ListView(
       padding: const EdgeInsets.fromLTRB(20, 12, 20, 32),
@@ -279,14 +299,18 @@ class _HoldingDetailPageState extends State<HoldingDetailPage> {
               ),
               _row(
                 c,
-                copy.currentPrice,
+                manualPrice
+                    ? copy.manualPrice
+                    : previousClose
+                    ? copy.previousClosePrice
+                    : copy.currentPrice,
                 MoneyFormat.money(entry.marketPrice?.price, assetCurrency),
               ),
-              if (entry.marketPrice?.stale == true)
+              if (priceProvenance != null)
                 Padding(
                   padding: const EdgeInsets.only(top: 8),
                   child: Text(
-                    copy.stalePrice,
+                    priceProvenance,
                     style: TextStyle(color: c.warningFg, fontSize: 12),
                   ),
                 ),

@@ -289,7 +289,7 @@ export class PortfolioValuationService {
       missingExchangeRate,
       fxRates,
       stalePrice: price
-        ? this.now().getTime() - new Date(price.asOf).getTime() >
+        ? price.stale || price.priceType === "manual" || price.priceType === "previous_close" || this.now().getTime() - new Date(price.asOf).getTime() >
           24 * 60 * 60 * 1000
         : null,
     }

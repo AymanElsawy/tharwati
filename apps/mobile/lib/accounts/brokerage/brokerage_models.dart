@@ -110,6 +110,7 @@ class MarketPrice {
     required this.provider,
     required this.priceType,
     required this.stale,
+    this.fetchedAt,
   });
 
   final String assetId;
@@ -119,6 +120,7 @@ class MarketPrice {
   final String provider;
   final String? priceType;
   final bool stale;
+  final String? fetchedAt;
 
   /// Mirrors the web `parseMarketPricesResponse` validity rules — an entry that
   /// is unavailable, unpriced, non-positive, or missing its provider /
@@ -146,6 +148,7 @@ class MarketPrice {
       provider: provider,
       priceType: row['priceType'] as String?,
       stale: row['stale'] == true,
+      fetchedAt: row['fetchedAt'] as String?,
     );
   }
 }

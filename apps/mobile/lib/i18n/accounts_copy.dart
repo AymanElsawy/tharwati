@@ -745,6 +745,15 @@ class AccountsCopy {
       : 'Historical FX · 1 $from to $to';
   String get recordExistingHolding =>
       _ar ? 'تسجيل الممتلكة القائمة' : 'Record existing holding';
+  String get manualPrice => _ar ? 'سعر يدوي' : 'Manual price';
+  String manualPriceEffectiveAt(String timestamp) => _ar
+      ? 'سعر يدوي · ساري بتاريخ ${ltr(timestamp)}'
+      : 'Manual price · Effective $timestamp';
+  String get previousClosePrice =>
+      _ar ? 'سعر الإغلاق السابق' : 'Previous close';
+  String get previousCloseWarning => _ar
+      ? 'سعر الإغلاق السابق — ليس سعرًا مباشرًا.'
+      : 'Previous close — not a live quote.';
   String get stalePrice => _ar
       ? 'هذا السعر قديم؛ لم يقم المزوّد بتحديثه مؤخرًا.'
       : 'This price is stale — the provider hasn’t refreshed it recently.';

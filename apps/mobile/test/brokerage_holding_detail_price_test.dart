@@ -8,6 +8,7 @@ import 'package:tharwati_mobile/accounts/brokerage/brokerage_models.dart';
 import 'package:tharwati_mobile/accounts/brokerage/brokerage_repository.dart';
 import 'package:tharwati_mobile/accounts/brokerage/brokerage_valuation.dart';
 import 'package:tharwati_mobile/accounts/brokerage/holding_detail_page.dart';
+import 'package:tharwati_mobile/core/local_datetime.dart';
 import 'package:tharwati_mobile/i18n/app_language.dart';
 import 'package:tharwati_mobile/theme/tokens.dart';
 
@@ -77,8 +78,7 @@ Future<BrokerageController> _pumpDetail(
   MarketPrice? price, {
   Account account = _account,
   Holding holding = _holding,
-}
-) async {
+}) async {
   final controller = BrokerageController(
     accountId: account.id,
     repository: _HistoryRepository(),
@@ -106,6 +106,97 @@ Future<BrokerageController> _pumpDetail(
 }
 
 void main() {
+  const providerWarning =
+      'This price is stale — the provider hasn’t refreshed it recently.';
+
+  MarketPrice fallback({
+    String provider = 'twelve_data',
+    String priceType = 'realtime',
+    bool stale = true,
+    String effectiveAt = '2026-09-01T10:00:00Z',
+  }) => MarketPrice(
+    assetId: _holding.assetId,
+    price: '500',
+    currencyCode: 'USD',
+    provider: provider,
+    priceType: priceType,
+    stale: stale,
+    effectiveAt: effectiveAt,
+    fetchedAt: '2026-10-02T12:00:00Z',
+  );
+
+  testWidgets('stale provider retains provider warning and semantic color', (
+    tester,
+  ) async {
+    final controller = await _pumpDetail(tester, fallback());
+    expect(find.text('Current price'), findsOneWidget);
+    expect(find.text(providerWarning), findsOneWidget);
+    expect(find.text('Manual price'), findsNothing);
+    expect(
+      tester.widget<Text>(find.text(providerWarning)).style?.color,
+      AppColors.light.warningFg,
+    );
+    expect(find.text('1,000.00 USD'), findsOneWidget);
+    controller.dispose();
+  });
+
+  for (final source in ['provider', 'priceType']) {
+    testWidgets('manual $source shows effective time without provider copy', (
+      tester,
+    ) async {
+      final price = fallback(
+        provider: source == 'provider' ? 'manual' : 'twelve_data',
+        priceType: source == 'priceType' ? 'manual' : 'realtime',
+        stale: source == 'provider',
+      );
+      final controller = await _pumpDetail(tester, price);
+      final local = formatLocalDateTime(price.effectiveAt);
+      final message = 'Manual price · Effective ${local.date} ${local.time}';
+      expect(find.text('Manual price'), findsOneWidget);
+      expect(find.text(message), findsOneWidget);
+      expect(find.text(providerWarning), findsNothing);
+      expect(find.text('Current price'), findsNothing);
+      expect(find.textContaining('2026-10-02'), findsNothing);
+      expect(
+        tester.widget<Text>(find.text(message)).style?.color,
+        AppColors.light.warningFg,
+      );
+      expect(find.text('500.00 USD'), findsOneWidget);
+      expect(find.text('1,000.00 USD'), findsOneWidget);
+      controller.dispose();
+    });
+  }
+
+  testWidgets(
+    'manual price without valid effective time invents no timestamp',
+    (tester) async {
+      final controller = await _pumpDetail(
+        tester,
+        fallback(provider: 'manual', effectiveAt: 'unknown'),
+      );
+      expect(find.text('Manual price'), findsNWidgets(2));
+      expect(find.textContaining('Effective'), findsNothing);
+      expect(find.text(providerWarning), findsNothing);
+      expect(find.textContaining('unknown'), findsNothing);
+      controller.dispose();
+    },
+  );
+
+  testWidgets('previous close is identified even without a stale flag', (
+    tester,
+  ) async {
+    final controller = await _pumpDetail(
+      tester,
+      fallback(priceType: 'previous_close', stale: false),
+    );
+    expect(find.text('Previous close'), findsOneWidget);
+    expect(find.text('Previous close — not a live quote.'), findsOneWidget);
+    expect(find.text('Current price'), findsNothing);
+    expect(find.text(providerWarning), findsNothing);
+    expect(find.text('1,000.00 USD'), findsOneWidget);
+    controller.dispose();
+  });
+
   testWidgets('valid USD VOO quote appears as price and exact quantity value', (
     tester,
   ) async {

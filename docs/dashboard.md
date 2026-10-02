@@ -391,6 +391,12 @@ changes: controller/repository calls, snapshot parsing, decimal aggregation,
 stale/unavailable handling, and brokerage-only allocation semantics remain as
 described above.
 
+Market/FX reliability follows [M1](market-data-reliability.md): bounded internal
+Edge requests recover caller-visible persisted provider/manual evidence. Stale
+evidence makes snapshot freshness stale; missing required prices/FX remain
+unavailable. Persisted decimals retain text transport. Brokerage value remains
+Available Cash plus positive holdings, with no transaction-cost/FX substitution.
+
 ### Still deferred
 
 - Rich dashboard surfaces (§3.2) and `AccountsOverviewCard`.

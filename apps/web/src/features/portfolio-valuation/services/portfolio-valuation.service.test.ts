@@ -113,6 +113,12 @@ function service(options: {
 }
 
 describe("PortfolioValuationService", () => {
+  it.each(["manual", "previous_close", "delayed"] as const)("preserves %s fallback staleness regardless of recent effective time", async (priceType) => {
+    const result = await service({ prices: { "asset-1": price({ priceType, stale: true, asOf: "2026-07-25T11:59:00.000Z" }) } })
+      .calculate({ baseCurrency: "USD", holdings: [holding()] })
+    expect(result.holdings[0].stalePrice).toBe(true)
+    expect(result.holdings[0].marketValueBase).toBe("120")
+  })
   it("batches automatic current-price resolution before valuing holdings", async () => {
     const getCurrentPrices = vi.fn().mockResolvedValue([price({ provider: "twelve_data", priceType: "realtime", fetchedAt: "2026-07-25T10:00:00.000Z" })])
     const valuation = new PortfolioValuationService({

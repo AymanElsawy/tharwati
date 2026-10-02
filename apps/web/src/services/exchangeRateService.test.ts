@@ -1,5 +1,4 @@
 import { afterEach, describe, expect, it, vi } from "vitest"
-import { ReadTimeoutError } from "@/lib/network/read-deadline"
 
 afterEach(() => vi.useRealTimers())
 
@@ -61,7 +60,7 @@ describe("CurrentFxClient", () => {
       provider: "identity",
       stale: false,
     })
-    expect(invoke).toHaveBeenCalledOnce()
+    expect(invoke).not.toHaveBeenCalled()
   })
 
   it("preserves stale manual inverse fallback provenance", async () => {
@@ -95,11 +94,13 @@ describe("CurrentFxClient", () => {
     const invoke = vi.fn()
       .mockImplementationOnce(() => new Promise(() => {}))
       .mockResolvedValue({ data: resolvedRate(), error: null })
-    const client = new CurrentFxClient(invoke)
+    const fallback = vi.fn().mockResolvedValue(null)
+    const client = new CurrentFxClient(invoke, fallback)
     const first = client.get("USD", "SAR")
-    const rejection = expect(first).rejects.toBeInstanceOf(ReadTimeoutError)
-    await vi.advanceTimersByTimeAsync(20_000)
-    await rejection
+    const recovered = expect(first).resolves.toBeNull()
+    await vi.advanceTimersByTimeAsync(12_000)
+    await recovered
+    expect(fallback).toHaveBeenCalledWith("USD", "SAR")
     await expect(client.get("USD", "SAR")).resolves.toMatchObject({ rate: "3.75" })
     expect(invoke).toHaveBeenCalledTimes(2)
   })
@@ -118,6 +119,13 @@ describe("CurrentFxClient", () => {
 
     await expect(unavailable.get("USD", "SAR")).resolves.toBeNull()
     await expect(failed.get("USD", "SAR")).resolves.toBeNull()
+  })
+
+  it("recovers stored stale FX when the Edge service fails", async () => {
+    const fallback = vi.fn().mockResolvedValue({ ...resolvedRate({ rate: "3.750000000001", stale: true }), direction: "direct" })
+    const client = new CurrentFxClient(vi.fn().mockResolvedValue({ data: null, error: new Error("503") }), fallback)
+    await expect(client.get("USD", "SAR")).resolves.toMatchObject({ rate: "3.750000000001", stale: true })
+    expect(fallback).toHaveBeenCalledWith("USD", "SAR")
   })
 
   it.each([0, -1, Number.NaN, Number.POSITIVE_INFINITY, "0", "malformed"])(
