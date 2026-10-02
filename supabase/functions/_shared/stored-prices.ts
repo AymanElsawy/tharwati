@@ -14,7 +14,7 @@ export async function storedPrices(client: SupabaseClient, assets: { id: string;
           .order("fetched_at", { ascending: false }).order("as_of", { ascending: false })
           .order("id", { ascending: false }).limit(1).abortSignal(signal).maybeSingle())
         const price = positiveDecimal(data?.price)
-        if (error || !price) return null
+        if (error || !data || !price) return null
         return { assetId: asset.id, available: true, price, currencyCode: data.currency_code,
           provider, effectiveAt: data.as_of, fetchedAt: data.fetched_at, priceType: data.price_type,
           stale: provider === "manual" || data.price_type === "previous_close" || data.price_type === "stale" ||

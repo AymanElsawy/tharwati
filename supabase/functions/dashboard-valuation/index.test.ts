@@ -2,6 +2,10 @@ import { describe, expect, it } from "vitest"
 import source from "./index.ts?raw"
 
 describe("dashboard valuation non-market account values", () => {
+  it("uses the separate protected Gold helper without a direct provider bypass", () => {
+    expect(source).toContain('getGoldQuote(userClient, symbol)')
+    expect(source).not.toContain('https://api.gold-api.com')
+  })
   it("forwards the caller JWT and the public API key to RLS-scoped reads and child functions", () => {
     expect(source).toContain('projectApiKey("publishable")')
     expect(source).toContain("createClient(url, publishableKey, { global: { headers: { Authorization: authorization } } })")

@@ -15,7 +15,7 @@ describe("market-prices generic Twelve Data resolution contract", () => {
   it("includes CORS headers on success and error JSON responses", () => {
     expect(marketPricesFunction).toContain('headers: { "Content-Type": "application/json", ...corsHeaders }')
     expect(marketPricesFunction).toContain('return json({ error: "method_not_allowed" }, 405)')
-    expect(marketPricesFunction).toContain('return json({ prices: assets.map((asset) => results.get(asset.id)!).filter(Boolean) })')
+    expect(marketPricesFunction).toContain('return json({ prices: assets.map((asset) => results.get(asset.id)!).filter(Boolean), refreshError, retryAfterSeconds })')
   })
 
   it("uses only a server-loaded Twelve Data identifier for accessible pending assets", () => {
@@ -45,8 +45,9 @@ describe("market-prices generic Twelve Data resolution contract", () => {
   it("uses the persisted MIC code for price and quote requests", () => {
     expect(marketPricesFunction).toContain("mic_code: micCode")
     expect(marketPricesFunction).toContain("const byMicCode = new Map<string, typeof mapped>()")
-    expect(marketPricesFunction).toContain('quoteUrl("price", symbols, micCode, apiKey)')
-    expect(marketPricesFunction).toContain('quoteUrl(')
+    expect(marketPricesFunction).toContain('providerJson("price", symbols, micCode, apiKey, providerDeadline)')
+    expect(marketPricesFunction).toContain('quoteUrl(path, symbols, micCode, apiKey)')
+    expect(marketPricesFunction).toContain('reserveProviderCall(userClient, "market", symbols.length)')
     expect(marketPricesFunction).toContain('"quote",')
   })
 })

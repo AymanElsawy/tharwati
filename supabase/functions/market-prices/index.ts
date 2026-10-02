@@ -2,6 +2,7 @@ import { createClient } from "npm:@supabase/supabase-js@2"
 import { projectApiKey } from "../_shared/project-api-keys.ts"
 import { bounded, chunks, positiveDecimal } from "../_shared/market-reliability.ts"
 import { mapWithConcurrency } from "../_shared/bounded-concurrency.ts"
+import { ProviderBudgetError, reserveProviderCall } from "../_shared/provider-budget.ts"
 import {
   resolveTwelveDataInstrument,
   type TwelveDataIdentifier,
@@ -136,7 +137,7 @@ Deno.serve(async (request) => {
     }
     const body = await request.json()
     const assetIds = Array.isArray(body.assetIds)
-      ? [...new Set(body.assetIds.filter((id): id is string => typeof id === "string" && /^[0-9a-f-]{36}$/i.test(id)))]
+      ? [...new Set(body.assetIds.filter((id: unknown): id is string => typeof id === "string" && /^[0-9a-f-]{36}$/i.test(id)))]
       : []
     if (assetIds.length === 0) return json({ error: "invalid_asset_ids" }, 400)
 
@@ -187,6 +188,19 @@ Deno.serve(async (request) => {
     const results = new Map<string, ResolvedPrice>()
     for (const price of fresh.values()) results.set(price.asset_id, toResolved(price))
     const pending = assets.filter((asset) => !results.has(asset.id))
+    let refreshError: string | undefined
+    let retryAfterSeconds: number | undefined
+    const providerJson = async (path: "price" | "quote", symbols: string[], micCode: string, apiKey: string, deadline: number) => {
+      refreshTimeout(deadline, 2500)
+      await reserveProviderCall(userClient, "market", symbols.length)
+      return getJson(quoteUrl(path, symbols, micCode, apiKey), deadline)
+    }
+    const recordRefreshError = (error: unknown) => {
+      if (error instanceof ProviderBudgetError) {
+        refreshError = error.code
+        retryAfterSeconds = Math.max(retryAfterSeconds ?? 0, error.retryAfterSeconds ?? 0) || undefined
+      }
+    }
     const identifiers: TwelveDataIdentifier[] = []
     const apiKey = Deno.env.get("TWELVE_DATA_API_KEY")
     // One request-wide refresh budget includes identifiers and every listing group.
@@ -225,8 +239,12 @@ Deno.serve(async (request) => {
           try {
             const symbols = [...new Set(instruments.map(({ instrument }) => instrument.symbol))]
             let current: Record<string, unknown> = {}
-            try { current = await getJson(quoteUrl("price", symbols, micCode, apiKey), providerDeadline) }
-            catch (error) { console.error("market-prices current provider request failed", errorDetails(error)) }
+            try { current = await providerJson("price", symbols, micCode, apiKey, providerDeadline) }
+            catch (error) {
+              recordRefreshError(error)
+              if (error instanceof ProviderBudgetError) return
+              console.error("market-prices current provider request failed", errorDetails(error))
+            }
             const missingCurrent = instruments.filter(({ asset, instrument }) => {
               const item = itemFor(current, instrument.symbol)
               const price = item ? validPrice(item.price) : null
@@ -247,16 +265,17 @@ Deno.serve(async (request) => {
               return false
             })
             if (missingCurrent.length > 0) {
-              const quotes = await getJson(quoteUrl(
+              const quotes = await providerJson(
                 "quote",
-                missingCurrent.map(({ instrument }) => instrument.symbol),
+                [...new Set(missingCurrent.map(({ instrument }) => instrument.symbol))],
                 micCode,
                 apiKey,
-              ), providerDeadline)
+                providerDeadline,
+              )
               for (const { asset, instrument } of missingCurrent) {
                 const quote = itemFor(quotes, instrument.symbol)
                 const price = quote ? validPrice(quote.previous_close) : null
-                if (!price) continue
+                if (!quote || !price) continue
                 const fetchedAt = new Date().toISOString()
                 const effectiveAt = typeof quote.datetime === "string" ? quote.datetime : fetchedAt
                 results.set(asset.id, {
@@ -273,6 +292,7 @@ Deno.serve(async (request) => {
               }
             }
           } catch (error) {
+            recordRefreshError(error)
             console.error("market-prices provider request failed", errorDetails(error))
           }
         })
@@ -294,7 +314,7 @@ Deno.serve(async (request) => {
       else if (manual.has(asset.id)) results.set(asset.id, toResolved(manual.get(asset.id)!))
       else results.set(asset.id, { assetId: asset.id, available: false, provider: null, price: null, currencyCode: null, effectiveAt: null, fetchedAt: null, priceType: null, stale: false })
     }
-    return json({ prices: assets.map((asset) => results.get(asset.id)!).filter(Boolean) })
+    return json({ prices: assets.map((asset) => results.get(asset.id)!).filter(Boolean), refreshError, retryAfterSeconds })
   } catch (error) {
     console.error("market-prices request failed", errorDetails(error))
     return json({ error: "market_prices_request_failed" }, 500)

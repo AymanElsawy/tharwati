@@ -1,10 +1,15 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import { inverseDecimal, positiveDecimal } from "./_shared/market-reliability.ts"
 
-const state = vi.hoisted(() => ({ tables: {} as Record<string, Record<string, any>[]>, errors: new Set<string>(), writes: [] as any[] }))
+const state = vi.hoisted(() => ({ tables: {} as Record<string, Record<string, any>[]>, errors: new Set<string>(), writes: [] as any[], budget: "allowed", reservations: [] as any[] }))
 vi.mock("npm:@supabase/supabase-js@2", () => ({ createClient: () => ({
   auth: { getUser: async () => ({ data: { user: { id: "caller" } }, error: null }) },
   from: (table: string) => new Query(table),
+  rpc: async (name: string, args: unknown) => {
+    state.reservations.push({ name, args })
+    return state.budget === "outage" ? { data: null, error: new Error("private DB failure") }
+      : { data: state.budget !== "allowed" ? { allowed: false, code: state.budget === "denied" ? "provider_refresh_rate_limited" : state.budget, retryAfterSeconds: 60 } : { allowed: true }, error: null }
+  },
 }) }))
 
 // Evaluate filters/order/limit instead of canned query responses: history and
@@ -71,18 +76,35 @@ beforeEach(() => {
   vi.resetModules(); vi.useFakeTimers(); vi.setSystemTime(now)
   state.tables = { assets: [], market_prices: [], asset_identifiers: [], exchange_rates: [] }
   state.errors.clear(); state.writes = []
+  state.budget = "allowed"; state.reservations = []
   vi.stubGlobal("fetch", vi.fn(async () => { throw new TypeError("fixture provider offline") }))
   vi.spyOn(console, "error").mockImplementation(() => {})
 })
 afterEach(() => { vi.useRealTimers(); vi.restoreAllMocks(); vi.unstubAllGlobals() })
 
 describe("M1 securities actual handler", () => {
+  it.each(["denied", "outage", "provider_capacity_unconfigured", "provider_refresh_paused"])("provider budget %s preserves stale/manual/unavailable results without external work", async (budget) => {
+    const a = asset(); price(a)
+    const b = asset(2); price(b, { provider: "manual", user_id: "caller", price_type: "manual", price: "7" })
+    const c = asset(3)
+    state.budget = budget
+    const result = await (await handler("market-prices", true))({ assetIds: [a, b, c] })
+    expect(result.status).toBe(200)
+    expect(result.body.refreshError).toBe(budget === "denied" ? "provider_refresh_rate_limited" : budget === "outage" ? "provider_budget_unavailable" : budget)
+    expect(result.body.prices[0]).toMatchObject({ price: "123.123456789012", stale: true })
+    expect(result.body.prices[1]).toMatchObject({ price: "7", provider: "manual", stale: true })
+    expect(result.body.prices[2]).toMatchObject({ available: false, price: null })
+    expect(fetch).not.toHaveBeenCalled()
+    expect(state.reservations).toHaveLength(1)
+    expect(state.reservations[0].args.p_units).toBe(3)
+  })
   it("returns precise fresh cache without calling the provider", async () => {
     const a = asset(); price(a, { fetched_at: now, as_of: now })
     const call = await handler("market-prices", true)
     const result = await call({ assetIds: [a] })
     expect(result.body.prices[0]).toMatchObject({ price: "123.123456789012", stale: false, priceType: "realtime" })
     expect(fetch).not.toHaveBeenCalled()
+    expect(state.reservations).toHaveLength(0)
   })
   it("uses stale provider before own manual, rejects other callers' prices", async () => {
     const a = asset(); price(a); price(a, { provider: "manual", user_id: "caller", price_type: "manual", price: "7" })
@@ -117,6 +139,7 @@ describe("M1 securities actual handler", () => {
     const result = await (await handler("market-prices", true))({ assetIds: [a, b] })
     expect(result.body.prices[0]).toMatchObject({ price: "10.123456789012", stale: false })
     expect(result.body.prices[1]).toMatchObject({ price: "20.5", priceType: "previous_close", stale: true, effectiveAt: old })
+    expect(state.reservations.map(row => row.args.p_units)).toEqual([2, 1])
   })
   it("returns all 61 requested accessible assets and never exposes unrequested assets", async () => {
     const ids = Array.from({ length: 61 }, (_, n) => { const a = asset(n + 1); price(a); return a })
@@ -130,6 +153,14 @@ describe("M1 securities actual handler", () => {
     for (let n = 0; n < 1201; n++) price(a)
     price(b, { price: "987.000000000001" })
     expect((await (await handler("market-prices"))({ assetIds: [a, b] })).body.prices[1].price).toBe("987.000000000001")
+  })
+  it("preserves stored-only fallback for portfolios larger than 1000 assets", async () => {
+    const ids = Array.from({ length: 1001 }, (_, n) => { const a = asset(n + 1); price(a); return a })
+    const result = await (await handler("market-prices"))({ assetIds: ids })
+    expect(result.status).toBe(200)
+    expect(result.body.prices).toHaveLength(1001)
+    expect(result.body.prices[1000]).toMatchObject({ available: true, stale: true })
+    expect(state.reservations).toHaveLength(0)
   })
   it("refreshes 61 assets in provider batches of at most 50", async () => {
     const ids = Array.from({ length: 61 }, (_, n) => asset(n + 1))
@@ -158,6 +189,23 @@ describe("M1 securities actual handler", () => {
 })
 
 describe("M1 FX actual handler", () => {
+  it.each(["denied", "outage", "provider_capacity_unconfigured", "provider_refresh_paused"])("FX budget %s preserves provider then manual fallback", async (budget) => {
+    fx(); fx({ provider: null, source: "manual", user_id: "caller", rate: "4" })
+    state.budget = budget
+    const call = await handler("fx-rates")
+    const args = { fromCurrencyCode: "USD", toCurrencyCode: "SAR" }
+    const provider = await call(args)
+    expect(provider.body).toMatchObject({ rate: "3.750000000001", provider: "frankfurter", stale: true })
+    expect(provider.body.refreshError).toBe(budget === "denied" ? "provider_refresh_rate_limited" : budget === "outage" ? "provider_budget_unavailable" : budget)
+    state.tables.exchange_rates.shift()
+    fx({ base_currency_code: "SAR", quote_currency_code: "USD", rate: "0.25" })
+    expect((await call(args)).body).toMatchObject({ rate: "4.000000000000000000", provider: "frankfurter", direction: "inverse", stale: true })
+    state.tables.exchange_rates.pop()
+    expect((await call(args)).body).toMatchObject({ rate: "4", provider: "manual", stale: true })
+    state.tables.exchange_rates = []
+    expect(await call(args)).toMatchObject({ status: 422, body: { available: false, unavailable: true } })
+    expect(fetch).not.toHaveBeenCalled()
+  })
   it("identity is 1 and requires no provider", async () => {
     const result = await (await handler("fx-rates"))({ fromCurrencyCode: "SAR", toCurrencyCode: "SAR" })
     expect(result.body).toMatchObject({ rate: 1, stale: false })

@@ -1,5 +1,10 @@
 import { convertCurrency } from "@/services/exchangeRateService"
-import { READ_DEADLINE_MS, ReadTimeoutError, readWithDeadline } from "@/lib/network/read-deadline"
+import {
+  READ_DEADLINE_MS,
+  ReadTimeoutError,
+  readWithDeadline,
+} from "@/lib/network/read-deadline"
+import { supabase } from "@/lib/supabase/client"
 
 export type MetalSymbol = "XAU" | "XAG"
 
@@ -19,18 +24,38 @@ type MetalApiPayload = {
 const gramsPerTroyOunce = 31.1034768
 const cacheDurationMs = 6 * 60 * 60 * 1000
 
+const protectedMetalFetch: typeof fetch = async (input, init) => {
+  const symbol = new URL(String(input), "http://edge.invalid").searchParams.get(
+    "symbol"
+  )
+  const { data, error } = await supabase.functions.invoke("gold-price", {
+    body: { symbol },
+    signal: init?.signal ?? undefined,
+  })
+  return new Response(JSON.stringify(data), { status: error ? 503 : 200 })
+}
+
 export class CurrentMetalPriceClient {
-  private readonly cache = new Map<MetalSymbol, { value: number; expiresAt: number }>()
+  private readonly cache = new Map<
+    MetalSymbol,
+    { value: number; expiresAt: number }
+  >()
   private readonly pending = new Map<MetalSymbol, Promise<number | null>>()
   private readonly fetcher: typeof fetch
   private readonly now: () => number
 
-  constructor(fetcher: typeof fetch = globalThis.fetch.bind(globalThis), now: () => number = Date.now) {
+  constructor(
+    fetcher: typeof fetch = protectedMetalFetch,
+    now: () => number = Date.now
+  ) {
     this.fetcher = fetcher
     this.now = now
   }
 
-  async getPricePerGramUsd(symbol: MetalSymbol, retry = false): Promise<number | null> {
+  async getPricePerGramUsd(
+    symbol: MetalSymbol,
+    retry = false
+  ): Promise<number | null> {
     const cached = this.cache.get(symbol)
     if (!retry && cached && cached.expiresAt > this.now()) return cached.value
     const inFlight = this.pending.get(symbol)
@@ -44,22 +69,33 @@ export class CurrentMetalPriceClient {
     }
   }
 
-  private async fetchPricePerGramUsd(symbol: MetalSymbol): Promise<number | null> {
-    const url = `https://api.gold-api.com/price/${symbol}`
+  private async fetchPricePerGramUsd(
+    symbol: MetalSymbol
+  ): Promise<number | null> {
+    const url = `gold-price?symbol=${symbol}`
     try {
-      const response = await readWithDeadline(READ_DEADLINE_MS.market,
-        (signal) => this.fetcher(url, { signal }))
+      const response = await readWithDeadline(
+        READ_DEADLINE_MS.market,
+        (signal) => this.fetcher(url, { signal })
+      )
       if (!response.ok) return null
       const payload = (await response.json()) as MetalApiPayload
       const failures = [
         typeof payload.price !== "number" && "price_not_number",
-        typeof payload.price === "number" && !Number.isFinite(payload.price) && "price_not_finite",
-        typeof payload.price === "number" && payload.price <= 0 && "price_not_positive",
+        typeof payload.price === "number" &&
+          !Number.isFinite(payload.price) &&
+          "price_not_finite",
+        typeof payload.price === "number" &&
+          payload.price <= 0 &&
+          "price_not_positive",
         payload.currency !== "USD" && "currency_not_usd",
       ].filter(Boolean)
       if (failures.length > 0) return null
       const pricePerGram = (payload.price as number) / gramsPerTroyOunce
-      this.cache.set(symbol, { value: pricePerGram, expiresAt: this.now() + cacheDurationMs })
+      this.cache.set(symbol, {
+        value: pricePerGram,
+        expiresAt: this.now() + cacheDurationMs,
+      })
       return pricePerGram
     } catch (error) {
       if (error instanceof ReadTimeoutError) throw error
@@ -80,9 +116,10 @@ export function getMetalPricePerGramUsd(symbol: MetalSymbol) {
 
 export async function getMetalPricePerGram(
   symbol: MetalSymbol,
-  targetCurrencyCode: string,
+  targetCurrencyCode: string
 ): Promise<number | null> {
-  const pricePerGramUsd = await currentMetalPriceClient.getPricePerGramUsd(symbol)
+  const pricePerGramUsd =
+    await currentMetalPriceClient.getPricePerGramUsd(symbol)
   if (pricePerGramUsd === null) return null
   if (targetCurrencyCode.toUpperCase() === "USD") return pricePerGramUsd
   return convertCurrency(pricePerGramUsd, "USD", targetCurrencyCode)

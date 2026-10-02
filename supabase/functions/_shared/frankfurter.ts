@@ -16,7 +16,7 @@ function validRate(value: unknown, from: string, to: string, requestedDate?: str
     Number.isFinite(rate.rate) && rate.rate > 0
 }
 
-export async function getFrankfurterRate(from: string, to: string, requestedDate?: string, timeoutMs = 10_000): Promise<FrankfurterRate> {
+export async function getFrankfurterRate(from: string, to: string, requestedDate?: string, timeoutMs = 10_000, beforeAttempt?: () => Promise<void>): Promise<FrankfurterRate> {
   const url = new URL(requestedDate ? `${api}/rates` : `${api}/rate/${from}/${to}`)
   if (requestedDate) {
     const start = new Date(`${requestedDate}T00:00:00Z`)
@@ -31,6 +31,7 @@ export async function getFrankfurterRate(from: string, to: string, requestedDate
   }
   for (let attempt = 0; attempt < 2; attempt += 1) {
     try {
+      await beforeAttempt?.()
       const payload = await bounded(timeoutMs, async (signal) => {
         const response = await fetch(url, { signal })
         if (!response.ok) throw new Error(`Frankfurter returned ${response.status}`)

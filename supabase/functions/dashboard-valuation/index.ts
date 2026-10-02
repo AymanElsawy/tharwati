@@ -3,6 +3,7 @@ import { bounded, positiveDecimal } from "../_shared/market-reliability.ts"
 import { storedPrices } from "../_shared/stored-prices.ts"
 import { storedFxCandidates } from "../_shared/stored-fx.ts"
 import { projectApiKey } from "../_shared/project-api-keys.ts"
+import { getGoldQuote } from "../_shared/gold-provider.ts"
 import {
   dashboardValuationReason,
   type DashboardValuationStage,
@@ -239,8 +240,7 @@ Deno.serve(async (request) => {
       maxMetalPriceConcurrency,
       async (symbol) => timing.measure("metal_price_request_sum", async () => {
         try {
-          const response = await fetch(`https://api.gold-api.com/price/${symbol}`)
-          const payload = await response.json() as { price?: unknown; currency?: unknown }
+          const payload = await getGoldQuote(userClient, symbol)
           return [symbol, typeof payload.price === "number" && Number.isFinite(payload.price) && payload.price > 0 && payload.currency === "USD" ? divide(String(payload.price), gramsPerTroyOunce, 12) : null] as const
         } catch {
           return [symbol, null] as const

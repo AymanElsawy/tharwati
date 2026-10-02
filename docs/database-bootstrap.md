@@ -185,12 +185,19 @@ hosted/default fallback. See [the exact emulator command](mobile.md#android-emul
 
 ### Edge dependencies and provider limits
 
+Provider capacities are explicit protected operational configuration. The S2-B
+migration supplies no production defaults; missing capacity fails refresh closed
+while securities/FX stored fallback remains usable. For the dedicated local stack,
+run `./scripts/database/configure-local-provider-capacity.ps1` to load the documented
+development-only policy. See [provider protection](provider-abuse-protection.md).
+
 | Function | Local capability / external dependency |
 | --- | --- |
 | `dashboard-valuation` | Auth, accounts, balances/valuations/ownership/metal-purchase RPCs, holdings, and snapshots are local. SAR cash needs no provider. Brokerage uses `market-prices`; FX uses `fx-rates`; gold/silver spot values need public `https://api.gold-api.com/price/XAU` or `/XAG`, without a secret. Missing sources retain null values and incomplete/unavailable diagnostics. |
 | `fx-rates` | Same-currency identity is local (rate 1). Cross-currency rates need `https://api.frankfurter.dev/v2`, with no secret. Failure uses existing genuine stale/manual rates where applicable; otherwise HTTP 422 `available=false`. No fabricated rates. |
 | `investment-fx` | Retained legacy function, not used by current Mobile. Auth/route respond locally, but its `add_investment` / `edit_investment` RPCs are absent from the approved current schema. Its mutation path remains unsupported; do not add replacement business logic for local smoke tests. Its cross-currency resolution also requires Frankfurter or genuine historical cache/manual rates. Current Mobile brokerage mutations use the existing newer brokerage RPCs. |
 | `asset-search` | Local Auth; live search needs a separately provisioned development `TWELVE_DATA_API_KEY` for Twelve Data `symbol_search`. Intentionally absent: HTTP 200 `available=false, results=[]`. |
+| `gold-price` | Authenticated, independently budgeted Gold spot proxy used by Web. Dashboard shares its protected Gold helper; Mobile still consumes Dashboard snapshots. Needs public Gold API plus explicit Gold capacity, no provider secret. No persisted stale Gold spot fallback is introduced. |
 | `market-prices` | Local Auth/assets/identifiers/cache. Live quotes need `TWELVE_DATA_API_KEY` for Twelve Data `price`/`quote`. Absent key retains genuine stale/manual prices if available; otherwise `available=false, price=null`. No quotes are seeded. |
 | `delete-account` | Fully local Auth, password reauthentication, admin deletion, and database cascade. |
 | `export-my-data` | Fully local Auth/export RPC; existing export cooldown applies. Not exposed by current Mobile UI. |

@@ -17,7 +17,7 @@ export async function storedFxCandidates(client: SupabaseClient, from: string, t
         .limit(1).abortSignal(signal).maybeSingle())
       if (error) throw error
       const decimal = positiveDecimal(data?.rate)
-      if (!decimal) return null
+      if (!data || !decimal) return null
       const rate = direction === "inverse" ? inverseDecimal(decimal) : decimal
       return rate ? { available: true as const, rate, provider: data.source ?? (source === "manual" ? "manual" : "frankfurter"),
         effectiveAt: data.effective_at, fetchedAt: data.fetched_at,

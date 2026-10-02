@@ -1,6 +1,7 @@
 import { createClient } from "npm:@supabase/supabase-js@2"
 import { projectApiKey } from "../_shared/project-api-keys.ts"
 import { getFrankfurterRate } from "../_shared/frankfurter.ts"
+import { reserveProviderCall } from "../_shared/provider-budget.ts"
 
 function response(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
@@ -29,9 +30,9 @@ function currency(value: unknown) {
   return typeof value === "string" && /^[A-Z]{3}$/.test(value.trim().toUpperCase()) ? value.trim().toUpperCase() : null
 }
 
-async function providerRate(from: string, to: string, requestedDate: string) {
+async function providerRate(from: string, to: string, requestedDate: string, beforeAttempt: () => Promise<void>) {
   if (from === to) return { rate: 1, date: requestedDate, identity: true }
-  const rate = await getFrankfurterRate(from, to, requestedDate)
+  const rate = await getFrankfurterRate(from, to, requestedDate, 10_000, beforeAttempt)
   return { rate: rate.rate, date: rate.date, identity: false }
 }
 
@@ -91,7 +92,7 @@ Deno.serve(async (request) => {
     let fx: { rate: number; date: string; identity: boolean }
     let stale = false
     try {
-      fx = await providerRate(from, to, requestedDate)
+      fx = await providerRate(from, to, requestedDate, () => reserveProviderCall(userClient, "fx"))
     } catch (error) {
       if (cachedRate && Number.isFinite(Number(cachedRate.rate)) && Number(cachedRate.rate) > 0) {
         fx = { rate: Number(cachedRate.rate), date: cachedRate.effective_at.slice(0, 10), identity: false }

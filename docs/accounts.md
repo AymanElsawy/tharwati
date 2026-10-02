@@ -791,7 +791,9 @@ edit mode, and `correct_metal_purchase` / `reverse_metal_purchase` are wired
 through repository → service → controller.
 
 **Deviation — where the spot price comes from.** The web calls
-`api.gold-api.com` from the browser and converts with its own FX service. Mobile
+the authenticated `gold-price` Edge endpoint and converts with its own FX service.
+The endpoint and Dashboard share the separate, protected Gold API helper and
+operational Gold capacity; neither uses securities pricing. Mobile
 derives it instead: the `dashboard-valuation` Edge Function already values a
 gold account as `Σ(gramsᵢ × price × factorᵢ)` — applying purity factors
 server-side — which factors to `price × Σ(gramsᵢ × factorᵢ)`. Every gram and

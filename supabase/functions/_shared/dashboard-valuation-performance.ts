@@ -47,7 +47,7 @@ export class DashboardValuationPerformance {
     this.enabled = enabled
   }
 
-  async measure<T>(stage: DashboardValuationTimingStage, operation: () => Promise<T>): Promise<T> {
+  async measure<T>(stage: DashboardValuationTimingStage, operation: () => PromiseLike<T>): Promise<T> {
     if (!this.enabled) return operation()
     const startedAt = performance.now()
     try {
