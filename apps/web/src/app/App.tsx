@@ -43,6 +43,7 @@ import { NotFoundPage } from "../pages/NotFoundPage"
 import { useTranslation } from "../i18n/useTranslation"
 import { canPreserveAuthenticatedTree } from "../features/auth/auth-session-lifecycle"
 import { SettingsPage } from "../features/settings/pages/SettingsPage"
+import { DeleteAccountPage } from "../features/settings/pages/DeleteAccountPage"
 import { type StartupStage, withStartupTimeout } from "./startup-state"
 
 export default function App() {
@@ -227,6 +228,10 @@ export default function App() {
   return (
     <BrowserRouter>
       <Routes>
+        <Route
+          path="/delete-account"
+          element={<DeleteAccountPage signedIn={Boolean(session)} />}
+        />
         <Route
           path="/login"
           element={

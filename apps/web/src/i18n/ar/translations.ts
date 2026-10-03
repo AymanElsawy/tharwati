@@ -102,6 +102,14 @@ export const ar: Record<TranslationKey, string> = {
   "settings.legal.title": "سياسة الخصوصية والشروط",
   "settings.legal.comingSoon":
     "ستتوفر روابط سياسة الخصوصية والشروط قبل الإطلاق.",
+  "settings.deletePage.brand": "ثروتي (Tharwati)",
+  "settings.deletePage.title": "حذف حسابك في ثروتي",
+  "settings.deletePage.description":
+    "يمكنك حذف حسابك في ثروتي وجميع بياناته المالية نهائيًا، بما في ذلك الحسابات والسجلات والأهداف.",
+  "settings.deletePage.instructions":
+    "سجّل الدخول، وافتح الإعدادات، ثم اختر حذف الحساب. يجب التحقق من كلمة مرورك الحالية وكتابة البريد الإلكتروني لحسابك بشكل مطابق تمامًا قبل تأكيد الحذف النهائي. يمكنك تنزيل بياناتك أولًا.",
+  "settings.deletePage.signIn": "سجّل الدخول لحذف الحساب",
+  "settings.deletePage.openSettings": "افتح الإعدادات لحذف الحساب",
   "settings.delete.title": "حذف الحساب",
   "settings.delete.description": "احذف حسابك وجميع بياناته المالية نهائيًا.",
   "settings.delete.action": "حذف الحساب",

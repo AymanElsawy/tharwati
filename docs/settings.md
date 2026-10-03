@@ -53,6 +53,17 @@ or approved legal copy exist yet.
 
 ## Delete account
 
+Web also provides a public `/delete-account` page, outside the authenticated
+dashboard route and accessible while signed out. It identifies Tharwati, explains
+permanent account and financial-data deletion, and describes the password and
+exact-email confirmation steps. English and Arabic copy, a language switcher,
+and the active LTR/RTL direction are available on the page. Signed-out users see
+"Sign in to delete account", linking to `/login`; signed-in users can open
+`/settings` to use its existing Delete account dialog. After signing in, users
+open Settings and choose Delete account as described on the public page.
+The public page performs no deletion itself and uses the existing Settings flow
+and authenticated backend without introducing another deletion endpoint.
+
 The source provides a two-step, mobile-ready confirmation dialog. The user first
 reauthenticates with their current password, then types their current email exactly
 before the permanent action is enabled. The dialog offers Download My Data before

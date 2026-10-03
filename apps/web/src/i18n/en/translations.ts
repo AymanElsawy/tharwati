@@ -101,6 +101,14 @@ export const en = {
   "settings.legal.title": "Privacy Policy & Terms",
   "settings.legal.comingSoon":
     "Privacy Policy and Terms links will be available before launch.",
+  "settings.deletePage.brand": "Tharwati",
+  "settings.deletePage.title": "Delete your Tharwati account",
+  "settings.deletePage.description":
+    "You can permanently delete your Tharwati account and all its financial data, including accounts, records, and goals.",
+  "settings.deletePage.instructions":
+    "Sign in, open Settings, and choose Delete account. You must verify your current password and type your account email exactly before confirming permanent deletion. You can download your data first.",
+  "settings.deletePage.signIn": "Sign in to delete account",
+  "settings.deletePage.openSettings": "Open Settings to delete account",
   "settings.delete.title": "Delete account",
   "settings.delete.description":
     "Permanently delete your account and all of its financial data.",
