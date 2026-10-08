@@ -1,4 +1,7 @@
 export const en = {
+  "legal.links": "Legal",
+  "legal.privacy": "Privacy Policy",
+  "legal.terms": "Terms of Service",
   "auth.recovery.title": "Choose a new password",
   "auth.recovery.checking": "Checking your reset link…",
   "auth.recovery.invalid": "This reset link is invalid or has expired. Request a new reset link.",

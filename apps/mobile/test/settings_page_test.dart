@@ -84,6 +84,8 @@ void main() {
     await tester.pumpAndSettle();
     final signOut = find.text('تسجيل الخروج');
     expect(signOut, findsOneWidget);
+    await tester.ensureVisible(signOut);
+    await tester.pumpAndSettle();
     await tester.tap(signOut);
     await tester.pump();
     expect(signedOut, isTrue);

@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom"
 
 import { Button } from "@/components/ui/button"
 import { useTranslation } from "@/i18n/useTranslation"
+import { LegalLinks } from "@/features/legal/LegalLinks"
 import {
   isWeakPasswordError,
   meetsPasswordRequirements,
@@ -138,6 +139,8 @@ export function SignUpPage() {
             {infoMessage}
           </p>
         ) : null}
+
+        <LegalLinks />
 
         <button
           type="button"

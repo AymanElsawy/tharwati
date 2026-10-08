@@ -54,7 +54,12 @@ describe("global web startup recovery", () => {
       "utf8",
     )
     expect(main).not.toMatch(/import App from/)
-    expect(bootstrap).toContain('import("./NormalApp")')
+    expect(bootstrap).toContain("loadApp = loadRouteApp")
+    const routeLoader = readFileSync(
+      resolve(process.cwd(), "src/app/load-route-app.ts"), "utf8",
+    )
+    expect(routeLoader).toContain('import("./NormalApp")')
+    expect(routeLoader).toContain('import("./PublicLegalApp")')
     expect(bootstrap).toContain("catch (error)")
   })
 

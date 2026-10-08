@@ -4,6 +4,7 @@ class SettingsCopy {
   const SettingsCopy._(this.language);
   factory SettingsCopy.of(AppLanguage language) => SettingsCopy._(language);
   final AppLanguage language;
+  String get legal => language == AppLanguage.ar ? 'الشؤون القانونية' : 'LEGAL';
   bool get _ar => language == AppLanguage.ar;
   String get title => _ar ? 'الإعدادات' : 'Settings';
   String get profile => _ar ? 'الملف الشخصي' : 'PROFILE';

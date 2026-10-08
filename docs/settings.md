@@ -48,8 +48,10 @@ filename when exposed and otherwise uses the v1 date-based fallback. The UI make
 loading, successful start, throttle, too-large, expired-session, and generic
 failure states explicit. JSON is never stored by the page.
 
-Privacy Policy and Terms have truthful launch placeholders because no legal routes
-or approved legal copy exist yet.
+Privacy Policy and Terms link to the public `/privacy` and `/terms` pages in a
+new tab. Flutter Settings opens these pages externally at
+https://tharwati-dgp.pages.dev with the selected language. The approved EN/AR
+copy and maintainable dates live in [the legal source of truth](legal.md).
 
 ## Delete account
 

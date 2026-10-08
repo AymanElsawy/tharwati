@@ -346,7 +346,8 @@ Implemented auth screens:
 - `SignUpPage`: required name/email, confirmation, terms checkbox, and password
   policy (12+ characters, upper/lowercase and digit). It maps common Supabase
   errors; if confirmation is enabled and no session returns, it shows the
-  check-email state. Terms/Privacy labels have no links.
+  check-email state. Terms/Privacy buttons open the public Web legal pages externally in the selected
+  language; the existing checkbox and validation are unchanged (see [Legal](legal.md)).
 - `ForgotPasswordPage`: required nonblank email and neutral success copy to
   avoid account enumeration; transport failure is generic. Its English and Arabic
   request copy states the hosted 60-minute recovery-link expiry.
@@ -545,9 +546,9 @@ control so they remain valid Row children on narrow screens.
   Net Worth remains secondary in Wealth Health, and the target editor starts an
   unsaved plan at zero for all fields. Portfolio Analysis and the later
   specialized/cross-asset analysis sections remain placeholders or deferred.
-  Settings currently includes Profile, Language, Appearance, Sign out, and
+  Settings currently includes Profile, Language, Appearance, Legal links, Sign out, and
   in-app permanent account deletion; notification behavior, currency switching,
-  legal links, data export, OAuth/MFA/phone auth, and offline/realtime support are
+  data export, OAuth/MFA/phone auth, and offline/realtime support are
   not implemented. The Google Play external deletion-request URL remains deferred
   until the final production domain is available.
 - Dashboard calls the shared Edge Function but reproduces web aggregate and Goal

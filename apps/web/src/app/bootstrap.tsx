@@ -8,6 +8,7 @@ import {
   type AppErrorReporter,
 } from "./app-error-reporter"
 import { GlobalRecoveryScreen } from "./GlobalRecoveryScreen"
+import { loadRouteApp } from "./load-route-app"
 
 export type AppModule = { default: ComponentType }
 
@@ -36,7 +37,7 @@ export function resolveRootElement(
 }
 
 export async function bootstrapWebApp({
-  loadApp = () => import("./NormalApp"),
+  loadApp = loadRouteApp,
   reporter = noopAppErrorReporter,
   documentValue = document,
 }: {

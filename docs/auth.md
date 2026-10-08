@@ -163,7 +163,11 @@ RPC; only `authenticated` receives `EXECUTE`.
 
 ## UI
 
-Public routes: `/login`, `/signup`, `/forgot-password`, `/reset-password`. All four
+Public legal routes `/privacy` and `/terms` load without auth startup; Signup
+links open them in a new tab (see [Legal](legal.md)). Mobile Signup opens the
+same public URLs externally without changing its existing checkbox or validation.
+
+Public auth routes: `/login`, `/signup`, `/forgot-password`, `/reset-password`. All four
 auth screens share one visual pattern — a centered `tharwati-card` with a soft radial
 background, an `email`/`password` input style with focus ring, a full-width primary
 `Button`, an inline `role="alert"` error box, and a secondary text button to cross-

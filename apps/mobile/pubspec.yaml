@@ -37,6 +37,7 @@ dependencies:
   # Use with the CupertinoIcons class for iOS style icons.
   cupertino_icons: ^1.0.8
   app_links: ^7.0.0
+  url_launcher: ^6.3.2
   supabase_flutter: ^2.17.2
   # Inter, Playfair Display, and Noto Sans Arabic are fetched and cached by
   # google_fonts; see lib/theme/app_theme.dart.
@@ -47,6 +48,7 @@ dependencies:
   shared_preferences: ^2.5.5
 
 dev_dependencies:
+  url_launcher_platform_interface: ^2.3.2
   http: ^1.6.0 # Existing transport package; MockClient for deterministic M1 tests.
   flutter_test:
     sdk: flutter

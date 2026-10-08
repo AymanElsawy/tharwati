@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../main.dart';
+import '../i18n/app_language.dart';
+import '../legal/legal_link.dart';
 import '../theme/tokens.dart';
 import '../widgets/callout.dart';
 import '../widgets/password_strength_bar.dart';
@@ -199,33 +201,27 @@ class _SignUpPageState extends State<SignUpPage> {
                 Expanded(
                   child: Padding(
                     padding: const EdgeInsets.only(top: 2),
-                    child: Text.rich(
-                      TextSpan(
-                        text: 'I agree to the ',
-                        style: TextStyle(
-                          color: c.ink.withValues(alpha: 0.8),
-                          fontSize: 13,
-                          height: 1.5,
+                    child: Wrap(
+                      crossAxisAlignment: WrapCrossAlignment.center,
+                      children: [
+                        Text(
+                          AppLanguageScope.of(context).language ==
+                                  AppLanguage.ar
+                              ? 'أوافق على '
+                              : 'I agree to the ',
+                          style: TextStyle(color: c.ink, fontSize: 13),
                         ),
-                        children: [
-                          TextSpan(
-                            text: 'Terms',
-                            style: TextStyle(
-                              color: c.accent,
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
-                          const TextSpan(text: ' and '),
-                          TextSpan(
-                            text: 'Privacy Policy',
-                            style: TextStyle(
-                              color: c.accent,
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
-                          const TextSpan(text: '.'),
-                        ],
-                      ),
+                        const LegalLink(document: LegalDocument.terms),
+                        Text(
+                          AppLanguageScope.of(context).language ==
+                                  AppLanguage.ar
+                              ? ' و '
+                              : ' and ',
+                          style: TextStyle(color: c.ink, fontSize: 13),
+                        ),
+                        const LegalLink(document: LegalDocument.privacy),
+                        Text('.', style: TextStyle(color: c.ink, fontSize: 13)),
+                      ],
                     ),
                   ),
                 ),

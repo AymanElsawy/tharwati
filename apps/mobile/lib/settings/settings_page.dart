@@ -6,6 +6,7 @@ import '../errors/safe_app_error.dart';
 import '../main.dart';
 import '../i18n/app_language.dart';
 import '../i18n/settings_copy.dart';
+import '../legal/legal_link.dart';
 import '../theme/tokens.dart';
 import '../theme/app_theme_controller.dart';
 import '../widgets/primary_button.dart';
@@ -157,6 +158,10 @@ class _SettingsPageState extends State<SettingsPage> {
                   _SectionLabel(copy.appearance),
                   const SizedBox(height: AppSpacing.rowGap),
                   _AppearancePreferenceCard(copy: copy),
+                  const SizedBox(height: AppSpacing.section),
+                  _SectionLabel(copy.legal),
+                  const SizedBox(height: AppSpacing.rowGap),
+                  const LegalLinks(),
                   const SizedBox(height: AppSpacing.section),
                   _SectionLabel(copy.dangerZone),
                   const SizedBox(height: AppSpacing.rowGap),

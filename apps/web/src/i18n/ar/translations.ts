@@ -1,6 +1,9 @@
 import type { TranslationKey } from "../en/translations"
 
 export const ar: Record<TranslationKey, string> = {
+  "legal.links": "الشؤون القانونية",
+  "legal.privacy": "سياسة الخصوصية",
+  "legal.terms": "شروط الاستخدام",
   "auth.recovery.title": "اختر كلمة مرور جديدة",
   "auth.recovery.checking": "جارٍ التحقق من رابط إعادة التعيين…",
   "auth.recovery.invalid": "رابط إعادة التعيين غير صالح أو انتهت صلاحيته. اطلب رابطًا جديدًا.",

@@ -37,13 +37,15 @@ function interpolate(
 
 type LanguageProviderProps = {
   children: ReactNode
+  initialLanguage?: Language
 }
 
 export function LanguageProvider({
   children,
+  initialLanguage,
 }: LanguageProviderProps) {
   const [language, setLanguage] =
-    useState<Language>(getInitialLanguage)
+    useState<Language>(() => initialLanguage ?? getInitialLanguage())
   const direction: "ltr" | "rtl" =
     language === "ar" ? "rtl" : "ltr"
 
