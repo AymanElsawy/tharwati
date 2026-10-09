@@ -39,9 +39,25 @@ refreshes. Refresh/query/write failures cannot discard those candidates. One
 provider group's failure cannot remove successful prices from other groups.
 No transaction cost, transaction FX, or zero substitutes for an absent value.
 
+Single-symbol Twelve Data `/price` responses may contain only `price`; the
+handler accepts that decimal without requiring `symbol` or issuing a needless
+`/quote` fallback. Symbol-keyed batch responses retain their existing handling.
+HTTP 429 and documented `status: error`, `code: 429` responses expose only
+`provider_refresh_rate_limited` and safe retry seconds. Throttling stops subsequent
+provider calls within the request (already in-flight calls can finish), preserves
+successful batch prices, and retains fresh/stale/manual or explicit null results.
+
 Requested IDs are deduplicated, with no 50-asset truncation. Accessible assets are
 read in batches of 100; provider instruments are grouped by MIC and batched in
-groups of 50, with concurrency four. Provider and own-manual cache candidates are
+affordable groups of at most 50 distinct symbols. Each price/quote call uses one
+atomic `reserve_twelve_data_symbols` reservation, which reads protected S2
+configuration and remaining user/global minute/day allowance and charges only
+the granted count. Outbound calls are sequential; quota denial or provider 429
+stops later calls without waiting for a reset. Unrefreshed assets still receive
+stored stale/manual prices or explicit unavailable results. The forward migration
+`20261009102808_capacity_aware_twelve_data_reservation.sql` must precede deployment
+of this handler; missing RPC fails refresh closed and preserves stored fallback.
+Provider and own-manual cache candidates are
 read independently per asset, at concurrency 12, using positive-price,
 matching-currency, non-future-effective-time filters and top-one queries ordered
 by fetched time, effective time, then ID. Another asset's history cannot consume

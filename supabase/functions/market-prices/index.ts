@@ -2,7 +2,9 @@ import { createClient } from "npm:@supabase/supabase-js@2"
 import { projectApiKey } from "../_shared/project-api-keys.ts"
 import { bounded, chunks, positiveDecimal } from "../_shared/market-reliability.ts"
 import { mapWithConcurrency } from "../_shared/bounded-concurrency.ts"
-import { ProviderBudgetError, reserveProviderCall } from "../_shared/provider-budget.ts"
+import { ProviderBudgetError } from "../_shared/provider-budget.ts"
+import { reserveTwelveDataSymbols } from "../_shared/twelve-data-reservation.ts"
+import { twelveDataHttpRateLimit, twelveDataRateLimit } from "../_shared/twelve-data-errors.ts"
 import {
   resolveTwelveDataInstrument,
   type TwelveDataIdentifier,
@@ -101,8 +103,13 @@ function quoteUrl(
 async function getJson(url: string, deadline: number) {
   return await bounded(refreshTimeout(deadline, 2500), async (signal) => {
     const response = await fetch(url, { signal })
+    const throttled = twelveDataHttpRateLimit(response)
+    if (throttled) throw throttled
     if (!response.ok) throw new Error(`Twelve Data returned HTTP ${response.status}`)
-    return await response.json() as Record<string, unknown>
+    const payload = await response.json() as Record<string, unknown>
+    const rateLimit = twelveDataRateLimit(payload, response.headers.get("Retry-After"))
+    if (rateLimit) throw rateLimit
+    return payload
   })
 }
 
@@ -190,10 +197,20 @@ Deno.serve(async (request) => {
     const pending = assets.filter((asset) => !results.has(asset.id))
     let refreshError: string | undefined
     let retryAfterSeconds: number | undefined
+    let providerThrottled = false
     const providerJson = async (path: "price" | "quote", symbols: string[], micCode: string, apiKey: string, deadline: number) => {
+      if (providerThrottled) throw new ProviderBudgetError("provider_refresh_rate_limited", retryAfterSeconds)
       refreshTimeout(deadline, 2500)
-      await reserveProviderCall(userClient, "market", symbols.length)
-      return getJson(quoteUrl(path, symbols, micCode, apiKey), deadline)
+      const requested = symbols.slice(0, 50) // Existing RPC/provider batch bound, not a plan limit.
+      const granted = await reserveTwelveDataSymbols(userClient, requested.length)
+      const batchSymbols = requested.slice(0, granted)
+      let payload: Record<string, unknown> = {}
+      try { payload = await getJson(quoteUrl(path, batchSymbols, micCode, apiKey), deadline) }
+      catch (error) {
+        if (error instanceof ProviderBudgetError) throw error
+        console.error("market-prices provider request failed", errorDetails(error))
+      }
+      return { payload, symbols: batchSymbols }
     }
     const recordRefreshError = (error: unknown) => {
       if (error instanceof ProviderBudgetError) {
@@ -233,69 +250,83 @@ Deno.serve(async (request) => {
           instruments.push(item)
           byMicCode.set(item.instrument.micCode, instruments)
         }
-        const groups = [...byMicCode].flatMap(([micCode, instruments]) =>
-          chunks(instruments, 50).map((instruments) => ({ micCode, instruments })))
-        await mapWithConcurrency(groups, 4, async ({ micCode, instruments }) => {
+        // Serialize outbound work so an observed denial/429 stops later requests.
+        for (const [micCode, instruments] of byMicCode) {
+          if (providerThrottled) break
           try {
-            const symbols = [...new Set(instruments.map(({ instrument }) => instrument.symbol))]
-            let current: Record<string, unknown> = {}
-            try { current = await providerJson("price", symbols, micCode, apiKey, providerDeadline) }
-            catch (error) {
-              recordRefreshError(error)
-              if (error instanceof ProviderBudgetError) return
-              console.error("market-prices current provider request failed", errorDetails(error))
-            }
-            const missingCurrent = instruments.filter(({ asset, instrument }) => {
-              const item = itemFor(current, instrument.symbol)
-              const price = item ? validPrice(item.price) : null
-              if (!price) return true
-              const fetchedAt = new Date().toISOString()
-              const resolved: ResolvedPrice = {
-                assetId: asset.id,
-                available: true,
-                provider,
-                price,
-                currencyCode: asset.currency_code,
-                effectiveAt: fetchedAt,
-                fetchedAt,
-                priceType: "realtime",
-                stale: false,
+            let remaining = [...new Set(instruments.map(({ instrument }) => instrument.symbol))]
+            while (remaining.length > 0 && !providerThrottled) {
+              const { payload: current, symbols } = await providerJson("price", remaining, micCode, apiKey, providerDeadline)
+              remaining = remaining.slice(symbols.length)
+              for (const item of Object.values(current)) {
+                const rateLimit = twelveDataRateLimit(item)
+                if (rateLimit) { providerThrottled = true; recordRefreshError(rateLimit) }
               }
-              results.set(asset.id, resolved)
-              return false
-            })
-            if (missingCurrent.length > 0) {
-              const quotes = await providerJson(
-                "quote",
-                [...new Set(missingCurrent.map(({ instrument }) => instrument.symbol))],
-                micCode,
-                apiKey,
-                providerDeadline,
-              )
-              for (const { asset, instrument } of missingCurrent) {
-                const quote = itemFor(quotes, instrument.symbol)
-                const price = quote ? validPrice(quote.previous_close) : null
-                if (!quote || !price) continue
+              const batchInstruments = instruments.filter(({ instrument }) => symbols.includes(instrument.symbol))
+              const missingCurrent = batchInstruments.filter(({ asset, instrument }) => {
+                const item = itemFor(current, instrument.symbol) ??
+                  (symbols.length === 1 && current.symbol === undefined && current.status !== "error" ? current : null)
+                const price = item ? validPrice(item.price) : null
+                if (!price) return true
                 const fetchedAt = new Date().toISOString()
-                const effectiveAt = typeof quote.datetime === "string" ? quote.datetime : fetchedAt
-                results.set(asset.id, {
+                const resolved: ResolvedPrice = {
                   assetId: asset.id,
                   available: true,
                   provider,
                   price,
                   currencyCode: asset.currency_code,
-                  effectiveAt,
+                  effectiveAt: fetchedAt,
                   fetchedAt,
-                  priceType: "previous_close",
-                  stale: true,
-                })
+                  priceType: "realtime",
+                  stale: false,
+                }
+                results.set(asset.id, resolved)
+                return false
+              })
+              if (missingCurrent.length > 0 && !providerThrottled) {
+                let missingSymbols = [...new Set(missingCurrent.map(({ instrument }) => instrument.symbol))]
+                while (missingSymbols.length > 0 && !providerThrottled) {
+                  const { payload: quotes, symbols: quoteSymbols } = await providerJson(
+                    "quote",
+                    missingSymbols,
+                    micCode,
+                    apiKey,
+                    providerDeadline,
+                  )
+                  missingSymbols = missingSymbols.slice(quoteSymbols.length)
+                  for (const item of Object.values(quotes)) {
+                    const rateLimit = twelveDataRateLimit(item)
+                    if (rateLimit) { providerThrottled = true; recordRefreshError(rateLimit) }
+                  }
+                  for (const { asset, instrument } of missingCurrent) {
+                    if (!quoteSymbols.includes(instrument.symbol)) continue
+                    const quote = itemFor(quotes, instrument.symbol)
+                    const price = quote ? validPrice(quote.previous_close) : null
+                    if (!quote || !price) continue
+                    const fetchedAt = new Date().toISOString()
+                    const effectiveAt = typeof quote.datetime === "string" ? quote.datetime : fetchedAt
+                    results.set(asset.id, {
+                      assetId: asset.id,
+                      available: true,
+                      provider,
+                      price,
+                      currencyCode: asset.currency_code,
+                      effectiveAt,
+                      fetchedAt,
+                      priceType: "previous_close",
+                      stale: true,
+                    })
+                  }
+                }
               }
             }
           } catch (error) {
+            // Denial, reservation outage, or deadline: never wait or continue refresh.
+            providerThrottled = true
             recordRefreshError(error)
             console.error("market-prices provider request failed", errorDetails(error))
           }
-        })
+        }
         const cacheRows = pending.map((asset) => results.get(asset.id)).filter((price): price is ResolvedPrice => Boolean(price))
           .filter((price) => price.provider === provider && price.price !== null)
           .map((price) => ({ user_id: null, asset_id: price.assetId, provider, price: String(price.price), currency_code: price.currencyCode, as_of: price.effectiveAt, fetched_at: price.fetchedAt, price_type: price.priceType }))

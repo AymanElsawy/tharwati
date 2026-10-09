@@ -2,6 +2,7 @@ import { createClient } from "npm:@supabase/supabase-js@2"
 import { projectApiKey } from "../_shared/project-api-keys.ts"
 import { bounded } from "../_shared/market-reliability.ts"
 import { ProviderBudgetError, reserveProviderCall } from "../_shared/provider-budget.ts"
+import { twelveDataHttpRateLimit, twelveDataRateLimit } from "../_shared/twelve-data-errors.ts"
 
 const provider = "twelve_data"
 const minimumQueryLength = 2
@@ -125,8 +126,13 @@ Deno.serve(async (request) => {
     await reserveProviderCall(userClient, "search")
     const payload = await bounded(2500, async (signal) => {
       const response = await fetch(url, { signal })
+      const throttled = twelveDataHttpRateLimit(response)
+      if (throttled) throw throttled
       if (!response.ok) throw new Error("asset search provider unavailable")
-      return await response.json() as { data?: unknown; status?: unknown }
+      const data = await response.json() as { data?: unknown; status?: unknown }
+      const rateLimit = twelveDataRateLimit(data, response.headers.get("Retry-After"))
+      if (rateLimit) throw rateLimit
+      return data
     })
     if (payload.status === "error" || !Array.isArray(payload.data)) {
       console.error("asset-search provider returned an unavailable response")

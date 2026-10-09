@@ -1,14 +1,23 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import { inverseDecimal, positiveDecimal } from "./_shared/market-reliability.ts"
 
-const state = vi.hoisted(() => ({ tables: {} as Record<string, Record<string, any>[]>, errors: new Set<string>(), writes: [] as any[], budget: "allowed", reservations: [] as any[] }))
+const state = vi.hoisted(() => ({ tables: {} as Record<string, Record<string, any>[]>, errors: new Set<string>(), writes: [] as any[], budget: "allowed", reservations: [] as any[], remaining: Infinity, batchLimit: Infinity }))
 vi.mock("npm:@supabase/supabase-js@2", () => ({ createClient: () => ({
   auth: { getUser: async () => ({ data: { user: { id: "caller" } }, error: null }) },
   from: (table: string) => new Query(table),
   rpc: async (name: string, args: unknown) => {
+    if (name === "read_asset_search_cache") return { data: state.tables.search_cache?.[0]?.results ?? null, error: null }
+    if (name === "write_asset_search_cache") return { data: null, error: null }
     state.reservations.push({ name, args })
+    if (name === "reserve_twelve_data_symbols" && state.budget === "allowed") {
+      const requested = (args as { p_requested_symbols: number }).p_requested_symbols
+      const granted = Math.min(requested, state.remaining, state.batchLimit)
+      state.remaining -= granted
+      return { data: granted > 0 ? { grantedSymbolCount: granted }
+        : { grantedSymbolCount: 0, code: "provider_refresh_rate_limited", retryAfterSeconds: 60 }, error: null }
+    }
     return state.budget === "outage" ? { data: null, error: new Error("private DB failure") }
-      : { data: state.budget !== "allowed" ? { allowed: false, code: state.budget === "denied" ? "provider_refresh_rate_limited" : state.budget, retryAfterSeconds: 60 } : { allowed: true }, error: null }
+      : { data: state.budget !== "allowed" ? { allowed: false, grantedSymbolCount: 0, code: state.budget === "denied" ? "provider_refresh_rate_limited" : state.budget, retryAfterSeconds: 60 } : { allowed: true }, error: null }
   },
 }) }))
 
@@ -59,13 +68,14 @@ function price(assetId: string, overrides: Record<string, unknown> = {}) {
 function fx(overrides: Record<string, unknown> = {}) {
   state.tables.exchange_rates.push({ id: state.tables.exchange_rates.length, base_currency_code: "USD", quote_currency_code: "SAR", rate: "3.750000000001", effective_at: old, fetched_at: old, source: "frankfurter", provider: "frankfurter", user_id: null, ...overrides })
 }
-async function handler(kind: "market-prices" | "fx-rates", key = false) {
+async function handler(kind: "market-prices" | "fx-rates" | "asset-search", key = false) {
   let captured: (request: Request) => Promise<Response>
   vi.stubGlobal("Deno", { env: { get: (name: string) => ({
     SUPABASE_URL: "http://local.invalid", SUPABASE_PUBLISHABLE_KEYS: '{"default":"sb_publishable_fixture"}',
     SUPABASE_SECRET_KEYS: '{"default":"sb_secret_fixture"}', TWELVE_DATA_API_KEY: key ? "fixture-only" : undefined,
   } as Record<string, string | undefined>)[name] }, serve: (callback: typeof captured) => { captured = callback } })
   if (kind === "market-prices") await import("./market-prices/index.ts")
+  else if (kind === "asset-search") await import("./asset-search/index.ts")
   else await import("./fx-rates/index.ts")
   return async (body: unknown) => {
     const response = await captured!(new Request("http://local.invalid/", { method: "POST", headers: { Authorization: "Bearer fixture", "Content-Type": "application/json" }, body: JSON.stringify(body) }))
@@ -77,12 +87,132 @@ beforeEach(() => {
   state.tables = { assets: [], market_prices: [], asset_identifiers: [], exchange_rates: [] }
   state.errors.clear(); state.writes = []
   state.budget = "allowed"; state.reservations = []
+  state.remaining = Infinity; state.batchLimit = Infinity
   vi.stubGlobal("fetch", vi.fn(async () => { throw new TypeError("fixture provider offline") }))
   vi.spyOn(console, "error").mockImplementation(() => {})
 })
 afterEach(() => { vi.useRealTimers(); vi.restoreAllMocks(); vi.unstubAllGlobals() })
 
 describe("M1 securities actual handler", () => {
+  it.each([3, 120])("uses configured affordable grants at capacity %s without truncating assets", async capacity => {
+    const ids = Array.from({ length: 61 }, (_, n) => asset(n + 1))
+    state.remaining = capacity
+    const batches: number[] = []
+    vi.stubGlobal("fetch", vi.fn(async (url: string) => {
+      const symbols = new URL(url).searchParams.get("symbol")!.split(",")
+      batches.push(symbols.length)
+      return new Response(JSON.stringify(Object.fromEntries(symbols.map(symbol => [symbol, { price: "12.123456789012345678" }]))))
+    }))
+    const result = await (await handler("market-prices", true))({ assetIds: ids })
+    expect(result.body.prices).toHaveLength(61)
+    expect(batches).toEqual(capacity === 3 ? [3] : [50, 11])
+    expect(result.body.prices.filter((row: { available: boolean }) => row.available)).toHaveLength(Math.min(capacity, 61))
+    expect(state.remaining).toBe(capacity - Math.min(capacity, 61))
+    expect(state.reservations.every(row => row.name === "reserve_twelve_data_symbols")).toBe(true)
+    if (capacity === 3) expect(result.body.refreshError).toBe("provider_refresh_rate_limited")
+  })
+  it("uses remaining partial capacity and preserves every fresh/stale/manual/unavailable state", async () => {
+    const ids = Array.from({ length: 5 }, (_, n) => asset(n + 1))
+    price(ids[0], { as_of: now, fetched_at: now })
+    price(ids[2])
+    price(ids[3], { provider: "manual", user_id: "caller", price_type: "manual", price: "7.000000000001" })
+    state.remaining = 1
+    vi.stubGlobal("fetch", vi.fn(async () => new Response(JSON.stringify({ price: "10.000000000000001" }))))
+    const result = await (await handler("market-prices", true))({ assetIds: ids })
+    expect(result.body.prices.map((row: { price: string | null }) => row.price)).toEqual(["123.123456789012", "10.000000000000001", "123.123456789012", "7.000000000001", null])
+    expect(result.body.refreshError).toBe("provider_refresh_rate_limited")
+    expect(fetch).toHaveBeenCalledTimes(1)
+    expect(state.remaining).toBe(0)
+  })
+  it("sizes quote fallback to its own partial grant with no double charge", async () => {
+    const ids = [asset(), asset(2), asset(3)]
+    state.remaining = 4
+    vi.stubGlobal("fetch", vi.fn(async (url: string) => {
+      const target = new URL(url)
+      const symbols = target.searchParams.get("symbol")!.split(",")
+      return new Response(JSON.stringify(Object.fromEntries(symbols.map(symbol => [symbol,
+        target.pathname === "/price" ? { price: "0" } : { previous_close: "9.000000000000001", datetime: old }]))))
+    }))
+    const result = await (await handler("market-prices", true))({ assetIds: ids })
+    expect(result.body.prices.map((row: { price: string | null }) => row.price)).toEqual(["9.000000000000001", null, null])
+    expect(result.body.prices[0].stale).toBe(true)
+    expect(state.remaining).toBe(0)
+    expect(vi.mocked(fetch).mock.calls.map(([url]) => new URL(String(url)).searchParams.get("symbol"))).toEqual(["S1,S2,S3", "S1"])
+    expect(state.reservations.map(row => row.name)).toEqual(Array(3).fill("reserve_twelve_data_symbols"))
+  })
+  it("concurrent requests share exhaustion without exceeding granted outbound symbols", async () => {
+    const ids = Array.from({ length: 8 }, (_, n) => asset(n + 1))
+    state.remaining = 5
+    let spent = 0
+    vi.stubGlobal("fetch", vi.fn(async (url: string) => {
+      const symbols = new URL(url).searchParams.get("symbol")!.split(",")
+      spent += symbols.length
+      return new Response(JSON.stringify(Object.fromEntries(symbols.map(symbol => [symbol, { price: "12.5" }]))))
+    }))
+    const call = await handler("market-prices", true)
+    const results = await Promise.all([call({ assetIds: ids.slice(0, 4) }), call({ assetIds: ids.slice(4) })])
+    expect(results.map(result => result.body.prices.length)).toEqual([4, 4])
+    expect(spent).toBe(5)
+    expect(state.remaining).toBe(0)
+    expect(results.some(result => result.body.refreshError === "provider_refresh_rate_limited")).toBe(true)
+  })
+  it("accepts a symbol-less single price as an exact decimal without quote fallback", async () => {
+    const a = asset()
+    vi.stubGlobal("fetch", vi.fn(async () => new Response(JSON.stringify({ price: "10.123456789012345678" }))))
+    const result = await (await handler("market-prices", true))({ assetIds: [a] })
+    expect(result.body.prices[0]).toMatchObject({ price: "10.123456789012345678", priceType: "realtime", stale: false })
+    expect(fetch).toHaveBeenCalledTimes(1)
+    expect(state.reservations.map(row => (row.args.p_requested_symbols ?? row.args.p_units))).toEqual([1])
+  })
+  it.each(["http", "payload", "batch"])("%s throttling retains fresh/stale/manual/null prices and stops quote fallback", async (kind) => {
+    const a = asset(); price(a, { fetched_at: now, as_of: now })
+    const b = asset(2); price(b)
+    const c = asset(3); price(c, { provider: "manual", user_id: "caller", price_type: "manual", price: "7.000000000001" })
+    const d = asset(4)
+    const error = { status: "error", code: 429, message: "secret fixture-only provider URL" }
+    vi.stubGlobal("fetch", vi.fn(async () => new Response(JSON.stringify(kind === "batch" ? { S2: error, S3: error, S4: error } : error),
+      { status: kind === "http" ? 429 : 200, headers: { "Retry-After": "45" } })))
+    const result = await (await handler("market-prices", true))({ assetIds: [a, b, c, d] })
+    expect(result.status).toBe(200)
+    expect(result.body).toMatchObject({ refreshError: "provider_refresh_rate_limited", retryAfterSeconds: kind === "batch" ? 60 : 45 })
+    expect(result.body.prices.map((row: any) => row.price)).toEqual(["123.123456789012", "123.123456789012", "7.000000000001", null])
+    expect(result.body.prices.map((row: any) => row.stale)).toEqual([false, true, true, false])
+    expect(fetch).toHaveBeenCalledTimes(1)
+    expect(state.reservations).toHaveLength(1)
+    expect(JSON.stringify(result.body)).not.toContain("fixture-only")
+  })
+  it("preserves successful batch prices when another symbol is throttled", async () => {
+    const a = asset(); const b = asset(2)
+    vi.stubGlobal("fetch", vi.fn(async () => new Response(JSON.stringify({ S1: { price: "12.000000000001" }, S2: { status: "error", code: 429 } }))))
+    const result = await (await handler("market-prices", true))({ assetIds: [a, b] })
+    expect(result.body.prices[0]).toMatchObject({ price: "12.000000000001", stale: false })
+    expect(result.body.prices[1]).toMatchObject({ available: false, price: null })
+    expect(result.body.refreshError).toBe("provider_refresh_rate_limited")
+    expect(fetch).toHaveBeenCalledTimes(1)
+  })
+  it("reports throttling on quote fallback and retains stored evidence", async () => {
+    const a = asset(); price(a)
+    vi.stubGlobal("fetch", vi.fn(async (url: string) => new Response(JSON.stringify(url.includes("/price?") ? { price: "0" } : { status: "error", code: 429 }))))
+    const result = await (await handler("market-prices", true))({ assetIds: [a] })
+    expect(result.body).toMatchObject({ refreshError: "provider_refresh_rate_limited", retryAfterSeconds: 60 })
+    expect(result.body.prices[0]).toMatchObject({ price: "123.123456789012", stale: true })
+    expect(fetch).toHaveBeenCalledTimes(2)
+    expect(state.reservations.map(row => (row.args.p_requested_symbols ?? row.args.p_units))).toEqual([1, 1])
+  })
+  it("stops queued groups and quote fallback after an in-flight group is throttled", async () => {
+    const ids = Array.from({ length: 5 }, (_, n) => {
+      const a = asset(n + 1)
+      state.tables.asset_identifiers[n].namespace = `twelve_data:xn0${n}`
+      return a
+    })
+    vi.stubGlobal("fetch", vi.fn(async () => new Response("private provider response", { status: 429 })))
+    const result = await (await handler("market-prices", true))({ assetIds: ids })
+    expect(result.body.refreshError).toBe("provider_refresh_rate_limited")
+    expect(result.body.prices).toHaveLength(5)
+    expect(result.body.prices.every((row: { available: boolean; price: string | null }) => !row.available && row.price === null)).toBe(true)
+    expect(vi.mocked(fetch).mock.calls.length).toBeLessThanOrEqual(4)
+    expect(vi.mocked(fetch).mock.calls.every(([url]) => String(url).includes("/price?"))).toBe(true)
+  })
   it.each(["denied", "outage", "provider_capacity_unconfigured", "provider_refresh_paused"])("provider budget %s preserves stale/manual/unavailable results without external work", async (budget) => {
     const a = asset(); price(a)
     const b = asset(2); price(b, { provider: "manual", user_id: "caller", price_type: "manual", price: "7" })
@@ -96,7 +226,7 @@ describe("M1 securities actual handler", () => {
     expect(result.body.prices[2]).toMatchObject({ available: false, price: null })
     expect(fetch).not.toHaveBeenCalled()
     expect(state.reservations).toHaveLength(1)
-    expect(state.reservations[0].args.p_units).toBe(3)
+    expect(state.reservations[0].args.p_requested_symbols).toBe(3)
   })
   it("returns precise fresh cache without calling the provider", async () => {
     const a = asset(); price(a, { fetched_at: now, as_of: now })
@@ -139,7 +269,7 @@ describe("M1 securities actual handler", () => {
     const result = await (await handler("market-prices", true))({ assetIds: [a, b] })
     expect(result.body.prices[0]).toMatchObject({ price: "10.123456789012", stale: false })
     expect(result.body.prices[1]).toMatchObject({ price: "20.5", priceType: "previous_close", stale: true, effectiveAt: old })
-    expect(state.reservations.map(row => row.args.p_units)).toEqual([2, 1])
+    expect(state.reservations.map(row => (row.args.p_requested_symbols ?? row.args.p_units))).toEqual([2, 1])
   })
   it("returns all 61 requested accessible assets and never exposes unrequested assets", async () => {
     const ids = Array.from({ length: 61 }, (_, n) => { const a = asset(n + 1); price(a); return a })
@@ -244,6 +374,25 @@ describe("M1 FX actual handler", () => {
   it("returns unavailable with no usable FX, never zero", async () => {
     const result = await (await handler("fx-rates"))({ fromCurrencyCode: "USD", toCurrencyCode: "SAR" })
     expect(result.status).toBe(422); expect(result.body.available).toBe(false); expect(result.body.rate).toBeUndefined()
+  })
+})
+
+describe("Twelve Data search throttling", () => {
+  it.each(["http", "payload"])("returns safe 429 metadata for %s throttling without retries", async (kind) => {
+    vi.stubGlobal("fetch", vi.fn(async () => new Response(JSON.stringify({ status: "error", code: 429, message: "secret fixture-only" }),
+      { status: kind === "http" ? 429 : 200, headers: { "Retry-After": "45" } })))
+    const result = await (await handler("asset-search", true))({ query: "aapl" })
+    expect(result.status).toBe(429)
+    expect(result.body).toEqual({ available: false, results: [], error: "provider_refresh_rate_limited", retryAfterSeconds: 45 })
+    expect(fetch).toHaveBeenCalledTimes(1)
+    expect(state.reservations.map(row => (row.args.p_requested_symbols ?? row.args.p_units))).toEqual([1])
+  })
+  it("returns cached search results without reserving or contacting the provider", async () => {
+    state.tables.search_cache = [{ results: [] }]
+    const result = await (await handler("asset-search", true))({ query: "aapl" })
+    expect(result.body).toEqual({ available: true, results: [] })
+    expect(fetch).not.toHaveBeenCalled()
+    expect(state.reservations).toHaveLength(0)
   })
 })
 

@@ -45,9 +45,10 @@ describe("market-prices generic Twelve Data resolution contract", () => {
   it("uses the persisted MIC code for price and quote requests", () => {
     expect(marketPricesFunction).toContain("mic_code: micCode")
     expect(marketPricesFunction).toContain("const byMicCode = new Map<string, typeof mapped>()")
-    expect(marketPricesFunction).toContain('providerJson("price", symbols, micCode, apiKey, providerDeadline)')
-    expect(marketPricesFunction).toContain('quoteUrl(path, symbols, micCode, apiKey)')
-    expect(marketPricesFunction).toContain('reserveProviderCall(userClient, "market", symbols.length)')
+    expect(marketPricesFunction).toContain('providerJson("price", remaining, micCode, apiKey, providerDeadline)')
+    expect(marketPricesFunction).toContain('quoteUrl(path, batchSymbols, micCode, apiKey)')
+    expect(marketPricesFunction).toContain('reserveTwelveDataSymbols(userClient, requested.length)')
+    expect(marketPricesFunction).not.toContain('reserveProviderCall(')
     expect(marketPricesFunction).toContain('"quote",')
   })
 })
