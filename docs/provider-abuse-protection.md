@@ -72,8 +72,10 @@ all of them. First reservations are checked against projected usage too.
 Rejection changes no counter. Different users and sessions share the same global
 row. Configuration writes take the provider lock and never reset consumption.
 Budgets are durable across Edge instances; failed provider attempts are charged
-without client-controlled refunds. Individual reservation lookup is bounded by
-750 ms; timeout blocks transport even if the database later completes its charge.
+without client-controlled refunds. `reserve_provider_budget` lookup is bounded by
+two seconds; timeout blocks transport even if the database later completes its charge.
+Reservation failures log only elapsed milliseconds and a timeout, RPC, or invalid-response
+category. Reservations are never automatically retried.
 
 Securities price/quote batching uses authenticated
 `reserve_twelve_data_symbols(p_requested_symbols integer)`. It locks Twelve Data
