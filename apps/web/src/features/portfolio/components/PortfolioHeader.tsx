@@ -14,16 +14,9 @@ export function PortfolioHeader({
   isUpdating,
   onScopeChange,
 }: Props) {
-  const { language, t } = useTranslation()
+  const { t } = useTranslation()
   const isComplete = portfolio.completenessStatus === "complete"
   const StatusIcon = isComplete ? CheckCircle2 : AlertTriangle
-  const updatedAt = new Intl.DateTimeFormat(
-    language === "ar" ? "ar-SA" : "en-US",
-    {
-      dateStyle: "medium",
-      timeStyle: "short",
-    }
-  ).format(new Date(portfolio.updatedAt))
 
   return (
     <header
@@ -79,7 +72,7 @@ export function PortfolioHeader({
           <Clock3 size={14} aria-hidden="true" />
           {isUpdating
             ? t("portfolio.header.updating")
-            : t("portfolio.header.updated", { date: updatedAt })}
+            : t("portfolio.header.updated")}
         </span>
         <span dir="ltr">{portfolio.baseCurrency}</span>
       </div>

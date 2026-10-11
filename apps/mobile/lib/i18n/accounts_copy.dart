@@ -715,7 +715,26 @@ class AccountsCopy {
   String get price => _ar ? 'السعر' : 'Price';
   String get marketValue => _ar ? 'القيمة السوقية' : 'Market value';
   String get averageCost => _ar ? 'متوسط التكلفة' : 'Average cost';
-  String get currentPrice => _ar ? 'السعر الحالي' : 'Current price';
+  String get currentPrice => _ar ? 'أحدث سعر متاح' : 'Latest available price';
+  String get lastKnownPrice =>
+      _ar ? 'آخر سعر معروف · قديم' : 'Last-known price · Stale';
+  String get priceUnavailable => _ar ? 'السعر غير متاح' : 'Price unavailable';
+  String lastRetrievedPrice(String timestamp) =>
+      _ar ? 'آخر جلب: ${ltr(timestamp)}' : 'Last retrieved: $timestamp';
+
+  String securityPriceLabel({
+    required bool available,
+    String? provider,
+    String? priceType,
+    bool stale = false,
+  }) {
+    if (!available) return priceUnavailable;
+    if (provider == 'manual' || priceType == 'manual') return manualPrice;
+    if (priceType == 'previous_close') return previousClosePrice;
+    if (stale || priceType == 'stale') return lastKnownPrice;
+    return currentPrice;
+  }
+
   String get noCurrentPrice =>
       _ar ? 'لا يتوفر سعر حالي' : 'No current price available';
   String get currentFxLoading => _ar
@@ -758,8 +777,8 @@ class AccountsCopy {
       ? 'سعر الإغلاق السابق — ليس سعرًا مباشرًا.'
       : 'Previous close — not a live quote.';
   String get stalePrice => _ar
-      ? 'هذا السعر قديم؛ لم يقم المزوّد بتحديثه مؤخرًا.'
-      : 'This price is stale — the provider hasn’t refreshed it recently.';
+      ? 'يستخدم آخر سعر معروف؛ حداثة سعر السوق غير مؤكدة.'
+      : 'Uses a last-known price; market freshness is unverified.';
   String get remove => _ar ? 'إزالة' : 'Remove';
   String get removeExistingHoldingTitle =>
       _ar ? 'إزالة هذه الممتلكة القائمة؟' : 'Remove this existing holding?';

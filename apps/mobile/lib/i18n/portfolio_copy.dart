@@ -14,7 +14,8 @@ class PortfolioCopy {
       : 'A read-only view of your Brokerage securities.';
   String get refresh => _ar ? 'تحديث' : 'Refresh';
   String get refreshing => _ar ? 'جارٍ تحديث الأدلة…' : 'Refreshing evidence…';
-  String get fresh => _ar ? 'بيانات السوق محدثة' : 'Market data is current';
+  String get fresh =>
+      _ar ? 'بيانات التقييم متاحة' : 'Valuation data is available';
   String get stale => _ar
       ? 'تتضمن البيانات أسعارًا أو تحويلات قديمة'
       : 'Includes stale price or FX evidence';

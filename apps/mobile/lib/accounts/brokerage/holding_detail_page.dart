@@ -193,6 +193,9 @@ class _HoldingDetailPageState extends State<HoldingDetailPage> {
     final manualPrice =
         price?.provider == 'manual' || price?.priceType == 'manual';
     final previousClose = price?.priceType == 'previous_close';
+    final retrievedAt = manualPrice || price == null
+        ? null
+        : formatPriceRetrievedAt(price.fetchedAt);
     String? priceProvenance;
     if (manualPrice) {
       final effectiveAt = price!.effectiveAt;
@@ -299,13 +302,22 @@ class _HoldingDetailPageState extends State<HoldingDetailPage> {
               ),
               _row(
                 c,
-                manualPrice
-                    ? copy.manualPrice
-                    : previousClose
-                    ? copy.previousClosePrice
-                    : copy.currentPrice,
+                copy.securityPriceLabel(
+                  available: price != null,
+                  provider: price?.provider,
+                  priceType: price?.priceType,
+                  stale: price?.stale ?? false,
+                ),
                 MoneyFormat.money(entry.marketPrice?.price, assetCurrency),
               ),
+              if (retrievedAt != null)
+                Padding(
+                  padding: const EdgeInsets.only(top: 8),
+                  child: Text(
+                    copy.lastRetrievedPrice(retrievedAt),
+                    style: TextStyle(color: c.inkMuted, fontSize: 12),
+                  ),
+                ),
               if (priceProvenance != null)
                 Padding(
                   padding: const EdgeInsets.only(top: 8),

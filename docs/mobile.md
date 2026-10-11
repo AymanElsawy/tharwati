@@ -566,6 +566,17 @@ control so they remain valid Row children on narrow screens.
   deliberately narrower than country defaults. Static source comments, the
   mobile README, and older shared-doc sections can lag implemented scope.
 
+## Securities price presentation
+
+Brokerage Holding Details and Portfolio holding rows use EN/AR labels for
+Latest available price, Previous close, Last-known price · Stale, Manual price,
+and Price unavailable. A valid explicit provider `fetchedAt` supports a Last
+retrieved caption; missing/invalid timestamps produce no caption. Dates and
+numeric fragments remain isolated LTR within Arabic captions. Manual effective
+time is kept separate. Portfolio's non-stale status says Valuation data is
+available, without claiming market freshness. Backend price types, parsing,
+cache rules, provider calls, credits and decimal valuation remain unchanged.
+
 ## Relationship to Tharwati domain
 
 Market/FX reads follow [M1 reliability](market-data-reliability.md): 12-second Edge

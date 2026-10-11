@@ -1,3 +1,4 @@
+import { securityPriceLabel } from "@/services/market-data/price-display"
 import { createFingerprint } from "../utils/create-submission"
 import { resolveSubmissionAttempt, type SubmissionAttempt } from "../utils/refund-submission"
 import { runMutationThenRefresh } from "@/lib/mutations/mutation-refresh"
@@ -450,7 +451,7 @@ function HoldingRow({
               ? t("brokerage.currentValueUnavailable")
               : formatAmount(valuation.marketPrice, asset.currency_code, locale)}
           </b>
-          <small>{t("brokerage.currentPrice")} ({asset.currency_code})</small>
+          <small>{t(securityPriceLabel(valuation?.marketPrice != null, valuation?.marketPriceSource, valuation?.marketPriceType, valuation?.stalePrice === true))} ({asset.currency_code})</small>
         </span>
         <span>
           <b className="block break-words">

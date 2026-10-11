@@ -2,6 +2,7 @@ import { ArrowUpDown, Search } from "lucide-react"
 import type { PortfolioHoldingEvidence, PortfolioHoldingSort } from "@/features/portfolio/types/portfolio-evidence"
 import type { PortfolioScopeOption } from "@/features/portfolio/types/portfolio-executive"
 import { formatPortfolioAmount, formatPortfolioDecimal, formatPortfolioPercent } from "@/features/portfolio/utils/portfolio-formatters"
+import { formatPriceRetrievedAt, securityPriceLabel } from "@/services/market-data/price-display"
 import { useTranslation } from "@/i18n/useTranslation"
 import { portfolioAssetClassLabel, portfolioQuantityUnitLabel } from "@/features/portfolio/utils/portfolio-labels"
 import type { TranslationKey } from "@/i18n/en/translations"
@@ -46,6 +47,7 @@ export function PortfolioHoldingsEvidence({
   const locale = language === "ar" ? "ar-SA" : "en-US"
   const assetClasses = [...new Set(holdings.map((item) => item.assetClass))]
   const hasLocalFilters = Boolean(filters.search || filters.accountId || filters.assetClass)
+  const hasRetrievalTime = holdings.some((holding) => holding.currentPrice !== null && holding.priceSource !== "manual" && holding.priceType !== "manual" && formatPriceRetrievedAt(holding.priceFetchedAt, locale) !== null)
   return (
     <section aria-labelledby="portfolio-holdings-title" className="border-t border-[var(--border-subtle)] pt-10">
       <PortfolioSectionHeading
@@ -82,7 +84,7 @@ export function PortfolioHoldingsEvidence({
                 <tr className="border-y border-[var(--border-subtle)]">
                   {columns.map(([id, key]) => <th key={id} scope="col" aria-sort={filters.sort === id ? (filters.direction === "asc" ? "ascending" : "descending") : "none"} className={`px-3 py-3 text-xs font-medium uppercase tracking-[0.1em] text-muted-foreground ${id === "asset" || id === "account" ? "text-start" : "text-end"}`}><button type="button" onClick={() => onSort(id)} className="inline-flex items-center gap-1 rounded-sm focus-visible:outline-none focus-visible:ring-2"><span>{t(key)}</span><ArrowUpDown size={13} aria-hidden="true" /></button></th>)}
                   <th className="px-3 py-3 text-start text-xs text-muted-foreground">{t("portfolio.evidence.data")}</th>
-                  <th className="px-3 py-3 text-start text-xs text-muted-foreground">{t("portfolio.evidence.priceTime")}</th>
+                  {hasRetrievalTime ? <th className="px-3 py-3 text-start text-xs text-muted-foreground">{t("portfolio.evidence.priceTime")}</th> : null}
                 </tr>
               </thead>
               <tbody>
@@ -93,19 +95,19 @@ export function PortfolioHoldingsEvidence({
                     <td className="px-3 py-4 text-end tabular-nums"><span dir="ltr">{formatPortfolioDecimal(holding.quantity, locale, 8)} <span className="text-xs text-muted-foreground">{portfolioQuantityUnitLabel(holding.unit, t)}</span></span></td>
                     <td className="px-3 py-4 text-end tabular-nums"><span dir="ltr">{formatPortfolioAmount(holding.averageCost, holding.costCurrency, locale)}</span></td>
                     <td className="px-3 py-4 text-end tabular-nums"><span dir="ltr">{formatPortfolioAmount(holding.totalCostBasis, holding.costCurrency, locale)}</span></td>
-                    <td className="px-3 py-4 text-end tabular-nums"><span dir="ltr">{formatPortfolioAmount(holding.currentPrice, holding.priceCurrency ?? holding.costCurrency, locale)}</span></td>
+                    <td className="px-3 py-4 text-end tabular-nums"><span dir="ltr">{formatPortfolioAmount(holding.currentPrice, holding.priceCurrency ?? holding.costCurrency, locale)}</span><span className="block text-xs text-muted-foreground">{t(securityPriceLabel(holding.currentPrice !== null, holding.priceSource, holding.priceType, holding.priceStale === true))}</span></td>
                     <td className="px-3 py-4 text-end tabular-nums"><span dir="ltr">{holding.marketValueBase === null ? formatPortfolioAmount(null, baseCurrency, locale) : formatPortfolioAmount(holding.marketValueBase, baseCurrency, locale)}</span></td>
                     <td className="px-3 py-4 text-end tabular-nums"><span dir="ltr">{formatPortfolioAmount(holding.unrealizedGainLossBase, baseCurrency, locale)}</span></td>
                     <td className="px-3 py-4 text-end tabular-nums"><span dir="ltr">{formatPortfolioPercent(holding.returnPercent, locale)}</span></td>
                     <td className="px-3 py-4 text-xs text-muted-foreground">{t(`portfolio.evidence.status.${holding.dataQuality}`)}</td>
-                    <td className="px-3 py-4 text-xs text-muted-foreground">{holding.priceTimestamp ? new Intl.DateTimeFormat(locale, { dateStyle: "medium" }).format(new Date(holding.priceTimestamp)) : "—"}</td>
+                    {hasRetrievalTime ? <td className="px-3 py-4 text-xs text-muted-foreground" dir="ltr">{holding.currentPrice !== null && holding.priceSource !== "manual" && holding.priceType !== "manual" ? formatPriceRetrievedAt(holding.priceFetchedAt, locale) ?? "—" : "—"}</td> : null}
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
           <div className="mt-5 divide-y divide-[var(--border-subtle)] lg:hidden">
-            {holdings.map((holding) => <button key={holding.id} type="button" onClick={() => onOpen(holding.id)} className="grid w-full grid-cols-[1fr_auto] gap-3 py-5 text-start focus-visible:outline-none focus-visible:ring-2"><span><strong className="block font-medium">{holding.assetName}</strong><span className="mt-1 block text-xs text-muted-foreground">{holding.accountName} · {formatPortfolioDecimal(holding.quantity, locale, 8)} {portfolioQuantityUnitLabel(holding.unit, t)}</span></span><span className="text-end tabular-nums"><strong className="block font-medium">{formatPortfolioAmount(holding.marketValueBase, baseCurrency, locale)}</strong><span className="mt-1 block text-xs text-muted-foreground">{formatPortfolioPercent(holding.returnPercent, locale)}</span></span></button>)}
+            {holdings.map((holding) => <button key={holding.id} type="button" onClick={() => onOpen(holding.id)} className="grid w-full grid-cols-[1fr_auto] gap-3 py-5 text-start focus-visible:outline-none focus-visible:ring-2"><span><strong className="block font-medium">{holding.assetName}</strong><span className="mt-1 block text-xs text-muted-foreground">{t(securityPriceLabel(holding.currentPrice !== null, holding.priceSource, holding.priceType, holding.priceStale === true))} · {holding.accountName} · {formatPortfolioDecimal(holding.quantity, locale, 8)} {portfolioQuantityUnitLabel(holding.unit, t)}</span></span><span className="text-end tabular-nums"><strong className="block font-medium">{formatPortfolioAmount(holding.marketValueBase, baseCurrency, locale)}</strong><span className="mt-1 block text-xs text-muted-foreground">{formatPortfolioPercent(holding.returnPercent, locale)}</span></span></button>)}
           </div>
         </>
       )}

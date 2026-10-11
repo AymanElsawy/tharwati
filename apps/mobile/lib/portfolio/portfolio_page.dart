@@ -6,11 +6,13 @@ import '../accounts/accounts_controller.dart';
 import '../accounts/brokerage/brokerage_controller.dart';
 import '../accounts/brokerage/holding_detail_page.dart';
 import '../core/decimals.dart';
+import '../core/local_datetime.dart';
 import '../core/money_format.dart';
 import '../core/quantity_format.dart';
 import '../core/securities_allocation.dart';
 import '../errors/safe_app_error.dart';
 import '../i18n/app_language.dart';
+import '../i18n/accounts_copy.dart';
 import '../i18n/portfolio_copy.dart';
 import '../theme/tokens.dart';
 import '../widgets/callout.dart';
@@ -596,10 +598,19 @@ class _HoldingRow extends StatelessWidget {
           ),
           const SizedBox(height: 3),
           Text(
-            '${copy.price}: ${value.price == null ? copy.unavailable : MoneyFormat.money(value.price!.price, value.price!.currencyCode, unavailableLabel: copy.unavailable)}',
-            textDirection: TextDirection.ltr,
+            '${AccountsCopy.of(copy.language).securityPriceLabel(available: value.price != null, provider: value.price?.provider, priceType: value.price?.priceType, stale: value.priceStale)}: ${AccountsCopy.of(copy.language).ltr(value.price == null ? copy.unavailable : MoneyFormat.money(value.price!.price, value.price!.currencyCode, unavailableLabel: copy.unavailable))}',
             style: TextStyle(color: context.colors.inkMuted, fontSize: 11),
           ),
+          if (value.price != null &&
+              value.price?.provider != 'manual' &&
+              value.price?.priceType != 'manual' &&
+              formatPriceRetrievedAt(value.price?.fetchedAt) != null)
+            Text(
+              AccountsCopy.of(copy.language).lastRetrievedPrice(
+                formatPriceRetrievedAt(value.price?.fetchedAt)!,
+              ),
+              style: TextStyle(color: context.colors.inkMuted, fontSize: 11),
+            ),
           const SizedBox(height: 9),
           Row(
             children: [

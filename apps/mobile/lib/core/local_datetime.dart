@@ -5,6 +5,21 @@
 /// string for the RPCs.
 library;
 
+/// Only an explicit fetch timestamp can support a "Last retrieved" caption.
+/// Never substitute the legacy effective timestamp or the current time.
+String? formatPriceRetrievedAt(String? fetchedAt) {
+  if (fetchedAt == null ||
+      !RegExp(
+        r'^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})$',
+        caseSensitive: false,
+      ).hasMatch(fetchedAt) ||
+      DateTime.tryParse(fetchedAt) == null) {
+    return null;
+  }
+  final local = formatLocalDateTime(fetchedAt);
+  return '${local.date} ${local.time}';
+}
+
 String _pad(int n) => n.toString().padLeft(2, '0');
 
 /// `DateTime` → `yyyy-MM-ddTHH:mm` in local time (defaults to now).

@@ -226,6 +226,23 @@ the required FX conversion is unavailable. Unrealized gain/loss and return are
 unavailable whenever their comparable market-value or cost-basis inputs are
 unavailable.
 
+### Price labels and retrieval time
+
+Provider prices use **Latest available price**; **Previous close**, **Last-known
+price · Stale**, **Manual price**, and **Price unavailable** remain distinct.
+Web holding evidence and Mobile holding rows use these same EN/AR labels.
+Web's price-time column is **Last retrieved**, showing only valid provider
+`fetchedAt` values; unknown or invalid fetch times show a dash when other rows
+have a retrieval time, and the column is omitted when none do. Holding detail
+retrieval captions are omitted when that timestamp is absent. Legacy provider
+effective timestamps are not presented as market time, and manual effective
+times are not presented as retrieval times.
+
+Mobile's non-stale status says **Valuation data is available**. Web's header says
+**Valuation data loaded**, without displaying its legacy `updatedAt` as a market
+or retrieval timestamp. Completeness and stale/FX states retain their existing
+meaning. No backend type, cache, fallback, valuation or provider behavior changes.
+
 ### Stale and unavailable data
 
 Stale prices remain visibly stale; they are not silently promoted to current.

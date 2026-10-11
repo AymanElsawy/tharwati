@@ -67,6 +67,22 @@ by fetched time, effective time, then ID. Another asset's history cannot consume
 the PostgREST row limit or hide its fallback. Inaccessible/inactive assets remain
 outside the returned scope.
 
+## Securities price presentation
+
+Web and Mobile display provider evidence as **Latest available price**, not as
+proof of realtime market freshness. Previous-close, last-known/stale, manual,
+and unavailable evidence retain distinct labels. **Last retrieved** uses only a
+valid explicit `fetchedAt`; it never falls back to `effectiveAt`, session date,
+render time, or portfolio `updatedAt`. Manual prices retain their entered effective
+time and are not described as provider retrievals. EN/AR copy follows the same rules.
+
+This is a presentation correction. The existing `realtime` backend type and
+fetch-time-based cache rules remain unchanged. `/price` supplies no verified market
+timestamp; the legacy effective timestamp and previous-close quote timestamp do
+not establish the selected price's trade/close time. The UI does not display them
+as provider market time. Decimal valuation, cost, FX, fallback precedence, provider
+requests and API credits are unchanged.
+
 ## FX contract
 
 Same-currency conversions return identity rate 1 without provider access.
@@ -106,9 +122,10 @@ because that optional field is null.
 `previous_close` and manual securities prices are conservatively marked stale even
 when recently fetched. Their original price types are retained; ordinary expired
 provider rows use `priceType: stale`. Effective and fetched timestamps are retained
-where available. A previous-close quote's timestamp is the provider's quote
-observation time when supplied, otherwise fetch time; M1 does not claim to derive
-the previous session's closing instant or introduce a trading-session calendar.
+where available. The legacy previous-close effective timestamp uses quote
+`datetime` when supplied, otherwise fetch time. That field can describe the
+quote candle's opening; it does not date `previous_close`. The handler does not
+derive the previous session's closing instant or introduce a trading calendar.
 Manual values are usable evidence, not a claim of live provider freshness.
 Web Portfolio now honors the returned stale flag and manual/previous-close type,
 instead of relying solely on a 24-hour effective-time age check. Mobile models

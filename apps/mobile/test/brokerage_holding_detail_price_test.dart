@@ -10,6 +10,7 @@ import 'package:tharwati_mobile/accounts/brokerage/brokerage_valuation.dart';
 import 'package:tharwati_mobile/accounts/brokerage/holding_detail_page.dart';
 import 'package:tharwati_mobile/core/local_datetime.dart';
 import 'package:tharwati_mobile/i18n/app_language.dart';
+import 'package:tharwati_mobile/i18n/accounts_copy.dart';
 import 'package:tharwati_mobile/theme/tokens.dart';
 
 class _HistoryRepository extends BrokerageRepository {
@@ -78,6 +79,7 @@ Future<BrokerageController> _pumpDetail(
   MarketPrice? price, {
   Account account = _account,
   Holding holding = _holding,
+  AppLanguage language = AppLanguage.en,
 }) async {
   final controller = BrokerageController(
     accountId: account.id,
@@ -88,9 +90,14 @@ Future<BrokerageController> _pumpDetail(
     pricesByAssetId: price == null ? const {} : {holding.assetId: price},
     cashBalance: '100',
   );
+  final languageController = AppLanguageController(
+    store: _MemoryLanguageStore(language),
+  );
+  await languageController.load();
+  addTearDown(languageController.dispose);
   await tester.pumpWidget(
     AppLanguageScope(
-      controller: AppLanguageController(),
+      controller: languageController,
       child: MaterialApp(
         theme: ThemeData(extensions: const [AppColors.light]),
         home: HoldingDetailPage(
@@ -105,15 +112,25 @@ Future<BrokerageController> _pumpDetail(
   return controller;
 }
 
+class _MemoryLanguageStore implements LanguageStore {
+  const _MemoryLanguageStore(this.language);
+  final AppLanguage language;
+  @override
+  Future<String?> readLanguage() async => language.code;
+  @override
+  Future<void> writeLanguage(String code) async {}
+}
+
 void main() {
   const providerWarning =
-      'This price is stale — the provider hasn’t refreshed it recently.';
+      'Uses a last-known price; market freshness is unverified.';
 
   MarketPrice fallback({
     String provider = 'twelve_data',
     String priceType = 'realtime',
     bool stale = true,
     String effectiveAt = '2026-09-01T10:00:00Z',
+    String? fetchedAt = '2026-10-02T12:00:00Z',
   }) => MarketPrice(
     assetId: _holding.assetId,
     price: '500',
@@ -122,14 +139,14 @@ void main() {
     priceType: priceType,
     stale: stale,
     effectiveAt: effectiveAt,
-    fetchedAt: '2026-10-02T12:00:00Z',
+    fetchedAt: fetchedAt,
   );
 
   testWidgets('stale provider retains provider warning and semantic color', (
     tester,
   ) async {
     final controller = await _pumpDetail(tester, fallback());
-    expect(find.text('Current price'), findsOneWidget);
+    expect(find.text('Last-known price · Stale'), findsOneWidget);
     expect(find.text(providerWarning), findsOneWidget);
     expect(find.text('Manual price'), findsNothing);
     expect(
@@ -139,6 +156,100 @@ void main() {
     expect(find.text('1,000.00 USD'), findsOneWidget);
     controller.dispose();
   });
+
+  testWidgets(
+    'latest price shows retrieval time without claiming market time',
+    (tester) async {
+      final quote = fallback(stale: false);
+      final controller = await _pumpDetail(tester, quote);
+      expect(find.text('Latest available price'), findsOneWidget);
+      final local = formatLocalDateTime(quote.fetchedAt!);
+      expect(
+        find.text('Last retrieved: ${local.date} ${local.time}'),
+        findsOneWidget,
+      );
+      expect(find.textContaining('Effective'), findsNothing);
+      expect(find.text('Current price'), findsNothing);
+      expect(find.text('1,000.00 USD'), findsOneWidget);
+      controller.dispose();
+    },
+  );
+
+  for (final fetchedAt in [
+    null,
+    '',
+    'unknown',
+    '2026-10-02',
+    '2026-10-02T12:00:00',
+  ]) {
+    testWidgets('missing or invalid fetch time $fetchedAt is not invented', (
+      tester,
+    ) async {
+      final controller = await _pumpDetail(
+        tester,
+        fallback(stale: false, fetchedAt: fetchedAt),
+      );
+      expect(find.text('Latest available price'), findsOneWidget);
+      expect(find.textContaining('Last retrieved'), findsNothing);
+      expect(find.textContaining('2026-09-01'), findsNothing);
+      expect(find.text('1,000.00 USD'), findsOneWidget);
+      controller.dispose();
+    });
+  }
+
+  testWidgets(
+    'Arabic latest-price and retrieval captions preserve directionality',
+    (tester) async {
+      final quote = fallback(stale: false);
+      final controller = await _pumpDetail(
+        tester,
+        quote,
+        language: AppLanguage.ar,
+      );
+      expect(find.text('أحدث سعر متاح'), findsOneWidget);
+      final local = formatLocalDateTime(quote.fetchedAt!);
+      final copy = AccountsCopy.of(AppLanguage.ar);
+      expect(
+        find.text(copy.lastRetrievedPrice('${local.date} ${local.time}')),
+        findsOneWidget,
+      );
+      expect(
+        copy.lastRetrievedPrice('2026-10-02 12:00'),
+        contains('\u20662026-10-02 12:00\u2069'),
+      );
+      expect(find.text('السعر الحالي'), findsNothing);
+      expect(tester.takeException(), isNull);
+      controller.dispose();
+    },
+  );
+
+  test(
+    'Arabic preserves manual, previous-close, stale and unavailable labels',
+    () {
+      final copy = AccountsCopy.of(AppLanguage.ar);
+      expect(
+        copy.securityPriceLabel(
+          available: true,
+          provider: 'manual',
+          stale: true,
+        ),
+        'سعر يدوي',
+      );
+      expect(
+        copy.securityPriceLabel(
+          available: true,
+          priceType: 'previous_close',
+          stale: true,
+        ),
+        'سعر الإغلاق السابق',
+      );
+      expect(
+        copy.securityPriceLabel(available: true, stale: true),
+        'آخر سعر معروف · قديم',
+      );
+      expect(copy.securityPriceLabel(available: false), 'السعر غير متاح');
+    },
+  );
 
   for (final source in ['provider', 'priceType']) {
     testWidgets('manual $source shows effective time without provider copy', (

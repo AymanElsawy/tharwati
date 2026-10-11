@@ -1,5 +1,7 @@
 import { Banknote, ChartNoAxesCombined, WalletCards } from "lucide-react"
 
+import { useTranslation } from "@/i18n/useTranslation"
+import { formatPriceRetrievedAt, securityPriceLabel } from "@/services/market-data/price-display"
 import type { DashboardViewModel } from "@/features/dashboard/types/dashboard"
 
 function amount(value: string, currency: string) {
@@ -23,6 +25,8 @@ type Props = {
 }
 
 export function DashboardSummary({ dashboard }: Props) {
+  const { t, language } = useTranslation()
+  const locale = language === "ar" ? "ar-SA" : "en-US"
   const cards = [
     {
       title: "Net Worth",
@@ -102,7 +106,8 @@ export function DashboardSummary({ dashboard }: Props) {
                   className="text-xs text-[var(--color-text-secondary)]"
                   data-testid="market-price-provenance"
                 >
-                  {source.symbol ?? "Asset"}: {source.provider} · {source.priceType} · {new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeStyle: "short" }).format(new Date(source.fetchedAt))}
+                  {source.symbol ?? "Asset"}: {source.provider} · {t(securityPriceLabel(true, source.provider, source.priceType))}
+                  {source.provider !== "manual" && source.priceType !== "manual" && formatPriceRetrievedAt(source.fetchedAt, locale) ? <> · {t("securities.price.lastRetrieved")}: <span dir="ltr">{formatPriceRetrievedAt(source.fetchedAt, locale)}</span></> : null}
                 </p>
               ))}
             </div>

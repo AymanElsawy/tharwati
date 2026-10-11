@@ -56,6 +56,7 @@ export class PortfolioEvidenceService {
         priceSource: valuation.marketPriceSource,
         priceType: valuation.marketPriceType ?? null,
         priceFetchedAt: valuation.marketPriceFetchedAt ?? null,
+        priceStale: valuation.stalePrice,
         marketValueBase: valuation.marketValueBase,
         unrealizedGainLossBase: valuation.unrealizedGainLossBase,
         returnPercent: valuation.unrealizedReturnPercent,

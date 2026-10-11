@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:tharwati_mobile/i18n/app_language.dart';
+import 'package:tharwati_mobile/accounts/brokerage/brokerage_models.dart';
+import 'package:tharwati_mobile/core/local_datetime.dart';
 import 'package:tharwati_mobile/portfolio/portfolio_controller.dart';
 import 'package:tharwati_mobile/portfolio/portfolio_page.dart';
 import 'package:tharwati_mobile/portfolio/portfolio_valuation.dart';
@@ -14,6 +16,8 @@ void main() {
     await _pump(tester, controller: controller);
 
     expect(find.text('Portfolio Summary'), findsOneWidget);
+    expect(find.text('Valuation data is available'), findsOneWidget);
+    expect(find.text('Market data is current'), findsNothing);
     expect(find.text('All Brokerage Accounts'), findsOneWidget);
     await tester.scrollUntilVisible(
       find.text('Cash & Current Value'),
@@ -34,8 +38,48 @@ void main() {
     );
     expect(find.text('Holdings by Brokerage account'), findsOneWidget);
     expect(find.text('25.00 USD'), findsOneWidget);
+    expect(find.textContaining('Latest available price:'), findsOneWidget);
+    expect(find.textContaining('Last retrieved'), findsNothing);
     controller.dispose();
   });
+
+  testWidgets(
+    'holding retrieval caption uses fetchedAt and preserves previous-close label',
+    (tester) async {
+      final controller = _readyController();
+      controller.data = valuePortfolio(
+        source(
+          prices: const {
+            'asset-one': MarketPrice(
+              assetId: 'asset-one',
+              price: '10',
+              currencyCode: 'USD',
+              provider: 'twelve_data',
+              priceType: 'previous_close',
+              stale: true,
+              effectiveAt: '2020-01-01T00:00:00Z',
+              fetchedAt: '2026-10-02T12:00:00Z',
+            ),
+          },
+        ),
+      );
+      await _pump(tester, controller: controller);
+      await tester.scrollUntilVisible(
+        find.byKey(const Key('portfolio-holding-one')),
+        250,
+        scrollable: find.byType(Scrollable).first,
+      );
+      expect(find.textContaining('Previous close:'), findsOneWidget);
+      expect(
+        find.text(
+          'Last retrieved: ${formatPriceRetrievedAt('2026-10-02T12:00:00Z')}',
+        ),
+        findsOneWidget,
+      );
+      expect(find.textContaining('2020'), findsNothing);
+      controller.dispose();
+    },
+  );
 
   testWidgets('unavailable aggregate is not rendered as zero', (tester) async {
     final controller = _readyController(pricesMissing: true);
@@ -88,6 +132,8 @@ void main() {
       final controller = _readyController();
       await _pump(tester, controller: controller, language: AppLanguage.ar);
       expect(find.text('ملخص المحفظة'), findsOneWidget);
+      expect(find.text('بيانات التقييم متاحة'), findsOneWidget);
+      expect(find.text('بيانات السوق محدثة'), findsNothing);
       final financial = tester.widget<Text>(find.text('20.00 USD').first);
       expect(financial.textDirection, TextDirection.ltr);
       expect(tester.takeException(), isNull);

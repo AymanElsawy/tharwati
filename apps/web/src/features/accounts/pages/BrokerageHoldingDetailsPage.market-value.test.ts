@@ -6,7 +6,7 @@ import accountPage from "./BrokerageAccountDetailsPage.tsx?raw"
 describe("Brokerage holding market value contract", () => {
   it("uses portfolio valuation and decimal-safe asset-currency values", () => {
     expect(page).toContain("multiplyDecimals(holding.quantity, valuation.marketPrice)")
-    expect(page).toContain('t("brokerage.currentPrice")')
+    expect(page).toContain("label={t(priceLabel)}")
     expect(page).toContain('t("brokerage.marketValue")')
     expect(page).toContain("valuation.unrealizedGainLossNative")
     expect(page).toContain("valuation.unrealizedReturnPercent")
@@ -24,7 +24,7 @@ describe("Brokerage holding market value contract", () => {
 
   it("discloses unavailable and cross-currency valuation states", () => {
     expect(page).toContain('t("brokerage.marketValueUnavailable")')
-    expect(page).toContain('t("brokerage.marketValueStale")')
+    expect(page).toContain("valuation?.stalePrice === true")
     expect(page).toContain('t("brokerage.accountCurrencyMarketValueUnavailable")')
     expect(page).toContain("valuation.marketValueBase")
   })

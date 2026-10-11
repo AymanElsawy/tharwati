@@ -903,6 +903,14 @@ history, with `correct_existing_holding` / `reverse_existing_holding`. Only a
 hand-entered `opening_position` is editable; a buy or sell is a real ledger
 event, corrected by trading rather than editing.
 
+Web Brokerage account rows and Holding Details, and Mobile Holding Details,
+label ordinary provider evidence **Latest available price**, with distinct
+**Previous close**, **Last-known price · Stale**, **Manual price**, and
+**Price unavailable** states. A provider **Last retrieved** caption appears only
+for a valid explicit fetched timestamp; legacy effective times are not shown as
+provider market times. These labels support EN/AR and preserve decimal-safe
+values, current FX, historical cost and the existing fallback order.
+
 Holding detail identifies manual fallback as **Manual price**, with its effective
 timestamp in the device's local time when valid. It does not describe a manual
 value as a provider price or treat its fetch time as an update time. Provider

@@ -397,6 +397,15 @@ evidence makes snapshot freshness stale; missing required prices/FX remain
 unavailable. Persisted decimals retain text transport. Brokerage value remains
 Available Cash plus positive holdings, with no transaction-cost/FX substitution.
 
+### Securities provenance wording
+
+The rich Web `DashboardSummary` translates securities provenance into Latest
+available price, Previous close, Last-known price · Stale, or Manual price rather
+than exposing the legacy `realtime` type as a market-freshness claim. Provider
+Last retrieved captions use valid explicit fetched timestamps only. This does
+not change the active Dashboard's server snapshot, freshness flags, valuation,
+cache, fallback behavior, provider requests or credits.
+
 ### Still deferred
 
 - Rich dashboard surfaces (§3.2) and `AccountsOverviewCard`.

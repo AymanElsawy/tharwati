@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react"
 import { useNavigate, useParams } from "react-router-dom"
 import { safeErrorMessage } from "@/lib/errors/app-error"
 
+import { formatPriceRetrievedAt, securityPriceLabel } from "@/services/market-data/price-display"
 import { Button } from "@/components/ui/button"
 import { BrokerageSellDialog } from "@/features/accounts/components/BrokerageSellDialog"
 import { useAccounts } from "@/features/accounts/hooks/useAccounts"
@@ -349,7 +350,9 @@ export function BrokerageHoldingDetailsPage() {
   const marketValueAsset = valuation?.marketPrice
     ? multiplyDecimals(holding.quantity, valuation.marketPrice)
     : null
-  const hasStalePrice = valuation?.stalePrice === true || valuation?.marketPriceType === "stale"
+  const priceLabel = securityPriceLabel(valuation?.marketPrice != null, valuation?.marketPriceSource, valuation?.marketPriceType, valuation?.stalePrice === true)
+  const retrievedAt = priceLabel !== "securities.price.manual" && valuation?.marketPrice != null
+    ? formatPriceRetrievedAt(valuation?.marketPriceFetchedAt, locale) : null
 
   return (
     <div className="pb-12">
@@ -404,13 +407,14 @@ export function BrokerageHoldingDetailsPage() {
           value={holding.cost_currency_code}
         />
         <Value
-          label={t("brokerage.currentPrice")}
+          label={t(priceLabel)}
           value={
             valuation?.marketPrice === null || valuation === null
               ? t("brokerage.marketValueUnavailable")
-              : `${formatAmount(valuation.marketPrice, valuation.marketPriceCurrency ?? asset.currency_code, locale)}${hasStalePrice ? ` (${t("brokerage.marketValueStale")})` : ""}`
+              : formatAmount(valuation.marketPrice, valuation.marketPriceCurrency ?? asset.currency_code, locale)
           }
         />
+        {retrievedAt ? <Value label={t("securities.price.lastRetrieved")} value={retrievedAt} /> : null}
         <Value
           label={t("brokerage.marketValue")}
           value={

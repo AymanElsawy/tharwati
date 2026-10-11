@@ -1,6 +1,7 @@
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet"
 import type { PortfolioHoldingEvidence } from "@/features/portfolio/types/portfolio-evidence"
 import { formatPortfolioAmount, formatPortfolioDecimal, formatPortfolioPercent } from "@/features/portfolio/utils/portfolio-formatters"
+import { formatPriceRetrievedAt, securityPriceLabel } from "@/services/market-data/price-display"
 import { useTranslation } from "@/i18n/useTranslation"
 import { portfolioQuantityUnitLabel } from "@/features/portfolio/utils/portfolio-labels"
 
@@ -31,7 +32,7 @@ export function PortfolioHoldingDetail({
                 [t("portfolio.evidence.quantity"), `${formatPortfolioDecimal(holding.quantity, locale, 8)} ${portfolioQuantityUnitLabel(holding.unit, t)}`],
                 [t("portfolio.evidence.averageCost"), formatPortfolioAmount(holding.averageCost, holding.costCurrency, locale)],
                 [t("portfolio.evidence.totalCost"), formatPortfolioAmount(holding.totalCostBasis, holding.costCurrency, locale)],
-                [t("portfolio.evidence.currentPrice"), formatPortfolioAmount(holding.currentPrice, holding.priceCurrency ?? holding.costCurrency, locale)],
+                [t(securityPriceLabel(holding.currentPrice !== null, holding.priceSource, holding.priceType, holding.priceStale === true)), formatPortfolioAmount(holding.currentPrice, holding.priceCurrency ?? holding.costCurrency, locale)],
                 [t("portfolio.evidence.marketValue"), formatPortfolioAmount(holding.marketValueBase, baseCurrency, locale)],
                 [t("portfolio.evidence.return"), formatPortfolioPercent(holding.returnPercent, locale)],
                 [t("portfolio.evidence.account"), holding.accountName],
@@ -43,6 +44,9 @@ export function PortfolioHoldingDetail({
                 </div>
               ))}
             </dl>
+            {holding.currentPrice !== null && holding.priceSource !== "manual" && holding.priceType !== "manual" && formatPriceRetrievedAt(holding.priceFetchedAt, locale) ? (
+              <p className="mx-6 mb-4 text-xs text-muted-foreground">{t("securities.price.lastRetrieved")}: <span dir="ltr">{formatPriceRetrievedAt(holding.priceFetchedAt, locale)}</span></p>
+            ) : null}
             <div className="mx-6 border-t border-[var(--border-subtle)] py-5 text-sm text-muted-foreground">
               {holding.dataQuality === "complete"
                 ? t("portfolio.evidence.dataComplete")
