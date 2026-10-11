@@ -613,6 +613,7 @@ Authenticated mobile shell uses a three-part header at narrow widths: logical-st
 - All copy is looked up via `t("accounts.*")` translation keys (~125 keys), defined in parallel in `src/i18n/en/translations.ts` and `src/i18n/ar/translations.ts`. Port these keys 1:1 to the mobile string catalog so translations can be shared.
 - The whole feature is RTL-aware via CSS logical properties (start/end rather than left/right). Web Back arrows mirror in Arabic, and the mobile navigation sheet opens from the logical start edge (left in English, right in Arabic). Mobile should use equivalent RTL-aware layout (React Native flexbox auto-flips with `I18nManager.isRTL`; manually-positioned elements like a trailing "%" suffix need explicit RTL handling).
 - Numeric fields always force LTR display (see §7) — this is a deliberate, must-replicate pattern.
+- Web Brokerage Holding Details keeps labels and value blocks aligned at the logical start of each summary/history column. Numeric/currency/percentage values and localized dates/times use inline LTR `<bdi>` isolation, while their containing blocks retain page direction. The ticker/exchange line sits beneath the asset title at the same logical edge, with LTR symbol order. The transaction-detail dialog likewise isolates value text without reversing its value-column alignment. Existing locale formatting, timestamps, device timezone, price labels, colors, and responsive column breakpoints are unchanged.
 
 ## 9. Notable quirks / deviations to decide on deliberately (do not silently "fix")
 

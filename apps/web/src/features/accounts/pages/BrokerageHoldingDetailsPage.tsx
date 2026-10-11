@@ -365,14 +365,14 @@ export function BrokerageHoldingDetailsPage() {
         <ArrowLeft size={16} />
         {t("common.back")}
       </Button>
-      <header className="relative pe-24 border-b border-[var(--color-border)] pb-7">
+      <header className="relative pe-24 border-b border-[var(--color-border)] pb-7 text-start">
         <Button className="absolute end-0 top-0" onClick={() => setIsSellOpen(true)}>
           {t("brokerage.sell")}
         </Button>
         <p className="tharwati-eyebrow">{t("brokerage.holdingDetails")}</p>
         <h1 className="tharwati-page-title mt-2">{asset.name}</h1>
-        <p className="mt-2 text-sm text-muted-foreground" dir="ltr">
-          {[asset.symbol, asset.exchange].filter(Boolean).join(" · ")}
+        <p className="mt-2 text-sm text-muted-foreground">
+          <bdi dir="ltr">{[asset.symbol, asset.exchange].filter(Boolean).join(" · ")}</bdi>
         </p>
       </header>
 
@@ -463,11 +463,10 @@ export function BrokerageHoldingDetailsPage() {
           <div className="overflow-hidden rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)]">
             {dateGroups.map((group) => (
               <section key={group.date}>
-                <header className="border-b border-[var(--color-border)] bg-[var(--color-surface-muted)] px-4 py-2 text-sm font-semibold">
-                  {
-                    formatLocalDateTime(`${group.date}T12:00:00.000Z`, locale)
-                      .date
-                  }
+                <header className="border-b border-[var(--color-border)] bg-[var(--color-surface-muted)] px-4 py-2 text-start text-sm font-semibold">
+                  <bdi dir="ltr">
+                    {formatLocalDateTime(`${group.date}T12:00:00.000Z`, locale).date}
+                  </bdi>
                 </header>
                 {group.transactions.map((item) => {
                   const entry = entryFor(item, assetId)
@@ -495,13 +494,12 @@ export function BrokerageHoldingDetailsPage() {
                             ) : null}
                           </span>
                           <span className="mt-1 block text-sm text-muted-foreground">
-                            {isDeleted
-                              ? `${t("brokerage.holdingDeleted")} \u00b7 ${formatLocalDateTime(item.occurred_at, locale).time}`
-                              : formatLocalDateTime(item.occurred_at, locale).time}
+                            {isDeleted ? <>{t("brokerage.holdingDeleted")} · </> : null}
+                            <bdi dir="ltr">{formatLocalDateTime(item.occurred_at, locale).time}</bdi>
                           </span>
                         </span>
                         <span className="text-end text-sm tabular-nums">
-                          {entry?.quantity_delta ? absoluteDecimal(entry.quantity_delta) : "--"}
+                          <bdi dir="ltr">{entry?.quantity_delta ? absoluteDecimal(entry.quantity_delta) : "--"}</bdi>
                         </span>
                       </span>
                       {entry ? (
@@ -514,38 +512,45 @@ export function BrokerageHoldingDetailsPage() {
                             </span>
                             <strong
                               className={`block tabular-nums ${isDeleted ? "text-muted-foreground" : "text-[var(--color-text-primary)]"}`}
-                              dir="ltr"
                             >
-                              {entry.unit_price === null
-                                ? "--"
-                                : formatAmount(
-                                    entry.unit_price,
-                                    asset.currency_code,
-                                    locale
-                                  )}
+                              <bdi dir="ltr">
+                                {entry.unit_price === null
+                                  ? "--"
+                                  : formatAmount(
+                                      entry.unit_price,
+                                      asset.currency_code,
+                                      locale
+                                    )}
+                              </bdi>
                             </strong>
                           </span>
                           {item.transaction_type_code === "buy" && hasPositiveValue(entry.buyFees) ? (
                             <span>
                               <span className="block">{t("investment.fees")}</span>
-                              <strong className="block tabular-nums text-[var(--color-text-primary)]" dir="ltr">
-                                {formatAmount(entry.buyFees!, asset.currency_code, locale)}
+                              <strong className="block tabular-nums text-[var(--color-text-primary)]">
+                                <bdi dir="ltr">
+                                  {formatAmount(entry.buyFees!, asset.currency_code, locale)}
+                                </bdi>
                               </strong>
                             </span>
                           ) : null}
                           {item.transaction_type_code === "sell" && hasPositiveValue(entry.sellFees) ? (
                             <span>
                               <span className="block">{t("investment.fees")}</span>
-                              <strong className="block tabular-nums text-[var(--color-text-primary)]" dir="ltr">
-                                {formatAmount(entry.sellFees!, asset.currency_code, locale)}
+                              <strong className="block tabular-nums text-[var(--color-text-primary)]">
+                                <bdi dir="ltr">
+                                  {formatAmount(entry.sellFees!, asset.currency_code, locale)}
+                                </bdi>
                               </strong>
                             </span>
                           ) : null}
                           {item.transaction_type_code === "sell" ? (
                             <span>
                               <span className="block">{t("brokerage.netProceeds")}</span>
-                              <strong className="block tabular-nums text-[var(--color-text-primary)]" dir="ltr">
-                                {entry.netAssetProceeds === null ? "--" : formatAmount(entry.netAssetProceeds, asset.currency_code, locale)}
+                              <strong className="block tabular-nums text-[var(--color-text-primary)]">
+                                <bdi dir="ltr">
+                                  {entry.netAssetProceeds === null ? "--" : formatAmount(entry.netAssetProceeds, asset.currency_code, locale)}
+                                </bdi>
                               </strong>
                             </span>
                           ) : null}
@@ -555,15 +560,16 @@ export function BrokerageHoldingDetailsPage() {
                             </span>
                             <strong
                               className={`block tabular-nums ${isDeleted ? "text-muted-foreground" : "text-[var(--color-text-primary)]"}`}
-                              dir="ltr"
                             >
-                              {(item.transaction_type_code === "sell" ? entry.cashProceeds : entry.account_cost_basis_delta) === null
-                                ? "--"
-                                : formatAmount(
-                                    item.transaction_type_code === "sell" ? entry.cashProceeds! : entry.account_cost_basis_delta!,
-                                    holding.cost_currency_code,
-                                    locale
-                                  )}
+                              <bdi dir="ltr">
+                                {(item.transaction_type_code === "sell" ? entry.cashProceeds : entry.account_cost_basis_delta) === null
+                                  ? "--"
+                                  : formatAmount(
+                                      item.transaction_type_code === "sell" ? entry.cashProceeds! : entry.account_cost_basis_delta!,
+                                      holding.cost_currency_code,
+                                      locale
+                                    )}
+                              </bdi>
                             </strong>
                           </span>
                           {asset.currency_code !== holding.cost_currency_code &&
@@ -574,9 +580,10 @@ export function BrokerageHoldingDetailsPage() {
                               </span>
                               <strong
                                 className={`block tabular-nums ${isDeleted ? "text-muted-foreground" : "text-[var(--color-text-primary)]"}`}
-                                dir="ltr"
                               >
-                                {entry.account_fx_rate}
+                                <bdi dir="ltr">
+                                  {entry.account_fx_rate}
+                                </bdi>
                               </strong>
                             </span>
                           ) : null}
@@ -688,10 +695,10 @@ export function BrokerageHoldingDetailsPage() {
 
 function Value({ label, value }: { label: string; value: string }) {
   return (
-    <div className="min-w-0 px-4 py-4">
+    <div className="min-w-0 px-4 py-4 text-start">
       <p className="text-xs font-medium text-muted-foreground">{label}</p>
-      <p className="mt-1 font-semibold break-words tabular-nums" dir="ltr">
-        {value}
+      <p className="mt-1 font-semibold break-words tabular-nums">
+        <bdi dir="ltr">{value}</bdi>
       </p>
     </div>
   )
@@ -969,8 +976,8 @@ function Detail({ label, value }: { label: string; value: string }) {
   return (
     <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-4">
       <span className="text-muted-foreground">{label}</span>
-      <strong className="max-w-60 text-end break-words tabular-nums" dir="ltr">
-        {value}
+      <strong className="max-w-60 text-end break-words tabular-nums">
+        <bdi dir="ltr">{value}</bdi>
       </strong>
     </div>
   )
