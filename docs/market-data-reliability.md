@@ -52,8 +52,11 @@ read in batches of 100; provider instruments are grouped by MIC and batched in
 affordable groups of at most 50 distinct symbols. Each price/quote call uses one
 atomic `reserve_twelve_data_symbols` reservation, which reads protected S2
 configuration and remaining user/global minute/day allowance and charges only
-the granted count. Outbound calls are sequential; quota denial or provider 429
-stops later calls without waiting for a reset. Unrefreshed assets still receive
+the granted count. Its RPC deadline is two seconds; failures log only elapsed
+milliseconds and a timeout, RPC, or invalid-response category. Reservations are
+never automatically retried; a timed-out RPC may still finish its charge, but
+does not authorize an outbound provider call. Outbound calls are sequential;
+quota denial or provider 429 stops later calls without waiting for a reset. Unrefreshed assets still receive
 stored stale/manual prices or explicit unavailable results. The forward migration
 `20261009102808_capacity_aware_twelve_data_reservation.sql` must precede deployment
 of this handler; missing RPC fails refresh closed and preserves stored fallback.

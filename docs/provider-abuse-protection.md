@@ -72,7 +72,8 @@ all of them. First reservations are checked against projected usage too.
 Rejection changes no counter. Different users and sessions share the same global
 row. Configuration writes take the provider lock and never reset consumption.
 Budgets are durable across Edge instances; failed provider attempts are charged
-without client-controlled refunds. `reserve_provider_budget` lookup is bounded by
+without client-controlled refunds. `reserve_provider_budget` and
+`reserve_twelve_data_symbols` lookups are bounded by
 two seconds; timeout blocks transport even if the database later completes its charge.
 Reservation failures log only elapsed milliseconds and a timeout, RPC, or invalid-response
 category. Reservations are never automatically retried.
